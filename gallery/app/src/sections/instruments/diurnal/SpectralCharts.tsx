@@ -147,7 +147,7 @@ export function NormalisedHeatmap({ focus, focusName, spectra, sites, seasons }:
         {!panels.length ? <Empty>No site in view has an hourly MA350 export.</Empty>
           : draw === 'cells'
             ? <FacetGrid items={panels} minCell={340} maxCols={2} render={(p, w) => <ProfileGrid p={p} width={w} fill={fill} />} />
-            : <FacetGrid items={panels} minCell={320} maxCols={2} render={(p, w) => (
+            : <FacetGrid items={panels} minCell={320} maxCols={2} share="y" render={(p, w) => (
                 <HourPlot title={p.title} width={w} height={220} offset={p.offset} yLabel="× daily mean" hours={[0, 23]}
                   yMarkers={[{ at: 1, color: INK.identity }]}
                   series={p.rows.map((r) => ({ id: r.c, label: r.c, color: CHANNEL_COLOUR[r.c], curve: 'monotone' as const,

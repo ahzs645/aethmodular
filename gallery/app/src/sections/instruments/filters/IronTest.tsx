@@ -3,6 +3,7 @@ import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { Crossplot, type CrossLine, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
+import { Panels } from '@/components/Panels'
 import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { SweepPlot } from '@/components/SweepPlot'
@@ -118,9 +119,6 @@ export function IronTest({ pairs, marked = [], meta, sites, ch, sigma }: {
     { key: 'fixed', title: `− ${fmt(multi.b, 1)} × Iron: ${fitLine(fixed?.slope, fixed?.intercept)}, R² ${fmt(fixed?.r2, 2)}`, ys: t.corr(multi.b), k: multi.b, fit: fixed, which: 'fixed' as const, label: `${yName} − ${fmt(multi.b, 1)} × Iron` },
     ...(best && bestFit ? [{ key: 'best', title: `− ${fmt(best.k, 1)} × Iron (slope ${fmt(target, 1)}): ${fitLine(bestFit.slope, bestFit.intercept)}`, ys: t.corr(best.k), k: best.k, fit: bestFit, which: 'best' as const, label: `${yName} − ${fmt(best.k, 1)} × Iron` }] : []),
   ]
-  const allY = panelsBA.flatMap((p) => p.ys), allX = t.ec
-  const xDom = d3.scaleLinear().domain([Math.min(0, d3.min(allX)!), d3.max(allX)! * 1.05]).nice().domain() as [number, number]
-  const yDom = d3.scaleLinear().domain([Math.min(0, d3.min(allY)!), d3.max(allY)! * 1.05]).nice().domain() as [number, number]
   const kMarks = [{ at: multi.b, label: 'two-predictor MAC_Fe', color: INK.accent }, ...(best ? [{ at: best.k, label: `slope ${fmt(target, 1)}`, color: INK.warn }] : [])]
   const sweepSeries = (f: (s: (typeof sweep)[number]) => number) => [{ id: 'k', label: 'k', color: INK.text, marks: false, points: sweep.map((s) => ({ x: s.k, y: f(s) })) }]
   const seasonBlock: IntervalBlock[] = [{ key: 'seasons', rows: [
@@ -166,29 +164,30 @@ export function IronTest({ pairs, marked = [], meta, sites, ch, sigma }: {
       of {yName}, against {fmt(100 * base.r2, 0)} % for EC alone. {multi.a < 0.7 * target ? `MAC_BC stays well below ${fmt(target, 1)} m²/g, so iron alone does not recover the expected MAC here.` : ''}
       {atEdge && closest ? ` No k in the sweep brings the slope to ${fmt(target, 1)}: it is closest at k = ${fmt(closest.k, 1)} (${fmt(closest.slope, 2)} m²/g), the edge of the range, so there is no best-k panel.` : ''}
     </Note>
-    <FacetGrid items={[
+    <Panels wrap letters={false} gap={16} panels={[
       { key: 'slope', y: 'Recovered slope (m²/g)', f: (s: (typeof sweep)[number]) => s.slope, ref: Number.isFinite(target) ? target : undefined },
       { key: 'int', y: 'Recovered intercept (Mm⁻¹)', f: (s: (typeof sweep)[number]) => s.intercept, ref: 0 },
       { key: 'r2', y: 'R²', f: (s: (typeof sweep)[number]) => s.r2, ref: undefined },
-    ]} minCell={260} maxCols={3} render={(it, w) => (
+    ].map((it) => ({ key: it.key, min: 260, basis: 260, render: ({ width: w }) => (
       <SweepPlot series={sweepSeries(it.f)} xLabel="k (Mm⁻¹ per µg/m³ iron)" yLabel={it.y} width={w} height={220} reference={it.ref} xMarkers={kMarks} />
-    )} />
-    <FacetGrid items={panelsBA} minCell={260} maxCols={3} render={(p, w) => (
+    ) }))} />
+    {/* one range for the before/after panels (Panel axes), so the correction reads as a shift */}
+    <FacetGrid items={panelsBA} minCell={260} maxCols={3} share itemKey={(p) => p.key} render={(p, w) => (
       <Crossplot points={rows.map((r, i) => pt(r, p.ys[i], p.label))} marked={markedRows.map((r) => pt(r, r.y - p.k * r.fe, p.label))} title={p.title} xLabel="FTIR EC (µg/m³)" yLabel={`${p.label} (Mm⁻¹)`}
-        maxSide={Math.max(170, w - 80)} fit={false} sameScale={false} domain={xDom} yDomain={yDom} extraLines={fitLines(p.fit, p.which)} />
+        maxSide={Math.max(170, w - 80)} fit={false} sameScale={false} extraLines={fitLines(p.fit, p.which)} />
     )} />
     <IntervalStrip blocks={seasonBlock} labelWidth={110} noteWidth={44} minPanelWidth={170} panels={[
       { heading: 'slope against EC', label: 'm²/g', reference: Number.isFinite(target) ? target : undefined, format: (v) => fmt(v, 1) },
       { heading: 'intercept', label: 'Mm⁻¹', reference: 0, format: (v) => fmt(v, 0) },
       { heading: 'two-predictor residual', label: 'Mm⁻¹ (median, IQR)', reference: 0, format: (v) => fmt(v, 0) },
     ]} />
-    <FacetGrid items={[
+    <Panels letters={false} gap={16} share="y" panels={[
       { key: 'fe', x: (r: Row) => r.fe, xl: 'Iron (µg/m³)', r: t.rFe },
       { key: 'ec', x: (r: Row) => r.ec, xl: 'FTIR EC (µg/m³)', r: t.rEc },
-    ]} minCell={260} maxCols={2} render={(it, w) => (
+    ].map((it) => ({ key: it.key, min: 260, basis: 260, render: ({ width: w }) => (
       <Crossplot points={residPts(it.x, it.xl)} marked={residPts(it.x, it.xl, markedRows, markedResid)} title={`Residual against ${it.xl.split(' (')[0]} · Spearman ρ = ${fmt(it.r, 2)}`} xLabel={it.xl} yLabel="Two-predictor residual (Mm⁻¹)"
         maxSide={Math.max(170, Math.min(360, w - 80))} fit={false} sameScale={false} extraLines={zero} />
-    )} />
+    ) }))} />
     <Key items={[...seasons.map((s) => ({ label: seasonOnly(s.season), color: s.color })), { label: 'fit to all filters', color: INK.fit, kind: 'dash' as const },
       { label: Number.isFinite(target) ? `slope ${fmt(target, 1)} through the origin` : 'target', color: INK.muted, kind: 'dash' as const },
       { label: 'uncorrected (strip)', color: INK.muted, kind: 'hollow' as const }, { label: 'after − MAC_Fe × Iron (strip)', color: INK.muted, kind: 'dot' as const }]} />

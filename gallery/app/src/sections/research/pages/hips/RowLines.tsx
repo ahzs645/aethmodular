@@ -1,5 +1,5 @@
 import { ChartFrame } from '@/components/ChartFrame'
-import { Crossplot, sharedCrossDomains, type CrossPoint } from '@/components/Crossplot'
+import { Crossplot, crossSpan, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { Key } from '@/components/Key'
 import { fmt } from '@/lib/format'
@@ -42,15 +42,17 @@ export function RowLines({ pairs, blanks, sites, palette, colorOfSite }: { pairs
         pct: quantile(sup.map((v) => v.pct), 0.5), tau: quantile(sup.map((v) => v.p.o.tau ?? NaN).filter(Number.isFinite), 0.5) } : null }
   })
   // the axes take in where each median's line expects it, so the suppression bar is drawn whole
-  const dom = sharedCrossDomains([...facets.map((f) => f.points), facets.flatMap((f) => (f.med ? [{ x: f.med.rExp, y: f.med.T1, color: '', tip: [] }] : []))], false)
+  const medX = facets.flatMap((f) => (f.med ? [f.med.rExp] : [])), medY = facets.flatMap((f) => (f.med ? [f.med.T1] : []))
   const used = [...new Set(facets.flatMap((f) => f.keys))].sort((a, b) => palette.keys.indexOf(a) - palette.keys.indexOf(b))
   return (
     <ChartFrame id="he-row-lines" title="Each filter against its own calibration line — raw R1 / T1 by site"
       subtitle="Samples filled and field blanks hollow, both coloured by the deployed line they were reduced with; each line present at the site is drawn as T1 = Intercept + Slope·R1. The red diamond is the site's median sample and the bar runs to the R1 its line expects at that T1: the median R suppression, (1 − R1 / R1 expected). Shared axes, as the notebook's 2 × 2."
       provenance={`${WARREN_NB} [30] (slide 10c, per-site R1/T1 against each row's line)`}>
-      <FacetGrid items={facets} minCell={280} title={(f) => f.s} note={(f) => (f.med ? `R suppression ${fmt(f.med.pct, 0)} % · tau ${fmt(f.med.tau, 2)}` : '')} render={(f, w) => (
+      {/* shared axes, always, as the notebook's 2 × 2 (the panel group, Panel axes fixed at Shared) */}
+      <FacetGrid items={facets} minCell={280} title={(f) => f.s} itemKey={(f) => f.s} mode="Shared"
+        share={{ x: (u) => crossSpan([...u, ...medX]), y: (u) => crossSpan([...u, ...medY]) }} note={(f) => (f.med ? `R suppression ${fmt(f.med.pct, 0)} % · tau ${fmt(f.med.tau, 2)}` : '')} render={(f, w) => (
         <div style={{ width: w }}>
-          <Crossplot sameScale={false} fit={false} maxSide={w - 72} domain={dom.domain} yDomain={dom.yDomain}
+          <Crossplot sameScale={false} fit={false} maxSide={w - 72}
             title={`${f.nS} samples, ${f.nB} field blanks`}
             xLabel="Raw HIPS sphere signal R1" yLabel="Raw HIPS plate signal T1"
             extraLines={f.keys.flatMap((k) => { const ref = palette.ref(k); return ref ? line(ref, palette.color(k), `row line ${k}`, '6 3') : [] })}

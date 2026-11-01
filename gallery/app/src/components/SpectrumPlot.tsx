@@ -6,6 +6,7 @@ import { SpectralRegions, type Region } from '@/components/SpectralRegions'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { robustDomain } from '@/lib/axes'
+import { useGroupDomain } from '@/components/PanelGroup'
 import { nearestIndex } from '@/lib/spectra'
 import { FONT, INK, TRACE, themed } from '@/lib/theme'
 
@@ -144,8 +145,11 @@ export function SpectrumPlot({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [yDomain, series, bands, hiWn, loWn, yClip, includeZero, logY, pinned])
 
+  // in a panel group that shares ranges (components/PanelGroup), the y range is the group's
+  const gy = useGroupDomain('y', yDomain ? null : yDom)
   const x = d3.scaleLinear().domain([hiWn, loWn]).range([0, iw])
-  const y = (logY ? d3.scaleLog() : d3.scaleLinear()).domain(yDom).range([ih, 0]).nice() as d3.ScaleContinuousNumeric<number, number>
+  const y = (logY ? d3.scaleLog() : d3.scaleLinear()).domain(gy?.domain ?? yDom).range([ih, 0]) as d3.ScaleContinuousNumeric<number, number>
+  if (!gy?.final) y.nice()
   const line = (wn: ArrayLike<number>, v: ArrayLike<number>) => d3.line<number>()
     .defined((i) => inWin(wn[i]) && v[i] != null && Number.isFinite(v[i]) && (!logY || v[i] > 0))
     .x((i) => x(wn[i])).y((i) => y(v[i]))(d3.range(v.length)) ?? ''

@@ -45,7 +45,7 @@ export function QuarterMae({ runs, s, meta }: { runs: SiteRun[]; s: Settings; me
       controls={<><SchemePick id="MAE" value={scheme} onChange={setScheme} />
         <Segmented label="Models" value={models} options={['two', 'three'] as const} onChange={setModels} optionLabel={(o) => (o === 'two' ? 'OLS and median' : 'Add proportional')} /></>}>
       <Key items={shown.map((m) => ({ label: MODEL_LABEL[m], color: m === 'ols' ? INK.text : MODEL_STYLE[m].color!, kind: m === 'ols' ? 'line' : 'dash' }))} />
-      <FacetGrid items={runs} minCell={290} maxCols={2} title={(r) => r.site}
+      <FacetGrid items={runs} minCell={290} maxCols={2} title={(r) => r.site} share="y" site={(r) => r.site}
         note={(r) => { const sm = summarize(blocksOf(r, scheme)); return `MAE ${fmt(sm.filters.mae.ols * s.k, 2)} vs ${fmt(sm.filters.mae.median * s.k, 2)} · n ${sm.filters.n}` }}
         render={(r, w) => {
           const blocks = blocksOf(r, scheme), color = siteColor(meta, r.site)
@@ -72,7 +72,7 @@ export function QuarterBias({ runs, s, meta }: { runs: SiteRun[]; s: Settings; m
       tip={<>At the release's settings (with Filters → excluded: Include), Addis's aggregate bias is near zero but its quarter biases run from −4.11 to +2.30 Mm⁻¹: opposing errors cancel in the overall mean. Bias persists with either model form. Beijing 2024Q3 stays in and has no test EC beyond its training range; the five non-positive EC predictions are kept and no prediction is clipped.</>}
       controls={<SchemePick id="Bias" value={scheme} onChange={setScheme} />}>
       <Key items={[{ label: 'OLS with intercept (bars)', color: INK.text, kind: 'bar' }, { label: MODEL_LABEL.proportional, color: GREY, kind: 'dash' }]} />
-      <FacetGrid items={runs} minCell={290} maxCols={2} title={(r) => r.site}
+      <FacetGrid items={runs} minCell={290} maxCols={2} title={(r) => r.site} share="y" site={(r) => r.site}
         note={(r) => { const sm = summarize(blocksOf(r, scheme)); return `overall ${signed(sm.filters.mse.ols * s.k, 2)} ${s.u}` }}
         render={(r, w) => {
           const blocks = blocksOf(r, scheme), color = siteColor(meta, r.site)
@@ -99,7 +99,7 @@ export function PairedProportional({ runs, s, meta }: { runs: SiteRun[]; s: Sett
       provenance={<>{NB_PROP} figure 01</>} source={`${SOURCE}/Quarters.tsx › PairedProportional`}
       tip={<>At the release's settings (with Filters → excluded: Include), Addis improves by 7.64 Mm⁻¹ overall and wins all eight quarters. Other sites are less consistent; Delhi's aggregate favours proportional prediction despite three quarter-level intercept wins. These are statistical coefficients, not physical MAC estimates.</>}
       controls={<SchemePick id="Paired" value={scheme} onChange={setScheme} />}>
-      <FacetGrid items={runs} minCell={290} maxCols={2} title={(r) => r.site}
+      <FacetGrid items={runs} minCell={290} maxCols={2} title={(r) => r.site} share="y" site={(r) => r.site}
         note={(r) => { const sm = summarize(blocksOf(r, scheme)); return `${signed((sm.filters.mae.proportional - sm.filters.mae.ols) * s.k, 2)} overall · ${sm.interceptBetterBlocks}/${sm.evaluatedBlocks} quarters` }}
         render={(r, w) => {
           const blocks = blocksOf(r, scheme), color = siteColor(meta, r.site)
@@ -121,7 +121,7 @@ export function TestWeights({ runs, s, meta }: { runs: SiteRun[]; s: Settings; m
       subtitle={`${popLabel(s.population)} population · later period · each bar is a quarter's share of the evaluated test filters`}
       provenance={<>{NB_PROP} figure 08</>} source={`${SOURCE}/Quarters.tsx › TestWeights`}
       tip={<>At the release's settings (with Filters → excluded: Include) Delhi's 2024Q2 supplies 26 of 38 later-period test filters (68.4 %). Filter-weighted errors lean on that quarter; equal-quarter errors give each supported quarter the same weight. Neither is chosen for a preferred sign.</>}>
-      <FacetGrid items={runs} minCell={290} maxCols={2} title={(r) => r.site}
+      <FacetGrid items={runs} minCell={290} maxCols={2} title={(r) => r.site} share="y" site={(r) => r.site}
         note={(r) => { const g = r.later.filter((b) => b.status === 'evaluated'); return `${g.reduce((a, b) => a + b.testN, 0)} filters in ${g.length} quarters` }}
         render={(r, w) => {
           const g = r.later.filter((b) => b.status === 'evaluated'), total = g.reduce((a, b) => a + b.testN, 0), color = siteColor(meta, r.site)

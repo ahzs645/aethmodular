@@ -10,7 +10,7 @@ import { INK } from '@/lib/theme'
 import { num, type Row } from '@/lib/table'
 import { rows } from '../../common'
 import { Grid } from '../../../research/common/ui'
-import { GROUPS, SEASON_COLOR, SUBSET_COLOR, SUBSET_SHORT, baselinesOf, sharedDomain, type Data } from './common'
+import { GROUPS, SEASON_COLOR, SUBSET_COLOR, SUBSET_SHORT, baselinesOf, padRange, type Data } from './common'
 import { FixedSetNote } from '@/lib/markedRows'
 
 const ADDIS = 'Addis (vs Fabs/MAC)'
@@ -93,7 +93,6 @@ export function SmokeCheck({ data, provenance }: { data: Data; provenance: React
     { key: 'tor', title: `${b.label}: held-out IMPROVE vs TOR EC`, series: [...forScale, ...tor], yLabel: 'OLS intercept ÷ mean TOR EC' },
     { key: 'hips', title: `${b.label}: held-out IMPROVE vs HIPS Fabs/${m.mac}`, series: [...forScale, ...hips], yLabel: `OLS intercept ÷ mean Fabs/${m.mac}`, markers },
   ]
-  const yDomain = sharedDomain([...panels.flatMap((p) => p.series.flatMap((s) => s.points.flatMap((q) => [q.y, q.lo, q.hi]))), ...markers.map((mk) => mk.at)])
 
   // the headline, read off the drawn lines at the last k
   const last = (s: SweepSeries | undefined) => { const p = s?.points[s.points.length - 1]; return p ? { k: p.x as number, y: p.y ?? null } : null }
@@ -108,10 +107,11 @@ export function SmokeCheck({ data, provenance }: { data: Data; provenance: React
     <ChartFrame id="ksweep-smoke" title={title}
       subtitle={`Notebooks [7] and [9], standard all-IMPROVE lot-251 model. The populations differ about 10× in concentration, so every intercept is divided by its population's mean reference, with OLS on both sides (the Addis Deming line is in the first chart). Subsets are fixed from IMPROVE data alone before any Addis readout: non-soil K = K − 0.6 Fe ≥ the library p90 (n = ${n('nsK_top10') ?? '?'}), TOR OC/EC ≥ p90 (n = ${n('ocec_top10') ?? '?'}), the phase-2 smoke cohort (n = ${n('smoke_cohort') ?? '?'}), against non-soil K ≤ the median (n = ${n('nsK_bottom50') ?? '?'}) and all ${n('all')?.toLocaleString() ?? ''} lot-251 filters; each curve uses the held-out sites of each split. ${pooledMode ? "Pooled: each filter's prediction averaged over the splits that held its site out, one line per subset ([9]); the Addis lines stay split medians." : 'Split medians with the IQR ([7]).'} The thick grey line in the IMPROVE panels repeats All-Addis for scale. Dashed: each subset's own TOR EC vs HIPS line (OLS, no FTIR), ${o.values.gap === 'tor' ? "divided by the subset's mean TOR as the notebook drew it" : `divided by the subset's mean HIPS like the curves (the notebook divided by mean TOR, which puts the smoke cohort's at ${f2(smokeGap.tor)} instead of ${f2(smokeGap.hips)})`}. Against HIPS the smoke-like subsets level off by k ≈ 7 for spline and VIBES alike; the Addis VIBES curves keep falling to k ≈ 18. ${m.changed ? `Everything divided by mean Fabs/MAC is × ${m.mac}/10 of the notebook's MAC 10 numbers; the TOR panel does not move.` : 'MAC 10: the curves divided by mean Fabs/MAC follow the MAC set under Filters → units; the TOR panel does not.'}`}
       provenance={provenance} controls={o.controls()}>
-      <Grid min={300}>
+      {/* one padded range for all three panels (Panel axes), as the notebook compares them */}
+      <Grid min={300} share={{ y: padRange }}>
         {panels.map((p) => <div key={p.key}>{empty(p)
           ? <><div className="facet-title">{p.title}</div><Empty>The notebook displayed this readout only for the IMPROVE-vs-HIPS split medians; the per-split table (curves.csv) adds it.</Empty></>
-          : <SweepPlot series={p.series} title={p.title} xLabel="PLS components k" yLabel={p.yLabel} reference={0} height={270} yDomain={yDomain} dim={lg.dim}
+          : <SweepPlot series={p.series} title={p.title} xLabel="PLS components k" yLabel={p.yLabel} reference={0} height={270} dim={lg.dim}
             yMarkers={p.markers?.map((mk) => ({ at: mk.at, color: mk.color }))} />}</div>)}
       </Grid>
       <Legend {...lg.props} items={[

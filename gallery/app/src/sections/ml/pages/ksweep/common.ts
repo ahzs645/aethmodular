@@ -43,9 +43,8 @@ export function protocolK(data: Data, baseline: string, cohort: 'standard' | 'an
 export const at = (rs: Row[], baseline: string, set: string, k: number, col: string): number | null =>
   num(rs.find((r) => r.baseline === baseline && r.set === set && r.k === k)?.[col])
 
-/** a shared y range over every panel, padded, always including `include` */
-export function sharedDomain(values: (number | null | undefined)[], include: number[] = [0]): [number, number] {
-  const v = [...values.filter((x): x is number => x != null && Number.isFinite(x)), ...include]
-  const lo = Math.min(...v), hi = Math.max(...v), pad = (hi - lo || 1) * 0.06
-  return [lo - pad, hi + pad]
-}
+/**
+ * The k-sweep panels' shared y range, as a panel group shape (components/PanelGroup `share={{ y: padRange }}`): the union of
+ * the panels' ranges (each already holds its reference line) padded 6 % either side.
+ */
+export const padRange = ([lo, hi]: [number, number]): [number, number] => { const pad = (hi - lo || 1) * 0.06; return [lo - pad, hi + pad] }

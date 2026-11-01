@@ -10,7 +10,9 @@ import { fidProps, useFilterEdits } from '@/lib/filterEdits'
 import { monthBlocks } from '@/lib/regressionCI'
 import { regression, type RegressionStats } from '@/lib/stats'
 import { trim } from '@/lib/format'
-import { useRegressions, FitGroupingControl } from '@/lib/regressionPrefs'
+import { useRegressions, FitGroupingControl, FitGroupingFor } from '@/lib/regressionPrefs'
+import { useGroupControl, useGroupDomain, useGroupGrouping } from '@/components/PanelGroup'
+import { extentOf } from '@/lib/facets'
 import type { Estimator } from '@/lib/regressionMethods'
 import { baseFilterId, dotFill, dotRim, useHighlight, type FilterRecord } from '@/lib/highlight'
 import { ScatterLayer } from '@/components/ScatterLayer'
@@ -47,22 +49,16 @@ export interface CrossLine { slope: number; intercept: number; color: string; la
  * With `fit`, the browser refits the drawn points under the chosen estimators
  * (pooled, or one line per site); without it the plot only shows saved results.
  */
-/** a crossplot axis range: 0 always in view, 5 % headroom, nice ends */
-const span = (v: number[]) => d3.scaleLinear().domain([Math.min(0, d3.min(v) ?? 0), (d3.max(v) ?? 1) * 1.05]).nice().domain() as [number, number]
-
 /**
- * One range for several panels (Panel axes: Shared, lib/panelAxes): pass the result's `domain` and
- * `yDomain` to every panel. With `sameScale` both axes share one span, as a single panel's would.
+ * A crossplot axis range: 0 always in view, 5 % headroom, nice ends. Several panels share one through their panel
+ * group (components/PanelGroup `share`); a group shape that must take in extra values pads them the same way.
  */
-export function sharedCrossDomains(sets: CrossPoint[][], sameScale = true): { domain: [number, number]; yDomain?: [number, number] } {
-  const pts = sets.flat().filter((p) => p.x != null && p.y != null && Number.isFinite(p.x) && Number.isFinite(p.y))
-  const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y)
-  return sameScale ? { domain: span([...xs, ...ys]) } : { domain: span(xs), yDomain: span(ys) }
-}
+export const crossSpan = (v: number[]) => d3.scaleLinear().domain([Math.min(0, d3.min(v) ?? 0), (d3.max(v) ?? 1) * 1.05]).nice().domain() as [number, number]
+const span = crossSpan
 
 const NO_KEYS: ReadonlySet<string> = new Set()
 
-export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360, domain, fit = true, errorRatio, extraLines = [], grouping: groupingOverride, background, pick, sameScale = true, yDomain, brushable = false, brush }: {
+export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360, domain, fit = true, errorRatio, extraLines = [], grouping: groupingProp, background, pick, sameScale = true, yDomain, brushable = false, brush }: {
   points: CrossPoint[]
   /**
    * Filters → excluded: Mark (lib/markedRows): the excluded filters the chart would draw, built from useMarkedRows() the
@@ -85,7 +81,7 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
   /** Deming error-variance ratio λ for the refit */
   errorRatio?: number | null
   extraLines?: CrossLine[]
-  /** the chart's own fit grouping (with its own control), instead of the gallery-wide setting; 'none' draws no fits */
+  /** the chart's own fit grouping (with its own control), instead of the gallery-wide setting (or its panel group's); 'none' draws no fits */
   grouping?: FitGrouping | 'none'
   /** drawn under the points on the same scales, e.g. a density of the wider population */
   background?: (x: d3.ScaleLinear<number, number>, y: d3.ScaleLinear<number, number>) => ReactNode
@@ -109,6 +105,9 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
   // outside keep=), and one of the export's exclusions unless Include puts it back; Mark draws them as ×. As presented
   // (a meeting page) nothing is taken out. Pages hand their own per-filter items in by id, so this is the one place.
   const counts = useCountedFilter()
+  // in a panel group (components/PanelGroup) the group may fix the grouping for all its crossplots
+  const groupGrouping = useGroupGrouping()
+  const groupingOverride = groupingProp ?? groupGrouping
   const [ownBrush, setOwnBrush] = useCrossplotBrush()
   const brushing = brushable && (brush ?? ownBrush)
   const brushRef = useRef<SVGGElement>(null)
@@ -143,8 +142,12 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
   const st = useMemo(() => fitting ? regression(valid.map((p) => p.x), valid.map((p) => p.y), { errorsInVariables: true, lambda, bootstrapGroups: monthBlocks(valid.map((p) => p.rec ?? {})) }) : null,
     [valid, lambda, fitting])
   const xs = valid.map((p) => p.x), ys = valid.map((p) => p.y)
-  const dom = domain ?? span(sameScale ? [...xs, ...ys] : xs)
-  const yDom = sameScale ? dom : yDomain ?? span(ys)
+  // in a panel group that shares ranges, this panel files its data range and draws the group's (Panel axes)
+  const ownX = extentOf(sameScale ? [...xs, ...ys] : xs)
+  const gx = useGroupDomain('x', domain ? null : ownX)
+  const gy = useGroupDomain('y', sameScale ? (domain ? null : ownX) : yDomain ? null : extentOf(ys))
+  const dom = domain ?? (gx ? (gx.final ? gx.domain : span(sameScale && gy ? [...gx.domain, ...gy.domain] : gx.domain)) : span(sameScale ? [...xs, ...ys] : xs))
+  const yDom = sameScale ? dom : yDomain ?? (gy ? (gy.final ? gy.domain : span(gy.domain)) : span(ys))
   // the same scales until the ranges change, so the dots and the hit index below survive a re-render (a tooltip)
   const x = useMemo(() => d3.scaleLinear().domain(dom).range([0, iw]), [dom.join(), iw]) // eslint-disable-line react-hooks/exhaustive-deps
   const y = useMemo(() => d3.scaleLinear().domain(yDom).range([ih, 0]), [yDom.join(), ih]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -179,6 +182,10 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
         {...(key ? fidProps(key) : {})} />
     )
   }), [valid, xy, hl.selected])
+  // a panel group draws one fit grouping box for all its crossplots
+  const offerGrouping = (multiSite || seasons) && !groupingOverride
+  const hoisted = useGroupControl('fit-grouping', offerGrouping ? { site: multiSite, season: seasons } : null,
+    (vs) => <FitGroupingFor site={vs.some((v) => v.site)} season={vs.some((v) => v.season)} />)
   const summary = useRegressionSummary({ stats: st, groups: siteFits ? fitGroups : undefined, width: w - 24, enabled: fitting })
   const top = m.top + (summary.height ? summary.height + 14 : 0)
   const height = side + top + m.bottom
@@ -205,7 +212,7 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
     <div ref={ref} style={{ position: 'relative' }}>
       {brushable && brush === undefined && <div className="frame-controls"><CrossplotBrushControls brush={[ownBrush, setOwnBrush]} /></div>}
       {/* its points carry a site but no season, so a per-season grouping would only draw the pooled fit */}
-      {(multiSite || seasons) && !groupingOverride && <FitGroupingControl only={['pooled', ...(multiSite ? ['site' as const] : []), ...(seasons ? ['season' as const] : [])]}
+      {offerGrouping && !hoisted && <FitGroupingControl only={['pooled', ...(multiSite ? ['site' as const] : []), ...(seasons ? ['season' as const] : [])]}
         value={grouping === 'season' && !seasons ? 'pooled' : grouping} />}
       {/* centred in its panel: a square plot in a wide frame leaves even margins either side */}
       <svg width={w} height={height} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>

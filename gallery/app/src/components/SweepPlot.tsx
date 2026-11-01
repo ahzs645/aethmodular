@@ -6,6 +6,8 @@ import { Marker, RefLine } from '@/components/RefLines'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { robustDomain } from '@/lib/axes'
+import { useGroupDomain } from '@/components/PanelGroup'
+import { extentOf, type Extent } from '@/lib/facets'
 import { FONT, INK } from '@/lib/theme'
 
 /**
@@ -153,13 +155,16 @@ export function SweepPlot({
   const all = series.flatMap((s) => s.points)
   const first = all.find((p) => p.x != null)?.x
   const k = kind ?? (first instanceof Date ? 'time' : typeof first === 'string' ? 'point' : 'linear')
+  // in a panel group that shares ranges (components/PanelGroup), a numeric x and the y range follow the group's
+  const numericX = (k === 'linear' || k === 'log') && !xDomain
+  const gx = useGroupDomain('x', numericX ? extentOf(all.filter((p) => k !== 'log' || (p.x as number) > 0).map((p) => p.x as number)) : null)
   let x: XScale
   if (k === 'point') x = d3.scalePoint<string>().domain([...new Set(all.map((p) => String(p.x)))]).range([0, iw]).padding(0.4)
   else if (k === 'time') x = d3.scaleTime().domain((xDomain as [Date, Date]) ?? (d3.extent(all, (p) => p.x as Date) as [Date, Date])).range([0, iw])
   else {
-    const dom = (xDomain as [number, number]) ?? (d3.extent(all.filter((p) => k !== 'log' || (p.x as number) > 0), (p) => p.x as number) as [number, number])
+    const dom = (xDomain as [number, number]) ?? gx?.domain ?? (d3.extent(all.filter((p) => k !== 'log' || (p.x as number) > 0), (p) => p.x as number) as [number, number])
     x = (k === 'log' ? d3.scaleLog() : d3.scaleLinear()).domain(dom[0] == null ? [0, 1] : dom).range([0, iw])
-    if (k === 'linear' && !xDomain) (x as d3.ScaleLinear<number, number>).nice()
+    if (k === 'linear' && !xDomain && !gx?.final) (x as d3.ScaleLinear<number, number>).nice()
   }
   const px = (v: SweepX) => k === 'point' ? (x as d3.ScalePoint<string>)(String(v)) ?? 0 : (x as d3.ScaleLinear<number, number>)(v as number)
   // bar series: side by side in a category's slot (point scale), or across their bins (number scale)
@@ -177,8 +182,9 @@ export function SweepPlot({
   for (const p of all) for (const v of [p.y, p.lo, p.hi]) if (v != null && Number.isFinite(v) && (yScale !== 'log' || v > 0)) ys.push(v)
   const inc = [...include, ...(reference != null ? [reference] : []), ...yMarkers.map((mk) => mk.at)]
   const rd = yDomain ? { domain: yDomain, below: 0, above: 0 } : robustDomain(ys, yClip?.[0] ?? 0, yClip?.[1] ?? 1, { include: inc, fallback: yScale === 'log' ? [0.1, 1] : [0, 1] })
-  const y = (yScale === 'log' ? d3.scaleLog() : d3.scaleLinear()).domain(rd.domain).range([ih, 0]) as d3.ScaleContinuousNumeric<number, number>
-  if (!yDomain) y.nice()
+  const gy = useGroupDomain('y', yDomain ? null : rd.domain as Extent)
+  const y = (yScale === 'log' ? d3.scaleLog() : d3.scaleLinear()).domain(gy?.domain ?? rd.domain).range([ih, 0]) as d3.ScaleContinuousNumeric<number, number>
+  if (!yDomain && !gy?.final) y.nice()
   const [y0, y1] = y.domain()
   const clamped = (v: number) => v < Math.min(y0, y1) || v > Math.max(y0, y1)
   const py = (v: number) => y(Math.max(Math.min(y0, y1), Math.min(Math.max(y0, y1), v)))

@@ -1,6 +1,5 @@
-import { useMemo, useRef, useState } from 'react'
-import { PanelCell } from '@/components/Panels'
-import { SpectrumModal } from '@/components/FilterSpectrumPlot'
+import { useMemo, useRef } from 'react'
+import { FacetGrid } from '@/components/FacetGrid'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -36,7 +35,6 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
   // a fitted tile shows one matrix, sized to it (its ⋯ menu picks which); the page shows every season,
   // and a click opens one larger
   const [pick, setPick] = useSearchParam<string>('weather-corr.season', 'All filters', undefined, { legacy: ['season'] })
-  const [open, setOpen] = useState<string | null>(null)
 
   const at = useMemo(() => rows.filter((r) => r.site === site?.name), [rows, site])
   const vars: { label: string; field: string }[] = WEATHER_VARS.flatMap((v) => {
@@ -68,6 +66,11 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
   const cell = one
     ? Math.max(12, Math.min(48, (width - labelW - 14) / Math.max(1, species.length), (fit! - 80) / Math.max(1, vars.length)))
     : Math.max(22, Math.min(34, (Math.min(width, 900) - labelW - 20) / Math.max(1, species.length)))
+  // one matrix's width, with room for the slanted species names that run past the last column (lib/fitLabel
+  // textWidth); the grid fits as many as the row holds, centred
+  const slant = Math.max(0, ...species.map((f) => textWidth(chemText(f), 10))) * Math.cos((50 * Math.PI) / 180)
+  const widthOf = (c: number, lw: number) => lw + species.length * c + 10 + Math.max(0, slant - c / 2)
+  const fw = widthOf(cell, labelW)
   const facetPicker = fit !== null && facets.length > 1
     ? <Select label="Show" value={one && chosen ? chosen.name : EVERY} options={[EVERY, ...facets.map((f) => f.name)]} onChange={setPick} />
     : null
@@ -76,14 +79,15 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
     <ChartFrame id="weather-correlations" controls={facetPicker} title={`${site ? `${site.name} · ` : ''}weather × chemistry correlations, by season`}
       subtitle={`Spearman ρ between each weather variable over the filter's window and each species, for every filter at the site and then within each season (blank: fewer than ${MIN_N} filters). Pooled correlations mostly follow the seasonal cycle; the per-season ones are closer to "does this weather change the day's air".`}
       provenance="meteorology_revisions R5 (seasonal correlation matrices) · meteorology_source_interaction §3 (temperature range as an inversion proxy)">
-      <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 18, justifyContent: 'center' }}>
-        {!site || species.length === 0 || vars.length === 0 ? <Empty>No site with weather and at least {MIN_N} measured filters in this subset.</Empty> : shownFacets.map((fc) => matrix(fc, cell, labelW, fit === null ? () => setOpen(fc.name) : undefined))}
+      <div ref={wrapRef} className="chart-wrap">
+        {/* the season and its n are each matrix's title row, so the svg starts at the column labels; ⤢ opens one larger */}
+        {!site || species.length === 0 || vars.length === 0 ? <Empty>No site with weather and at least {MIN_N} measured filters in this subset.</Empty>
+          : <FacetGrid items={shownFacets} itemKey={(fc) => fc.name} minCell={fw} maxCell={fw} maxCols={12} gap={18} center expandable={fit === null}
+              title={(fc) => <span style={{ color: fc.color }}>{fc.name}</span>} note={(fc) => `n=${fc.n}`} label={(fc) => `${site.name} · ${fc.name}`}
+              render={(fc, _w, _i, c) => c.expanded
+                ? <div style={{ overflowX: 'auto' }}>{matrix(fc, Math.max(22, Math.min(46, (window.innerWidth - 300) / Math.max(1, species.length), (window.innerHeight - 320) / Math.max(1, vars.length))), 170)}</div>
+                : matrix(fc, cell, labelW)} />}
       </div>
-      {open && facets.find((f) => f.name === open) && <SpectrumModal id={`${site?.name ?? ''} · ${open}`} title="Weather × chemistry correlations" onClose={() => setOpen(null)}>
-        <div style={{ display: 'flex', justifyContent: 'center', overflowX: 'auto' }}>
-          {matrix(facets.find((f) => f.name === open)!, Math.max(22, Math.min(46, (window.innerWidth - 300) / Math.max(1, species.length), (window.innerHeight - 320) / Math.max(1, vars.length))), 170)}
-        </div>
-      </SpectrumModal>}
       <Legend items={[]}>
         <ColorLegend scale={color} scheme={colours.scheme} label="Spearman ρ" width={160} ticks={4} format={(v) => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0')} />
         <span className="legend-item">values shown where |ρ| ≥ 0.3{fit === null ? ' · ⤢ opens a matrix larger' : ''}</span>
@@ -91,22 +95,16 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
     </ChartFrame>
   )
 
-  function matrix(fc: (typeof facets)[number], cell: number, labelW: number, onOpen?: () => void) {
-    // the season and its n are the panel's title row (components/Panels PanelCell), so the matrix starts at the column labels
-    // room for the slanted species names that run past the last column
-    const overflow = Math.max(0, Math.max(0, ...species.map((f) => textWidth(chemText(f), 10))) * Math.cos((50 * Math.PI) / 180) - cell / 2)
-    const fw = labelW + species.length * cell + 10 + overflow
+  function matrix(fc: (typeof facets)[number], cell: number, labelW: number) {
     return (
-      <PanelCell key={fc.name} width={fw} title={<span style={{ color: fc.color }}>{fc.name}</span>} note={`n=${fc.n}`} label={fc.name} onExpand={onOpen}>
-        <HeatMatrix rows={varItems} columns={speciesItems} width={fw} cellWidth={cell} cellHeight="square" maxLabelWidth={labelW - 8} rowLabelSize={10.5}
-          colLabels="rotate" colLabelAngle={-50} colLabelSize={10} colLabelColor={INK.muted} labelSize={9} legend={null} fitRows={false}
-          color={color}
-          cell={(i, j) => {
-            const c = fc.cells[i][j]
-            return { value: c.rho, label: c.rho !== null && Math.abs(c.rho) >= 0.3 ? fmt(c.rho, 1) : null,
-              tip: [`${fc.name}: ${c.v.label} vs ${c.f}`, c.rho === null ? `n = ${c.n} (too few)` : `ρ = ${fmt(c.rho, 2)} · n = ${c.n}`] }
-          }} />
-      </PanelCell>
+      <HeatMatrix rows={varItems} columns={speciesItems} width={widthOf(cell, labelW)} cellWidth={cell} cellHeight="square" maxLabelWidth={labelW - 8} rowLabelSize={10.5}
+        colLabels="rotate" colLabelAngle={-50} colLabelSize={10} colLabelColor={INK.muted} labelSize={9} legend={null} fitRows={false}
+        color={color}
+        cell={(i, j) => {
+          const c = fc.cells[i][j]
+          return { value: c.rho, label: c.rho !== null && Math.abs(c.rho) >= 0.3 ? fmt(c.rho, 1) : null,
+            tip: [`${fc.name}: ${c.v.label} vs ${c.f}`, c.rho === null ? `n = ${c.n} (too few)` : `ρ = ${fmt(c.rho, 2)} · n = ${c.n}`] }
+        }} />
     )
   }
 }

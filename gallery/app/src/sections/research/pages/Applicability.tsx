@@ -216,19 +216,18 @@ function DomainFilters({ data, idOf, summary, moved, macLabel, provenance }: { d
     const rho = summary.filter((r) => r.target === t).map((r) => `${at(CONFIG, r.config).split(' (')[0]} ρ ${f2(r.rho_domain_percentile_vs_abs_error)} (p ${f2(r.rho_p)})`)
     return { t, points, rho }
   })
-  const ys = panels.flatMap((p) => p.points.map((q) => q.y))
-  const yDomain: [number, number] = [Math.min(0, ...ys) - (signed ? 0.3 : 0), Math.max(...ys) * 1.05]
   return (
     <ChartFrame id="applicability-domain-filters" title="ftir_39 per filter — being in the domain does not make a holdout filter right"
       subtitle={`Each locked holdout filter (${panels.map((p) => `${at(TARGET, p.t)}`).join(', ')}) under each locked configuration: its source-domain percentile against its error at ${macLabel}${moved ? ' (each residual moved from the notebook\'s MAC 10 with the filter\'s Fabs, reconstructed from the raw HIPS as the notebook did; ρ and its p recomputed)' : ''}. Hollow points fall outside the source 95 % (dotted line) on T² or Q. Distance picks T², Q or the larger of the two (the notebook's plot); Error switches between the size of the miss and its sign. Spearman ρ of percentile against |error| is in each panel's title: weak or absent for the Addis winner, so an in-domain flag is no promise of accuracy.`}
       provenance={provenance} controls={<>{o.controls()}{colours.picker}</>}>
-      <FacetGrid items={panels} minCell={320} maxCols={2} render={(p, w) => <div>
+      <FacetGrid items={panels} minCell={320} maxCols={2} itemKey={(p) => String(p.t)}
+        share={{ y: ([lo, hi]) => [Math.min(0, lo) - (signed ? 0.3 : 0), hi * 1.05] }} render={(p, w) => <div>
         <p className="facet-title">{at(TARGET, p.t)}</p>
         <Crossplot title="" points={p.points} xLabel={`Source-domain percentile (${DISTANCE.find((d) => d.value === o.values.distance)?.label})`}
           yLabel={signed ? `PLS − HIPS/${hipsDiv} (µg/m³)` : `|PLS − HIPS/${hipsDiv}| (µg/m³)`} fit={false} grouping="none" sameScale={false}
-          domain={[0, 1]} yDomain={yDomain} maxSide={Math.min(460, w - 70)}
+          domain={[0, 1]} maxSide={Math.min(460, w - 70)}
           background={(x, y) => <>
-            <Marker orient="v" at={x(0.95)} from={y(yDomain[0])} to={y(yDomain[1])} label="95 %" labelSide="left" />
+            <Marker orient="v" at={x(0.95)} from={y.range()[0]} to={y.range()[1]} label="95 %" labelSide="left" />
             {signed && <Marker orient="h" at={y(0)} from={x(0)} to={x(1)} />}
           </>} />
         <p className="legend-note">{p.rho.join(' · ')}</p>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
-import { Crossplot, sharedCrossDomains, type CrossPoint } from '@/components/Crossplot'
+import { Crossplot, type CrossPoint } from '@/components/Crossplot'
+import { PanelGroup } from '@/components/PanelGroup'
 import { FacetGrid } from '@/components/FacetGrid'
 import { FieldSelect } from '@/components/FieldSelect'
 import { Key } from '@/components/Key'
@@ -127,8 +128,7 @@ export function SplitFit({ rows, meta, xField, yField }: { rows: FilterRow[]; me
     return { name: g.name, n: g.items.length, low: lowPts, high: highPts, res: resPts, r, rho, trend, mark: markOf(g), markedLow, markedHigh }
   }), [groups, mode, at, siteCuts, resKind, xField, yField, tName, perSite, sites, markedItems]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // one range for every ≤ / > panel, so the slopes compare by eye; the residual panels clip the variable's 1–99 %
-  const shared = sharedCrossDomains(blocks.flatMap((b) => [b.low, b.high]), units)
+  // one range for every ≤ / > panel (the PanelGroup below, Panel axes), so the slopes compare by eye; the residual panels clip the variable's 1–99 %
   const tDom = robustDomain(items.map((i) => i.t), 0.01, 0.99).domain
   // the Cutoff field's range: the variable's 1–99 % (the residual panels' x axis; a ratio's extremes would make a drag
   // useless), widened to the cutoff in use, in steps of about a 500th of it (a power of ten, so typed cutoffs keep)
@@ -175,10 +175,11 @@ export function SplitFit({ rows, meta, xField, yField }: { rows: FilterRow[]; me
         </label>
       </>}>
       {items.length < 6 ? <Empty>Too few filters in view with {xField}, {yField} and {tName} ({items.length}).</Empty> : <>
+        <PanelGroup share dims={blocks.length > 1 ? ['site', 'season'] : []}>
         {blocks.map((b) => (
           <div key={b.name} style={{ marginBottom: 12 }}>
             {(perSite || sites.length > 1) && <p className="facet-title">{b.name}<span style={{ color: 'var(--ink-muted)', fontWeight: 400, fontFamily: 'var(--mono)', fontSize: 11 }}> n={b.n}</span></p>}
-            <FacetGrid items={panelsOf(b)} minCell={250} maxCols={3} maxCell={380} render={(p, w) => p.key === 'res'
+            <FacetGrid items={panelsOf(b)} minCell={250} maxCols={3} maxCell={380} itemKey={(p) => `${b.name}|${p.key}`} site={() => b.name} render={(p, w) => p.key === 'res'
               ? (p.points.length < 3 ? <Empty>Too few filters for the residual.</Empty>
                 : <Crossplot points={p.points} title={p.title} xLabel={tLabel} yLabel={resLabel} sameScale={false} grouping="none" maxSide={w - 70}
                   domain={pad(tDom)} yDomain={pad(resDom)}
@@ -189,9 +190,10 @@ export function SplitFit({ rows, meta, xField, yField }: { rows: FilterRow[]; me
                   </>} />)
               : (p.points.length === 0 ? <Empty>No filters on this side.</Empty>
                 : <Crossplot points={p.points} marked={p.marked} title={`${p.title} · n = ${p.points.length}`} xLabel={xl} yLabel={yl} sameScale={units} grouping="pooled" maxSide={w - 70}
-                  domain={shared.domain} yDomain={shared.yDomain} />)} />
+                  />)} />
           </div>
         ))}
+        </PanelGroup>
         <Key items={[{ label: `low: ${tName} ≤ cutoff`, color: LOW }, { label: `high: ${tName} > cutoff`, color: HIGH }]} />
         <ExcludedNote fields={[xField, yField]} drawn />
         {outside > 0 && <p className="chart-note">{outside} of {items.length} filters have {tName} outside its 1–99 % range and fall outside the residual panels (they are in the fits and the table).</p>}

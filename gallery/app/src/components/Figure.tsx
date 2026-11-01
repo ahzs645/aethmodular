@@ -2,9 +2,9 @@ import { createContext, useContext, useMemo, type ComponentType, type ReactNode 
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { mediaKey, useEtadByMedia } from '@/lib/etadMedia'
-import { Crossplot, sharedCrossDomains, type CrossPoint } from '@/components/Crossplot'
-import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
-import { collapsePanelAxes, type PanelDim } from '@/lib/axes'
+import { Crossplot, type CrossPoint } from '@/components/Crossplot'
+import { PanelAxesControl } from '@/lib/panelAxes'
+import type { PanelDim } from '@/lib/axes'
 import { FacetGrid } from '@/components/FacetGrid'
 import { HeatMatrix } from '@/components/HeatMatrix'
 import { BarRows, type BarRow } from '@/components/BarRows'
@@ -200,14 +200,14 @@ function CrossplotFigure({ spec, rows, marked = [] }: { spec: Extract<FigureSpec
   })
   const facets = facetsOf(rows, spec.facet)
   const sameScale = spec.sameScale ?? true
-  // Panel axes Shared: every facet on the range of all of them; Own: each from its own points
-  const [panelAxes] = usePanelAxes()
-  const shared = facets.length > 1 && collapsePanelAxes(panelAxes, facetDimOf(spec.facet)) === 'Shared' ? sharedCrossDomains(facets.map((f) => toPoints(f.rows)), sameScale) : null
   const markedOf = (key: string) => toPoints(spec.facet && key ? marked.filter((r) => String(r[spec.facet!]) === key) : marked)
   const plot = (f: { key: string; rows: Row[] }, side?: number) => <Crossplot title={f.key || ''} points={toPoints(f.rows)} marked={marked.length ? markedOf(f.key) : undefined} xLabel={spec.xLabel} yLabel={spec.yLabel}
-    fit={spec.fit ?? true} errorRatio={spec.errorRatio} maxSide={side ?? spec.maxSide ?? 480} sameScale={sameScale} domain={shared?.domain} yDomain={shared?.yDomain} />
+    fit={spec.fit ?? true} errorRatio={spec.errorRatio} maxSide={side ?? spec.maxSide ?? 480} sameScale={sameScale} />
   return <>
-    {facets.length > 1 ? <FacetGrid items={facets} minCell={300} maxCols={3} render={(f, w) => plot(f, w - 70)} /> : plot(facets[0])}
+    {/* Panel axes (the facets' panel group): Shared puts every facet on the range of all of them, Own each on its own;
+        the control is in the figure's options, so the group leaves its own out */}
+    {facets.length > 1 ? <FacetGrid items={facets} minCell={300} maxCols={3} itemKey={(f) => f.key} share axesControl={false}
+      site={facetDimOf(spec.facet) === 'site' ? (f) => f.key : undefined} render={(f, w) => plot(f, w - 70)} /> : plot(facets[0])}
     {groups.length > 0 && <Key items={[...groups.map((g) => ({ label: String(g), color: color(g) })),
       ...(spec.sameScale ?? true ? [{ label: '1:1', color: INK.identity, kind: 'dash' as const }] : [])]} />}
   </>

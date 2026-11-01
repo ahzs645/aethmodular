@@ -6,6 +6,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { HeatMatrix, type MatrixItem } from '@/components/HeatMatrix'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
+import { Panels } from '@/components/Panels'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/format'
 import { FONT, INK } from '@/lib/theme'
@@ -80,7 +81,8 @@ export function SpectralShape({ series, meta, screen, by }: { series: Series[]; 
       controls={<Segmented label="Show" value={kind} options={['absorption', 'bcc'] as Kind[]} onChange={setKind} optionLabel={(o) => KIND_LABEL[o]} />}>
       <div ref={wrapRef} className="chart-wrap">
         {!curves.length ? <Empty>No days with all five channels in this span.</Empty> : (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'flex-start' }}>
+          // the spectrum beside the channel matrix above 600 px (pw above is that split), stacked below
+          <Panels letters={false} label="Spectral shape" panels={[{ key: 'spectrum', min: 346, max: 640, render: () =>
             <svg width={pw} height={ih + M.top + M.bottom} fontFamily={FONT.family}>
               <g transform={`translate(${M.left},${M.top})`}>
                 <YAxis scale={y as unknown as d3.ScaleLinear<number, number>} x={0} gridWidth={iw} tickCount={5} label={what} labelX={-46} format={(v) => logTick(v)} />
@@ -98,17 +100,15 @@ export function SpectralShape({ series, meta, screen, by }: { series: Series[]; 
                 <XAxis scale={x as unknown as d3.ScaleLinear<number, number>} y={ih} tickCount={6} label="Wavelength (nm)" format={(v) => d3.format('~g')(v)} />
                 {CHANNELS.map((ch, i) => <text key={ch} x={x(lambda[i])} y={-2} textAnchor="middle" fontSize={9.5} fill={channelColor(ch)}>{ch}</text>)}
               </g>
-            </svg>
-            {corr && corr.n >= 3 && (
+            </svg> },
+            ...(corr && corr.n >= 3 ? [{ key: 'matrix', min: matrixW, max: matrixW, grow: 0, render: () =>
               <div>
                 <HeatMatrix title={`Channels' daily BCc, r (n = ${corr.n})`} rows={channelItems} columns={channelItems} colLabels="horizontal" colLabelPosition="bottom"
                   cellWidth={34} cellHeight={34} fitRows={false} gap={1} color={color} format={(v) => fmt(v, 2)} cellLabels="always"
                   cell={(i, j) => (corr.r[i][j] === null ? { value: null, label: '—' } : corr.r[i][j])}
                   tip={(i, j) => [`${CHANNELS[i]} against ${CHANNELS[j]}`, `r = ${fmt(corr.r[i][j], 3)} over ${corr.n} days with all five channels`]}
                   legend={{ scale: color, scheme: colours.scheme, width: 150, label: 'r', format: (v) => fmt(v, 2), note: 'below 0.5 drawn as 0.5' }} />
-              </div>
-            )}
-          </div>
+              </div> }] : [])]} />
         )}
         {odd.length > 0 && <Note>Absorption should fall with wavelength, but the median reads below the next longer wavelength at {odd.join(', ')}: a problem with that channel in the daily file, not an aerosol spectrum, and it pulls the five-wavelength AAE fit.</Note>}
         <Legend items={curves.map((c) => ({ label: c.key, color: c.color, shape: 'line' as const, detail: `AAE ${fmt(c.aae, 2)} · ${c.n} d` }))} {...leg.props} />

@@ -9,7 +9,7 @@ import { useMac } from '@/lib/mac'
 import { shortSeason } from '@/lib/seasons'
 import { num } from '@/lib/table'
 import { rows } from '../../common'
-import { GROUPS, baselinesOf, protocolK, sharedDomain, type Data } from './common'
+import { GROUPS, baselinesOf, padRange, protocolK, type Data } from './common'
 import { FixedSetNote } from '@/lib/markedRows'
 
 /**
@@ -52,13 +52,14 @@ export function AddisK({ data, cohort, id, title, subtitle, provenance }: {
     return { g, series, chosen }
   }), [all, baselines, cohort, data, lg, m, show])
 
-  const yDomain = sharedDomain(panels.flatMap((p) => p.series.flatMap((s) => s.points.flatMap((q) => [q.y, q.lo, q.hi]))), [show === 'slope' ? 1 : 0])
   const yLabel = show === 'slope' ? `Addis Deming slope (vs Fabs/${m.mac})` : 'Addis Deming intercept (µg/m³)'
   return (
     <ChartFrame id={id} title={title({ show, mac: m.label })} subtitle={subtitle} provenance={provenance} controls={o.controls()}>
-      <FacetGrid items={panels} minCell={250} maxCols={4} label={(p) => p.g} render={(p, w) =>
+      <FacetGrid items={panels} minCell={250} maxCols={4} label={(p) => p.g} itemKey={(p) => p.g}
+        // one padded range for every group (Panel axes); the reference is in each panel's own range
+        share={{ y: padRange }} render={(p, w) =>
         <SweepPlot series={p.series} chosen={p.chosen} width={w} height={240} title={cohort === 'analog' ? `${shortSeason(p.g)} analogs` : p.g}
-          xLabel="PLS components k" yLabel={yLabel} reference={show === 'slope' ? 1 : 0} yDomain={yDomain} dim={lg.dim} />} />
+          xLabel="PLS components k" yLabel={yLabel} reference={show === 'slope' ? 1 : 0} dim={lg.dim} />} />
       <Legend {...lg.props} items={baselines.map((b) => ({ label: b.label, color: b.color, shape: 'line' as const }))}
         note={all.some((r) => num(r.intercept_q25) != null) ? 'median and IQR over 100 splits; ringed: the protocol k' : 'median over 100 splits (the notebook displayed seven k); ringed: the protocol k'} />
       <FixedSetNote what="the notebook's saved split medians on its own Addis filters" />

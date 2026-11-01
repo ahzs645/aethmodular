@@ -38,7 +38,7 @@ export function AaeTimeline({ daily, pair, regions }: { daily: DailySite[]; pair
       subtitle={`Points are coloured by their class (fossil ≤ ${regions.fossil_max}, biomass ≥ ${regions.biomass_min}); the line is the mean of each bin and the six before it, kept where at least three have a value, as addis_01_daily drew it. Gaps in the record are breaks in the instrument's data, not zeros. The y range holds the middle 98 % of each site's bins; the rest are drawn hollow at the edge.`}
       provenance={provenance([NOTEBOOK.addis01daily, NOTEBOOK.addis01], `Reads aethalometer/daily/<CODE>.json (${AAE_PAIRS[pair].daily}); addis_01 drew the same over the Jacros 60-s record, which is not in the repo.`)}>
       {!panels.length ? <Empty>No site in view has aethalometer daily bins.</Empty> : <>
-        <FacetGrid items={panels} minCell={280} maxCols={2} render={(p, w) => (
+        <FacetGrid items={panels} minCell={280} maxCols={2} share="y" itemKey={(p) => p.d.code} site={(p) => p.d.name} render={(p, w) => (
           <SweepPlot key={p.d.code} width={w} height={230} title={<span style={{ color: p.d.color }}>{p.d.name} · {p.n} bins</span>}
             series={p.series} xScale="time" yLabel={`AAE ${pair}`} yClip={[0.01, 0.99]} include={[regions.fossil_max, regions.biomass_min]}
             background={({ y, iw, ih }) => <RegionBands orient="y" scale={(v) => y(v)} length={ih} depth={iw} regions={regions} />} />

@@ -240,15 +240,16 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
       <ChartFrame id="he-rt" title="SPARTAN R1 / T1 — the Warren Figure 2 analog, samples against field blanks"
         subtitle="Raw HIPS reflectance R1 against transmittance T1 per site: samples hollow grey, field blanks in the site colour, with the blanks' OLS line where there are at least three. Closer in spirit to Warren et al. Figure 2 than the IMPROVE FED ratios, but still not its registered detector record."
         provenance={RT_NB}>
-        <FacetGrid items={siteNames} minCell={280} render={(s, w) => {
+        {/* one R1 / T1 range for every site under Panel axes: Shared (Own: each site its own) */}
+        <FacetGrid items={siteNames} minCell={280} share site={(s) => s} render={(s, w) => {
           const code = rows.find((r) => r.site === s)?.code
           const smp = optics.filter((o) => o.code === code && o.type !== 'FB' && o.R1 !== null && o.T1 !== null)
           const bl = blanks.filter((b) => b.code === code && b.R1 !== null && b.T1 !== null)
           const fit = bl.length >= 3 ? ols(bl.map((b) => b.R1!), bl.map((b) => b.T1!)) : null
-          return <div style={{ width: w }}><Crossplot sameScale={false} fit={false} maxSide={w - 80} title={`${s}${fit ? ` · blank line T1 = ${fmt(fit.slope, 2)} R1 ${fit.intercept >= 0 ? '+' : '−'} ${fmt(Math.abs(fit.intercept), 0)}` : ''}`}
+          return <Crossplot sameScale={false} fit={false} maxSide={w} title={`${s}${fit ? ` · blank line T1 = ${fmt(fit.slope, 2)} R1 ${fit.intercept >= 0 ? '+' : '−'} ${fmt(Math.abs(fit.intercept), 0)}` : ''}`}
             xLabel="HIPS R1" yLabel="HIPS T1" extraLines={line(fit, colorOfSite(s), 'blank OLS', '6 3')}
             points={[...smp.map((o) => ({ x: o.R1!, y: o.T1!, color: INK.muted, hollow: true, tip: [o.filter_id, `lot ${o.lot}`, `R1 ${fmt(o.R1, 0)} · T1 ${fmt(o.T1, 0)}`, `Fabs ${fmt(o.fabs, 1)}`] })),
-              ...bl.map((o) => ({ x: o.R1!, y: o.T1!, color: colorOfSite(s), tip: [`${o.filter_id} (field blank)`, `lot ${o.lot}`, `R1 ${fmt(o.R1, 0)} · T1 ${fmt(o.T1, 0)}`] }))]} /></div>
+              ...bl.map((o) => ({ x: o.R1!, y: o.T1!, color: colorOfSite(s), tip: [`${o.filter_id} (field blank)`, `lot ${o.lot}`, `R1 ${fmt(o.R1, 0)} · T1 ${fmt(o.T1, 0)}`] }))]} />
         }} />
       </ChartFrame>
 

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
-import { Crossplot, sharedCrossDomains, type CrossPoint } from '@/components/Crossplot'
+import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { f2 } from '@/lib/format'
 import { INK, withUnit } from '@/lib/theme'
@@ -66,7 +66,6 @@ export function MethodBySource({ rows, meta, pmf, pair, regions }: { rows: Filte
       marked: markedUsable.filter((r) => s.of(r) === g.name).map((r) => point(r, g.color, g.name)) }))
     return [{ name: isPmf ? `All ${pmf?.site_name ?? ''} filters with a PMF day` : 'All filters with an AAE', color: INK.text, points: allOf(usable), marked: allOf(markedUsable) }, ...by]
   }, [rows, markedRows, xf, yf, s, isPmf, pmf, split, mp])
-  const dom = sharedCrossDomains(panels.map((p) => p.points))
   const xl = withUnit(xf, meta.field_units), yl = withUnit(yf, meta.field_units)
   return (
     <ChartFrame id="aeth-sources-method-by-source"
@@ -78,9 +77,9 @@ export function MethodBySource({ rows, meta, pmf, pair, regions }: { rows: Filte
         <Select label="Split by" value={split} options={[...SPLITS]} onChange={(v) => setSplit(v as Split)} />
       </>}>
       {!panels[0].points.length ? <Empty>{isPmf ? `No ${pmf?.site_name ?? 'PMF'} filter in view has both ${xf} and ${yf}. The PMF solution covers ${pmf?.site_name ?? 'Addis Ababa'} only.` : `No filter in view has both ${xf} and ${yf}.`}</Empty>
-        : <FacetGrid items={panels} minCell={260} maxCols={3} render={(p, w) => (
+        : <FacetGrid items={panels} minCell={260} maxCols={3} itemKey={(p) => p.name} share render={(p, w) => (
           <div key={p.name}>
-            <Crossplot points={p.points} marked={p.marked} title={`${p.name} · n=${p.points.length}`} xLabel={xl} yLabel={yl} maxSide={Math.max(180, w - 80)} domain={dom.domain} grouping="pooled" />
+            <Crossplot points={p.points} marked={p.marked} title={`${p.name} · n=${p.points.length}`} xLabel={xl} yLabel={yl} maxSide={Math.max(180, w - 80)} grouping="pooled" />
           </div>
         )} />}
       {panels[0].points.length > 0 && <ExcludedNote count={panels[0].marked.length} drawn />}

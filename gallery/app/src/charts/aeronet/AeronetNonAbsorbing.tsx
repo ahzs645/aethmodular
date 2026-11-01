@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
-import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { BC_CHOICES, bcOption, useChartOptions } from '@/lib/chartOptions'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
+import { FacetGrid } from '@/components/FacetGrid'
+import type { Extent } from '@/lib/facets'
 import { fmt } from '@/lib/stats'
 import { SSA_BY_WAVELENGTH } from '@/lib/aeronet'
 import { nonAbsorbingFraction } from '@/lib/aeronetMath'
@@ -10,6 +11,9 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { colouring, num, recordOf } from './shared'
 import { useMarkedRows } from '@/lib/markedRows'
 import { Legend } from '@/components/Legend'
+
+/** an SSA axis: from just under the lowest SSA in view (never below 0.5) to 1 */
+const SSA_RANGE = ([lo]: Extent): Extent => [Math.max(0.5, lo - 0.02), 1]
 
 /** the surface BC Eom's w can use, in the notebook's order of preference (it fell back from ChemSpec BC to FTIR EC to HIPS): lib/chartOptions BC_CHOICES */
 
@@ -38,7 +42,6 @@ export function AeronetNonAbsorbing({ rows, meta }: { rows: FilterRow[]; meta: M
     return { w, points: build(rows), marked: build(marked.filter((r) => sites.has(r.site))) }
   }), [rows, bc, col, marked])
   const all = panels.flatMap((p) => p.points)
-  const yLo = Math.max(0.5, (d3.min(all, (p) => p.y) ?? 0.8) - 0.02)
   const n = panels[0].points.length
 
   return (
@@ -46,16 +49,14 @@ export function AeronetNonAbsorbing({ rows, meta }: { rows: FilterRow[]; meta: M
       subtitle={`w = (AS + AN) / (AS + AN + BC): ammonium sulfate (1.375 × sulfate) and ammonium nitrate (1.290 × nitrate) over themselves plus ${bc}, all from the filter, against the window-mean single-scattering albedo at each AERONET wavelength. Eom et al. (2025) found SSA rising with w across 14 sites; ${n} filters here have both. Fits follow the gallery's estimator.`}
       provenance="notebooks/analysis/surface_columnar_linkage.ipynb sections 2 and 8 (w parameter; w vs SSA, which the notebook could not draw without the inversion)"
       controls={o.controls()}>
-      {all.length === 0 ?<Empty>No filter in view has sulfate, nitrate, {bc} and an inversion SSA in its window.</Empty> : (
-        <div className="aeronet-panels" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 8 }}>
-          {panels.map((p) => (
-            <Crossplot key={p.w} title={`SSA ${p.w} nm (n = ${p.points.length})`} points={p.points} marked={p.marked} xLabel="w (non-absorbing fraction)" yLabel={`SSA ${p.w} nm`}
-              sameScale={false} domain={[0, 1]} yDomain={[yLo, 1]} maxSide={300} />
-          ))}
-        </div>
+      {all.length === 0 ? <Empty>No filter in view has sulfate, nitrate, {bc} and an inversion SSA in its window.</Empty> : (
+        // one SSA range for the four wavelengths (Panel axes: Shared), from the lowest SSA in view up to 1
+        <FacetGrid items={panels} itemKey={(p) => String(p.w)} minCell={250} gap={8} share={{ y: SSA_RANGE }}
+          render={(p) => <Crossplot title={`SSA ${p.w} nm (n = ${p.points.length})`} points={p.points} marked={p.marked} xLabel="w (non-absorbing fraction)" yLabel={`SSA ${p.w} nm`}
+            sameScale={false} domain={[0, 1]} maxSide={300} />}
+          legend={<Legend items={col.order(rows.filter((r) => nonAbsorbingFraction(r, bc) !== null && num(r[SSA_BY_WAVELENGTH[0][1]]))).map((k) =>
+            ({ label: col.label(k), color: col.color(k) }))} />} />
       )}
-      <Legend items={col.order(rows.filter((r) => nonAbsorbingFraction(r, bc) !== null && num(r[SSA_BY_WAVELENGTH[0][1]]))).map((k) =>
-        ({ label: col.label(k), color: col.color(k) }))} />
     </ChartFrame>
   )
 }

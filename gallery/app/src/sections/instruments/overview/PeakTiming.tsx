@@ -5,6 +5,7 @@ import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { Legend, useLegend } from '@/components/Legend'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { useDimensions } from '@/hooks/useGalleryData'
+import { Panels } from '@/components/Panels'
 import { fmt, pct } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
@@ -69,7 +70,6 @@ export function PeakTiming({ series, meta, by }: { series: HourlySeries[]; meta:
     }),
   }], [groups])
   const thr = series.map((hs) => `${hs.site} ${fmt(hs.threshold, 1)}`).join(', ')
-  const half = width > 760
   return (
     <ChartFrame id={`aeth-overview-peaks-${by}`} title={by === 'site' ? 'When the day peaks — each site\'s hourly IR BCc' : `${series[0]?.site ?? ''} · when the day peaks — and how far above its mean`}
       subtitle={`From the hourly IR BCc record (local standard time), days with at least 18 valid hours. Left: ${what === 'peak' ? "the share of days whose highest hour falls at each local hour (addis_02's peak hour, day by day)" : `the share of the hours above the record's 95th-percentile hour (${thr} µg/m³) at each local hour (addis_02's extreme events by hour)`}. Right: each day's highest hour divided by the day's mean — how much a 24 h filter average flattens the day (median and IQR, mean open, 10–90 % faint).`}
@@ -77,12 +77,11 @@ export function PeakTiming({ series, meta, by }: { series: HourlySeries[]; meta:
       controls={o.controls()}>
       <div ref={ref} className="chart-wrap">
         {!groups.length ? <Empty>No hourly data in this span.</Empty> : (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
-            <HourLines groups={groups} what={what} width={half ? Math.floor(width * 0.55) : width} leg={leg} />
-            <div style={{ flex: 1, minWidth: 260 }}>
-              <IntervalStrip blocks={blocks} panels={[{ label: "Day's highest hour / day's mean", reference: 1, format: (v) => `${fmt(v, 1)}×` }]} labelWidth={width < 600 ? 136 : 200} rowHeight={20} noteWidth={width < 600 ? 36 : 48} minPanelWidth={180} />
-            </div>
-          </div>
+          // the hours take 55 % of the row, the strip the rest; stacked below 760 px
+          <Panels letters={false} gap={16} label="Peak timing" panels={[
+            { key: 'hours', min: 418, grow: 55, render: ({ width: pw }) => <HourLines groups={groups} what={what} width={pw} leg={leg} /> },
+            { key: 'ratio', min: 326, grow: 45, render: () => <IntervalStrip blocks={blocks} panels={[{ label: "Day's highest hour / day's mean", reference: 1, format: (v) => `${fmt(v, 1)}×` }]} labelWidth={width < 600 ? 136 : 200} rowHeight={20} noteWidth={width < 600 ? 36 : 48} minPanelWidth={180} /> },
+          ]} />
         )}
         <Legend items={groups.map((g) => ({ label: g.key, color: g.color, shape: 'line' as const }))} {...leg.props} />
       </div>

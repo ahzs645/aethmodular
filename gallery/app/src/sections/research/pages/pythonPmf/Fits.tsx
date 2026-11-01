@@ -10,6 +10,7 @@ import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { LoadState } from '@/components/ExportState'
 import { FacetGrid } from '@/components/FacetGrid'
 import { Figure } from '@/components/Figure'
+import { Panels } from '@/components/Panels'
 import { Key } from '@/components/Key'
 import { timeSeasonBands } from '@/components/SeasonBands'
 import { SpectrumPlot, type SpectrumBand, type SpectrumSeries } from '@/components/SpectrumPlot'
@@ -163,11 +164,11 @@ export function RankScreen({ data }: { data: PythonPmfExport }) {
     <ChartFrame id="ppmf-rank" title="Rank screening — the loss falls with every factor added, and no rank stands out"
       subtitle={`The selected fit at each factor count (line), every start behind it (small dots; grey: stopped at the iteration cap) for the three cohorts: 2–13 factors for ETAD, 2–8 for ETBI, five starts per rank and 20 at five factors (ringed: the predeclared comparison with the historical five-factor run, not a selected rank). Left: the Huber objective per cell, what the fits minimise. Right: Q(true) as a scaled RMSE, √(Q/cells), with each cohort's negative-cell floor dashed (chart below). A lower training loss is expected as flexibility grows and does not identify a number of sources; convergence thins out above 7–8 factors.`}
       provenance={<>Reproduces {REPORT} §5 (rank tables and analysis/figures/rank_screening.png). Data: python_pmf/analysis/rank_diagnostics.csv, results/rank_screen/*/all_starts.csv and results/five_factor/*_huber/all_starts.csv.</>}>
-      <FacetGrid items={['loss_per_cell', 'rmse'] as const} minCell={300} maxCols={2}
-        title={(m) => (m === 'rmse' ? 'Q(true) RMSE (scaled by U)' : 'Huber loss per cell')}
-        render={(m, w) => <SweepPlot series={plot(m)} xScale="linear" xLabel="Factors" yLabel={m === 'rmse' ? 'scaled RMSE' : 'loss / cell'} height={250} width={w} include={[0]}
+      <Panels letters={false} gap={16} panels={(['loss_per_cell', 'rmse'] as const).map((m) => ({ key: m, min: 300, basis: 300,
+        title: m === 'rmse' ? 'Q(true) RMSE (scaled by U)' : 'Huber loss per cell',
+        render: ({ width: w }) => <SweepPlot series={plot(m)} xScale="linear" xLabel="Factors" yLabel={m === 'rmse' ? 'scaled RMSE' : 'loss / cell'} height={250} width={w} include={[0]}
           chosen={cohorts.map((co) => ({ series: `${co}-sel`, x: 5 }))}
-          yMarkers={m === 'rmse' ? cohorts.map((co) => ({ at: bound(co) ?? 0, color: COHORT_COLOR[co] })) : []} />} />
+          yMarkers={m === 'rmse' ? cohorts.map((co) => ({ at: bound(co) ?? 0, color: COHORT_COLOR[co] })) : []} /> }))} />
       <Key items={[...cohorts.map((co) => ({ label: COHORT_LABEL[co], color: COHORT_COLOR[co], kind: 'line' as const })), { label: 'capped start', color: INK.muted },
         ...cohorts.map((co) => ({ label: `${COHORT_LABEL[co]} negative-cell floor ${fmt(bound(co), 2)}`, color: COHORT_COLOR[co], kind: 'dash' as const }))]} />
       <DataTable rows={ks} rowKey={(k) => String(k)} highlight={(k) => k === 5} columns={[

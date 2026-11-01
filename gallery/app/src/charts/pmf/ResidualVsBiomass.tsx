@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { useChartOptions } from '@/lib/chartOptions'
-import { Crossplot, sharedCrossDomains, type CrossLine, type CrossPoint } from '@/components/Crossplot'
+import { Crossplot, type CrossLine, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { RefLine } from '@/components/RefLines'
 import { useGalleryData } from '@/hooks/useGalleryData'
@@ -102,7 +102,6 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
   const all = days.map(point)
   const markedAll = split.marked.map(point)
   const panels = seasons.map((s) => ({ season: s, points: days.filter((d) => d.season === s).map(point), marked: markedAll.filter((p) => p.season === s) }))
-  const shared = sharedCrossDomains(panels.map((p) => p.points), false)
   // per season, the notebook's table: n, R², OLS slope, mean biomass %
   const table = [...panels.map((p) => ({ name: p.season, ds: days.filter((d) => d.season === p.season) })), { name: 'All seasons', ds: days }].map(({ name, ds }) => {
     const st = regression(ds.map((d) => d.bm), ds.map((d) => d.res))
@@ -126,9 +125,9 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
         {layout === 'One plot' || seasons.length < 2
           ? <Crossplot points={all} marked={markedAll} title={`${pair} against biomass %`} xLabel="Biomass (% of explained sources)" yLabel={yLabel} sameScale={false}
               grouping="none" maxSide={520} background={zero} extraLines={seasons.length > 1 ? seasons.flatMap(olsLine) : olsLine('All seasons')} />
-          : <FacetGrid items={panels} minCell={260} maxCols={4} maxCell={380} render={(p, w) => (
+          : <FacetGrid items={panels} minCell={260} maxCols={4} maxCell={380} itemKey={(p) => p.season} share render={(p, w) => (
               <Crossplot points={p.points} marked={p.marked} title={`${p.season} · n = ${p.points.length}`} xLabel="Biomass (% of explained sources)" yLabel={yLabel} sameScale={false}
-                grouping="none" maxSide={w - 70} domain={shared.domain} yDomain={shared.yDomain} background={zero} extraLines={olsLine(p.season)} />)} />}
+                grouping="none" maxSide={w - 70} background={zero} extraLines={olsLine(p.season)} />)} />}
         <div style={{ overflowX: 'auto', marginTop: 8 }}>
           <table className="census-table">
             <thead><tr><th>Season</th><th>n</th><th>R²</th><th>slope (per % biomass)</th><th>intercept</th><th>mean biomass %</th></tr></thead>

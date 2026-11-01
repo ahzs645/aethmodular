@@ -3,6 +3,7 @@ import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { Crossplot } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
+import { Panels } from '@/components/Panels'
 import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import type { SweepSeries } from '@/components/SweepPlot'
@@ -45,7 +46,7 @@ const madeFrom = (file: SurfaceFile) => file.resolution === 'hourly'
 /** facets when a chart has several lines per group and the seasons are split */
 function facetBy<T>(groups: DayGroup[], render: (g: DayGroup, w?: number) => T) {
   return groups.length > 1
-    ? <FacetGrid items={groups} minCell={340} maxCols={3} render={(g, w) => render(g, w) as never} />
+    ? <FacetGrid items={groups} minCell={340} maxCols={3} share="y" itemKey={(g) => g.name} render={(g, w) => render(g, w) as never} />
     : render(groups[0]) as never
 }
 
@@ -172,11 +173,12 @@ export function CoverageCheck({ file, site, split }: Omit<Props, 'shade'>) {
     <ChartFrame id="diurnal-coverage" title={`${site.name} · the 24 h filter against AERONET's hours — Red BCc, 24 h over the inversion hours`}
       subtitle={`Left: hourly mean Red BCc (625 nm), median over days with the interquartile band; shaded the inversion hours (${hourRuns(hours)}), dashed the mean over all hours. Right: per day, the 24 h mean (or median) of raw Red BCc over the same over those hours, on days with more than 1000 minutes and more than 300 inside them${file.resolution === 'hourly' ? ' (here hourly means: 17 hours and 6 inside, the median then of hours)' : ''}. A ratio of 1 means the photometer's hours stand for the filter's day; above 1 they under-sample it, so a column-to-surface ratio such as the absorption scale height should be multiplied by it. Hours are local here; the script read the raw CSVs' "Time local", which is the UTC clock, so its recorded ratios (Addis 1.05 and 0.92, Pasadena 1.09 and 1.07) compared hours 3 h and 8 h off.`}
       provenance="research/ftir_ec_phase3/scripts/ma350_diurnal_coverage.py and AERONET_SPARTAN_2026-08-22.md, recomputed on local time">
-      <FacetGrid items={['cycle', 'ratio']} minCell={380} maxCols={2} render={(k, w) => k === 'cycle'
-        ? <HourPlot series={cycle} width={w} yLabel={`Red BCc (${UG})`} offset={file.offset} shade={hours} include={[0]}
-            yMarkers={dayMean != null ? [{ at: dayMean, label: '24 h mean', color: INK.muted }] : undefined} />
-        : <IntervalStrip blocks={blocks} labelWidth={140} noteWidth={50} minPanelWidth={Math.max(160, (w ?? 380) - 240)}
-            panels={[{ label: 'Ratio, 24 h / AERONET hours', reference: 1, format: (v) => fmt(v, 2) }]} />} />
+      <Panels letters={false} gap={16} panels={[
+        { key: 'cycle', min: 380, basis: 380, render: ({ width: w }) => <HourPlot series={cycle} width={w} yLabel={`Red BCc (${UG})`} offset={file.offset} shade={hours} include={[0]}
+            yMarkers={dayMean != null ? [{ at: dayMean, label: '24 h mean', color: INK.muted }] : undefined} /> },
+        { key: 'ratio', min: 380, basis: 380, render: ({ width: w }) => <IntervalStrip blocks={blocks} labelWidth={140} noteWidth={50} minPanelWidth={Math.max(160, w - 240)}
+            panels={[{ label: 'Ratio, 24 h / AERONET hours', reference: 1, format: (v) => fmt(v, 2) }]} /> },
+      ]} />
     </ChartFrame>
   )
 }

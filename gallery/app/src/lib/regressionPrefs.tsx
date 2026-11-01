@@ -43,6 +43,17 @@ export function FitGroupingControl({ only, labels, value }: { only?: FitGrouping
 }
 
 /**
+ * The fit grouping box for points that span several sites (`site`) or say their season (`season`): only the
+ * groupings that change anything, a per-season choice shown as pooled where no point has a season. A crossplot draws
+ * it above itself, or hands it to its panel group (components/PanelGroup), which draws one for all its crossplots.
+ */
+export function FitGroupingFor({ site, season }: { site: boolean; season: boolean }) {
+  const { grouping } = useRegressions()
+  return <FitGroupingControl only={['pooled', ...(site ? ['site' as const] : []), ...(season ? ['season' as const] : [])]}
+    value={grouping === 'season' && !season ? 'pooled' : grouping} />
+}
+
+/**
  * The grouping a chart draws when its panels already split by site or season: inside a
  * per-site panel a fit per site is the pooled fit, and a per-season panel holds one site in
  * one season, so every grouping is that panel's single fit.
