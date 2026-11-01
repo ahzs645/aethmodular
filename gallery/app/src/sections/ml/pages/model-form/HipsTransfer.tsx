@@ -12,6 +12,8 @@ import { num, type Row } from '@/lib/table'
 import { INK } from '@/lib/theme'
 import type { CalibRunsFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
+import { usePanelPick } from '@/lib/panelPick'
+import { PanelPicker } from '@/components/PanelPicker'
 import { transferMetrics, type TransferMetrics } from './hips'
 
 /** the three predictions ftir_08 [9] wrote, the notebook's metric-table row for each, and its colour */
@@ -20,7 +22,11 @@ const MODELS = [
   { col: 'addis', name: 'Addis-only HIPS model (nested CV)', model: 'Addis-only HIPS', color: '#2b6cb0' },
   { col: 'naive', name: 'Naive direct Fabs (unit mismatched)', model: 'Naive direct-Fabs sensitivity (unit mismatched)', color: '#7b8794' },
 ] as const
-const PANELS = ['notebook pair', 'with naive'] as const
+/** the panels (one per model) and the notebook's pair, shown by default */
+const PANEL_IDS = MODELS.map((m) => m.col)
+const NOTEBOOK_PAIR = ['improve', 'addis']
+/** links from before the panels could be chosen one by one: Panels = the notebook's two, or + naive */
+const LEGACY_PANELS = [{ map: (v: string) => (v === 'with naive' ? PANEL_IDS : v === 'notebook pair' ? NOTEBOOK_PAIR : null) }]
 const UNITS = ['Fabs', 'HIPS BC'] as const
 const SETS = ['all 239', 'fixed 190'] as const
 const METRIC_KEYS = ['slope', 'intercept', 'R2', 'RMSE', 'bias', 'median_bias'] as const
@@ -38,7 +44,7 @@ const line = (m: TransferMetrics | null, color: string): CrossLine[] =>
  */
 export function HipsTransfer({ filters, shown, runs, provenance }: { filters: Row[]; shown: Row[]; runs: CalibRunsFile | null; provenance: ReactNode }) {
   const mac = useMac()
-  const [panels, setPanels] = useSearchParam<(typeof PANELS)[number]>('ml-model-form-hips-crossplot.panels', 'notebook pair', PANELS)
+  const pick = usePanelPick('ml-model-form-hips-crossplot', PANEL_IDS, NOTEBOOK_PAIR, { legacy: LEGACY_PANELS })
   const [units, setUnits] = useSearchParam<(typeof UNITS)[number]>('ml-model-form-hips-crossplot.units', 'Fabs', UNITS)
   const [setName, setSet] = useSearchParam<(typeof SETS)[number]>('ml-model-form-hips-crossplot.set', 'all 239', SETS)
 
@@ -60,9 +66,8 @@ export function HipsTransfer({ filters, shown, runs, provenance }: { filters: Ro
   const split = useExclusionSplit(inSet, (r) => baseFilterId(String(r.id)))
   const isCounted = useCountedFilter()
   const kept = inSet.filter((r) => isCounted(baseFilterId(String(r.id))))
-  const models = MODELS.filter((m) => panels === 'with naive' || m.col !== 'naive')
-
-  const panelsOut = models.map((m) => {
+  // every model's metrics (the title quotes two of them whichever panels are shown); the chosen ones are drawn
+  const panelsAll = MODELS.map((m) => {
     const metrics = transferMetrics(kept.map((r) => (num(r.Fabs) ?? NaN) * scale), kept.map((r) => (num(r[m.col]) ?? NaN) * scale))
     const toPoints = (rs: Row[]): CrossPoint[] => rs.flatMap((r) => {
       const fabs = num(r.Fabs), pred = num(r[m.col])
@@ -73,6 +78,7 @@ export function HipsTransfer({ filters, shown, runs, provenance }: { filters: Ro
     })
     return { m, metrics, points: toPoints(kept), marked: toPoints(split.marked) }
   })
+  const panelsOut = pick.ids.flatMap((id) => panelsAll.filter((p) => p.m.col === id))
   const domains = sharedCrossDomains(panelsOut.map((p) => p.points))
 
   // the live metrics against ftir_08's table, on the notebook's own set (all 239, nothing excluded, Fabs)
@@ -82,7 +88,7 @@ export function HipsTransfer({ filters, shown, runs, provenance }: { filters: Ro
     return live && nb ? Math.max(...METRIC_KEYS.map((k) => Math.abs(live[k] - (num(nb[k]) ?? NaN)) / Math.max(1, Math.abs(num(nb[k]) ?? 1)))) : NaN
   })
   const worst = Math.max(...fullCheck)
-  const imp = panelsOut.find((p) => p.m.col === 'improve')?.metrics, add = panelsOut.find((p) => p.m.col === 'addis')?.metrics
+  const imp = panelsAll.find((p) => p.m.col === 'improve')?.metrics, add = panelsAll.find((p) => p.m.col === 'addis')?.metrics
   const medObs = median(kept.map((r) => (num(r.Fabs) ?? NaN) * scale).filter(Number.isFinite))
   const medImp = median(kept.map((r) => (num(r.improve) ?? NaN) * scale).filter(Number.isFinite))
   const axis = (what: string) => units === 'Fabs' ? `${what} HIPS Fabs (Mm⁻¹)` : `${what} HIPS BC = Fabs / MAC (µg/m³, ${mac.label})`
@@ -91,10 +97,11 @@ export function HipsTransfer({ filters, shown, runs, provenance }: { filters: Ro
   return (
     <ChartFrame id="ml-model-form-hips-crossplot"
       title={`The IMPROVE HIPS model predicts a median Addis ${units === 'Fabs' ? 'Fabs' : 'HIPS BC'} of ${f2(medImp)} against ${f2(medObs)} observed (slope ${f2(imp?.slope)}); an Addis-only model reaches R² ${f3(add?.R2)} — ftir_08 [10], HIPS as the PLS target`}
-      subtitle={`Each of the ${kept.length} Addis filters${set === 'fixed 190' ? ' in the fixed 190' : ' with spectra, HIPS and a sampled volume'}: observed HIPS against the HIPS predicted from its FTIR spectrum. Left, a PLS model trained on 916 IMPROVE filters' HIPS optical depth (τ = Fabs × volume / (100 × deposit area), a filter-loading basis like FTIR absorbance; k chosen by holding out whole sites) and converted back to Fabs per filter; right, a PLS model trained on Addis itself, each prediction from nested 5-fold CV.${panels === 'with naive' ? ' The grey panel regresses Fabs directly on IMPROVE spectra, ignoring volume and area: a deliberate unit mismatch, diagnostic only.' : ''} The solid line is the OLS of predicted on observed, with its live metrics in the corner as the notebook printed them; dashed is 1:1. ${units === 'Fabs' ? 'Fabs against Fabs: no MAC enters anywhere, so the chart does not move with the MAC setting.' : `Both axes are divided by the reader's MAC (${mac.label}): the slope and R² are the same as in Fabs, the intercept, RMSE and bias scale by 1/MAC.`} The IMPROVE model's shortfall survives the τ normalisation, so it is not the naive unit mismatch; the Addis-only model is a mechanism probe, not an EC calibration.`}
+      subtitle={`Each of the ${kept.length} Addis filters${set === 'fixed 190' ? ' in the fixed 190' : ' with spectra, HIPS and a sampled volume'}: observed HIPS against the HIPS predicted from its FTIR spectrum. The IMPROVE panel: a PLS model trained on 916 IMPROVE filters' HIPS optical depth (τ = Fabs × volume / (100 × deposit area), a filter-loading basis like FTIR absorbance; k chosen by holding out whole sites) and converted back to Fabs per filter; the Addis-only panel: a PLS model trained on Addis itself, each prediction from nested 5-fold CV.${pick.has('naive') ? ' The grey panel regresses Fabs directly on IMPROVE spectra, ignoring volume and area: a deliberate unit mismatch, diagnostic only.' : ''} The solid line is the OLS of predicted on observed, with its live metrics in the corner as the notebook printed them; dashed is 1:1. ${units === 'Fabs' ? 'Fabs against Fabs: no MAC enters anywhere, so the chart does not move with the MAC setting.' : `Both axes are divided by the reader's MAC (${mac.label}): the slope and R² are the same as in Fabs, the intercept, RMSE and bias scale by 1/MAC.`} The IMPROVE model's shortfall survives the τ normalisation, so it is not the naive unit mismatch; the Addis-only model is a mechanism probe, not an EC calibration.`}
       provenance={provenance}
       controls={<>
-        <Segmented label="Panels" value={panels} options={PANELS} optionLabel={(o) => (o === 'notebook pair' ? 'The notebook’s two' : '+ naive direct Fabs')} onChange={setPanels} />
+        <PanelPicker pick={pick} mode="toggle" min={1} labelOf={(id) => ({ improve: 'IMPROVE model', addis: 'Addis-only', naive: 'Naive direct Fabs' })[id] ?? id}
+          title="The notebook's two panels by default; the naive direct-Fabs panel is a deliberate unit mismatch, diagnostic only" />
         {fixedKnown && <Segmented label="Filters" value={set} options={SETS} onChange={setSet} />}
         <Segmented label="Units" value={units} options={UNITS} optionLabel={(o) => (o === 'Fabs' ? 'Fabs (MAC-free)' : `HIPS BC (${mac.label})`)} onChange={setUnits} />
       </>}>
