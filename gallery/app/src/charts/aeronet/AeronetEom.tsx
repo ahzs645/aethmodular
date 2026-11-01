@@ -6,7 +6,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
-import { FONT, INK } from '@/lib/theme'
+import { FONT, INK, VARIABLE_COLOR } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import { AE, AOD500, DAOD, DSSA, FINE_AOD, FMF } from '@/lib/aeronet'
 import { exclusionCurve, fineSoil } from '@/lib/aeronetMath'
@@ -16,10 +16,10 @@ import { colouring, num, recordOf } from './shared'
 import { useMarkedPoints } from '@/lib/markedRows'
 
 const COLUMN = [
-  { key: AOD500, label: 'AOD 500', color: '#2c7fb8' },
-  { key: AE, label: 'Ångström exponent 440–870', color: '#d95f02' },
-  { key: FMF, label: 'Fine-mode fraction', color: '#41ab5d' },
-  { key: FINE_AOD, label: 'Fine-mode AOD 500', color: '#7570b3' },
+  { key: AOD500, label: 'AOD 500', color: VARIABLE_COLOR.aod },
+  { key: AE, label: 'Ångström exponent 440–870', color: VARIABLE_COLOR.angstrom },
+  { key: FMF, label: 'Fine-mode fraction', color: VARIABLE_COLOR.fineModeFraction },
+  { key: FINE_AOD, label: 'Fine-mode AOD 500', color: VARIABLE_COLOR.fineAod },
 ]
 const STEPS = [0, 20, 40, 60, 80]
 const M = { top: 14, right: 18, bottom: 46, left: 56 }

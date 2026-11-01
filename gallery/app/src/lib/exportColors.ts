@@ -1,14 +1,14 @@
 import { paletteSeason, seasonExportColor, seasonColorRows, type ExportSeason, type PaletteSeason } from './exportSeasons.ts'
 import { color, hcl, lab, schemeDark2, schemeTableau10 } from 'd3'
 import { ESTIMATORS, FIT_STYLE, type Estimator } from './regressionMethods.ts'
-import { printColour } from './theme.ts'
+import { printColour, INK } from './theme.ts'
 
 export interface ExportSite { code: string; name: string; color: string }
 export interface PaletteSite { key: string; label: string; color: string }
 export interface PaletteFit { key: Estimator; label: string; color: string; mixed: boolean }
 export interface ExportPalette { sites: PaletteSite[]; seasons: PaletteSeason[]; fits: PaletteFit[] }
 export interface ExportColors { mode: 'standard' | 'custom'; consolidateSeasons: boolean; seasons: Record<string, string>; sameSites: boolean; shared: string; sites: Record<string, string>; fits: Partial<Record<Estimator, string>> }
-export const DEFAULT_EXPORT_COLORS: ExportColors = { mode: 'standard', consolidateSeasons: false, seasons: {}, sameSites: false, shared: '#2171b5', sites: {}, fits: {} }
+export const DEFAULT_EXPORT_COLORS: ExportColors = { mode: 'standard', consolidateSeasons: false, seasons: {}, sameSites: false, shared: INK.accent, sites: {}, fits: {} }
 
 export const hexColor = (value: unknown): string | null => typeof value === 'string' && /^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(value.trim()) ? color(value.trim())!.formatHex() : null
 export const paintColor = (value: string | null): string | null => {
@@ -80,7 +80,7 @@ export function recommendExportColors(palette: ExportPalette, sameSites: boolean
     used.push(next)
     return next.color
   }
-  const prefs: ExportColors = { mode: 'custom', consolidateSeasons, seasons: {}, sameSites, shared: '#2171b5', sites: {}, fits: {} }
+  const prefs: ExportColors = { mode: 'custom', consolidateSeasons, seasons: {}, sameSites, shared: INK.accent, sites: {}, fits: {} }
   // Fit colors also color their equations, so use the stronger text contrast threshold.
   for (const fit of palette.fits) prefs.fits[fit.key] = pick(true)
   if (sameSites && palette.sites.length) prefs.shared = pick()

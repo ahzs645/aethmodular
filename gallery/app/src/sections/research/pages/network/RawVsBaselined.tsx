@@ -17,7 +17,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useChartOptions } from '@/lib/chartOptions'
 import { fmt, pct } from '@/lib/format'
-import { BASELINE_COLOR, FONT, INK } from '@/lib/theme'
+import { BASELINE_COLOR, FONT, INK, SPARTAN_COLOR } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { logHistogram, members, neighbours, networkSummary, pairs, siteLabel, siteSummary, spaces, type Cells, type Neighbour, type Pair, type Spaces } from '../../common/rawBaselined'
 import { Grid } from '../../common/ui'
@@ -27,7 +27,7 @@ import { siteCodeColor } from '@/lib/siteColours'
 const RAW = INK.muted
 const BASE = BASELINE_COLOR.AIRSpec
 /** the notebook marks the SPARTAN sites in red (site_dendrogram.png); pairs with one are drawn in it here */
-const SPARTAN = '#B23327'
+const SPARTAN = SPARTAN_COLOR
 const CODE: Record<string, string> = { '*Addis': 'ETAD', '*Bishoftu': 'ETBI', '*Delhi': 'INDH', '*Beijing': 'CHTS', '*JPL': 'USPA', '*Pasadena': 'USPA' }
 /** ftir_52 cell [21], printed: the figure's numbers on the notebook's 151 IMPROVE sites */
 const NB = { rho: 0.587, medianRaw: 0.999, medianBaselined: 0.9681, changed: 139 }

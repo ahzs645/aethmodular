@@ -12,7 +12,7 @@ import { useSearchParam } from '@/lib/url'
 import { baseFilterId } from '@/lib/highlight'
 import { f2 } from '@/lib/format'
 import { rowsOf, Scatter, sourceOf, useCounted, type Cols, type XpBase } from './shared'
-import { LOT_COLOR } from '@/lib/theme'
+import { LOT_COLOR, INK } from '@/lib/theme'
 
 /**
  * The 26 Oct lot-aware VIBES blank test (research/ftir_hips_chem/workflows/vibes_lot241_20261026.py,
@@ -31,7 +31,7 @@ const source = sourceOf('LotStudy')
 const LOTS = ['241', '241a', '248', '250', '251', '253']
 const SERIES = ['b87', 'ctrl251_r70', 'lot241_spartan', 'lot241_spartan_r70'] as const
 type Series = (typeof SERIES)[number]
-const COLOR: Record<Series, string> = { b87: '#8a8f98', ctrl251_r70: '#2171b5', lot241_spartan: '#fdae6b', lot241_spartan_r70: '#d94801' }
+const COLOR: Record<Series, string> = { b87: '#8a8f98', ctrl251_r70: INK.accent, lot241_spartan: '#fdae6b', lot241_spartan_r70: '#d94801' }
 const LABEL: Record<Series, string> = {
   b87: 'Current background (87 blanks)', ctrl251_r70: '+9 lot-251 blanks (control)',
   lot241_spartan: '+9 lot-241/241a blanks, one-SE rank', lot241_spartan_r70: '+9 lot-241/241a blanks, rank 70',

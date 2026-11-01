@@ -10,7 +10,7 @@ import type { SpecCurveFile, SpecMetricInfo } from './SpecCurve'
 
 export type SpecLayout = 'combined' | 'stacked' | 'overlay'
 const TOP_H = 250, ROW_H = 17, GROUP_H = 18, GAP = 24
-const COLOURS = ['#2171b5', '#0f766e', '#8856a7', '#d95f0e', '#636363']
+const COLOURS = [INK.accent, INK.good, '#8856a7', '#d95f0e', '#636363']
 
 interface Props {
   file: SpecCurveFile & { value: number[] }; metric: SpecMetricInfo; shown: number[]; width: number; id: string; layout: SpecLayout

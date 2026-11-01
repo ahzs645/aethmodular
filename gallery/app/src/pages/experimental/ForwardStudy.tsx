@@ -6,6 +6,7 @@ import { useSearchParam } from '@/lib/url'
 import { f2, signed } from '@/lib/format'
 import { Forest, runLine, sourceOf, useXp, type XpBase } from './shared'
 import { FixedSetNote } from '@/lib/markedRows'
+import { INK } from '@/lib/theme'
 
 /** Test 6: train on earlier years, test on later ones (experiments_20261022.ipynb §6). */
 
@@ -14,7 +15,7 @@ interface Summary { preprocessing: string; split: string; n_test: number; RMSE: 
 interface ForwardData extends XpBase { curves: Curve[]; summary: Summary[]; years: { year: number; filters: number; sites: number; median_tor_ug: number }[] }
 const source = sourceOf('ForwardStudy')
 const SPLIT_COLOR: Record<string, string> = {
-  'later year (train 2020–22, test 2023)': '#d94801', 'new sites (same test size)': '#2171b5', 'random filters (same test size)': '#8a8f98', 'new sites in the later year': '#6a51a3',
+  'later year (train 2020–22, test 2023)': '#d94801', 'new sites (same test size)': INK.accent, 'random filters (same test size)': '#8a8f98', 'new sites in the later year': '#6a51a3',
 }
 
 export function ForwardStudy() {
