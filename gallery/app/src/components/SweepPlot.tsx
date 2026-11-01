@@ -30,7 +30,9 @@ function logLabel(x: d3.ScaleLogarithmic<number, number>) {
 }
 
 export type SweepX = number | Date | string
-export interface SweepPoint { x: SweepX; y: number | null | undefined; lo?: number | null; hi?: number | null; tip?: string[]; id?: string }
+export interface SweepPoint { x: SweepX; y: number | null | undefined; lo?: number | null; hi?: number | null; tip?: string[]; id?: string
+  /** a bar series on a number scale: the bin the bar spans (x is its centre) */
+  x0?: number; x1?: number }
 export interface SweepSeries {
   id: string
   label: string
@@ -52,6 +54,17 @@ export interface SweepSeries {
   fill?: number
   /** legend key, for `dim` */
   group?: string
+  /**
+   * draw each point as a bar from 0 (or the y range's edge) to y: on a point scale side by side with the other bar
+   * series in each category, on a number scale across the point's bin (x0–x1). No line or dots; `fill` is its opacity
+   */
+  bar?: boolean
+  /** false: dots only, no line joining them (a dot plot) */
+  line?: boolean
+  /** shift the series' points this many pixels along x (two series side by side in one category) */
+  dodge?: number
+  /** a label over each point or bar, e.g. its value */
+  valueLabel?: (y: number) => string
 }
 
 /**
@@ -59,16 +72,20 @@ export interface SweepSeries {
  * `edges` are the bin edges (counts.length + 1); `tip` names a bin. Each bin is a point at its centre, so hover
  * finds bins, plus a point at either outer edge so the outline closes on the axis range.
  */
-export function histogramSeries({ id, label, color, edges, counts, total, fill = 0.45, tip, ...rest }: {
+export function histogramSeries({ id, label, color, edges, counts, total, fill = 0.45, tip, bars = false, ...rest }: {
   id: string; label: string; color: string; edges: number[]; counts: number[]
   /** divide each count by this (a share); else counts */
   total?: number
   /** band opacity: 0 for an outline only */
   fill?: number
   tip?: (i: number, value: number) => string[]
+  /** one bar per bin, a gap between bars, instead of the step outline */
+  bars?: boolean
 } & Partial<Omit<SweepSeries, 'id' | 'label' | 'color' | 'points'>>): SweepSeries {
   const v = (c: number) => (total ? c / Math.max(1, total) : c)
   const n = counts.length
+  if (bars) return { id, label, color, bar: true, fill, interval: 'none', ...rest,
+    points: counts.map((c, i) => ({ x: (edges[i] + edges[i + 1]) / 2, x0: edges[i], x1: edges[i + 1], y: v(c), tip: tip?.(i, v(c)) })) }
   const at = (i: number) => ({ y: v(counts[i]), lo: fill ? 0 : null, hi: fill ? v(counts[i]) : null, tip: tip?.(i, v(counts[i])) })
   const points: SweepPoint[] = n ? [{ x: edges[0], ...at(0) }, ...counts.map((_, i) => ({ x: (edges[i] + edges[i + 1]) / 2, ...at(i) })), { x: edges[n], ...at(n - 1) }] : []
   return { id, label, color, points, curve: 'mid-step', marks: false, width: 1.4, fill, interval: fill ? 'band' : 'none', ...rest }
@@ -84,7 +101,7 @@ type XScale = d3.ScaleLinear<number, number> | d3.ScaleLogarithmic<number, numbe
 export function SweepPlot({
   series, xScale: kind, xDomain, xLabel, yLabel, yScale = 'linear', yDomain, yClip, include = [], reference,
   xMarkers = [], yMarkers = [], chosen = [], dividers = [], onPoint, height = 240, width: fixedWidth, title,
-  dim, xFormat, yFormat, background, children, minWidth, pick, marks = [],
+  dim, xFormat, yFormat, background, children, minWidth, pick, marks = [], barWidth = 0.6,
 }: {
   series: SweepSeries[]
   xScale?: 'linear' | 'log' | 'time' | 'point'
@@ -122,6 +139,8 @@ export function SweepPlot({
   minWidth?: number
   /** excluded filters drawn as × (Filters → excluded: Mark); their hover says why */
   marks?: readonly SweepMark[]
+  /** point scale: the share of a category's step its bars fill together (default 0.6) */
+  barWidth?: number
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const { width: measured } = useDimensions(ref)
@@ -143,6 +162,16 @@ export function SweepPlot({
     if (k === 'linear' && !xDomain) (x as d3.ScaleLinear<number, number>).nice()
   }
   const px = (v: SweepX) => k === 'point' ? (x as d3.ScalePoint<string>)(String(v)) ?? 0 : (x as d3.ScaleLinear<number, number>)(v as number)
+  // bar series: side by side in a category's slot (point scale), or across their bins (number scale)
+  const bars = series.filter((s) => s.bar)
+  const slot = k === 'point' ? (x as d3.ScalePoint<string>).step() * barWidth : 0
+  const barBox = (s: SweepSeries, p: SweepPoint): [number, number] => {
+    if (k === 'point') { const j = bars.indexOf(s), bw = slot / Math.max(1, bars.length); return [px(p.x) - slot / 2 + j * bw, bw] }
+    const a = px(p.x0 ?? (p.x as number)), b = px(p.x1 ?? (p.x as number))
+    return [Math.min(a, b) + 1, Math.max(0, Math.abs(b - a) - 2)]
+  }
+  /** where a series' point sits along x: its bar's centre, or the point shifted by the series' dodge */
+  const sx = (s: SweepSeries, p: SweepPoint) => { if (s.bar) { const [b0, bw] = barBox(s, p); return b0 + bw / 2 } return px(p.x) + (s.dodge ?? 0) }
 
   const ys: number[] = []
   for (const p of all) for (const v of [p.y, p.lo, p.hi]) if (v != null && Number.isFinite(v) && (yScale !== 'log' || v > 0)) ys.push(v)
@@ -170,7 +199,9 @@ export function SweepPlot({
     let best: { s: number; i: number } | null = null, bestD = 12
     series.forEach((s, si) => s.points.forEach((p, i) => {
       if (!ok(p.y)) return
-      const d = Math.hypot(px(p.x) - mx, py(p.y) - my)
+      // a bar answers anywhere over it, a point within 12 px
+      const [b0, bw] = s.bar ? barBox(s, p) : [0, 0], base = s.bar ? py(0) : 0
+      const d = s.bar && mx >= b0 && mx <= b0 + bw && my >= Math.min(base, py(p.y)) - 2 && my <= Math.max(base, py(p.y)) ? 0 : Math.hypot(sx(s, p) - mx, py(p.y) - my)
       if (d < bestD) { bestD = d; best = { s: si, i } }
     }))
     if (!best) {
@@ -189,7 +220,8 @@ export function SweepPlot({
     const xs = p.x instanceof Date ? d3.timeFormat('%Y-%m-%d')(p.x) : xFormat ? xFormat(p.x) : String(p.x)
     tip.show(e, p.tip ?? [s.label, `${xLabel || 'x'}: ${xs}`, `${yLabel}: ${fmtY(p.y as number)}${p.lo != null && p.hi != null ? ` (${fmtY(p.lo)} to ${fmtY(p.hi)})` : ''}`, ...(onPoint ? ['click to select'] : [])])
   }
-  const hp = hover ? series.find((s) => s.id === hover.s)?.points[hover.i] : null
+  const hs = hover ? series.find((s) => s.id === hover.s) : null
+  const hp = hs ? hs.points[hover!.i] : null
 
   return (
     <div ref={ref} style={{ position: 'relative', width: fixedWidth }}>
@@ -218,25 +250,37 @@ export function SweepPlot({
               const drawn = (p: SweepPoint) => ok(p.y) && !clamped(p.y as number)
               const pts = s.gaps ? [...s.points] : s.points.filter(drawn)
               if (k !== 'point') pts.sort((a, b) => +(a.x as number) - +(b.x as number))
+              if (s.bar) return <g key={s.id} opacity={op(s.group)}>
+                {s.points.filter((p) => ok(p.y)).map((p, i) => { const [b0, bw] = barBox(s, p), y0 = py(0), y1 = py(p.y as number)
+                  return <g key={i}>
+                    <rect x={b0} width={bw} y={Math.min(y0, y1)} height={Math.abs(y0 - y1)} fill={s.color} fillOpacity={s.fill ?? 0.85} />
+                    {s.valueLabel && <text x={b0 + bw / 2} y={Math.min(y0, y1) - 6} textAnchor="middle" fontSize={11} fill={INK.text}>{s.valueLabel(p.y as number)}</text>}
+                  </g> })}
+              </g>
               const band = (s.interval ?? 'band') === 'band' && pts.some((p) => ok(p.lo) && ok(p.hi))
               const marks = s.marks ?? s.points.length <= 60
+              const at = (p: SweepPoint) => px(p.x) + (s.dodge ?? 0)
               return <g key={s.id} opacity={op(s.group)}>
                 {band && <path fill={s.color} fillOpacity={s.fill ?? 0.15} d={d3.area<SweepPoint>().defined((p) => ok(p.lo) && ok(p.hi)).curve(curve(s.curve))
-                  .x((p) => px(p.x)).y0((p) => py(p.lo as number)).y1((p) => py(p.hi as number))(pts) ?? ''} />}
-                <path fill="none" stroke={s.color} strokeWidth={s.width ?? 1.8} strokeDasharray={s.dash}
-                  d={d3.line<SweepPoint>().defined(drawn).curve(curve(s.curve)).x((p) => px(p.x)).y((p) => y(p.y as number))(pts) ?? ''} />
+                  .x(at).y0((p) => py(p.lo as number)).y1((p) => py(p.hi as number))(pts) ?? ''} />}
+                {s.line !== false && <path fill="none" stroke={s.color} strokeWidth={s.width ?? 1.8} strokeDasharray={s.dash}
+                  d={d3.line<SweepPoint>().defined(drawn).curve(curve(s.curve)).x(at).y((p) => y(p.y as number))(pts) ?? ''} />}
                 {s.interval === 'whisker' && s.points.filter((p) => ok(p.lo) && ok(p.hi)).map((p, i) =>
-                  <line key={`w${i}`} x1={px(p.x)} x2={px(p.x)} y1={py(p.lo as number)} y2={py(p.hi as number)} stroke={s.color} strokeWidth={1.2} strokeOpacity={0.7} />)}
+                  <line key={`w${i}`} x1={at(p)} x2={at(p)} y1={py(p.lo as number)} y2={py(p.hi as number)} stroke={s.color} strokeWidth={1.2} strokeOpacity={0.7} />)}
                 {s.points.filter((p) => ok(p.y)).map((p, i) => {
                   const out = clamped(p.y as number), ch = isChosen(s, p)
                   if (!marks && !out && !ch) return null
-                  return <circle key={i} cx={px(p.x)} cy={py(p.y as number)} r={ch ? (s.r ?? 3) + 2 : s.r ?? 3}
+                  return <circle key={i} cx={at(p)} cy={py(p.y as number)} r={ch ? (s.r ?? 3) + 2 : s.r ?? 3}
                     fill={out || ch ? INK.panel : s.color} stroke={s.color} strokeWidth={out || ch ? 1.6 : 0} />
                 })}
+                {s.valueLabel && s.points.filter((p) => ok(p.y)).map((p, i) =>
+                  <text key={`v${i}`} x={at(p)} y={py(p.y as number) - (s.r ?? 3) - 5} textAnchor="middle" fontSize={11} fill={INK.text}>{s.valueLabel!(p.y as number)}</text>)}
               </g>
             })}
             {children?.({ x, y, iw, ih })}
-            {hp && ok(hp.y) && <circle cx={px(hp.x)} cy={py(hp.y)} r={6} fill="none" stroke={INK.text} strokeWidth={1.4} />}
+            {hp && hs && ok(hp.y) && !hs.bar && <circle cx={sx(hs, hp)} cy={py(hp.y)} r={6} fill="none" stroke={INK.text} strokeWidth={1.4} />}
+            {hp && hs && ok(hp.y) && hs.bar && (() => { const [b0, bw] = barBox(hs, hp), y0 = py(0), y1 = py(hp.y as number)
+              return <rect x={b0} width={bw} y={Math.min(y0, y1)} height={Math.abs(y0 - y1)} fill="none" stroke={INK.text} strokeWidth={1.4} /> })()}
             {nClamped > 0 && <text x={iw} y={-2} textAnchor="end" fontSize={10} fill={INK.muted}>{nClamped} point{nClamped > 1 ? 's' : ''} beyond the range, drawn hollow at the edge</text>}
           </g>
           <rect width={iw} height={ih} fill="transparent" style={{ cursor: onPoint && hover ? 'pointer' : 'default' }}

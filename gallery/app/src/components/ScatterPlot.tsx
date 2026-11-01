@@ -42,6 +42,10 @@ export interface ScatterPoint {
   dim?: number
   /** fill opacity instead of the chart's `density` (a summary marker drawn opaque among faint dots) */
   opacity?: number
+  /** this point's dot opacity level instead of the chart's `density` */
+  level?: DotLevel
+  /** a nudge along x in pixels: jitter in a category band, or two series side by side */
+  dx?: number
   /** for a fit per site or per season (else the record's site) */
   site?: string; season?: string; seasonColor?: string
 }
@@ -226,7 +230,7 @@ export function ScatterPlot({
     const [x0, x1] = x.range(), [y1, y0] = y.range()
     const pin = outside === 'pin'
     return (p: ScatterPoint) => {
-      const cx = x(p.x), cy = y(p.y)
+      const cx = x(p.x) + (p.dx ?? 0), cy = y(p.y)
       return [pin ? Math.max(Math.min(x0, x1), Math.min(Math.max(x0, x1), cx)) : cx, pin ? Math.max(Math.min(y0, y1), Math.min(Math.max(y0, y1), cy)) : cy] as const
     }
   }, [x, y, outside])
@@ -241,7 +245,7 @@ export function ScatterPlot({
   }, [markMode, split.marked, x, y, reasonOf])
   const dots = useMemo(() => ok.map((p, i) => {
     const key = keyOf(p), hollow = p.hollow && (p.shape ?? 'dot') === 'dot'
-    const fill = p.opacity != null ? { fillOpacity: p.opacity } : dotFill(density)
+    const fill = p.opacity != null ? { fillOpacity: p.opacity } : dotFill(p.level ?? density)
     return <Mark key={p.key ?? i} shape={p.shape} cx={xy[i][0]} cy={xy[i][1]} r={p.r ?? 3.5} fill={hollow ? 'none' : p.color} opacity={p.dim}
       {...fill} stroke={p.stroke ?? (hollow ? p.color : dotRim().stroke)} strokeWidth={p.strokeWidth ?? (hollow ? 1.5 : dotRim().strokeWidth)}
       {...(key ? fidProps(key) : {})} />
@@ -261,7 +265,7 @@ export function ScatterPlot({
       focusR={(p) => Math.max(p.r ?? 3.5, focusR)}
       focus={(p, [cx, cy]) => <Mark shape={p.shape} cx={cx} cy={cy} r={Math.max(p.r ?? 3.5, focusR)} fill={p.hollow ? 'none' : p.color} opacity={p.dim}
         {...dotFill('sparse')} stroke={INK.text} strokeWidth={2} />}
-      tipOf={(p) => (p.tip ? (p.rec || p.open ? [...p.tip, 'click to pin it on every chart and open its record'] : p.tip) : null)}
+      tipOf={(p) => (p.tip ? (p.rec || p.open ? [...p.tip, p.id ? 'click to pin it on every chart and open its record' : 'click to open its record'] : p.tip) : null)}
       onPick={(p) => {
         if (onPick) { onPick(p); return }
         const key = keyOf(p)
