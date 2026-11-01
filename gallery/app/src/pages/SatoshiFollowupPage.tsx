@@ -101,8 +101,6 @@ export function SatoshiFollowupPage() {
 }
 
 function SatoshiView({ data }: { data: SatoshiData }) {
-  // 'sregion' is the similarity spectra's shading key; the mask gets its own so the two never overwrite each other
-  const [mask, setMask] = useSearchParam<Mask>('satmask', 'oct1', MASKS)
   // the IMPROVE crossplots' axes (ladder and envelope), behind their titles (components/AxisChoices)
   const sx = useSearchParam<string>('satx', 'TOR EC', [...SAT_AXES])
   const sy = useSearchParam<string>('saty', 'FTIR EC', [...SAT_AXES])
@@ -120,20 +118,22 @@ function SatoshiView({ data }: { data: SatoshiData }) {
         render: (v, set) => <BaselinePicker value={v} options={BASELINES} short onChange={set} /> },
       { key: 'season', urlKey: 'satgroup', label: 'Season', default: 'Kiremt (Jun-Sep)', options: data.groups, legacy: ['sovgroup', 'svipgroup', 'sladgroup', 'senvgroup', 'satSpecGroup', 'sgseason'],
         render: (v, set) => <SeasonPicker value={v} groups={data.groups} onChange={set} /> },
+      // 'sregion' is the similarity spectra's shading key; the mask gets its own so the two never overwrite each other
+      { key: 'mask', urlKey: 'satmask', label: 'Similarity region', default: 'oct1', options: MASKS, render: (v, set) => <MaskPicker mask={v as Mask} onMask={set} /> },
     ]}>
-    <SimilarityRegionSidebar mask={mask} onMask={setMask} />
+    <SimilarityRegionSidebar />
     <SatAxesCtx.Provider value={{ x: sx[0], y: sy[0] }}>
     <AxisChoices noun="quantities" x={sx} y={sy} options={SAT_AXES.map((k) => ({ key: k, group: 'Each IMPROVE filter', unit: k === 'FTIR ÷ TOR' ? 'ratio' : 'µg/m³' }))}>
     <PageToc>
       <p className="chart-note">{ANALYSIS_CALENDAR_NOTE}</p>
       <ExplainOnly><Conclusion s={data} o={oct1.data} /></ExplainOnly>
       <ExplainOnly><Answers data={data} /></ExplainOnly>
-      <Overlap data={data} mask={mask} />
-      <SatoshiSpectra membership={data.members} groups={data.groups} region={mask} />
-      <Swap data={data} mask={mask} />
-      <Vip data={data} mask={mask} />
-      <Ladder data={data} mask={mask} />
-      <Envelope data={data} mask={mask} />
+      <Overlap data={data} />
+      <MaskedSpectra membership={data.members} groups={data.groups} />
+      <Swap data={data} />
+      <Vip data={data} />
+      <Ladder data={data} />
+      <Envelope data={data} />
       <Oct1Sections o={oct1} />
       <ExplainOnly><Methods data={data} /></ExplainOnly>
     </PageToc>
@@ -144,14 +144,27 @@ function SatoshiView({ data }: { data: SatoshiData }) {
 }
 
 /** The page's filters (baseline, season, similarity region), in the gallery's shared sidebar (lib/pageSidebar). */
-function SimilarityRegionSidebar({ mask, onMask }: { mask: Mask; onMask: (mask: Mask) => void }) {
+function SimilarityRegionSidebar() {
   return <SidebarControls title="For every chart on this page">
     <PageChoiceControls />
+  </SidebarControls>
+}
+
+/** the similarity region every section reads (the page choice 'mask', `satmask` in the URL) */
+const useMask = () => usePageChoice('mask', MASKS).value as Mask
+
+function MaskPicker({ mask, onMask }: { mask: Mask; onMask: (mask: Mask) => void }) {
+  // the sidebar's own column and gap, inside the span PageChoiceControls puts each choice in
+  return <span style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
     {/* two choices, but each a long region definition: a dropdown (the gallery's rule for long labels) */}
     <Select label="Similarity region" value={mask} options={[...MASKS]} optionLabel={(key) => MASK_SHORT[key as (typeof MASKS)[number]]} onChange={(v) => onMask(v as (typeof MASKS)[number])} />
     <p className="chart-note">{MASK_DESCRIPTION[mask]}</p>
     <ExplainOnly><p className="chart-note">This region chooses the analogs on the charts. The spline baseline only covers 4000–1425 cm⁻¹, so its analogs are identical under both regions; only the VIBES analogs change. Every PLS model is still fitted on each baseline's full predictor grid.</p></ExplainOnly>
-  </SidebarControls>
+  </span>
+}
+
+function MaskedSpectra(props: Omit<Parameters<typeof SatoshiSpectra>[0], 'region'>) {
+  return <SatoshiSpectra {...props} region={useMask()} />
 }
 
 // ------------------------------------------------------------------ answers
@@ -203,7 +216,8 @@ function improveRecord(id: number | string, site: string, source: string, fields
 const PARTS = ['spline only', 'shared', 'VIBES only'] as const
 const PART_COLOR: Record<string, string> = { get 'spline only'() { return BASE_COLOR[SPLINE] }, get shared() { return sharedColor() }, get 'VIBES only'() { return BASE_COLOR[VIBES] } }
 
-function Overlap({ data, mask }: { data: SatoshiData; mask: Mask }) {
+function Overlap({ data }: { data: SatoshiData }) {
+  const mask = useMask()
   // the page's season and baseline (PageChoices, in the Filters sidebar)
   const { value: group } = usePageChoice('season', data.groups)
   const ref = useRef<HTMLDivElement>(null)
@@ -322,7 +336,8 @@ const ARMS = [
 ] as const
 const SWAP_METRICS = ['intercept', 'slope'] as const
 
-function Swap({ data, mask }: { data: SatoshiData; mask: Mask }) {
+function Swap({ data }: { data: SatoshiData }) {
+  const mask = useMask()
   const [metric, setMetric] = useSearchParam<(typeof SWAP_METRICS)[number]>('sswap', 'intercept', SWAP_METRICS)
   const col = metric === 'intercept' ? 'addis_intercept' : 'addis_slope'
   const arm = (g: string, sel: string, cal: string) => data.swap_arms.find((a) => a.group === g && a.selected_on === sel && a.mask === (sel === SPLINE ? 'presented' : mask) && a.calibrated_on === cal)
@@ -364,7 +379,8 @@ function Swap({ data, mask }: { data: SatoshiData; mask: Mask }) {
 
 // ------------------------------------------------------------------ 3. VIP
 
-function Vip({ data, mask }: { data: SatoshiData; mask: Mask }) {
+function Vip({ data }: { data: SatoshiData }) {
+  const mask = useMask()
   // the page's season and baseline (PageChoices, in the Filters sidebar)
   const { value: group } = usePageChoice('season', data.groups)
   const { value: baseline } = usePageChoice('baseline', BASELINES) as { value: Baseline }
@@ -410,7 +426,8 @@ const metricOf: Record<LadderMetric, (r: Row) => number | null> = {
 /** a ladder readout's name, the same in the axis picker and on the axis */
 const ladderLabel = (m: string) => m === 'R²' ? 'R²' : m === 'mean bias' ? 'Mean bias, FTIR − reference' : `Deming ${m}`
 
-function Ladder({ data, mask }: { data: SatoshiData; mask: Mask }) {
+function Ladder({ data }: { data: SatoshiData }) {
+  const mask = useMask()
   // the page's season and baseline (PageChoices, in the Filters sidebar)
   const { value: group } = usePageChoice('season', data.groups)
   const { value: baseline } = usePageChoice('baseline', BASELINES) as { value: Baseline }
@@ -544,7 +561,8 @@ function Cross({ title, pts, color, dom, ydom, source }: { title: string; pts: P
 }
 
 // ------------------------------------------------------------------ 5. envelope
-function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
+function Envelope({ data }: { data: SatoshiData }) {
+  const mask = useMask()
   // the page's season and baseline (PageChoices, in the Filters sidebar)
   const { value: group } = usePageChoice('season', data.groups)
   const { value: baseline } = usePageChoice('baseline', BASELINES) as { value: Baseline }
