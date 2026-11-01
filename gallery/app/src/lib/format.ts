@@ -47,6 +47,18 @@ export const percent = (v: unknown, digits = 0): string => {
   return n === null ? '—' : `${n.toFixed(digits)} %`
 }
 
+/** At most `digits` decimals, trailing zeros dropped (axis ticks): trim(0.50) -> "0.5", trim(2) -> "2". */
+export const trim = (v: unknown, digits = 2): string => {
+  const n = num(v)
+  return n === null ? '—' : String(+n.toFixed(digits))
+}
+
+/** Decimals by magnitude (ramp legends): 0 from 100, 1 from 10, else 2: 123.4 -> "123", 12.34 -> "12.3", 1.234 -> "1.23". */
+export const adaptive = (v: unknown): string => {
+  const n = num(v)
+  return n === null ? '—' : n.toFixed(Math.abs(n) >= 100 ? 0 : Math.abs(n) >= 10 ? 1 : 2)
+}
+
 /** Scientific notation with one decimal: 0.000123 -> "1.2e-4". */
 export const sci = (v: unknown): string => {
   const n = num(v)

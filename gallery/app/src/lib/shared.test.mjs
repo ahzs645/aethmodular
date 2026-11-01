@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { fmt, fixed, f2, f3, signed, pct, percent, sci, fitLine, fitSummary } from './format.ts'
+import { fmt, fixed, f2, f3, signed, pct, percent, trim, adaptive, sci, fitLine, fitSummary } from './format.ts'
 import { ALL_ADDIS, inSeasonGroup, isAllAddis, normalizeSeasonName, seasonOfMonth, seasonPhrase, shortSeason } from './seasons.ts'
 import { BASELINE_COLOR, baselineColor } from './theme.ts'
 import { baselineName, ecAxis } from './labels.ts'
@@ -28,6 +28,8 @@ test('formatters print a dash for missing values and keep their digit defaults',
   assert.equal(fitSummary({ slope: 0.95, intercept: 0.5 }, { digits: 2, interceptDigits: 1, sep: ', ' }), 'slope 0.95, intercept 0.5')
   assert.equal(fitSummary({ slope: 1, intercept: -0.2, r2: null }, { signedIntercept: true, unit: 'µg/m³', label: 'Deming' }), 'Deming slope 1.000 · intercept −0.200 µg/m³ · R² —')
   assert.equal(fitSummary(null), '—')
+  assert.equal(trim(0.5), '0.5'); assert.equal(trim(2), '2'); assert.equal(trim(0.12345, 3), '0.123'); assert.equal(trim(null), '—')
+  assert.equal(adaptive(123.4), '123'); assert.equal(adaptive(-12.34), '-12.3'); assert.equal(adaptive(1.234), '1.23')
 })
 
 test('season helpers agree on names, the all-Addis group and month bins', () => {
