@@ -22,6 +22,7 @@ import { FacetGrid } from '@/components/FacetGrid'
 import { BANK_COLOR, FONT, INK, SPECTRAL_REGION } from '@/lib/theme'
 import { dotFill, dotRim } from '@/lib/highlight'
 import { f2, pct, sci } from '@/lib/format'
+import { hashUnit } from '@/lib/stats'
 import { FixedSetNote } from '@/lib/markedRows'
 
 /**
@@ -151,7 +152,7 @@ function Inventory({ d }: { d: BlanksData }) {
   const x = d3.scaleTime().domain(d3.extent(dated, (r) => r.date!) as [Date, Date]).nice().range([0, iw])
   const undated = rows.filter((r) => !r.date)
   const ux = d3.scalePoint<number>().domain(undated.map((r) => r.i)).range([0, iw]).padding(0.5)
-  const jitter = (i: number) => ((Math.sin(i * 12.9898) * 43758.5453) % 1 + 1) % 1
+  const jitter = (i: number) => hashUnit(i)
   const counts = banksOf(d).map((b) => ({ b, n: d.banks[b].n_blanks, lots: groups.map((g) => rows.filter((r) => r.group === g && inv(d, `in_${b}`)[r.i]).length) }))
   return (
     <ChartFrame id="blanks-inventory" source="gallery/app/src/pages/BlanksPage.tsx › Inventory"
@@ -404,7 +405,7 @@ function PerBlankError({ d }: { d: BlanksData }) {
   const x = d3.scaleLog().domain(d3.extent(rows, (r) => r.e) as [number, number]).nice().range([0, iw])
   const groups = Object.keys(d.groups)
   const yb = d3.scaleBand().domain(groups).range([0, ih]).padding(0.25)
-  const jitter = (i: number) => ((Math.sin(i * 78.233) * 43758.5453) % 1 + 1) % 1
+  const jitter = (i: number) => hashUnit(i, 78.233)
   const top = rows.slice(-8).reverse()
   return (
     <ChartFrame id="blanks-outliers" source="gallery/app/src/pages/BlanksPage.tsx › PerBlankError"

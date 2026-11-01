@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import * as d3 from 'd3'
 import {
-  boxStats, deming, describe, goldenJitter, IQR_MIN_N, jitter, mean, median, meanSe, monthlyMeans, monthlyStats, orNull,
+  boxStats, deming, describe, goldenJitter, hashUnit, IQR_MIN_N, jitter, mean, median, meanSe, monthlyMeans, monthlyStats, orNull,
   pearson, quantile, quantileSorted, regression, sd, spearman,
 } from './stats.ts'
 
@@ -100,4 +100,6 @@ test('jitter is deterministic and inside its width', () => {
     assert.ok(a >= -5 && a < 5 && g >= -5 && g < 5)
   }
   assert.equal(goldenJitter(3, 8), ((3 * 0.6180339) % 1 - 0.5) * 8)
+  // the pages' former copies, ((sin(i·salt)·43758.5453) mod 1 + 1) mod 1
+  for (const salt of [12.9898, 78.233]) for (let i = 0; i < 50; i++) near(hashUnit(i, salt), ((Math.sin(i * salt) * 43758.5453) % 1 + 1) % 1, 1e-9)
 })

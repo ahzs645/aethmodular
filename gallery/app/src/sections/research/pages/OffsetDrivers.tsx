@@ -4,7 +4,7 @@ import { Crossplot } from '@/components/Crossplot'
 import { FieldSelect } from '@/components/FieldSelect'
 import { Key } from '@/components/Key'
 import { fmt } from '@/lib/format'
-import { correlationP, influence, multiOls, ols, originFit, pearson, spearman, splitScan, twoSample, type ScanRow } from '@/lib/stats'
+import { correlationP, influence, mean, multiOls, ols, originFit, pearson, sd as sdOf, spearman, splitScan, twoSample, type ScanRow } from '@/lib/stats'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow } from '@/lib/types'
@@ -94,8 +94,8 @@ export function OffsetDrivers({ rows: viewRows, meta: viewMeta }: SectionPagePro
 
   // Bland–Altman (is the bias fixed or proportional?)
   const ba = pairs.map((p) => ({ ...p, m: (p.x + p.y) / 2, d: p.y - p.x }))
-  const bias = ba.length ? ba.reduce((a, p) => a + p.d, 0) / ba.length : NaN
-  const sd = ba.length > 2 ? Math.sqrt(ba.reduce((a, p) => a + (p.d - bias) ** 2, 0) / (ba.length - 1)) : NaN
+  const bias = mean(ba.map((p) => p.d))
+  const sd = ba.length > 2 ? sdOf(ba.map((p) => p.d)) : NaN
   const prop = ols(ba.map((p) => p.m), ba.map((p) => p.d))
 
   // influential filters (Cook's distance > 4 / n) and their chemistry

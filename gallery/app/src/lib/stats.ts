@@ -149,11 +149,14 @@ export function monthlyMeans(dates: readonly string[], values: readonly Num[]): 
   return sum.map((s, m) => ({ mean: n[m] ? s / n[m] : null, n: n[m] }))
 }
 
-/** deterministic jitter in [−w/2, w/2) from an integer seed (a sine hash), so points do not dance on re-render */
-export const jitter = (seed: number, w: number) => {
-  const t = Math.sin(seed * 12.9898) * 43758.5453
-  return (t - Math.floor(t) - 0.5) * w
+/** a deterministic pseudo-random number in [0, 1) from an integer seed (a sine hash); another `salt` gives another sequence */
+export const hashUnit = (seed: number, salt = 12.9898) => {
+  const t = Math.sin(seed * salt) * 43758.5453
+  return t - Math.floor(t)
 }
+
+/** deterministic jitter in [−w/2, w/2) from an integer seed (hashUnit), so points do not dance on re-render */
+export const jitter = (seed: number, w: number) => (hashUnit(seed) - 0.5) * w
 
 /** deterministic, evenly spread jitter: the i-th point at the golden-ratio sequence (plus `offset`), in [−w/2, w/2) */
 export const goldenJitter = (i: number, w: number, offset = 0) => (((i * 0.6180339 + offset) % 1) - 0.5) * w
