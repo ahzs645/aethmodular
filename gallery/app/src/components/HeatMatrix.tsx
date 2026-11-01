@@ -55,7 +55,7 @@ export interface MatrixCell {
   /** label ink, where the fill's own pick is wrong (a faded cell) */
   ink?: string
   /** attributes on the cell's rect, e.g. lib/filterEdits fidsProps so a right-click finds its filters */
-  props?: SVGProps<SVGRectElement>
+  props?: SVGProps<SVGRectElement> | Record<`data-${string}`, string>
 }
 type Cell = MatrixCell | number | null | undefined
 

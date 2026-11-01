@@ -28,7 +28,7 @@ export interface HeatCellProps {
   fontSize?: number
   fontWeight?: number
   /** attributes for the rect, e.g. data-fids so a right-click finds the cell's filters (lib/filterEdits) */
-  rectProps?: SVGProps<SVGRectElement>
+  rectProps?: SVGProps<SVGRectElement> | Record<`data-${string}`, string>
 }
 
 /**

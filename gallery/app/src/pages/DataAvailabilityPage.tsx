@@ -15,7 +15,7 @@ import { useSearchParam } from '@/lib/url'
 import { INK, FONT } from '@/lib/theme'
 import { HIDDEN_DUPLICATES } from '@/fieldLineage'
 import type { NotebookAvailability } from '@/lib/notebookAvailability'
-import { AVAIL_COLOR, AeronetAvailability, AvailabilitySources, NetworkAvailability, PriorCoverage, StudyAvailability } from './NotebookAvailability'
+import { AVAIL_COLOR, AeronetAvailability, AvailabilitySources, NetworkAvailability, PriorCoverage, StudyAvailability } from '@/components/NotebookAvailability'
 import { ScrubField } from '@/components/ScrubField'
 
 interface InventorySite { code: string; name: string; location?: string; n_filters: number; date_min: string; date_max: string; coverage?: Record<string, number>; filters?: string }
