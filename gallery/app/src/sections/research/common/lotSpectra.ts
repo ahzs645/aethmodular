@@ -6,7 +6,7 @@
  * means. Node-tested in lotSpectra.test.mjs against char_12's saved tables. Pure: no React, no gallery imports.
  */
 import { isDryName, mannWhitney } from './charcoal.ts'
-import { quantile } from './stats.ts'
+import { quantile } from '../../../lib/stats.ts'
 
 export type ViewKey = 'raw' | 'deriv' | 'airspec'
 export const VIEW_KEYS: readonly ViewKey[] = ['raw', 'deriv', 'airspec']

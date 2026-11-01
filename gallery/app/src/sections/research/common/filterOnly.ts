@@ -14,7 +14,7 @@
  * Fabs is in Mm⁻¹ and EC in µg/m³; every model is linear in Fabs, so dividing Fabs by a MAC divides every
  * prediction and error by it and leaves the percentages alone.
  */
-import { median, quantile } from './stats.ts'
+import { median, quantile } from '../../../lib/stats.ts'
 
 /** one diagnostic filter (gallery/data/export_research_filter_only.py) */
 export interface FPoint {

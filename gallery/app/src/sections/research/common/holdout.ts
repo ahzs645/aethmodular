@@ -6,7 +6,7 @@
  * residuals (RMSE inside and outside the source 95 %, Spearman ρ of the domain percentile against |error|) follows.
  */
 import type { Row } from '../../../lib/table.ts'
-import { correlationP, spearman } from './stats.ts'
+import { correlationP, spearman } from '../../../lib/stats.ts'
 
 /** holdout_fabs.json: each holdout filter's Fabs (Mm⁻¹), keyed by ftir_39's ExternalFilterId (a MediaId) */
 export interface HoldoutFabs {

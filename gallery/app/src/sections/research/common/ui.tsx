@@ -15,7 +15,7 @@ import { seasonOnly } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { VOLUME } from '@/lib/viewFields'
-import type { Fit } from './stats'
+import type { OlsFit as Fit } from '@/lib/stats'
 
 export const num = (r: Record<string, unknown> | undefined, f: string): number | null => {
   const v = r?.[f]

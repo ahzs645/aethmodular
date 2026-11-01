@@ -12,7 +12,7 @@ import { useSearchParam } from '@/lib/url'
 
 import type { SectionPageProps } from '../../types'
 import { envelopeOf, useOptics, windowOf, OPTICS_COMMAND, type Envelope, type Optics } from '../common/optics'
-import { ols, originFit, quantile, spearman, theilSen } from '../common/stats'
+import { ols, originFit, quantile, spearman, theilSen } from '@/lib/stats'
 import { BASIS_NOTE, Bars, DataTable, Grid, SitePick, line, ofSite, point, seasonsOf, shortSeason, sitesOf, useConcRows, useSite } from '../common/ui'
 import { linePalette } from './hips/lines'
 import { ResidualCrossplots, ResidualSsa } from './hips/ResidualViews'

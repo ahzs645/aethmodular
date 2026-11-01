@@ -9,7 +9,7 @@
  * Fabs side is Fabs·V/(A·MAC), so its coefficient on mass per area carries the same 1/MAC. The raw slope (no f(X)
  * in the design) mixes f(X)'s own mass slope with Fabs's and does not scale; the page recomputes it at the MAC.
  */
-import { quantile } from './stats.ts'
+import { quantile } from '../../../lib/stats.ts'
 
 /** one filter of an explorer evaluation set, joined to the gallery row and the HIPS optics export */
 export interface MassFilter {

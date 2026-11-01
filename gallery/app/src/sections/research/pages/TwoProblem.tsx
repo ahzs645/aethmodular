@@ -10,7 +10,7 @@ import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow } from '@/lib/types'
 import type { SectionPageProps } from '../../types'
-import { ols, pearsonR, quadratic, quantile, slidingWindow, median, type Fit } from '../common/stats'
+import { ols, pearson, quadratic, quantile, slidingWindow, median, type OlsFit as Fit } from '@/lib/stats'
 import { BASIS_NOTE, DataTable, Grid, SitePick, fitText, line, num, ofSite, point, sitesOf, useConcRows, useSite } from '../common/ui'
 import { useMarkedRows } from '@/lib/markedRows'
 
@@ -110,7 +110,7 @@ export function TwoProblem({ rows: viewRows, meta }: SectionPageProps) {
     { key: 'e', label: 'RMSE', num: true, value: (r: T) => fmt(r.f?.rmse, 3) },
     { key: 'neg', label: 'Negative values', num: true, value: (r: T) => r.nNeg },
   ]
-  const rWin = pearsonR(windows.map((w) => w.center), windows.map((w) => w.slope))
+  const rWin = pearson(windows.map((w) => w.center), windows.map((w) => w.slope))
   const bcLabel = 'HIPS BC (µg/m³)', ecLabel = 'FTIR EC (µg/m³)'
   const color = rows.find((r) => r.site === site)?.color ?? INK.text
 
@@ -133,9 +133,9 @@ export function TwoProblem({ rows: viewRows, meta }: SectionPageProps) {
         ]} />
         {all.filter((s) => s.d).length >= 3 && <Grid>
           <SweepPlot series={all.filter((s) => s.d).map((s) => ({ id: s.site, label: s.site, color: s.color, r: 6, points: [{ x: s.d!.meanEc, y: s.d!.bcFit.slope }] }))}
-            xLabel="Mean FTIR EC (µg/m³)" yLabel="OLS slope (BC vs EC)" reference={1} include={[0]} title={`Slope vs loading — r = ${fmt(pearsonR(all.filter((s) => s.d).map((s) => s.d!.meanEc), all.filter((s) => s.d).map((s) => s.d!.bcFit.slope)), 2)}`} />
+            xLabel="Mean FTIR EC (µg/m³)" yLabel="OLS slope (BC vs EC)" reference={1} include={[0]} title={`Slope vs loading — r = ${fmt(pearson(all.filter((s) => s.d).map((s) => s.d!.meanEc), all.filter((s) => s.d).map((s) => s.d!.bcFit.slope)), 2)}`} />
           <SweepPlot series={all.filter((s) => s.d).map((s) => ({ id: s.site, label: s.site, color: s.color, r: 6, points: [{ x: s.d!.floor, y: s.d!.bcFit.slope }] }))}
-            xLabel="HIPS BC floor (µg/m³)" yLabel="OLS slope (BC vs EC)" reference={1} include={[0]} title={`Slope vs HIPS floor — r = ${fmt(pearsonR(all.filter((s) => s.d).map((s) => s.d!.floor), all.filter((s) => s.d).map((s) => s.d!.bcFit.slope)), 2)}`} />
+            xLabel="HIPS BC floor (µg/m³)" yLabel="OLS slope (BC vs EC)" reference={1} include={[0]} title={`Slope vs HIPS floor — r = ${fmt(pearson(all.filter((s) => s.d).map((s) => s.d!.floor), all.filter((s) => s.d).map((s) => s.d!.bcFit.slope)), 2)}`} />
         </Grid>}
       </ChartFrame>
 

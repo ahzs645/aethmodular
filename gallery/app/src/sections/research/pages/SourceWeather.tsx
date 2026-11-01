@@ -16,7 +16,7 @@ import type { FilterRow, PmfFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
 import { useAddisMet } from '../common/met'
-import { ols, quantile, spearman } from '../common/stats'
+import { ols, quantile, spearman } from '@/lib/stats'
 import { DataTable, Grid, num, point } from '../common/ui'
 import { PAIRS } from './RhSweep'
 

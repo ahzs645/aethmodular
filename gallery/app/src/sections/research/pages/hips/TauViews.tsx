@@ -10,7 +10,7 @@ import { INK } from '@/lib/theme'
 
 import { lineKey } from '../../common/blankLines'
 import type { Optics } from '../../common/optics'
-import { ols, quantile } from '../../common/stats'
+import { ols, quantile } from '@/lib/stats'
 import { DataTable, Grid, line, point } from '../../common/ui'
 import { refOf, type LinePalette } from './lines'
 import { useMarkedPairs } from './marked'

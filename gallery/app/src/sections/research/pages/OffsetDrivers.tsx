@@ -4,13 +4,12 @@ import { Crossplot } from '@/components/Crossplot'
 import { FieldSelect } from '@/components/FieldSelect'
 import { Key } from '@/components/Key'
 import { fmt } from '@/lib/format'
-import { twoSample } from '@/lib/stats'
+import { correlationP, influence, multiOls, ols, originFit, pearson, spearman, splitScan, twoSample, type ScanRow } from '@/lib/stats'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow } from '@/lib/types'
 import type { SectionPageProps } from '../../types'
 import { useAddisMet } from '../common/met'
-import { correlationP, influence, multiOls, ols, originFit, pearsonR, spearman, splitScan, type ScanRow } from '../common/stats'
 import { Bars, DataTable, Grid, HIGH, LOW, SitePick, fitText, line, num, ofSite, pText, point, seasonsOf, shortSeason, useSite } from '../common/ui'
 import { defaultRh } from './RhSweep'
 import { useMarkedRows } from '@/lib/markedRows'
@@ -73,7 +72,7 @@ export function OffsetDrivers({ rows: viewRows, meta: viewMeta }: SectionPagePro
     const vals = pairs.map((p) => num(p.r, f))
     const keep = pairs.filter((_, i) => vals[i] !== null)
     if (keep.length < 10) return false
-    const rx = pearsonR(keep.map((p) => p.x), keep.map((p) => num(p.r, f)!)), ry = pearsonR(keep.map((p) => p.y), keep.map((p) => num(p.r, f)!))
+    const rx = pearson(keep.map((p) => p.x), keep.map((p) => num(p.r, f)!)), ry = pearson(keep.map((p) => p.y), keep.map((p) => num(p.r, f)!))
     return !(Math.abs(rx ?? 0) > 0.999 || Math.abs(ry ?? 0) > 0.999)
   }), [meta.fields, pairs, xF, yF])
 
@@ -89,7 +88,7 @@ export function OffsetDrivers({ rows: viewRows, meta: viewMeta }: SectionPagePro
   const screen = useMemo(() => candidates.map((f) => {
     const ok = residuals.flatMap((p) => { const v = num(p.r, f); return v !== null && Number.isFinite(p.e) ? [{ v, e: p.e }] : [] })
     const rho = ok.length >= 10 ? spearman(ok.map((o) => o.v), ok.map((o) => o.e)) : null
-    const r = ok.length >= 10 ? pearsonR(ok.map((o) => o.v), ok.map((o) => o.e)) : null
+    const r = ok.length >= 10 ? pearson(ok.map((o) => o.v), ok.map((o) => o.e)) : null
     return { f, n: ok.length, rho, r }
   }).filter((s) => s.rho !== null).sort((a, b) => b.rho! ** 2 - a.rho! ** 2), [candidates, residuals])
 

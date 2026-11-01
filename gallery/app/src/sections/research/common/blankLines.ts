@@ -6,7 +6,7 @@
  * pools a lot's blanks into one quadratic (the 8561843 construction it retires), and recomputes every sample's Fabs
  * under each construction. Polynomials here are lowest power first (numpy's are highest first).
  */
-import { quadratic, quantile } from './stats.ts'
+import { quadratic, quantile } from '../../../lib/stats.ts'
 
 /** lines with fewer blanks get no refit (hips_lab.blank_lines, ftir_47 MIN_BLANKS) */
 export const MIN_BLANKS = 5

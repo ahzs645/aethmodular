@@ -4,9 +4,8 @@
  * Deming fit of published FTIR EC on HIPS BC with the workbook's Addis error ratio (λ ∝ MAC²). At MAC 10 they
  * reproduce section6_sites.csv and section6_site_seasons.csv (decision.test.mjs). Node-tested, so relative imports.
  */
-import { deming, median } from '../../../research/common/stats.ts'
+import { deming, median, spearman } from '../../../../lib/stats.ts'
 import { demingLambda } from '../../../../lib/macMath.ts'
-import { spearman } from '../../../../lib/stats.ts'
 
 export interface FlagFilter {
   id: string

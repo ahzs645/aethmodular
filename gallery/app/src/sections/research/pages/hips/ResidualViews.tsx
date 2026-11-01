@@ -10,7 +10,7 @@ import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 
 import { envelopeOf, type Envelope } from '../../common/optics'
-import { ols } from '../../common/stats'
+import { ols } from '@/lib/stats'
 import { line, point, shortSeason } from '../../common/ui'
 import { useMarkedPairs } from './marked'
 

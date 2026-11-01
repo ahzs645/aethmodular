@@ -8,7 +8,7 @@ import { INK } from '@/lib/theme'
 
 import { lineKey, rSuppression } from '../../common/blankLines'
 import type { Optics } from '../../common/optics'
-import { quantile } from '../../common/stats'
+import { quantile } from '@/lib/stats'
 import { line, point } from '../../common/ui'
 import { refOf, type LinePalette } from './lines'
 import { useMarkedPairs } from './marked'

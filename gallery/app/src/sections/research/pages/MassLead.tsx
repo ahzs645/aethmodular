@@ -19,7 +19,7 @@ import {
   type Estimate, type Framing, type MassFilter, type PartialRow, type SiteFit,
 } from '../common/massLead'
 import { OPTICS_COMMAND, useOptics } from '../common/optics'
-import { quantile } from '../common/stats'
+import { quantile } from '@/lib/stats'
 import { BASIS_NOTE, DataTable, SERIES, num, point, useConcRows } from '../common/ui'
 import { presetName, rows as tableRows, useCalibRuns, useSpectral, type SpectralExport } from './spectralCommon'
 

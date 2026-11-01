@@ -5,7 +5,7 @@
  * anomaly rate, the lot controls and their Mann–Whitney tests (node-tested in charcoal.test.mjs against the
  * notebooks' own tables). Pure: no React, no gallery imports.
  */
-import { median, quantile } from './stats.ts'
+import { median, quantile } from '../../../lib/stats.ts'
 
 /** one row of the export's per_filter table (char_06 per_filter_classification.csv + char_03 + char_02) */
 export interface CharcoalScore {

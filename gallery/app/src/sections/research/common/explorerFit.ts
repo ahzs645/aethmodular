@@ -3,7 +3,7 @@
  * per-filter readouts (runs[].eval), so a chart's lines follow Filters → excluded: on the explorer's own set they
  * reproduce the saved row (explorerFit.test.mjs); on the filters that count they move with the exclusions.
  */
-import { deming, median, ols } from './stats.ts'
+import { deming, median, ols } from '../../../lib/stats.ts'
 
 /** the columns of a saved metrics row a chart draws, refitted: OLS and Deming of predicted EC on Fabs/10 */
 export interface ExplorerFit { n: number; ols_slope: number; ols_intercept: number; deming_slope: number | null; deming_intercept: number | null; R2: number }

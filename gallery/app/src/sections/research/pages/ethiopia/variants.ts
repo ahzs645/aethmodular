@@ -6,7 +6,7 @@
  *  - 09 [12] panel C: median, mean and share negative against the component count;
  *  - 10 [12] panel B: lot-251-only against both lots at k = 30, and 10's lot-248 effect (ratio of the medians).
  */
-import { median } from '../../common/stats.ts'
+import { median } from '../../../../lib/stats.ts'
 
 type Value = string | number | boolean | null
 type Row = Record<string, Value>

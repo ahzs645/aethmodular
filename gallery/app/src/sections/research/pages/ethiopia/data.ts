@@ -11,7 +11,7 @@
  * "Biomass-smoke (906)" preset trains on the same set). July07's "smoke" and spartan_ec's "biomass tool" are a
  * different model: the coefficients SPARTAN's calibration tool exported for lot 251.
  */
-import { median, ols } from '../../common/stats.ts'
+import { median, ols } from '../../../../lib/stats.ts'
 
 type Value = string | number | boolean | null
 type Row = Record<string, Value>
