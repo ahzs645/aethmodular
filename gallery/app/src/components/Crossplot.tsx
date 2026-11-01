@@ -48,18 +48,12 @@ export interface CrossLine { slope: number; intercept: number; color: string; la
  * With `fit`, the browser refits the drawn points under the chosen estimators
  * (pooled, or one line per site); without it the plot only shows saved results.
  */
-/** a crossplot axis range: 0 always in view, 5 % headroom, nice ends */
-const span = (v: number[]) => d3.scaleLinear().domain([Math.min(0, d3.min(v) ?? 0), (d3.max(v) ?? 1) * 1.05]).nice().domain() as [number, number]
-
 /**
- * One range for several panels (Panel axes: Shared, lib/panelAxes): pass the result's `domain` and
- * `yDomain` to every panel. With `sameScale` both axes share one span, as a single panel's would.
+ * A crossplot axis range: 0 always in view, 5 % headroom, nice ends. Several panels share one through their panel
+ * group (components/PanelGroup `share`); a group shape that must take in extra values pads them the same way.
  */
-export function sharedCrossDomains(sets: CrossPoint[][], sameScale = true): { domain: [number, number]; yDomain?: [number, number] } {
-  const pts = sets.flat().filter((p) => p.x != null && p.y != null && Number.isFinite(p.x) && Number.isFinite(p.y))
-  const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y)
-  return sameScale ? { domain: span([...xs, ...ys]) } : { domain: span(xs), yDomain: span(ys) }
-}
+export const crossSpan = (v: number[]) => d3.scaleLinear().domain([Math.min(0, d3.min(v) ?? 0), (d3.max(v) ?? 1) * 1.05]).nice().domain() as [number, number]
+const span = crossSpan
 
 const NO_KEYS: ReadonlySet<string> = new Set()
 

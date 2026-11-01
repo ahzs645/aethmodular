@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
-import { Crossplot, sharedCrossDomains, type CrossPoint } from '@/components/Crossplot'
+import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { coef } from '@/lib/format'
@@ -55,7 +55,6 @@ export function FlowFixCompare({ rows, meta, index }: { rows: FilterRow[]; meta:
   const markedSets = byPeriod.map(({ k }) => markedPaired.filter((r) => r.code === site && periodOf(r.date, index.flow_periods[site]) === k)
     .map((r) => crossPoint(r, AETH_IR, ref, PERIOD_COLOR[k], 'Aethalometer flow fix', meta)))
   const atStrip = new Set(Object.keys(index.sites).filter((c) => c in index.flow_periods))
-  const dom = sharedCrossDomains(sets)
 
   const blocks = useMemo<IntervalBlock[]>(() => Object.keys(index.sites).filter((c) => c in index.flow_periods).map((code) => {
     const p = index.flow_periods[code]
@@ -88,9 +87,9 @@ export function FlowFixCompare({ rows, meta, index }: { rows: FilterRow[]; meta:
         <Segmented label="Site" value={site} options={sites} onChange={setSite} optionLabel={(c) => instrumentName(c, meta)} />
         <Segmented label="Against" value={ref} options={[...REFERENCES]} onChange={setRef} optionLabel={(c) => REF_LABEL[c]} />
       </>}>
-      {byPeriod.length ? <FacetGrid items={byPeriod} minCell={300} maxCols={3}
+      {byPeriod.length ? <FacetGrid items={byPeriod} minCell={300} maxCols={3} itemKey={({ k }) => k} share
         render={({ k }, cell, i) => <Crossplot points={sets[i]} marked={markedSets[i]} title={`${PERIOD_LABEL[k]} · ${sets[i].length} filters`} xLabel={xLabel} yLabel={yLabel}
-          maxSide={Math.min(360, cell - 80)} domain={dom.domain} />} />
+          maxSide={Math.min(360, cell - 80)} />} />
         : <Empty>No filter at {instrumentName(site, meta)} has both IR BCc and {REF_LABEL[ref]} in the current subset.</Empty>}
       {byPeriod.length > 0 && <ExcludedNote count={markedSets.reduce((a, m) => a + m.length, 0)} drawn />}
     </ChartFrame>

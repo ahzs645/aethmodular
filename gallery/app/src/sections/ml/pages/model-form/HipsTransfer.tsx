@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from 'react'
 import { ChartFrame, Segmented } from '@/components/ChartFrame'
-import { Crossplot, sharedCrossDomains, type CrossPoint, type CrossLine } from '@/components/Crossplot'
+import { Crossplot, type CrossPoint, type CrossLine } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { Key } from '@/components/Key'
 import { baseFilterId } from '@/lib/filterId'
@@ -72,7 +72,6 @@ export function HipsTransfer({ filters, shown, runs, provenance }: { filters: Ro
     })
     return { m, metrics, points: toPoints(kept), marked: toPoints(split.marked) }
   })
-  const domains = sharedCrossDomains(panelsOut.map((p) => p.points))
 
   // the live metrics against ftir_08's table, on the notebook's own set (all 239, nothing excluded, Fabs)
   const fullCheck = MODELS.map((m) => {
@@ -98,13 +97,13 @@ export function HipsTransfer({ filters, shown, runs, provenance }: { filters: Ro
         {fixedKnown && <Segmented label="Filters" value={set} options={SETS} onChange={setSet} />}
         <Segmented label="Units" value={units} options={UNITS} optionLabel={(o) => (o === 'Fabs' ? 'Fabs (MAC-free)' : `HIPS BC (${mac.label})`)} onChange={setUnits} />
       </>}>
-      <FacetGrid items={panelsOut} minCell={300} maxCols={3} maxCell={480} render={(p, w) => (
-        <Crossplot title={p.m.name} points={p.points} marked={p.marked} fit={false} grouping="none" extraLines={line(p.metrics, p.m.color)} maxSide={w - 70} domain={domains.domain}
+      <FacetGrid items={panelsOut} minCell={300} maxCols={3} maxCell={480} itemKey={(p) => p.m.col} share render={(p, w) => (
+        <Crossplot title={p.m.name} points={p.points} marked={p.marked} fit={false} grouping="none" extraLines={line(p.metrics, p.m.color)} maxSide={w - 70}
           xLabel={axis('Observed')} yLabel={axis('Predicted')}
-          background={(x, y) => p.metrics && <text x={x(domains.domain[0]) + 8} y={y(domains.domain[1]) + 16} fontSize={11} fill={INK.text} pointerEvents="none">
+          background={(x, y) => p.metrics && <text x={x(x.domain()[0]) + 8} y={y(y.domain()[1]) + 16} fontSize={11} fill={INK.text} pointerEvents="none">
             {/* the notebook's in-panel box: the live OLS line and its metrics */}
             {[`y = ${f2(p.metrics.slope)}x ${p.metrics.intercept < 0 ? '−' : '+'} ${f2(Math.abs(p.metrics.intercept))}`,
-              `R² = ${f3(p.metrics.R2)}   RMSE = ${f2(p.metrics.RMSE)}`, `n = ${p.metrics.n}`].map((t, i) => <tspan key={i} x={x(domains.domain[0]) + 8} dy={i ? 14 : 0}>{t}</tspan>)}
+              `R² = ${f3(p.metrics.R2)}   RMSE = ${f2(p.metrics.RMSE)}`, `n = ${p.metrics.n}`].map((t, i) => <tspan key={i} x={x(x.domain()[0]) + 8} dy={i ? 14 : 0}>{t}</tspan>)}
           </text>} />
       )} />
       <Key items={[...panelsOut.map((p) => ({ label: p.m.name, color: p.m.color, kind: 'dot' as const })),

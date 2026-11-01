@@ -9,7 +9,7 @@ import { ADDIS_ALL, INK } from '@/lib/theme'
 import { coef, coefSigned, f2, signed } from '@/lib/format'
 import { demingLambda, useMac } from '@/lib/mac'
 import { AxisChoices } from '@/components/AxisChoices'
-import { Crossplot, CrossplotBrushControls, sharedCrossDomains, useCrossplotBrush, type CrossPoint } from '@/components/Crossplot'
+import { Crossplot, CrossplotBrushControls, useCrossplotBrush, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { ExcludedNote, FixedSetNote } from '@/lib/markedRows'
 import { regression } from '@/lib/stats'
@@ -206,7 +206,6 @@ function AddisScatter({ d }: { d: AnalogsData }) {
   const lambda = demingLambda(mac.mac, lambdaOf(d))
   // every model on one range, so the panels compare directly
   const panels = useMemo(() => view === 'panels' ? models.map((m) => ({ key: m, points: pointsOf('hips_bc', m), marked: pointsOf('hips_bc', m, ADDIS_ALL, {}, out) })) : [], [view, f, out, models.join()]) // eslint-disable-line react-hooks/exhaustive-deps
-  const shared = sharedCrossDomains(panels.map((p) => p.points))
   const overlayOf = (rows: Record<string, any>[]) => models.filter((m) => lg.show(m)).flatMap((m) => pointsOf('hips_bc', m, colorOf(m), { site: m, opacity: 0.3 * lg.dim(m) }, rows))
   const overlay = view === 'overlay' ? overlayOf(f) : []
   const brushControls = <CrossplotBrushControls brush={[brush, setBrush]} />
@@ -223,8 +222,8 @@ function AddisScatter({ d }: { d: AnalogsData }) {
     {view === 'one' && <AxisChoices noun="measurements" x={[xField, setX]} y={[yField, setY]} options={choices.map(key => ({ key, label: key === 'hips_bc' ? `HIPS BC, ${mac.label}` : `FTIR EC, ${key}`, group: key === 'hips_bc' ? 'Optical measurement' : 'Model predictions', unit: 'µg/m³' }))}>
       <Crossplot points={pointsOf(xField, yField)} marked={pointsOf(xField, yField, ADDIS_ALL, {}, out)} title={standard ? model : 'Custom axes'} xLabel={labelOf(xField)} yLabel={labelOf(yField)} pick brushable brush={brush} maxSide={480} errorRatio={lambda} />
     </AxisChoices>}
-    {view === 'panels' && <FacetGrid items={panels} minCell={300} maxCols={3} render={(p, w) =>
-      <Crossplot points={p.points} marked={p.marked} title={p.key} xLabel={labelOf('hips_bc')} yLabel="FTIR EC (µg/m³)" brushable brush={brush} maxSide={w - 70} errorRatio={lambda} domain={shared.domain} />} />}
+    {view === 'panels' && <FacetGrid items={panels} minCell={300} maxCols={3} itemKey={(p) => p.key} share render={(p, w) =>
+      <Crossplot points={p.points} marked={p.marked} title={p.key} xLabel={labelOf('hips_bc')} yLabel="FTIR EC (µg/m³)" brushable brush={brush} maxSide={w - 70} errorRatio={lambda} />} />}
     {view === 'overlay' && <>
       <Crossplot points={overlay} marked={view === 'overlay' && out.length ? overlayOf(out) : undefined} title="Every model" xLabel={labelOf('hips_bc')} yLabel="FTIR EC (µg/m³)" brushable brush={brush} maxSide={520} errorRatio={lambda} grouping="site" />
       <Legend {...lg.props} items={models.map((m) => ({ label: m, color: colorOf(m) }))} />
