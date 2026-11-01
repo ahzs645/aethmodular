@@ -12,6 +12,7 @@ import { coef, coefSigned, f2, fitSummary, signed } from '@/lib/format'
 import { useMac, type MacView } from '@/lib/mac'
 import { Scatter, runLine, sourceOf, useXp, type XpBase } from './shared'
 import { FixedSetNote } from '@/lib/markedRows'
+import { FindingsList } from '@/components/Findings'
 
 /** Test 4: preprocessing × window × pool × k on the same filters (experiments_20261022.ipynb §4). */
 
@@ -57,11 +58,10 @@ function Findings({ d }: { d: AttributionData }) {
   return (
     <ExplainOnly>
       <ChartFrame id="xt-findings" title="Attribution grid — short answers" exportable={false}>
-        <ol style={{ margin: '4px 0 0 18px', lineHeight: 1.55 }}>
+        <FindingsList note={<>{runLine(d)}. Effects are differences between factor levels averaged over the other two factors of a complete 2 × 2 × 2 sub-grid; an interaction is half the change of one factor's effect across the other's levels.</>}>
           {e.slice(0, 3).map((x) => <li key={x.grid + x.term}><strong>{x.term}</strong> ({x.grid}; {x.contrast}): Addis intercept {coefSigned(x['Addis intercept'])} µg/m³, IMPROVE RMSE {signed(x['IMPROVE RMSE'])} µg.</li>)}
           <li><strong>Lowest IMPROVE error:</strong> {rowKey(best)}, {colKey(best)} (RMSE {f2(best['IMPROVE RMSE'])} µg; Addis intercept {coefSigned(best['Addis intercept'])}). <strong>Addis closest to HIPS:</strong> {rowKey(closest)}, {colKey(closest)} (intercept {coefSigned(closest['Addis intercept'])}; IMPROVE RMSE {f2(closest['IMPROVE RMSE'])}).</li>
-        </ol>
-        <Note>{runLine(d)}. Effects are differences between factor levels averaged over the other two factors of a complete 2 × 2 × 2 sub-grid; an interaction is half the change of one factor's effect across the other's levels.</Note>
+        </FindingsList>
       </ChartFrame>
     </ExplainOnly>
   )

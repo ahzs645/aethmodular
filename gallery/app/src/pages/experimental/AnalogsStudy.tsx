@@ -14,6 +14,7 @@ import { FacetGrid } from '@/components/FacetGrid'
 import { ExcludedNote, FixedSetNote } from '@/lib/markedRows'
 import { regression } from '@/lib/stats'
 import { Forest, num, rowsOf, runLine, sourceOf, useCounted, useXp, type Cols, type XpBase } from './shared'
+import { FindingsList } from '@/components/Findings'
 
 /** Test 3: calibration neighbours chosen by deposited mass as well as spectral shape (experiments_20261022.ipynb §3). */
 
@@ -84,13 +85,12 @@ function Findings({ d }: { d: AnalogsData }) {
   return (
     <ExplainOnly>
       <ChartFrame id="xa-findings" title="Loading-matched analogs — short answers" exportable={false}>
-        <ol style={{ margin: '4px 0 0 18px', lineHeight: 1.55 }}>
+        <FindingsList note={<>{runLine(d)}. Addis is read against HIPS BC ({label}, set under Samples), a cross-check, not the truth. The intercepts do not depend on the MAC.{nOut > 0 ? ` The Addis numbers are refitted without the ${nOut} filter${nOut === 1 ? '' : 's'} Filters → excluded leaves out; the IMPROVE errors are the run's.` : ''}</>}>
           <li><strong>Matching worked on loading:</strong> Addis filters are {f2(A['local: shape']['PM ÷ neighbours (median)'])}× heavier than their shape neighbours (weighed PM2.5) and {f2(A['local: shape + loading']['PM ÷ neighbours (median)'])}× with shape + loading neighbours.</li>
           <li><strong>Addis against HIPS:</strong> intercept {coefSigned(A['local: shape + loading'].intercept)} µg/m³ with shape + loading neighbours, {coefSigned(A['local: shape'].intercept)} with shape alone, {coefSigned(A['local: loading only'].intercept)} with loading alone; published {coefSigned(A['SPARTAN published'].intercept)}. {closer ? 'Loading matching moves Addis toward HIPS.' : 'Loading matching does not move Addis toward HIPS, so loading extrapolation alone does not explain the gap.'}</li>
           {A['local: shape + HIPS loading'] && <li><strong>Matching on absorption instead</strong> (shape + HIPS loading): Addis is still {f2(A['local: shape + HIPS loading']['HIPS ÷ neighbours (median)'])}× more absorbing than its neighbours (IMPROVE has no heavier absorbers of that shape), and the intercept is {coefSigned(A['local: shape + HIPS loading'].intercept)} µg/m³.</li>}
           <li><strong>IMPROVE's heaviest tenth against TOR:</strong> RMSE {f2(full?.rmse)} µg (full), {f2(sh?.rmse)} (shape), {f2(sl?.rmse)} (shape + loading){I('local: shape + HIPS loading', 'heaviest tenth') ? `, ${f2(I('local: shape + HIPS loading', 'heaviest tenth')?.rmse)} (shape + HIPS loading)` : ''}.</li>
-        </ol>
-        <Note>{runLine(d)}. Addis is read against HIPS BC ({label}, set under Samples), a cross-check, not the truth. The intercepts do not depend on the MAC.{nOut > 0 ? ` The Addis numbers are refitted without the ${nOut} filter${nOut === 1 ? '' : 's'} Filters → excluded leaves out; the IMPROVE errors are the run's.` : ''}</Note>
+        </FindingsList>
       </ChartFrame>
     </ExplainOnly>
   )

@@ -1,7 +1,6 @@
-import { createContext, useContext, useMemo, useRef, useId } from 'react'
+import { createContext, useContext, useMemo, useRef } from 'react'
 import { robustDomain } from '@/lib/axes'
 import { AxisChoices } from '@/components/AxisChoices'
-import { Marker } from '@/components/RefLines'
 import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
@@ -9,15 +8,13 @@ import { ChartFrame, ExplainOnly, Note, Segmented, Select } from '@/components/C
 import { PageToc } from '@/components/PageToc'
 import { SatoshiSpectra } from '@/components/SatoshiSpectra'
 import { BankPicker, BaselinePicker, SeasonPicker } from '@/components/Pickers'
-import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
 import { PageChoiceControls, PageChoices, usePageChoice } from '@/lib/pageChoices'
 import { SidebarControls } from '@/lib/pageSidebar'
-import { dotFill, dotRim, useEscapeUnpin, useHighlightActions, type FilterRecord } from '@/lib/highlight'
-import { ScatterLayer } from '@/components/ScatterLayer'
-import { BANK_COLOR, BASELINE_COLOR, FONT, INK, OCT1_HATCH, SPECTRAL_REGION, themed } from '@/lib/theme'
+import { useEscapeUnpin, useHighlightActions, type FilterRecord } from '@/lib/highlight'
+import { ScatterPlot, type ScatterPoint } from '@/components/ScatterPlot'
+import { BANK_COLOR, BASELINE_COLOR, INK, OCT1_HATCH, SPECTRAL_REGION, themed } from '@/lib/theme'
 import { f2, f3, fmt, pct, signed, coef, coefSigned, trim } from '@/lib/format'
 import { ALL_ADDIS, ANALYSIS_CALENDAR_NOTE, shortSeason } from '@/lib/seasons'
 import { baselineName, ecAxis } from '@/lib/labels'
@@ -25,14 +22,14 @@ import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
 import { collapsePanelAxes } from '@/lib/axes'
 import { SpectrumPlot } from '@/components/SpectrumPlot'
-import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
+import { SweepPlot, histogramSeries, type SweepSeries } from '@/components/SweepPlot'
 import { Key } from '@/components/Key'
 import { BarRows, type BarRow } from '@/components/BarRows'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { BandCell, FitCell } from '@/components/TableCells'
 import { ANALOG_SELECTION_EXCLUDED, OCT1_ALSO_EXCLUDED } from '@/components/SpectralRegions'
-import { ExcludedNote, FixedSetNote, useCountedFilter, useExclMode, useExclusionSplit, useMarkReason, type MarkPoint } from '@/lib/markedRows'
-import { crossPath, markTip } from '@/lib/exclusionMode'
+import { FixedSetNote, useCountedFilter } from '@/lib/markedRows'
+import { FindingsList } from '@/components/Findings'
 
 /**
  * Satoshi's questions after the 1 Oct 2026 meeting (his email of 2 Oct). Every
@@ -244,53 +241,29 @@ function Overlap({ data }: { data: SatoshiData }) {
 
 /** TOR EC vs OC/EC of the three parts: where the two analog sets sit in composition. */
 function OverlapScatter({ data, mask, group }: { data: SatoshiData; mask: Mask; group: string }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const hl = useHighlightActions()
-  const clip = useId()
   const mb = data.members
-  const all = useMemo(() => mb.mask.map((_, i) => i).filter((i) => mb.mask[i] === mask && mb.group[i] === group && (mb.tor_ec_ugm3[i] as number) > 0 && (mb.tor_oc_ec[i] as number) > 0), [mb, mask, group])
-  // Filters → excluded (lib/markedRows): an analog excluded by hand leaves the dots; under Mark it is drawn as ×
-  const isCounted = useCountedFilter()
-  const idx = useMemo(() => all.filter((i) => isCounted(`improve:${mb.filter_id[i]}`)), [all, isCounted, mb])
-  const outIdx = useExclusionSplit(all, (i) => `improve:${mb.filter_id[i]}`).marked
-  const markMode = useExclMode() === 'mark'
-  const reasonOf = useMarkReason()
-  const m = { top: 12, right: 16, bottom: 46, left: 60 }
-  // a square plot (1:1 aspect), centred
-  const iw = Math.max(240, Math.min(width - m.left - m.right, 440)), ih = iw
-  const x = d3.scaleLog().domain([0.01, 5]).range([0, iw]).clamp(true)
-  const y = d3.scaleLog().domain([0.3, 40]).range([ih, 0]).clamp(true)
-  const order = (p: string) => (p === 'shared' ? 2 : 1)
-  const sorted = useMemo(() => [...idx].sort((a, b) => order(String(mb.part[a])) - order(String(mb.part[b]))), [idx, mb])
   const idOf = (i: number) => `improve:${mb.filter_id[i]}`
-  // the dots, drawn once per set and size: a hover or pin is drawn over them (components/ScatterLayer)
-  const xy = useMemo(() => sorted.map((i) => [x(mb.tor_ec_ugm3[i] as number), y(mb.tor_oc_ec[i] as number)] as const), [sorted, mb, iw]) // eslint-disable-line react-hooks/exhaustive-deps
-  const dots = useMemo(() => sorted.map((i, k) => <circle key={i} cx={xy[k][0]} cy={xy[k][1]} r={3} fill={PART_COLOR[String(mb.part[i])]} {...dotFill('standard')}
-    stroke={dotRim().stroke} strokeWidth={dotRim().strokeWidth} />), [sorted, mb, xy])
-  const marks = useMemo<MarkPoint[]>(() => (markMode ? outIdx : []).map((i) => ({ id: idOf(i), at: [x(mb.tor_ec_ugm3[i] as number), y(mb.tor_oc_ec[i] as number)] as const,
-    tip: markTip({ id: `IMPROVE ${mb.Site[i]} · filter ${mb.filter_id[i]}` }, reasonOf(idOf(i)) ?? 'by hand', [String(mb.part[i])]) })), [markMode, outIdx, mb, iw, reasonOf]) // eslint-disable-line react-hooks/exhaustive-deps
+  // the shared parts drawn last, over the parts only one baseline selects; Filters → excluded acts in the plot
+  // (components/ScatterPlot: an analog excluded by hand leaves the dots, × under Mark)
+  const order = (p: string) => (p === 'shared' ? 2 : 1)
+  const points = useMemo<ScatterPoint[]>(() => mb.mask.map((_, i) => i)
+    .filter((i) => mb.mask[i] === mask && mb.group[i] === group && (mb.tor_ec_ugm3[i] as number) > 0 && (mb.tor_oc_ec[i] as number) > 0)
+    .sort((a, b) => order(String(mb.part[a])) - order(String(mb.part[b])))
+    .map((i) => {
+      const part = String(mb.part[i])
+      return { x: mb.tor_ec_ugm3[i] as number, y: mb.tor_oc_ec[i] as number, color: PART_COLOR[part], r: 3, key: String(i), id: idOf(i),
+        tip: [`IMPROVE ${mb.Site[i]} · filter ${mb.filter_id[i]}`, part, `TOR EC ${f2(mb.tor_ec_ugm3[i])} µg/m³ · OC/EC ${f2(mb.tor_oc_ec[i])}`, `rank spline ${mb.rank_spline[i] ?? '—'} · rank VIBES ${mb.rank_vibes[i] ?? '—'}`],
+        open: () => hl.openRecord(improveRecord(mb.filter_id[i] as number, String(mb.Site[i]), `Satoshi 2 Oct · analogs of ${group} · ${part}`, [
+          ['in analog set', part], ['rank, spline selection', mb.rank_spline[i]], ['rank, VIBES selection', mb.rank_vibes[i]],
+          ['Pearson r, spline', mb.r_spline[i]], ['Pearson r, VIBES', mb.r_vibes[i]], ['TOR EC (µg/m³)', mb.tor_ec_ugm3[i]],
+          ['TOR OC/EC', mb.tor_oc_ec[i]], ['Fabs / TOR EC (m²/g)', mb.mac_ratio[i]], ['TOR EC loading (µg/filter)', mb.loading_ug[i]], ['IMPROVE lot', mb.lot[i]]])) }
+    }), [mb, mask, group, hl]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div ref={ref} style={{ position: 'relative', marginTop: 12 }}>
-      <svg width={iw + m.left + m.right} height={ih + m.top + m.bottom} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
-        <g transform={`translate(${m.left},${m.top})`}>
-          <defs><clipPath id={clip}><rect width={iw} height={ih} /></clipPath></defs>
-          <YAxis scale={y as any} x={0} label="TOR OC/EC" tickCount={5} gridWidth={iw} labelX={-44} format={logTick} />
-          <XAxis scale={x as any} y={ih} label="TOR EC (µg/m³, log)" tickCount={5} format={logTick} labelDy={38} />
-          <g clipPath={`url(#${clip})`}>
-            <ScatterLayer items={sorted} xy={xy} idOf={idOf} dots={dots} width={iw} height={ih} tip={tip} marks={marks}
-              focus={(i, [cx, cy]) => <circle cx={cx} cy={cy} r={6} fill={PART_COLOR[String(mb.part[i])]} {...dotFill('standard')} stroke={INK.text} strokeWidth={2} />}
-              tipOf={(i) => [`IMPROVE ${mb.Site[i]} · filter ${mb.filter_id[i]}`, String(mb.part[i]), `TOR EC ${f2(mb.tor_ec_ugm3[i])} µg/m³ · OC/EC ${f2(mb.tor_oc_ec[i])}`, `rank spline ${mb.rank_spline[i] ?? '—'} · rank VIBES ${mb.rank_vibes[i] ?? '—'}`, 'click to pin and open its record']}
-              onPick={(i) => { const part = String(mb.part[i]); hl.setPinned(idOf(i)); hl.openRecord(improveRecord(mb.filter_id[i] as number, String(mb.Site[i]), `Satoshi 2 Oct · analogs of ${group} · ${part}`, [
-                ['in analog set', part], ['rank, spline selection', mb.rank_spline[i]], ['rank, VIBES selection', mb.rank_vibes[i]],
-                ['Pearson r, spline', mb.r_spline[i]], ['Pearson r, VIBES', mb.r_vibes[i]], ['TOR EC (µg/m³)', mb.tor_ec_ugm3[i]],
-                ['TOR OC/EC', mb.tor_oc_ec[i]], ['Fabs / TOR EC (m²/g)', mb.mac_ratio[i]], ['TOR EC loading (µg/filter)', mb.loading_ug[i]], ['IMPROVE lot', mb.lot[i]]])) }} />
-          </g>
-        </g>
-      </svg>
-      {tip.node}
-      <ExcludedNote count={all.length - idx.length} drawn={markMode} />
+    <div style={{ marginTop: 12 }}>
+      <ScatterPlot points={points} xScale="log" yScale="log" xDomain={[0.01, 5]} yDomain={[0.3, 40]} nice={false} outside="pin"
+        maxSide={440} minSide={240} margin={{ top: 12, right: 16, bottom: 46, left: 60 }} labelX={-44} density="standard" xTicks={5} yTicks={5}
+        xFormat={logTick} yFormat={logTick} xLabel="TOR EC (µg/m³, log)" yLabel="TOR OC/EC" note="mark" />
     </div>
   )
 }
@@ -536,7 +509,6 @@ function Envelope({ data }: { data: SatoshiData }) {
   const { value: baseline } = usePageChoice('baseline', BASELINES) as { value: Baseline }
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const mm = maskFor(baseline, mask)
   const ep = data.envelope_points, mb = data.members
   // the page's axes (default: TOR against FTIR, square)
@@ -574,8 +546,11 @@ function Envelope({ data }: { data: SatoshiData }) {
   }, [pool, ep, hi, ax.x, ax.y])  // eslint-disable-line react-hooks/exhaustive-deps
   const maxBin = d3.max([...bins.values()]) ?? 1
   const hist = d3.bin().domain([0, 100]).thresholds(d3.range(0, 100, 10))(analogs.map((i) => ep.residual_pct[i] as number).filter(Number.isFinite))
-  const hx = d3.scaleLinear().domain([0, 100]).range([0, side])
-  const hy = d3.scaleLinear().domain([0, Math.max(0.2, (d3.max(hist, (b) => b.length) ?? 0) / Math.max(1, analogs.length) * 1.15)]).range([side, 0])
+  // the analogs' share per decile of residual percentile (components/SweepPlot histogram bars)
+  const histSeries = histogramSeries({ id: 'analogs', label: `Analogs of ${group}`, color: data.season_colors[group], fill: 0.8, bars: true,
+    edges: [hist[0]?.x0 ?? 0, ...hist.map((b) => b.x1!)], counts: hist.map((b) => b.length), total: analogs.length,
+    tip: (i, v) => [`percentile ${hist[i].x0}–${hist[i].x1}`, `${hist[i].length} analogs (${pct(v)})`] })
+  const histMax = Math.max(0.2, (d3.max(hist, (b) => b.length) ?? 0) / Math.max(1, analogs.length) * 1.15)
   const color = data.season_colors[group]
   const env = data.envelope.filter((e) => e.baseline === baseline && e.mask === mm)
   const years = data.years
@@ -597,18 +572,9 @@ function Envelope({ data }: { data: SatoshiData }) {
             points={analogs.filter((i) => Number.isFinite(vx(i)) && Number.isFinite(vy(i))).map((i) => ({ x: vx(i), y: vy(i), color, id: `improve:${ep.filter_id[i]}`,
               tip: [`IMPROVE ${ep.Site[i]} · filter ${ep.filter_id[i]}`, `TOR EC ${f3(ep.tor_ec_ugm3[i])} · FTIR ${f3(ep.ftir_oos_ugm3[i])} µg/m³`, `residual percentile ${f2(ep.residual_pct[i])}`] }))} />
         </div>
-        <svg width={side + m.left + m.right} height={side + m.top + m.bottom} fontFamily={FONT.family}>
-          <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>Analogs' residual percentile at matched TOR EC</text>
-          <g transform={`translate(${m.left},${m.top})`}>
-            <YAxis scale={hy} x={0} label="Share of analogs" tickCount={5} gridWidth={side} labelX={-42} format={(v) => `${Math.round(100 * v)} %`} />
-            <XAxis scale={hx} y={side} label="Residual percentile (low = lower envelope)" tickCount={5} labelDy={36} />
-            {hist.map((b, i) => <rect key={i} x={hx(b.x0!) + 1} width={Math.max(0, hx(b.x1!) - hx(b.x0!) - 2)} y={hy(b.length / Math.max(1, analogs.length))} height={side - hy(b.length / Math.max(1, analogs.length))} fill={color} fillOpacity={0.8}
-              {...tip.bind([`percentile ${b.x0}–${b.x1}`, `${b.length} analogs (${pct(b.length / Math.max(1, analogs.length))})`])} />)}
-            <Marker orient="h" at={hy(0.1)} from={0} to={side} />
-            <text x={side - 4} y={hy(0.1) - 5} textAnchor="end" fontSize={10} fontFamily={FONT.mono} fill={INK.text}>typical: 10 % per bar</text>
-          </g>
-        </svg>
-        {tip.node}
+        <SweepPlot series={[histSeries]} title="Analogs' residual percentile at matched TOR EC" width={side + m.left + m.right} height={side + 58} xDomain={[0, 100]} yDomain={[0, histMax]}
+          xLabel="Residual percentile (low = lower envelope)" yLabel="Share of analogs" yFormat={(v) => pct(v)}
+          yMarkers={[{ at: 0.1, label: 'typical: 10 % per bar' }]} />
       </div>
       <Key items={[{ label: 'All lot-251 IMPROVE filters (density)', color: INK.axis, kind: 'bar' }, { label: `Analogs of ${group}`, color, kind: 'dot' }]} />
       <table className="census-table" style={{ marginTop: 10 }}>
@@ -718,7 +684,7 @@ function Conclusion({ s, o }: { s: SatoshiData; o: Oct1Data | null }) {
   const dustGroups = tests.filter((t) => sig(t.kruskal_p_Al))
   return (
     <ChartFrame id="satoshi-conclusion" source="gallery/app/src/pages/SatoshiFollowupPage.tsx › Conclusion" title="Where we stand, 14 Oct — the current conclusion" exportable={false}>
-      <ol style={{ margin: '4px 0 0 18px', lineHeight: 1.55 }}>
+      <FindingsList note={<>Working conclusion: the spline-baseline calibrations remain the defensible ones for Addis. A clean, large VIBES blank bank removes the background problems (held-out blanks correct cleanly) but not the Addis bias: VIBES models that use enough PLS factors to fit IMPROVE well predict Addis with large negative intercepts, and every VIBES seasonal analog calibration does too. The bias grows with the number of PLS factors, comes only partly from the extra 500–1425 cm⁻¹ window, and is not the PTFE band or the blank count. Smoke-like IMPROVE filters do not reproduce it, so it is a shift specific to Addis that IMPROVE validation cannot flag. The PTFE region should still stay out of analog similarity, as a matter of hygiene rather than as the explanation.</>}>
         <li><strong>The IMPROVE analogs fit TOR EC well; the bias only appears at Addis.</strong> Seasonal analog calibrations reproduce TOR EC in cross-validation (R² {range(h.analog_cv_r2[SPLINE])} spline) with intercepts within about ±0.2 µg/m³, but predict Addis with negative intercepts. The problem is transfer to Addis, not the fitting.</li>
         <li><strong>The baseline correction, not the choice of analogs, sets the Addis intercept.</strong> Spline calibrations stay near zero whichever analogs they get; VIBES calibrations go strongly negative whichever analogs they get (swap test). Spline and VIBES pick mostly different analogs ({s.seasons.map((g) => `${h.overlap[g].shared}`).join(' / ')} of 500 shared, Dry / Belg / Kiremt), yet that matters less than the baseline.</li>
         <li><strong>VIBES models lean on 1050–1425 cm⁻¹, but the PTFE band is not the cause.</strong> {pct(h.vibes_analog_vip2_1050_1425[0])}–{pct(h.vibes_analog_vip2_1050_1425[1])} of the VIBES analog models' VIP² sits there (spline models use the same bands as the standard model). Removing it does not help: dropping 1050–1250 cm⁻¹ from the PLS input makes the Kiremt analog intercept more negative (−8.8 vs −6.8 µg/m³, 8 Oct test), and the PTFE band carries only about a fifth of the VIBES standard-model intercept. The 500–1425 cm⁻¹ window that spline lacks explains part of the gap, not all of it: VIBES cut to the spline window (4000–1425) still reaches −4.1 µg/m³ at k = 20 on the standard model vs −7.0 full range and −1.6 spline (14 Oct k-sweep).</li>
@@ -727,8 +693,7 @@ function Conclusion({ s, o }: { s: SatoshiData; o: Oct1Data | null }) {
         {o && cleanBanks.length === 0 && newBanks.length > 0 && <li><strong>More blanks did not fix VIBES</strong>, but those runs were dominated by one outlier blank that forced a rank-{bank('VIBES-lot251')?.rank} background (see the Blanks tab); the reruns without it are pending.</li>}
         {o && <li><strong>Fingerprint groupings below 1500 cm⁻¹ track dust, not EC.</strong> Within a season the Addis spectra form {realGroups.length ? `distinct clusters only in ${realGroups.map((t) => shortSeason(t.group)).join(', ')}` : 'no clusters more distinct than structureless data'}; the clusters differ in aluminium (dust) in {dustGroups.map((t) => shortSeason(t.group)).join(', ') || 'no season'} and in HIPS EC in {ecGroups.map((t) => shortSeason(t.group)).join(', ') || 'no season'} (Kruskal–Wallis p &lt; 0.01; 87-blank VIBES).{dustAll ? ' The dust separation holds on every blank bank; EC differences do not.' : ''}</li>}
         <li><strong>Not explained by sampling the lower envelope or by loading alone.</strong> Analogs sit mid-distribution of the standard model's residuals (median percentile {range(h.envelope_pct_median[SPLINE]).replace(/\.\d+/g, '')}), and VIBES analogs that cover the Addis loading range still give the most negative intercepts.</li>
-      </ol>
-      <Note>Working conclusion: the spline-baseline calibrations remain the defensible ones for Addis. A clean, large VIBES blank bank removes the background problems (held-out blanks correct cleanly) but not the Addis bias: VIBES models that use enough PLS factors to fit IMPROVE well predict Addis with large negative intercepts, and every VIBES seasonal analog calibration does too. The bias grows with the number of PLS factors, comes only partly from the extra 500–1425 cm⁻¹ window, and is not the PTFE band or the blank count. Smoke-like IMPROVE filters do not reproduce it, so it is a shift specific to Addis that IMPROVE validation cannot flag. The PTFE region should still stay out of analog similarity, as a matter of hygiene rather than as the explanation.</Note>
+      </FindingsList>
     </ChartFrame>
   )
 }
@@ -839,25 +804,17 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
   const { value: season, note: seasonNote } = usePageChoice('season', d.seasons)
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const mem = d.group_members
   const ptsAll: { id: string; pc1: number; ec: number; c: number; res: number }[] = []
   for (let i = 0; i < mem.baseline.length; i++) if (mem.baseline[i] === baseline && mem.region[i] === region && mem.group[i] === season)
     ptsAll.push({ id: String(mem.filter_id[i]), pc1: mem.pc1[i] as number, ec: mem.ec_fabs10[i] as number, c: mem.cluster[i] as number, res: mem.residual[i] as number })
-  // Filters → excluded (lib/markedRows): the clusters are the run's, fitted on every Addis filter; the dots follow the
-  // setting (out of the dots and the axis ranges; × under Mark)
-  const isCounted = useCountedFilter()
-  const pts = ptsAll.filter((p) => isCounted(p.id))
-  const outPts = useExclusionSplit(ptsAll, (p) => p.id).marked
-  const reasonOf = useMarkReason()
+  // Filters → excluded acts on the dots (components/ScatterPlot: out of the dots and the axis ranges; × under Mark);
+  // the clusters are the run's, fitted on every Addis filter
+  const dots = useMemo<ScatterPoint[]>(() => ptsAll.map((p) => ({ x: p.pc1, y: p.ec, color: CLUSTER_COLORS[(p.c - 1) % 4], r: 4, id: p.id,
+    tip: [p.id, `cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`, `standard spline model error ${signed(p.res)} µg/m³`] })), [ptsAll])
   const t = d.group_tests.find((x) => x.baseline === baseline && x.region === region && x.group === season)
   const summ = d.group_summary.filter((x) => x.baseline === baseline && x.region === region && x.group === season)
   const half = Math.max(260, Math.floor((width - 24) / 2))
-  const m = { top: 24, right: 12, bottom: 44, left: 56 }
-  // a square plot (1:1 aspect), at most as wide as its half of the row
-  const iw = Math.max(180, Math.min(half - m.left - m.right, 340)), ih = iw, h = ih + m.top + m.bottom
-  const x = d3.scaleLinear().domain(d3.extent(pts, (p) => p.pc1) as [number, number]).nice().range([0, iw])
-  const y = d3.scaleLinear().domain(d3.extent(pts, (p) => p.ec) as [number, number]).nice().range([ih, 0])
   const wn = d.group_spectra.wn[baseline] ?? []
   const lo = 500, hi = 1800
   const idx = wn.map((w, i) => [w, i] as const).filter(([w]) => w >= lo && w <= hi)
@@ -879,23 +836,14 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
       </>}>
       {seasonNote && <Note>{seasonNote}</Note>}
       <div ref={ref} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 24 }}>
-        <svg width={iw + m.left + m.right} height={h} fontFamily={FONT.family}>
-          <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>Main shape deviation (PC1) vs HIPS EC</text>
-          <g transform={`translate(${m.left},${m.top})`}>
-            <YAxis scale={y} x={0} label="Fabs / 10 (µg/m³)" tickCount={5} gridWidth={iw} labelX={-42} />
-            <XAxis scale={x} y={ih} label="PC1 score of the shape deviation" tickCount={5} labelDy={36} format={(v) => trim(v, 3)} />
-            {outPts.length > 0 && <g fill="none" stroke={INK.muted} strokeWidth={1.3} strokeOpacity={0.85} strokeLinecap="round">
-              {outPts.filter((p) => p.pc1 >= x.domain()[0] && p.pc1 <= x.domain()[1] && p.ec >= y.domain()[0] && p.ec <= y.domain()[1]).map((p) => <path key={p.id} d={crossPath(x(p.pc1), y(p.ec))}>
-                <title>{markTip({ id: p.id }, reasonOf(p.id) ?? 'excluded', [`cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`]).join('\n')}</title></path>)}
-            </g>}
-            {pts.map((p) => <circle key={p.id} cx={x(p.pc1)} cy={y(p.ec)} r={4} fill={CLUSTER_COLORS[(p.c - 1) % 4]} {...dotFill('sparse')} {...dotRim()}
-              onMouseEnter={(e) => tip.show(e, [p.id, `cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`, `standard spline model error ${signed(p.res)} µg/m³`])} onMouseLeave={tip.hide} />)}
-          </g>
-        </svg>
+        {/* a square plot (1:1 aspect), at most as wide as its half of the row */}
+        <div style={{ width: half }}>
+          <ScatterPlot points={dots} title="Main shape deviation (PC1) vs HIPS EC" maxSide={340} minSide={180} margin={{ top: 10, right: 12, bottom: 44, left: 56 }} labelX={-42}
+            xTicks={5} xFormat={(v) => trim(v, 3)} xLabel="PC1 score of the shape deviation" yLabel="Fabs / 10 (µg/m³)" note="mark" />
+        </div>
         <SpectrumPlot width={half} minWidth={260} height={262} title="Median spectrum of each cluster, 1800–500 cm⁻¹" window={[hi, lo]} yDomain={sDomain}
           regions={sRegions} hover="readout" yFormat={(v) => trim(v, 3)}
           series={specs.map((s) => ({ id: `c${s.c}`, label: `cluster ${s.c}`, wn, y: s.v, color: CLUSTER_COLORS[(s.c - 1) % 4], width: 1.8 }))} />
-        {tip.node}
       </div>
       <Key items={[...summ.map((s) => ({ label: `cluster ${s.cluster} (n ${s.n}, median Fabs/10 ${f2(s.ec_fabs10_median)})`, color: CLUSTER_COLORS[(s.cluster - 1) % 4] })), { label: 'outside the clustering region', color: INK.shade, kind: 'bar' as const }]} />
       {t && <Note>{shortSeason(season)}: {t.k} clusters, silhouette {f2(t.silhouette)} vs {f2(t.silhouette_null_p95)} for structureless data ({t.structure_beyond_null ? 'more distinct than chance' : t.min_cluster < 5 ? `the best split only isolates ${t.min_cluster} outlier filter${t.min_cluster > 1 ? 's' : ''}` : 'no more distinct than chance'}). Clusters differ in HIPS EC p {pfmt(t.kruskal_p_ec)}, in the standard model's error p {pfmt(t.kruskal_p_residual)}, in Al (dust) p {pfmt(t.kruskal_p_Al)}. PC1 vs EC Spearman ρ {f2(t.pc1_spearman_ec)}.</Note>}
@@ -908,7 +856,6 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
         <tbody>{allTests.map((x) => <tr key={x.group}><td style={{ color: d.season_colors[x.group], fontWeight: 600 }}>{x.group}</td><td>{x.k}</td><td>{f2(x.silhouette)} / {f2(x.silhouette_null_p95)}</td><td>{x.structure_beyond_null ? 'yes' : x.min_cluster < 5 ? `no (only ${x.min_cluster} outlier${x.min_cluster > 1 ? 's' : ''} split off)` : 'no'}</td><td>{pfmt(x.kruskal_p_ec)}</td><td>{pfmt(x.kruskal_p_residual)}</td><td>{pfmt(x.kruskal_p_Al)}</td><td>{pfmt(x.kruskal_p_K_ion)}</td><td>{pfmt(x.kruskal_p_nitrate)}</td><td>{f2(x.pc1_spearman_ec)}</td></tr>)}</tbody>
       </table>
       <Note>SPARTAN chemistry in µg/m³ except Al (ng/m³); Kruskal–Wallis across clusters. Standard model error = all-IMPROVE spline model (lot 251) minus Fabs/10. Dry has no SPARTAN chemistry for most filters.</Note>
-      <ExcludedNote count={ptsAll.length - pts.length} drawn={outPts.length > 0} />
       <FixedSetNote subject="the cluster view (not the dots, which follow the setting)" what="the run's clustering of every Addis filter of the season" />
     </ChartFrame>
   )

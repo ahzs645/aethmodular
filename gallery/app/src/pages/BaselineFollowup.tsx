@@ -4,13 +4,14 @@ import { dataUrl, useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
 import { ChartFrame, ExplainOnly, Note, Segmented } from '@/components/ChartFrame'
-import { XAxis, YAxis } from '@/components/Axes'
+import { XAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { FONT, INK, baselineColor } from '@/lib/theme'
 import { fmt as f } from '@/lib/format'
 import type { BaselineMethod } from '@/lib/baselineComparison'
 import { FixedSetNote } from '@/lib/markedRows'
+import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 
 const BASE = dataUrl('')
 /** Baseline colours follow the run's rank; the per-filter router is its own series. */
@@ -118,23 +119,23 @@ function RestrictedCheck({data}:{data:FollowupData}) {
 }
 
 function RoutingChart({data}:{data:FollowupData}) {
-  const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref);const tip=useTooltip(ref)
-  const w=Math.max(width,620),left=73,right=20,iw=w-left-right,ih=235
+  const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref)
+  const w=Math.max(width,620),left=73
   const populations=['training_site_nested','prior_inspected_test'] as const
   const names:Record<string,string>={training_site_nested:'Training-site folds',prior_inspected_test:'Previously inspected test'}
   const methods=['AIRSpec','VIBES','routed'] as const
-  const x=d3.scaleBand().domain(populations).range([0,iw]).padding(.25)
-  const inner=d3.scaleBand().domain(methods).range([0,x.bandwidth()]).padding(.08)
-  const y=d3.scaleLinear().domain([0,(d3.max(data.routing_metrics,r=>r.RMSE)||1)*1.12]).nice().range([ih,0])
+  const yDomain=d3.scaleLinear().domain([0,(d3.max(data.routing_metrics,r=>r.RMSE)||1)*1.12]).nice().domain() as [number,number]
+  // three bars per evaluation population (components/SweepPlot bar series on a point scale)
+  const series:SweepSeries[]=methods.map(method=>({id:method,label:method,color:methodColor(method, data.background_rank),bar:true,fill:1,
+    points:populations.flatMap(pop=>data.routing_metrics.filter(r=>r.population===pop&&r.method===method).map(r=>({x:pop,y:r.RMSE,
+      tip:[`${names[r.population]} · ${r.method}`,`RMSE ${f(r.RMSE)}; MAE ${f(r.MAE)} µg/filter`,`${r.n.toLocaleString()} filters / ${r.n_sites} sites`,r.method==='routed'?`VIBES chosen for ${r.selected_VIBES?.toLocaleString()} filters`:undefined].filter(Boolean) as string[]})))}))
   const routed=data.routing_metrics.find(r=>r.population==='prior_inspected_test'&&r.method==='routed')
   const extreme=data.routing_extreme[0]
   return <ChartFrame title="Spectrum-only method routing" subtitle="A training-only spectral classifier chooses AIRSpec or VIBES per filter. Both base methods are retained for comparison." provenance={data.background_rank === 70 ? 'Rank-70 migration CLI · grouped training-site folds refit EC calibration and router' : 'Executed CLI notebook · grouped training-site folds refit EC calibration and router'}>
-    <div ref={ref} className="chart-wrap"><svg width={w} height={ih+112} role="img" aria-label="AIRSpec, VIBES and routed EC error across training-site folds and previously inspected test sites"><g transform={`translate(${left},20)`} fontFamily={FONT.family}>
-      <YAxis scale={y} x={0} gridWidth={iw} label="RMSE (µg/filter)" labelX={-47}/>
-      {data.routing_metrics.map(r=><rect key={r.population+r.method} x={x(r.population)!+inner(r.method)!} y={y(r.RMSE)} width={inner.bandwidth()} height={ih-y(r.RMSE)} fill={methodColor(r.method, data.background_rank)} {...tip.bind([`${names[r.population]} · ${r.method}`,`RMSE ${f(r.RMSE)}; MAE ${f(r.MAE)} µg/filter`,`${r.n.toLocaleString()} filters / ${r.n_sites} sites`,r.method==='routed'?`VIBES chosen for ${r.selected_VIBES?.toLocaleString()} filters`:undefined].filter(Boolean) as string[])}></rect>)}
-      <XAxis scale={x} y={ih} format={v=>names[v]} label="Evaluation population"/>
-      {methods.map((method,i)=><g key={method} transform={`translate(${i*125},${ih+67})`}><rect width={11} height={11} fill={methodColor(method, data.background_rank)}/><text x={17} y={10} fontSize={10} fill={INK.text}>{method==='routed'?'Routed':method}</text></g>)}
-    </g></svg>{tip.node}</div>
+    <div ref={ref} className="chart-wrap" role="img" aria-label="AIRSpec, VIBES and routed EC error across training-site folds and previously inspected test sites">
+      <SweepPlot series={series} xScale="point" yDomain={yDomain} height={293} barWidth={.75} yLabel="RMSE (µg/filter)" xLabel="Evaluation population" xFormat={v=>names[v]}/>
+      <svg width={w} height={20}><g transform={`translate(${left},4)`} fontFamily={FONT.family}>{methods.map((method,i)=><g key={method} transform={`translate(${i*125},0)`}><rect width={11} height={11} fill={methodColor(method, data.background_rank)}/><text x={17} y={10} fontSize={10} fill={INK.text}>{method==='routed'?'Routed':method}</text></g>)}</g></svg>
+    </div>
     {routed&&<Note>Routing versus AIRSpec on the previously inspected test: ΔRMSE {f(routed.delta_RMSE_vs_AIRSpec)} µg/filter; paired 95% site interval {f(routed.delta_RMSE_CI_low)} to {f(routed.delta_RMSE_CI_high)}. {routed.delta_RMSE_CI_low <= 0 && routed.delta_RMSE_CI_high >= 0 ? 'The interval includes zero.' : 'The interval excludes zero; this remains an exploratory comparison.'} The large training-fold VIBES RMSE includes {extreme.sample_id} at {extreme.Site} (VIBES {f(extreme.VIBES)} vs TOR {f(extreme.y)}); that filter was not excluded.</Note>}
     <FixedSetNote what="the notebook's common test filters" />
   </ChartFrame>

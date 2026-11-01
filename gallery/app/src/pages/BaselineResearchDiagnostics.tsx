@@ -3,9 +3,7 @@ import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
 import { ChartFrame, ExplainOnly, Note, Segmented } from '@/components/ChartFrame'
-import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
 import { FONT, INK, baselineColor } from '@/lib/theme'
 import { fixed as f } from '@/lib/format'
 import { useColourScheme } from '@/lib/colourSchemes'
@@ -16,6 +14,8 @@ import { BaselineFollowup } from '@/pages/BaselineFollowup'
 import type { ApplicabilityData, ApplicabilityRow, BaselineCohort, BaselineContribution, BaselineData, BaselineMethod, BaselinePair } from '@/lib/baselineComparison'
 import { FixedSetNote } from '@/lib/markedRows'
 import { HeatMatrix } from '@/components/HeatMatrix'
+import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
+import { ScatterPlot, type ScatterPoint } from '@/components/ScatterPlot'
 
 const METHODS: BaselineMethod[] = ['AIRSpec','VIBES']
 const BANDS = ['1425_1799','1800_2499','2500_2999','3000_4000'] as const
@@ -50,17 +50,18 @@ function ApplicabilityViews({data}:{data:ApplicabilityData}) {
   const [metric,setMetric]=useState('PCA score distance')
   const key=metricKey(metric)
   const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref)
-  const tip=useTooltip(ref);const lg=useLegend()
-  const w=Math.max(300,width),iw=w-105,ih=225
-  const x=d3.scaleLinear().domain([0,100]).range([0,iw])
+  const lg=useLegend()
+  const w=Math.max(300,width),iw=w-105
   const test=data.rows.filter(r=>r.kind==='test')
   const addis=data.rows.filter(r=>r.kind==='addis')
   const bins=[0,20,40,60,80].flatMap(low=>METHODS.map(method=>{
     const values=test.filter(r=>r.method===method && r[key]>=low && (low===80 ? r[key]<=100:r[key]<low+20))
     return {method,low,n:values.length,mae:d3.mean(values,r=>r.abs_error!)??0}
   }))
-  const y=d3.scaleLinear().domain([0,(d3.max(bins.filter(b=>lg.show(b.method)),b=>b.mae)||1)*1.15]).nice().range([ih,0])
-  const cx=(low:number)=>x(low+10)
+  const yDomain=d3.scaleLinear().domain([0,(d3.max(bins.filter(b=>lg.show(b.method)),b=>b.mae)||1)*1.15]).nice().domain() as [number,number]
+  // one line per method through the five bins, at each bin's centre (components/SweepPlot)
+  const series:SweepSeries[]=METHODS.filter(lg.show).map(method=>({id:method,label:method,color:COLOR[method],group:method,r:4.5,width:2,marks:true,interval:'none',
+    points:bins.filter(b=>b.method===method).map(b=>({x:b.low+10,y:b.mae,tip:[method,`Training percentile ${b.low}–${b.low+20}`,`${b.n} filters; mean |error| ${f(b.mae,3)} µg/filter`]}))}))
   const high=(rows:ApplicabilityRow[],method:BaselineMethod)=>{
     const group=rows.filter(r=>r.method===method)
     return group.filter(r=>r[key]>95).length/group.length*100
@@ -69,10 +70,11 @@ function ApplicabilityViews({data}:{data:ApplicabilityData}) {
     <ChartFrame title="Distance from training spectra" controls={<Segmented label="Spectral diagnostic" value={metric} options={['PCA score distance','Unmodeled spectral variation']} onChange={setMetric}/>}
       subtitle="Mean held-out absolute EC error by percentile of the training-only spectral distribution. Each method uses its own PCA fit.">
       <Note>Full-pool held-out IMPROVE filters only; 2,327 physical test filters per method. {metric==='PCA score distance'?'Score distance (T²) from an eight-component PCA fit. This is not the saved PLS score space.':'Residual spectral RMS (Q) after eight PCA components.'} Values are percentiles of the corresponding training spectra.</Note>
-      <div ref={ref} className="chart-wrap"><svg width={w} height={295} role="img" aria-label="Mean absolute held-out EC error by training spectral distance percentile"><g transform="translate(70,20)"><YAxis scale={y} x={0} gridWidth={iw} label="Mean |error| (µg/filter)"/><rect x={x(95)} width={x(100)-x(95)} height={ih} fill="#c49442" fillOpacity={.12}/>{METHODS.filter(lg.show).map(method=>{
-        const m=bins.filter(b=>b.method===method)
-        return <g key={method} opacity={lg.dim(method)}><path d={d3.line<(typeof m)[number]>().x(b=>cx(b.low)).y(b=>y(b.mae))(m)??''} stroke={COLOR[method]} strokeWidth={2} fill="none"/>{m.map(b=><circle key={b.low} cx={cx(b.low)} cy={y(b.mae)} r={4.5} fill={COLOR[method]} {...tip.bind(() => [method,`Training percentile ${b.low}–${b.low+20}`,`${b.n} filters; mean |error| ${f(b.mae,3)} µg/filter`])}></circle>)}</g>
-      })}<XAxis scale={x} y={ih} label="Training spectral percentile"/></g></svg><Legend items={METHODS.map(m=>({label:m,color:COLOR[m],shape:'line' as const}))} {...lg.props}/>{tip.node}</div>
+      <div ref={ref} className="chart-wrap" role="img" aria-label="Mean absolute held-out EC error by training spectral distance percentile">
+        <SweepPlot series={series} xDomain={[0,100]} yDomain={yDomain} height={283} dim={lg.dim} xLabel="Training spectral percentile" yLabel="Mean |error| (µg/filter)"
+          background={({x,ih})=><rect x={(x as d3.ScaleLinear<number,number>)(95)} width={(x as d3.ScaleLinear<number,number>)(100)-(x as d3.ScaleLinear<number,number>)(95)} height={ih} fill="#c49442" fillOpacity={.12}/>}/>
+        <Legend items={METHODS.map(m=>({label:m,color:COLOR[m],shape:'line' as const}))} {...lg.props}/>
+      </div>
       <Note>This is an exploratory binning of already inspected test outcomes. Mean errors can rise with EC loading or site composition. No cutoff has been selected or validated.</Note>
       <FixedSetNote what="the frozen held-out IMPROVE test filters" />
     </ChartFrame>
@@ -89,21 +91,22 @@ function ApplicabilityViews({data}:{data:ApplicabilityData}) {
 
 export function RegionContribution({data,sample}:{data:BaselineData;sample:string}) {
   const COLOR = useBaselineColors()
-  const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref);const lg=useLegend();const tip=useTooltip(ref)
+  const ref=useRef<HTMLDivElement>(null);const lg=useLegend()
   const row=data.contributions.find(r=>r.cohort==='full_pool'&&r.sample_id===sample) as BaselineContribution|undefined
   if(!row)return null
   const entries=BANDS.map(b=>({name:bandName(b),spectra:row[`spectra_${b}`],coefficients:row[`coefficients_${b}`]}))
   const values=entries.flatMap(r=>[...(lg.show('Corrected spectra')?[r.spectra]:[]),...(lg.show('EC coefficients')?[r.coefficients]:[])]);const bound=Math.max(...values.map(Math.abs),1)
-  const w=Math.max(300,width),iw=w-135,ih=240
-  const x=d3.scaleBand().domain(entries.map(r=>r.name)).range([0,iw]).padding(.22)
-  const y=d3.scaleLinear().domain([-bound*1.08,bound*1.08]).nice().range([ih,0])
+  const yDomain=d3.scaleLinear().domain([-bound*1.08,bound*1.08]).nice().domain() as [number,number]
+  // two bars per interval, side by side (components/SweepPlot bar series on a point scale)
+  const terms=[['spectra',COLOR.VIBES,'Corrected spectra'],['coefficients',COLOR.AIRSpec,'EC coefficients']] as const
+  const series:SweepSeries[]=terms.filter(([,,label])=>lg.show(label)).map(([key,color,label])=>({id:key,label,color,group:label,bar:true,fill:1,
+    points:entries.map(e=>({x:e.name,y:e[key],tip:[`${e.name} ${key}: ${f(e[key],3)} µg/filter`]}))}))
   return <ChartFrame title="What moves this prediction?" subtitle="An exact algebraic split of VIBES minus AIRSpec EC prediction for the selected inspected case. Terms depend on both frozen models.">
     <ExplainOnly><Note>{sample}. Each interval has a change from corrected spectra and a change from fitted EC coefficients. A separate intercept and centering term contributes {f(row.intercept_and_centering_delta,3)} µg/filter.</Note></ExplainOnly>
-    <div ref={ref} className="chart-wrap"><svg width={w} height={310} role="img" aria-label="Prediction difference decomposed by spectral region and model coefficient"><g transform="translate(95,20)"><YAxis scale={y} x={0} gridWidth={iw} label="Δ prediction (µg/filter)"/><line x2={iw} y1={y(0)} y2={y(0)} stroke={INK.text}/>{entries.flatMap(e=>[['spectra',COLOR.VIBES,'Corrected spectra'],['coefficients',COLOR.AIRSpec,'EC coefficients']].map(([key,color,label],i)=>{
-      const v=e[key as 'spectra'|'coefficients'];const xx=x(e.name)!+i*x.bandwidth()/2
-      if(!lg.show(label))return null
-      return <rect key={e.name+key} x={xx} y={Math.min(y(v),y(0))} width={x.bandwidth()/2} height={Math.abs(y(v)-y(0))} fill={color} opacity={lg.dim(label)} {...tip.bind([`${e.name} ${key}`,`${f(v,3)} µg/filter`])}></rect>
-    }))}<XAxis scale={x} y={ih} label="Wavenumber (cm⁻¹)"/></g></svg><Legend items={[{label:'Corrected spectra',color:COLOR.VIBES,shape:'square' as const},{label:'EC coefficients',color:COLOR.AIRSpec,shape:'square' as const}]} {...lg.props}/>{tip.node}</div>
+    <div ref={ref} className="chart-wrap" role="img" aria-label="Prediction difference decomposed by spectral region and model coefficient">
+      <SweepPlot series={series} xScale="point" yDomain={yDomain} reference={0} height={298} barWidth={.78} dim={lg.dim} xLabel="Wavenumber (cm⁻¹)" yLabel="Δ prediction (µg/filter)"/>
+      <Legend items={[{label:'Corrected spectra',color:COLOR.VIBES,shape:'square' as const},{label:'EC coefficients',color:COLOR.AIRSpec,shape:'square' as const}]} {...lg.props}/>
+    </div>
     <ExplainOnly><Note>All terms plus rounding sum to {f(row.prediction_delta,3)} µg/filter. The symmetric split explains saved model arithmetic; it does not identify a chemical cause. The 12 inspection cases were selected after reviewing errors.</Note></ExplainOnly>
   </ChartFrame>
 }
@@ -134,19 +137,21 @@ export function SiteBandPattern({rows,cohort}:{rows:BaselinePair[];cohort:Baseli
 
 export function BlankSpread({data}:{data:BaselineData}) {
   const COLOR = useBaselineColors()
-  const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref);const tip=useTooltip(ref)
   const [source,setSource]=useState('ETAD')
   const points=data.blank_details.filter(r=>r.source===source.toLowerCase())
   const hl=useHighlightActions()
   // one blank, every correction: the drawer shows all methods side by side, not just the dot clicked
   const openBlank=(id:string)=>hl.openRecord({id,source:'the held-out blank spread',site:source,fields:data.blank_details.filter(r=>r.sample_id===id).map(r=>[`${r.method} residual RMS (10⁻⁴ absorbance)`,r.rms_from_zero*1e4]),note:'A field blank: residual after baseline correction, where smaller is closer to zero absorbance. It tests background removal, not EC accuracy.'})
-  const w=Math.max(300,width),iw=w-105,ih=215
-  const x=d3.scaleBand().domain(METHODS).range([0,iw]).padding(.45)
   const ymax=d3.max(points,p=>p.rms_from_zero*1e4)||1
-  const y=d3.scaleLinear().domain([0,ymax*1.12]).nice().range([ih,0])
+  // one strip of blanks per method, jittered across its band (components/ScatterPlot); a click opens the blank
+  const dots:ScatterPoint[]=points.map((p,i)=>({x:METHODS.indexOf(p.method)+.5,dx:((i%9)-4)*2.4,y:p.rms_from_zero*1e4,key:p.sample_id+p.method,
+    r:source==='ETAD'?4:2.7,color:COLOR[p.method],opacity:.55,tip:[`${p.sample_id} ${p.method}: ${f(p.rms_from_zero,7)} absorbance`],open:()=>openBlank(p.sample_id)}))
   return <ChartFrame title="Held-out blank spread" controls={<Segmented label="Blank source" value={source} options={['ETAD','IMPROVE']} onChange={setSource}/>} subtitle="Every paired held-out blank, beyond the medians shown above.">
     <Note>{source}: {new Set(points.map(r=>r.sample_id)).size} physical field blanks. Residual RMS after correction; smaller is closer to zero absorbance.</Note>
-    <div ref={ref} className="chart-wrap"><svg width={w} height={300} role="img" aria-label="Individual held-out blank residual RMS by correction method"><g transform="translate(75,20)"><YAxis scale={y} x={0} gridWidth={iw} label="RMS (10⁻⁴ absorbance)"/>{points.map((p,i)=><circle key={p.sample_id+p.method} cx={x(p.method)!+x.bandwidth()/2+((i%9)-4)*2.4} cy={y(p.rms_from_zero*1e4)} r={source==='ETAD'?4:2.7} fill={COLOR[p.method]} fillOpacity={.55} style={{cursor:'pointer'}} onClick={()=>openBlank(p.sample_id)} {...tip.bind([p.sample_id,`${p.method}: ${f(p.rms_from_zero,7)} absorbance`,'click for every correction'])}></circle>)}<XAxis scale={x} y={ih} label="Correction method"/></g></svg>{tip.node}</div>
+    <div className="chart-wrap" role="img" aria-label="Individual held-out blank residual RMS by correction method">
+      <ScatterPlot points={dots} xBands={METHODS.map(m=>({key:m,label:m}))} yDomain={[0,ymax*1.12]} height={215} margin={{top:20,right:30,bottom:46,left:75}}
+        xLabel="Correction method" yLabel="RMS (10⁻⁴ absorbance)" note={false}/>
+    </div>
     <Note>Field blanks can carry artifacts or residual material. This assesses background removal, not ambient EC accuracy. The nine ETAD blanks are independent parents; synthetic injections reuse parents at multiple amplitudes.</Note>
   </ChartFrame>
 }

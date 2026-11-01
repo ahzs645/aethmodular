@@ -6,12 +6,10 @@ import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
 import { ChartFrame, ExplainOnly, Note, Segmented } from '@/components/ChartFrame'
 import { PageToc } from '@/components/PageToc'
-import { XAxis, YAxis } from '@/components/Axes'
 import { AxisChoices } from '@/components/AxisChoices'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
 import { PageChoiceControls, PageChoices, usePageChoice } from '@/lib/pageChoices'
 import { SidebarControls } from '@/lib/pageSidebar'
@@ -19,11 +17,12 @@ import { BankPicker } from '@/components/Pickers'
 import { SpectrumPlot } from '@/components/SpectrumPlot'
 import { SweepPlot } from '@/components/SweepPlot'
 import { FacetGrid } from '@/components/FacetGrid'
-import { BANK_COLOR, FONT, INK, SPECTRAL_REGION, LOT_COLOR, LOT_UNKNOWN } from '@/lib/theme'
-import { dotFill, dotRim } from '@/lib/highlight'
+import { BANK_COLOR, INK, SPECTRAL_REGION, LOT_COLOR, LOT_UNKNOWN } from '@/lib/theme'
 import { f2, fmt, pct, sci } from '@/lib/format'
 import { hashUnit } from '@/lib/stats'
 import { FixedSetNote } from '@/lib/markedRows'
+import { ScatterPlot, type ScatterPoint } from '@/components/ScatterPlot'
+import { FindingsList } from '@/components/Findings'
 
 /**
  * Blanks analysis: the PTFE field blanks that train the VIBES background.
@@ -125,15 +124,14 @@ function Findings({ d }: { d: BlanksData }) {
   }).sort((a, c) => a.dist - c.dist)
   return (
     <ChartFrame id="blanks-findings" title="What the blanks show — short answers" exportable={false}>
-      <ol style={{ margin: '4px 0 0 18px', lineHeight: 1.55 }}>
+      <FindingsList note={<>{b['VIBES-allblanks-x1'] ? 'The large banks were rerun without the outlier blank (rank 78 / 80), so "more blanks" is now tested at a comparable background complexity.' : 'Next step implied: rerun the large banks without the outlier blank (or at a fixed rank near 70–80), so that "more blanks" is tested at a comparable background complexity.'}</>}>
         <li><strong>One blank sets the background rank for the big banks.</strong> {big.worst.id} has a leave-one-out error {Math.round(big.worst.error_x_median).toLocaleString()}× the median blank's. With it, the one-SE rule picks rank {big.rank} ({big.n_blanks} blanks) and {all.rank} ({all.n_blanks}); without it, rank {big.drop_one[0].rank} and {all.drop_one[0].rank}. The worst 5 % of blanks carry {pct(big.top5pct_share)} of the error in the big banks against {pct(cap.top5pct_share)} in the 87-blank bank, which never drew this blank.</li>
         {wi >= 0 && <li><strong>That blank looks like a different lot.</strong> It is labeled {inv(d, 'group')[wi]} ({inv(d, 'site')[wi]}, {inv(d, 'date')[wi]}), but in the PCA map it sits {f2(near[0].dist)} SD from the {near[0].g} centroid and {f2(near.find((x) => x.g === inv(d, 'group')[wi])?.dist)} SD from its own lot's. Worth checking its lot record before reusing it.</li>}
         <li><strong>The "more blanks" runs therefore tested a simpler background, not more blanks.</strong> Held-out blanks correct worse with the rank-{big.rank}/{all.rank} backgrounds than with rank {cap.rank}, mostly in the PTFE band (see "After correction").</li>
         {['VIBES-lot251-x1', 'VIBES-allblanks-x1'].some((k) => b[k]) && <li><strong>Without that blank, the big banks behave.</strong> {['VIBES-lot251-x1', 'VIBES-allblanks-x1'].filter((k) => b[k]).map((k, i) => <span key={k}>{i ? '; ' : ''}{b[k].n_blanks} blanks → rank {b[k].rank}, worst 5 % carry {pct(b[k].top5pct_share)}</span>)}. Their held-out blanks correct as cleanly as the 87-blank background's or better (see "After correction"). The Addis effect of these backgrounds is on the Oct 2, 2026 meeting page: cleaner blanks did not remove the Addis bias.</li>}
         <li><strong>Leave-one-blank-out error keeps falling to the rank cap</strong> ({cap.cap}) for every bank; the one-SE rule, not the error curve, decides where to stop.</li>
         <li><strong>Blanks differ mostly by offset and slope;</strong> the shared PCA's first component carries {pct(d.shared_pca.var[0])} of the variance. Lot 248 and lot 251 separate in the PCA map, and ETAD blanks sit with their own lot.</li>
-      </ol>
-      <Note>{b['VIBES-allblanks-x1'] ? 'The large banks were rerun without the outlier blank (rank 78 / 80), so "more blanks" is now tested at a comparable background complexity.' : 'Next step implied: rerun the large banks without the outlier blank (or at a fixed rank near 70–80), so that "more blanks" is tested at a comparable background complexity.'}</Note>
+      </FindingsList>
     </ChartFrame>
   )
 }
@@ -142,45 +140,31 @@ function Findings({ d }: { d: BlanksData }) {
 function Inventory({ d }: { d: BlanksData }) {
   // the page's background bank (PageChoices at the top of the page)
   const { value: bank } = usePageChoice('bank', banksOf(d))
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const n = nBlanks(d)
   const rows = useMemo(() => d3.range(n).map((i) => ({ i, id: inv(d, 'sample_id')[i] as string, date: inv(d, 'date')[i] ? new Date(inv(d, 'date')[i]) : null, group: inv(d, 'group')[i] as string, site: inv(d, 'site')[i] as string, split: inv(d, 'split')[i] as string })), [d, n])
   const groups = [...new Set(rows.map((r) => r.group))].sort()
-  const m = { top: 10, right: 16, bottom: 40, left: 130 }
-  const iw = Math.max(300, width - m.left - m.right), rowH = 34, ih = groups.length * rowH
+  const rowH = 34
   const dated = rows.filter((r) => r.date)
-  const x = d3.scaleTime().domain(d3.extent(dated, (r) => r.date!) as [Date, Date]).nice().range([0, iw])
+  // one time axis: dated (IMPROVE) blanks at their date, undated (ETAD) ones spread evenly in MediaId order
+  const [t0, t1] = d3.scaleTime().domain(d3.extent(dated, (r) => r.date!) as [Date, Date]).nice().domain().map(Number)
   const undated = rows.filter((r) => !r.date)
-  const ux = d3.scalePoint<number>().domain(undated.map((r) => r.i)).range([0, iw]).padding(0.5)
   const jitter = (i: number) => hashUnit(i)
+  const points = useMemo<ScatterPoint[]>(() => rows.map((r) => {
+    const role = roleIn(d, bank, r.i), k = undated.indexOf(r)
+    return { x: r.date ? +r.date : t0 + ((k + 0.5) / undated.length) * (t1 - t0), y: groups.indexOf(r.group) + (5 + jitter(r.i) * (rowH - 10)) / rowH, key: r.id, r: 3.2,
+      color: ROLE_COLOR[role], level: role === 'not used' ? 'standard' : 'sparse', stroke: r.split === 'test' ? INK.negative : 'none', strokeWidth: 1,
+      tip: [r.id, `${r.site}${r.date ? ' · ' + d3.timeFormat('%Y-%m-%d')(r.date) : ''}`, r.group, `split: ${r.split}`, role] }
+  }), [rows, d, bank, t0, t1]) // eslint-disable-line react-hooks/exhaustive-deps
   const counts = banksOf(d).map((b) => ({ b, n: d.banks[b].n_blanks, lots: groups.map((g) => rows.filter((r) => r.group === g && inv(d, `in_${b}`)[r.i]).length) }))
   return (
     <ChartFrame id="blanks-inventory" source="gallery/app/src/pages/BlanksPage.tsx › Inventory"
       title="Inventory — every labeled blank, when it was sampled, and which background it trained"
       subtitle={`${n} labeled blanks: IMPROVE blanks carry a sampling date; ETAD blanks have none and are spread out in MediaId order. Colour shows the blank's role in the selected background.`}
       >
-      <div ref={ref} style={{ position: 'relative' }}>
-        <svg width={iw + m.left + m.right} height={ih + m.top + m.bottom} fontFamily={FONT.family}>
-          <g transform={`translate(${m.left},${m.top})`}>
-            {groups.map((g, gi) => <g key={g}>
-              <rect x={-m.left + 4} y={gi * rowH} width={iw + m.left - 4} height={rowH} fill={gi % 2 ? 'transparent' : INK.page} />
-              <text x={-10} y={gi * rowH + rowH / 2} dy="0.32em" textAnchor="end" fontSize={11.5} fontWeight={600} fill={GROUP_COLOR[g] ?? INK.text}>{g}</text>
-            </g>)}
-            {dated.length > 0 && <XAxis scale={x} y={ih} label="Sampling date (IMPROVE); ETAD rows are in MediaId order" tickCount={8} labelDy={32} format={(v) => d3.timeFormat('%b %Y')(v as Date)} />}
-            {rows.map((r) => {
-              const gi = groups.indexOf(r.group)
-              const cx = r.date ? x(r.date) : ux(r.i)!
-              const role = roleIn(d, bank, r.i)
-              return <circle key={r.id} cx={cx} cy={gi * rowH + 5 + jitter(r.i) * (rowH - 10)} r={3.2} fill={ROLE_COLOR[role]} {...dotFill(role === 'not used' ? 'standard' : 'sparse')}
-                stroke={r.split === 'test' ? INK.negative : 'none'} strokeWidth={1}
-                onMouseEnter={(e) => tip.show(e, [r.id, `${r.site}${r.date ? ' · ' + d3.timeFormat('%Y-%m-%d')(r.date) : ''}`, r.group, `split: ${r.split}`, role])} onMouseLeave={tip.hide} />
-            })}
-          </g>
-        </svg>
-        {tip.node}
-      </div>
+      {/* a band per lot or source (components/ScatterPlot y bands), the blanks jittered in it; hover through ScatterLayer */}
+      <ScatterPlot points={points} xScale="time" xDomain={[t0, t1]} nice={false} xTicks={8} yBands={groups.map((g) => ({ key: g, label: g, color: GROUP_COLOR[g] }))} bandStripes bandLabelSize={11.5}
+        height={groups.length * rowH} margin={{ top: 10, right: 16, bottom: 46, left: 130 }} note={false}
+        xLabel={dated.length ? 'Sampling date (IMPROVE); ETAD rows are in MediaId order' : undefined} />
       <Legend items={[...Object.entries(ROLE_COLOR).map(([label, color]) => ({ label, color })), { label: 'IMPROVE test-site blank', color: INK.negative, shape: 'ring' as const }]} />
       <table className="census-table" style={{ marginTop: 8 }}>
         <thead><tr><th>Background</th><th>Blanks</th>{groups.map((g) => <th key={g}>{g}</th>)}<th>Rank</th></tr></thead>
@@ -257,19 +241,22 @@ function PcaMap({ d }: { d: BlanksData }) {
   const [pin, setPin] = useState<number | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const ix = pcs.indexOf(px), iy = pcs.indexOf(py)
   const sx = d.shared_pca.scores[ix], sy = d.shared_pca.scores[iy]
   const n = nBlanks(d)
   const side = Math.min(560, Math.max(260, width * 0.55))
   const m = { top: 12, right: 12, bottom: 44, left: 60 }
-  const x = d3.scaleLinear().domain(d3.extent(sx) as [number, number]).nice().range([0, side])
-  const y = d3.scaleLinear().domain(d3.extent(sy) as [number, number]).nice().range([side, 0])
   const dates = inv(d, 'date').map((v) => (v ? +new Date(v) : NaN))
   const dateScale = d3.scaleSequential(d3.interpolateRgbBasis(dateColours.stops)).domain(d3.extent(dates.filter(Number.isFinite)) as [number, number])
   const color = (i: number) => colorBy === 'lot / source' ? GROUP_COLOR[inv(d, 'group')[i]] : colorBy === 'sampling date' ? (Number.isFinite(dates[i]) ? dateScale(dates[i]) : INK.neutral) : ROLE_COLOR[roleIn(d, bank, i)]
   const worst = d.banks['VIBES-allblanks'].worst.id
   const devOf = (i: number) => d.raw[i].map((v, j) => v - d.shared_pca.mean[j])
+  // every blank (components/ScatterPlot); a click pins it here, to compare it with the average blank
+  const points: ScatterPoint[] = d3.range(n).map((i) => {
+    const id = inv(d, 'sample_id')[i] as string
+    return { x: sx[i], y: sy[i], key: id, r: id === worst ? 6 : 3.4, color: color(i), ...(id === worst || pin === i ? { stroke: id === worst ? INK.negative : INK.text, strokeWidth: 2 } : {}),
+      tip: [id, `${inv(d, 'site')[i]} · ${inv(d, 'date')[i] ?? 'undated'}`, inv(d, 'group')[i], `${px} ${f2(sx[i])} · ${py} ${f2(sy[i])}`, 'click to compare with the average blank'] }
+  })
   const legendItems = colorBy === 'lot / source' ? Object.keys(d.groups).map((g) => ({ label: g, color: GROUP_COLOR[g] }))
     : colorBy === 'role in background' ? Object.entries(ROLE_COLOR).map(([label, c]) => ({ label, color: c })) : [{ label: 'earliest', color: dateScale.range()[0] as unknown as string }, { label: 'latest', color: dateColours.stops[dateColours.stops.length - 1] }, { label: 'undated (ETAD)', color: INK.neutral }]
   return (
@@ -284,19 +271,10 @@ function PcaMap({ d }: { d: BlanksData }) {
       <AxisChoices noun="components" x={[px, setPx]} y={[py, setPy]}
         options={pcs.map((pc, i) => ({ key: pc, group: 'Principal components', hint: pct(d.shared_pca.var[i]) }))}>
       <div ref={ref} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-        <svg width={side + m.left + m.right} height={side + m.top + m.bottom} fontFamily={FONT.family}>
-          <g transform={`translate(${m.left},${m.top})`}>
-            <YAxis scale={y} x={0} label={`${py} score`} tickCount={6} gridWidth={side} labelX={-46} pick="y" />
-            <XAxis scale={x} y={side} label={`${px} score`} tickCount={6} labelDy={36} pick="x" />
-            {d3.range(n).map((i) => {
-              const id = inv(d, 'sample_id')[i] as string
-              return <circle key={id} cx={x(sx[i])} cy={y(sy[i])} r={id === worst ? 6 : 3.4} fill={color(i)} {...dotFill('sparse')}
-                stroke={id === worst ? INK.negative : pin === i ? INK.text : dotRim().stroke} strokeWidth={id === worst || pin === i ? 2 : dotRim().strokeWidth} style={{ cursor: 'pointer' }}
-                onClick={() => setPin(pin === i ? null : i)}
-                onMouseEnter={(e) => tip.show(e, [id, `${inv(d, 'site')[i]} · ${inv(d, 'date')[i] ?? 'undated'}`, inv(d, 'group')[i], `${px} ${f2(sx[i])} · ${py} ${f2(sy[i])}`, 'click to compare with the average blank'])} onMouseLeave={tip.hide} />
-            })}
-          </g>
-        </svg>
+        <div style={{ width: side + m.left + m.right }}>
+          <ScatterPlot points={points} maxSide={side} minSide={side} margin={m} labelX={-46} xTicks={6} yTicks={6} pick note={false}
+            xLabel={`${px} score`} yLabel={`${py} score`} onPick={(p) => { const i = points.indexOf(p); setPin(pin === i ? null : i) }} />
+        </div>
         <div style={{ flex: '1 1 300px', minWidth: 280 }}>
           {pin == null ? <Note>Click a blank in the map to see its spectrum minus the average blank. The loadings of {px} and {py} are below for reference.</Note> : null}
           <SpectrumPlot width={Math.max(300, width - side - m.left - m.right - 24)} height={220} window={[4000, 500]} regions={SHADES} hover="none" zeroLine={pin != null}
@@ -306,7 +284,6 @@ function PcaMap({ d }: { d: BlanksData }) {
             yDomain={pin == null ? (d3.extent([...d.shared_pca.loadings[ix], ...d.shared_pca.loadings[iy]]) as [number, number]) : (d3.extent(devOf(pin)) as [number, number])}
             yLabel={pin == null ? 'Loading' : 'Blank − average'} title={pin == null ? `${px} (solid) and ${py} (dashed) loadings` : `${inv(d, 'sample_id')[pin]} minus the average blank`} />
         </div>
-        {tip.node}
       </div>
       </AxisChoices>
       <Legend items={legendItems} />
@@ -318,15 +295,11 @@ function PcaMap({ d }: { d: BlanksData }) {
 function Drift({ d }: { d: BlanksData }) {
   const pcs = d.shared_pca.var.map((_, i) => `PC${i + 1}`)
   const [pc, setPc] = useSearchParam<string>('bkdrift', 'PC1', pcs)
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const k = pcs.indexOf(pc)
   const pts = d3.range(nBlanks(d)).filter((i) => inv(d, 'date')[i]).map((i) => ({ i, t: new Date(inv(d, 'date')[i]), v: d.shared_pca.scores[k][i], g: inv(d, 'group')[i] as string }))
   const m = { top: 12, right: 16, bottom: 44, left: 60 }, h = 280
-  const iw = Math.max(300, width - m.left - m.right), ih = h - m.top - m.bottom
-  const x = d3.scaleTime().domain(d3.extent(pts, (p) => p.t) as [Date, Date]).nice().range([0, iw])
-  const y = d3.scaleLinear().domain(d3.extent(pts, (p) => p.v) as [number, number]).nice().range([ih, 0])
+  const points: ScatterPoint[] = pts.map((p) => ({ x: +p.t, y: p.v, key: String(p.i), r: 2.8, color: GROUP_COLOR[p.g],
+    tip: [inv(d, 'sample_id')[p.i] as string, `${inv(d, 'site')[p.i]} · ${inv(d, 'date')[p.i]}`, `${pc} ${f2(p.v)}`] }))
   const months = d3.rollups(pts, (v) => d3.median(v, (p) => p.v)!, (p) => `${p.g}|${d3.timeFormat('%Y-%m')(p.t)}`)
     .map(([key, v]) => ({ g: key.split('|')[0], t: d3.timeParse('%Y-%m')(key.split('|')[1])!, v })).sort((a, b) => +a.t - +b.t)
   return (
@@ -336,18 +309,10 @@ function Drift({ d }: { d: BlanksData }) {
       >
       {/* the component behind the y-axis title (components/AxisChoices), as on the PCA map above */}
       <AxisChoices noun="components" y={[pc, setPc]} options={pcs.map((p) => ({ key: p, label: `${p} score`, group: 'Principal components', roles: ['y'] as ('x' | 'y')[] }))}>
-      <div ref={ref} style={{ position: 'relative' }}>
-        <svg width={iw + m.left + m.right} height={h} fontFamily={FONT.family}>
-          <g transform={`translate(${m.left},${m.top})`}>
-            <YAxis scale={y} x={0} label={`${pc} score`} tickCount={5} gridWidth={iw} labelX={-46} pick="y" />
-            <XAxis scale={x} y={ih} label="Sampling date" tickCount={8} labelDy={36} format={(v) => d3.timeFormat('%b %Y')(v as Date)} />
-            {pts.map((p) => <circle key={p.i} cx={x(p.t)} cy={y(p.v)} r={2.8} fill={GROUP_COLOR[p.g]} {...dotFill('dense')} {...dotRim()}
-              onMouseEnter={(e) => tip.show(e, [inv(d, 'sample_id')[p.i], `${inv(d, 'site')[p.i]} · ${inv(d, 'date')[p.i]}`, `${pc} ${f2(p.v)}`])} onMouseLeave={tip.hide} />)}
-            {[...new Set(months.map((mm) => mm.g))].map((g) => <path key={g} d={d3.line<{ t: Date; v: number }>().x((p) => x(p.t)).y((p) => y(p.v))(months.filter((mm) => mm.g === g)) ?? ''} fill="none" stroke={GROUP_COLOR[g]} strokeWidth={2} />)}
-          </g>
-        </svg>
-        {tip.node}
-      </div>
+      {/* the blanks through components/ScatterPlot (time x); the monthly medians drawn over them */}
+      <ScatterPlot points={points} xScale="time" xTicks={8} height={h - m.top - m.bottom} margin={m} labelX={-46} density="dense" pick="y" note={false}
+        xLabel="Sampling date" yLabel={`${pc} score`}
+        children={({ x, y }) => [...new Set(months.map((mm) => mm.g))].map((g) => <path key={g} d={d3.line<{ t: Date; v: number }>().x((p) => x(+p.t)).y((p) => y(p.v))(months.filter((mm) => mm.g === g)) ?? ''} fill="none" stroke={GROUP_COLOR[g]} strokeWidth={2} pointerEvents="none" />)} />
       </AxisChoices>
       <Legend items={[...new Set(pts.map((p) => p.g))].map((g) => ({ label: g, color: GROUP_COLOR[g] }))} note="lines: monthly median" />
     </ChartFrame>
@@ -397,34 +362,27 @@ function PerBlankError({ d }: { d: BlanksData }) {
   const rk = ranks.includes(rankSel) ? rankSel : String(B.rank)
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const e = B.per_blank[rk]
   const idxOf = useMemo(() => new Map((inv(d, 'sample_id') as string[]).map((s, i) => [s, i])), [d])
   const rows = B.blank_ids.map((id, j) => ({ id, e: e[j], i: idxOf.get(id)! })).sort((a, b) => a.e - b.e)
   const med = d3.median(rows, (r) => r.e) ?? 1
   const m = { top: 12, right: 20, bottom: 44, left: 60 }, h = 220
-  const iw = Math.max(300, width - m.left - m.right), ih = h - m.top - m.bottom
-  const x = d3.scaleLog().domain(d3.extent(rows, (r) => r.e) as [number, number]).nice().range([0, iw])
   const groups = Object.keys(d.groups)
-  const yb = d3.scaleBand().domain(groups).range([0, ih]).padding(0.25)
   const jitter = (i: number) => hashUnit(i, 78.233)
+  // a band per lot or source, each blank jittered in it (components/ScatterPlot y bands, log x)
+  const points: ScatterPoint[] = rows.map((r) => { const g = inv(d, 'group')[r.i] as string, worstOne = r.id === B.worst.id
+    return { x: r.e, y: groups.indexOf(g) + 0.125 + jitter(r.i) * 0.75, key: r.id, r: worstOne ? 6 : 3, color: GROUP_COLOR[g], ...(worstOne ? { stroke: INK.negative, strokeWidth: 2 } : {}),
+      tip: [r.id, `${inv(d, 'site')[r.i]} · ${inv(d, 'date')[r.i] ?? 'undated'}`, `error ${sci(r.e)} (${Math.round(r.e / med).toLocaleString()}× median)`] } })
   const top = rows.slice(-8).reverse()
   return (
     <ChartFrame id="blanks-outliers" source="gallery/app/src/pages/BlanksPage.tsx › PerBlankError"
       title="Which blanks dominate — each blank's leave-one-out error"
       subtitle="How badly the background built from all the other blanks reconstructs each blank, at the selected rank (log scale). Points far to the right are blanks no other blank resembles; they set the SE in the rank rule."
       controls={<><Segmented label="Rank" value={rk} options={ranks} onChange={setRankSel} /></>}>
-      <div ref={ref} style={{ position: 'relative' }}>
-        <svg width={iw + m.left + m.right} height={h} fontFamily={FONT.family}>
-          <g transform={`translate(${m.left},${m.top})`}>
-            {groups.map((g) => <text key={g} x={-6} y={(yb(g) ?? 0) + yb.bandwidth() / 2} dy="0.32em" textAnchor="end" fontSize={10} fill={GROUP_COLOR[g]}>{g.replace('IMPROVE ', 'IMP ')}</text>)}
-            <XAxis scale={x} y={ih} label={`LOO squared error at rank ${rk} (log)`} tickCount={6} labelDy={36} format={(v) => (+v).toExponential(0)} />
-            <Marker orient="v" at={x(med)} from={0} to={ih} />
-            {rows.map((r) => { const g = inv(d, 'group')[r.i]; return <circle key={r.id} cx={x(r.e)} cy={(yb(g) ?? 0) + jitter(r.i) * yb.bandwidth()} r={r.id === B.worst.id ? 6 : 3} fill={GROUP_COLOR[g]} {...dotFill('sparse')} stroke={r.id === B.worst.id ? INK.negative : dotRim().stroke} strokeWidth={r.id === B.worst.id ? 2 : dotRim().strokeWidth}
-              onMouseEnter={(ev) => tip.show(ev, [r.id, `${inv(d, 'site')[r.i]} · ${inv(d, 'date')[r.i] ?? 'undated'}`, `error ${sci(r.e)} (${Math.round(r.e / med).toLocaleString()}× median)`])} onMouseLeave={tip.hide} />})}
-          </g>
-        </svg>
-        {tip.node}
+      <div ref={ref}>
+        <ScatterPlot points={points} xScale="log" xTicks={6} xFormat={(v) => (+v).toExponential(0)} yBands={groups.map((g) => ({ key: g, label: g.replace('IMPROVE ', 'IMP '), color: GROUP_COLOR[g] }))}
+          bandLabelSize={10} height={h - m.top - m.bottom} margin={m} note={false} xLabel={`LOO squared error at rank ${rk} (log)`}
+          under={({ x, ih }) => <Marker orient="v" at={x(med)} from={0} to={ih} />} />
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 8 }}>
         <table className="census-table" style={{ flex: '1 1 320px' }}>
