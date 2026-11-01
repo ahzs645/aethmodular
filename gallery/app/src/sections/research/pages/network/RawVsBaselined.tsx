@@ -17,6 +17,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useChartOptions } from '@/lib/chartOptions'
 import { fmt, pct } from '@/lib/format'
+import { textWidth } from '@/lib/fitLabel'
 import { BASELINE_COLOR, FONT, INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { logHistogram, members, neighbours, networkSummary, pairs, siteLabel, siteSummary, spaces, type Cells, type Neighbour, type Pair, type Spaces } from '../../common/rawBaselined'
@@ -218,7 +219,7 @@ const ROW = 22, HEAD = 22, TAIL = 96, LABEL_W = 118
 function placeLabels<T extends { x: number; y: number; text: string }>(items: T[]): (T & { left: boolean; dy: number })[] {
   const out: (T & { left: boolean; dy: number; box: [number, number, number] })[] = []
   for (const it of items.slice().sort((a, b) => a.x - b.x)) {
-    const wide = it.text.length * 6
+    const wide = textWidth(it.text, 10)
     const box = (left: boolean, dy: number): [number, number, number] => [left ? it.x - 6 - wide : it.x + 6, left ? it.x - 6 : it.x + 6 + wide, it.y + dy]
     // clear of the labels placed so far and of the other labelled points
     const free = ([x0, x1, y]: [number, number, number]) => out.every((o) => Math.abs(o.box[2] - y) >= 11 || x0 >= o.box[1] + 3 || x1 <= o.box[0] - 3)
@@ -280,7 +281,7 @@ function RankShift({ list, k, n, name, spartan, colourOf }: {
         {shown.map((m) => {
           const st = style(m), ya = yOf(m.pr), yb = yOf(m.pb)
           const tipText = [`${name(m.j)}${spartan(m.j) ? ' (SPARTAN)' : ''}`, `raw rank ${m.rankRaw} (r ${rOf(m.raw, 5)})`, `baselined rank ${m.rankBaselined} (r ${rOf(m.baselined)})`]
-          return <g key={m.j} onMouseMove={(e) => tip.show(e, tipText)} onMouseLeave={tip.hide}>
+          return <g key={m.j} {...tip.bind(tipText)}>
             <line x1={x0 + 18} y1={ya} x2={x1 - 18} y2={yb} stroke="transparent" strokeWidth={8} />
             <line x1={x0 + 18} y1={ya} x2={x1 - 18} y2={yb} stroke={spartan(m.j) ? colourOf(m.j) : st.stroke} strokeWidth={spartan(m.j) ? 2 : 1.4} strokeDasharray={st.dash} strokeOpacity={st.opacity} />
             <circle cx={x0 + 18} cy={ya} r={2.4} fill={st.stroke} />

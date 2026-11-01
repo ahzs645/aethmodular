@@ -3,7 +3,7 @@ import { ChartFrame } from '@/components/ChartFrame'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { Figure } from '@/components/Figure'
 import { Key } from '@/components/Key'
-import { f2 } from '@/lib/format'
+import { coef, f2, f3 } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { num, type Row } from '@/lib/table'
 import type { SectionPageProps } from '../../types'
@@ -116,7 +116,7 @@ export function Residual(_props: SectionPageProps) {
 
   const nulls = rows(data, 'null_increment_summary').flatMap((r): Row[] => {
     const [measure, what] = NULL_STAT[String(r.stat)] ?? ['other', String(r.stat)]
-    const label = `${what}  (p = ${num(r.p_value)?.toFixed(3) ?? '—'})`
+    const label = `${what}  (p = ${coef(num(r.p_value))})`
     return [
       { measure, stat: label, series: 'null (median, 5–95 %)', mid: r.null_median, lo: r.null_q05, hi: r.null_q95 },
       { measure, stat: label, series: 'observed', mid: r.observed, lo: null, hi: null },
@@ -246,14 +246,14 @@ function ResidualVsFx({ pts, marked, nOut, nAll, slope, intercept, mac, changed,
   const points = pts.map(toPoint)
   const a1 = 1 - slope
   return (
-    <ChartFrame id="ml-residual-fx" title={`The residual tracks f(X) by construction: its ${a1.toFixed(2)}·f(X) slope needs no chemistry (ftir_43)`}
-      subtitle={`The ${pts.length} Addis filters${nOut ? ` (${nOut} of the notebook's ${nAll} excluded under Filters → excluded)` : ''}. HIPS/${mac} = ${slope.toFixed(3)}·f(X) + ${intercept.toFixed(3)} (OLS)${(changed || nOut > 0) && relation ? `; the notebook's, on all ${nAll} at MAC 10: ${f2(relation.a)}·f(X) + ${f2(relation.c)}` : ''}. So even if the two methods disagree only proportionally, r = ${a1.toFixed(3)}·f(X) − ${intercept.toFixed(3)} − ε: the dashed line. A residual learner that reaches it has learned f(X), not a new absorber.`}
+    <ChartFrame id="ml-residual-fx" title={`The residual tracks f(X) by construction: its ${f2(a1)}·f(X) slope needs no chemistry (ftir_43)`}
+      subtitle={`The ${pts.length} Addis filters${nOut ? ` (${nOut} of the notebook's ${nAll} excluded under Filters → excluded)` : ''}. HIPS/${mac} = ${f3(slope)}·f(X) + ${f3(intercept)} (OLS)${(changed || nOut > 0) && relation ? `; the notebook's, on all ${nAll} at MAC 10: ${f2(relation.a)}·f(X) + ${f2(relation.c)}` : ''}. So even if the two methods disagree only proportionally, r = ${f3(a1)}·f(X) − ${f3(intercept)} − ε: the dashed line. A residual learner that reaches it has learned f(X), not a new absorber.`}
       provenance={provenance}>
       <Crossplot title="" points={points} marked={marked.map(toPoint)} fit={false} sameScale={false} maxSide={460} grouping="none"
         xLabel="f(X), locked 800 + AIRSpec prediction (µg/m³)" yLabel={`Residual f(X) − Fabs/${mac} (µg/m³)`}
         extraLines={[{ slope: a1, intercept: -intercept, color: NULL_LINE, label: 'proportional-disagreement null', dash: '6 4', method: 'ols', stats: null }]} />
       <ExcludedNote count={marked.length} drawn />
-      <Key items={[...Object.entries(SEASON_COLORS).map(([label, color]) => ({ label, color })), { label: `null line r = ${a1.toFixed(3)}·f(X) − ${intercept.toFixed(3)}`, color: NULL_LINE, kind: 'dash' as const }]} />
+      <Key items={[...Object.entries(SEASON_COLORS).map(([label, color]) => ({ label, color })), { label: `null line r = ${f3(a1)}·f(X) − ${f3(intercept)}`, color: NULL_LINE, kind: 'dash' as const }]} />
     </ChartFrame>
   )
 }

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Figure } from '@/components/Figure'
 import { bandCenter } from '@/lib/bandCenter'
-import { f2 } from '@/lib/format'
+import { coef, f2 } from '@/lib/format'
 import { FixedSetNote } from '@/lib/markedRows'
 import { num, type Row } from '@/lib/table'
 import type { SectionPageProps } from '../../types'
@@ -66,7 +66,7 @@ export function Band1617(_props: SectionPageProps) {
   if (!data) return <Waiting error={error} />
   const covariation = rows(data, 'covariation').map((r): Row => ({ ...r, partner: PARTNER[String(r.partner_band)] ?? r.partner_band }))
   const tracking = rows(data, 'tracking').map((r): Row => ({ ...r, band: BAND[String(r.band)] ?? r.band, target: TARGET[String(r.target)] ?? r.target }))
-  const pmf = rows(data, 'pmf_tests').map((r): Row => ({ ...r, predictor: `${String(r.predictor).replace('_frac', '')} · q = ${num(r.fdr_q)?.toFixed(3)}` }))
+  const pmf = rows(data, 'pmf_tests').map((r): Row => ({ ...r, predictor: `${String(r.predictor).replace('_frac', '')} · q = ${coef(num(r.fdr_q))}` }))
   const dust = rows(data, 'dust_tests').map((r): Row => ({ ...r, predictor: DUST_PREDICTOR[String(r.predictor)] ?? r.predictor,
     target: DUST_TARGET[String(r.target)] ?? r.target, config: DUST_CONFIG(r.config) }))
   const dustAddis = dust.filter((r) => String(r.target).startsWith('Addis'))

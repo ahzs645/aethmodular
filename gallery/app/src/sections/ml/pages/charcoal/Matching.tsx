@@ -6,7 +6,7 @@
  */
 import { useMemo } from 'react'
 import { Figure } from '@/components/Figure'
-import { f2 } from '@/lib/format'
+import { f2, fmt } from '@/lib/format'
 import { num, type Row } from '@/lib/table'
 import type { MetaFile } from '@/lib/types'
 import type { SpectralExport } from '../../../research/pages/spectralCommon'
@@ -81,7 +81,7 @@ export function Matching({ data, meta }: { data: SpectralExport; meta: MetaFile 
       provenance={<>{NB.c02} [15] right. {provenance(data, ['analogue'])}</>} />}
 
     {probs.length > 0 && <Figure kind="histogram" id="mlc-burned" data={probs} value="p" series="group" bins={20} xLabel="P(burned)" colors={colors}
-      title={`The burned/unburned classifier calls ${burnedPct != null ? burnedPct.toFixed(0) : addisP?.['% classed burned'] ?? '?'} % of Addis burned (median P ${f2(burnedMedian ?? addisP?.['median P(burned)'])}), but recovers unburned material only ${pc('unburned') ?? '?'} % of the time`}
+      title={`The burned/unburned classifier calls ${burnedPct != null ? fmt(burnedPct, 0) : addisP?.['% classed burned'] ?? '?'} % of Addis burned (median P ${f2(burnedMedian ?? addisP?.['median P(burned)'])}), but recovers unburned material only ${pc('unburned') ?? '?'} % of the time`}
       subtitle={`char_03: PCA (8 components) + balanced logistic regression on McCall's 24 raw and 216 charred spectra, cross-validated by leaving out one feedstock at a time (overall accuracy ${pc('overall')} %, burned recall ${pc('burned')} %), then refitted on all of them and applied to Addis. Addis sits off every burned→unburned band axis and beyond the training cloud's 99th percentile for most filters (Mahalanobis above), so its confident "unburned" is extrapolation.`}
       provenance={<>{NB.c03} [16]. {provenance(data, ['loo', 'addis_burned', 'loo_overall'])}</>}
       aside={<>{nBurnedOut > 0 && <p className="chart-note">{nBurnedOut} of the {burnedAll.length} Addis filters {nBurnedOut === 1 ? 'is' : 'are'} out under Filters → excluded: not in the Addis histogram, its share or its median.</p>}

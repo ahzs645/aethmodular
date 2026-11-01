@@ -3,7 +3,7 @@
  * Mahalanobis distance and baseline sensitivity, char_11's transform benchmark). Static: the notebooks' tables.
  */
 import { Figure } from '@/components/Figure'
-import { f2 } from '@/lib/format'
+import { f2, percent } from '@/lib/format'
 import { num, type Row } from '@/lib/table'
 import type { SpectralExport } from '../../../research/pages/spectralCommon'
 import { provenance, rows } from '../../common'
@@ -14,7 +14,6 @@ const NB = {
   c04: 'research/ftir_etad_char/char_04_spectral_typology.ipynb',
   c11: 'research/ftir_etad_char/char_11_normalization_alternatives.ipynb',
 }
-const pct0 = (v: unknown) => (typeof v === 'number' ? `${v.toFixed(0)} %` : '—')
 const PASS_COLORS = { 'Pass A · charcoal only': '#4e79a7', 'Pass B · charcoal + Addis': '#b07aa1' }
 
 export function Structure({ data }: { data: SpectralExport }) {
@@ -70,7 +69,7 @@ export function Structure({ data }: { data: SpectralExport }) {
     <Figure kind="intervals" id="mlc-benchmark" data={bench} row="transform" aggregate={{ stat: 'median', interval: 'none' }} labelWidth={200}
       panels={[{ value: '% within 100 °C', label: 'Cross-collection recovery: % within 100 °C' }, { value: 'MAE (°C)', label: 'Recovery MAE (°C)', reference: 0 },
         { value: 'sil(temperature) ↑', label: 'Silhouette by temperature (higher is better)', reference: 0 }, { value: 'sil(collection) ↓', label: 'Silhouette by collection (lower is better)', reference: 0 }]}
-      title={`AIRSpec on the charcoal side halves cross-collection recovery (${pct0(current?.['% within 100 °C'])} → ${pct0(airspec?.['% within 100 °C'])} within 100 °C) and sends the temperature silhouette negative`}
+      title={`AIRSpec on the charcoal side halves cross-collection recovery (${percent(current?.['% within 100 °C'])} → ${percent(airspec?.['% within 100 °C'])} within 100 °C) and sends the temperature silhouette negative`}
       subtitle="char_11's benchmark on the 2,340 absorbance spectra with a known temperature: each transform's nearest-analogue temperature recovery across collections, and how well its PCA space separates temperature tiers rather than labs. Under Pearson r the plain normalizations (SNV, vector, area, none) are identical to ~1e-15, so only transforms that change the shape are compared."
       provenance={<>{NB.c11} [21]. {provenance(data, ['benchmark'])}</>} />
 

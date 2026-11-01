@@ -1,4 +1,4 @@
-import { fmt } from '@/lib/format'
+import { fmt, pct } from '@/lib/format'
 import type { SectionPageProps } from '../../types'
 import { PageIntro, Waiting } from './spectralCommon'
 import { EXPORTER, REPORT, useArchived, useCase, usePythonPmf } from './pythonPmf/data'
@@ -31,7 +31,7 @@ export function PythonPmf({ rows, meta }: SectionPageProps) {
         Five factors is the predeclared comparison with the historical run, not a selected source count.</p>
       <p>Headline numbers: when profile learning and mass calibration both exclude each held-out date block, the model predicts lab FTIR OM for 158 filters with RMSE{' '}
         <strong>{fmt(p.RMSE_ug_m3, 3)}</strong>, MAE <strong>{fmt(p.MAE_ug_m3, 3)}</strong> µg/m³ and pooled R² <strong>{fmt(p.R_squared, 3)}</strong> (same-method consistency, not source validation).
-        The primary ETAD 246 robust fit reaches a scaled RMSE of {fmt(primary.rmse, 2)} with {(100 * primary.frac_gt3).toFixed(1)} % of residuals outside ±3U, and negative inputs alone
+        The primary ETAD 246 robust fit reaches a scaled RMSE of {fmt(primary.rmse, 2)} with {pct(primary.frac_gt3, 1)} of residuals outside ±3U, and negative inputs alone
         force at least {fmt(primary.negative_rmse_lower_bound, 2)}: a baseline and weighting problem more factors cannot fix.</p>
       <p>What each chart answers: <strong>1</strong> what the five profiles look like and how much the bootstrap moves them; <strong>2</strong> how each factor varies filter by filter
         over time; <strong>3</strong> whether any factor count stands out; <strong>4</strong> why the misfit has a floor and where in the spectrum it sits; <strong>5</strong> how well

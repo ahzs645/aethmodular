@@ -3,7 +3,7 @@ import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { Crossplot } from '@/components/Crossplot'
 import { FieldSelect } from '@/components/FieldSelect'
 import { Key } from '@/components/Key'
-import { fmt } from '@/lib/format'
+import { fitSummary, fmt } from '@/lib/format'
 import { twoSample } from '@/lib/stats'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
@@ -11,7 +11,7 @@ import type { FilterRow } from '@/lib/types'
 import type { SectionPageProps } from '../../types'
 import { useAddisMet } from '../common/met'
 import { correlationP, influence, multiOls, ols, originFit, pearsonR, spearman, splitScan, type ScanRow } from '../common/stats'
-import { Bars, DataTable, Grid, HIGH, LOW, SitePick, fitText, line, num, ofSite, pText, point, seasonsOf, shortSeason, useSite } from '../common/ui'
+import { Bars, DataTable, Grid, HIGH, LOW, SitePick, line, num, ofSite, pText, point, seasonsOf, shortSeason, useSite } from '../common/ui'
 import { defaultRh } from './RhSweep'
 import { useMarkedRows } from '@/lib/markedRows'
 
@@ -142,7 +142,7 @@ export function OffsetDrivers({ rows: viewRows, meta: viewMeta }: SectionPagePro
             : <Empty>Fewer than 10 filters carry {cov}.</Empty>}
         </Grid>
         <Key items={[...seasons.map((s) => ({ label: shortSeason(s.name), color: s.color })), { label: 'OLS', color: INK.fit, kind: 'line' }, { label: 'through the origin', color: INK.fit, kind: 'dash' }]} />
-        <Note>OLS: {fitText(base)}. Through the origin: slope {fmt(origin?.slope, 3)}, R² {fmt(origin?.r2, 3)}. Residual against {cov}: Spearman ρ {fmt(covRho, 3)} (n {covPts.length}){covFit ? `, OLS slope ${fmt(covFit.slope, 4)} per unit, R² ${fmt(covFit.r2, 3)}` : ''}.</Note>
+        <Note>OLS: {fitSummary(base)}. Through the origin: {fitSummary({ slope: origin?.slope, r2: origin?.r2 }, { sep: ', ' })}. Residual against {cov}: Spearman ρ {fmt(covRho, 3)} (n {covPts.length}){covFit ? `, OLS slope ${fmt(covFit.slope, 4)} per unit, R² ${fmt(covFit.r2, 3)}` : ''}.</Note>
       </ChartFrame>
 
       <ChartFrame id="od-nested" title={`Does ${cov} help? — nested models for ${yF}`} subtitle="Least squares with an intercept on the filters that carry all three measurements. A covariate that matters lifts adjusted R² and lowers the RMSE."
@@ -162,7 +162,7 @@ export function OffsetDrivers({ rows: viewRows, meta: viewMeta }: SectionPagePro
         provenance={`${RECURSIVE} (variable_split_scan)`} controls={<Segmented label="Min filters per side" value={minParam} options={['15', '30']} onChange={setMin} />}>
         {!scan.length ? <Empty>No measurement has {minN} filters on both sides of a split.</Empty> : <>
           <Bars label="split score" bars={scan.slice(0, 15).map((s) => ({ key: s.variable, label: s.variable, value: s.score,
-            tip: [s.variable, `split at p${Math.round(s.quantile * 100)} = ${fmt(s.threshold, 3)}`, `low n ${s.nLow}: slope ${fmt(s.low.slope, 3)}, intercept ${fmt(s.low.intercept, 3)}`, `high n ${s.nHigh}: slope ${fmt(s.high.slope, 3)}, intercept ${fmt(s.high.intercept, 3)}`] }))} />
+            tip: [s.variable, `split at p${Math.round(s.quantile * 100)} = ${fmt(s.threshold, 3)}`, `low n ${s.nLow}: ${fitSummary({ slope: s.low.slope, intercept: s.low.intercept }, { sep: ', ' })}`, `high n ${s.nHigh}: ${fitSummary({ slope: s.high.slope, intercept: s.high.intercept }, { sep: ', ' })}`] }))} />
           <DataTable rows={scan.slice(0, 10)} rowKey={(r) => r.variable} columns={[
             { key: 'v', label: 'Measurement', value: (r) => r.variable },
             { key: 'q', label: 'Split', num: true, value: (r) => `p${Math.round(r.quantile * 100)} = ${fmt(r.threshold, 3)}` },
@@ -188,13 +188,13 @@ export function OffsetDrivers({ rows: viewRows, meta: viewMeta }: SectionPagePro
         provenance={`${INVESTIGATION} (§5 Bland–Altman)`}>
         <Crossplot points={ba.map((p) => point(p.r, p.m, p.d, colorOf(p.r), 'mean', 'difference', 'Research · Bland–Altman'))} marked={markedBA} sameScale={false} title={`${yF} − ${xF}`} xLabel={`Mean of the two${unitX ? ` (${unitX})` : ''}`} yLabel="Difference" fit={false}
           extraLines={[...line({ slope: 0, intercept: bias }, INK.fit, 'bias'), ...line({ slope: 0, intercept: bias + 1.96 * sd }, INK.muted, '+1.96 SD', '5 4'), ...line({ slope: 0, intercept: bias - 1.96 * sd }, INK.muted, '−1.96 SD', '5 4'), ...line(prop, INK.deming, 'trend', '2 3')]} maxSide={420} />
-        <Note>Mean difference {fmt(bias, 3)}, limits of agreement {fmt(bias - 1.96 * sd, 2)} to {fmt(bias + 1.96 * sd, 2)}. Trend of the difference with the mean (pink dotted): {fitText(prop)}.</Note>
+        <Note>Mean difference {fmt(bias, 3)}, limits of agreement {fmt(bias - 1.96 * sd, 2)} to {fmt(bias + 1.96 * sd, 2)}. Trend of the difference with the mean (pink dotted): {fitSummary(prop)}.</Note>
       </ChartFrame>
 
       <ChartFrame id="od-influence" title={`Influential filters — Cook's distance above 4 / n, and what they are made of`}
         subtitle={`Leverage and Cook's distance of the OLS fit of ${yF} on ${xF}. Below: the measurements whose mean differs between the influential filters and the rest (Welch p < 0.10), as (mean in the influential filters / mean in the rest) − 1.`}
         provenance={`${INVESTIGATION} (§6 leverage and influential samples)`}>
-        <Note>{flagged.length} of {pairs.length} filters have Cook's distance above {fmt(cut, 3)}. With them: {fitText(base)}. Without them: {fitText(without)}.</Note>
+        <Note>{flagged.length} of {pairs.length} filters have Cook's distance above {fmt(cut, 3)}. With them: {fitSummary(base)}. Without them: {fitSummary(without)}.</Note>
         <Grid>
           <DataTable rows={flagged.map((p) => ({ p, c: infl![pairs.indexOf(p)] })).sort((a, b) => b.c.cook - a.c.cook).slice(0, 15)} rowKey={(r) => r.p.r.id} columns={[
             { key: 'id', label: 'Filter', value: (r) => r.p.r.id },

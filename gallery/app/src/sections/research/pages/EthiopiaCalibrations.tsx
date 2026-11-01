@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Figure } from '@/components/Figure'
-import { f2 } from '@/lib/format'
+import { coef, f2 } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { ExcludedNote, FixedSetNote } from '@/lib/markedRows'
 import { num, type Row } from '@/lib/table'
@@ -111,7 +111,7 @@ export function EthiopiaCalibrations({ rows: galleryRows }: SectionPageProps) {
 
     <Figure kind="table" id="ethiopia-cleaning" data={rows(data, 'cleaning_rounds')}
       title="spartan_ec 08 — how the 3σ cleaning runs: nine rounds remove 61 of 906 calibration filters"
-      subtitle={`Fit at k = 20, drop every filter whose |residual| exceeds 3 × the residual spread, refit, repeat. ${rows(data, 'cleaning_fit').map((r) => `${r.stage}: n = ${r.n}, R² ${Number(r.R2).toFixed(3)}, RMSE ${r['RMSE (µg)']} µg`).join('; ')}. (Notebook 07's CAL-1 stops after three rounds, at 862 filters.)`}
+      subtitle={`Fit at k = 20, drop every filter whose |residual| exceeds 3 × the residual spread, refit, repeat. ${rows(data, 'cleaning_fit').map((r) => `${r.stage}: n = ${r.n}, R² ${coef(r.R2)}, RMSE ${r['RMSE (µg)']} µg`).join('; ')}. (Notebook 07's CAL-1 stops after three rounds, at 862 filters.)`}
       provenance={provenance(data, ['cleaning_rounds', 'cleaning_fit'])} />
 
     {calAll.length > 0

@@ -5,7 +5,7 @@ import { Legend, useLegend } from '@/components/Legend'
 import { SpectrumPlot, type SpectrumAnnotation, type SpectrumBand, type SpectrumSeries } from '@/components/SpectrumPlot'
 import { useChartOptions } from '@/lib/chartOptions'
 import { useColourScheme } from '@/lib/colourSchemes'
-import { f2 } from '@/lib/format'
+import { f2, pct } from '@/lib/format'
 import { ExcludedNote, FixedSetNote, useExclusionSplit } from '@/lib/markedRows'
 import { categoricalScale } from '@/lib/palettes'
 import { num, type Row } from '@/lib/table'
@@ -23,7 +23,6 @@ import { ALL, BAND_LABEL, BANDS, bandArea, flatten, groupOf, MONTH_SPLITS, OTHER
  * without them the figures say so.
  */
 
-const pct1 = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? '—' : `${(100 * v).toFixed(1)} %`)
 const mAbs = (v: unknown) => (num(v as never) ?? NaN) / 1000
 const col = (rs: Row[], key: string) => rs.map((r) => mAbs(r[key]))
 const ARTIFACT = 'rgba(214, 39, 40, 0.10)', ORGANIC = 'rgba(44, 160, 44, 0.08)'
@@ -173,8 +172,8 @@ export function BandProfile({ data }: { data: SpectralExport }) {
     panels={[{ value: 'fraction', label: 'Share of the four organic bands\' area (median and IQR over spectra)' }]} aggregate={{ stat: 'median', interval: 'iqr' }}
     variants={[{ key: 'split', label: 'ETAD grouped by', choices: MONTH_SPLITS.map((s) => ({ value: s.key, label: s.label.replace(/ \((04 )?fig \d\)$/, ''), patch: { series: `group ${s.key}` } })) }]}
     colors={{ [IMPROVE]: INK.text, [ALL]: '#d62728' }}
-    title={`Addis's organic bands are OH-dominated (median ${pct1(at('OH')?.median)}) with almost no aromatic signal (${pct1(at('aromatic')?.median)}), and the lot-248+251 training set looks the same`}
-    subtitle={`June 13's peak-ratio "biomass classifier": offset each spectrum by its 3900–4000 cm⁻¹ mean, integrate CH, C=O, OH and the aromatic C=C band above each band's own minimum, and take each as a share of the four. Per ETAD spectrum that counts under Filters → excluded (recomputed from the Drive's spectra; on all 319, with Include, the medians equal 13's printed profile), grouped by any month split; IMPROVE is 13's printed median over the 13,012 training filters (median ${improve ? BANDS.map((b) => `${b} ${pct1(num(improve[b]))}`).join(', ') : '—'}), as its per-filter fractions were not saved. 13 read it as oxygenated smouldering-wood smoke rather than aromatic char, and since the training set already matches, selecting "biomass-like" IMPROVE filters by this profile did not move the HIPS fit (the ML page's frontier). Band areas, no model: no MAC.`}
+    title={`Addis's organic bands are OH-dominated (median ${pct(at('OH')?.median, 1)}) with almost no aromatic signal (${pct(at('aromatic')?.median, 1)}), and the lot-248+251 training set looks the same`}
+    subtitle={`June 13's peak-ratio "biomass classifier": offset each spectrum by its 3900–4000 cm⁻¹ mean, integrate CH, C=O, OH and the aromatic C=C band above each band's own minimum, and take each as a share of the four. Per ETAD spectrum that counts under Filters → excluded (recomputed from the Drive's spectra; on all 319, with Include, the medians equal 13's printed profile), grouped by any month split; IMPROVE is 13's printed median over the 13,012 training filters (median ${improve ? BANDS.map((b) => `${b} ${pct(num(improve[b]), 1)}`).join(', ') : '—'}), as its per-filter fractions were not saved. 13 read it as oxygenated smouldering-wood smoke rather than aromatic char, and since the training set already matches, selecting "biomass-like" IMPROVE filters by this profile did not move the HIPS fit (the ML page's frontier). Band areas, no model: no MAC.`}
     provenance={provenance(data, ['etad_spectra_meta', 'band_profile_printed'], 'research/ftir_ec_calibration_2026_06_25/13_chase_origin_and_biomass.ipynb fig13_organic_band_profile.')}
     aside={<ExcludedNote count={new Set(split.marked.map((r) => galleryId(String(r.ExternalFilterId)))).size} />} />
 }

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Figure } from '@/components/Figure'
-import { f2 } from '@/lib/format'
+import { f2, pct } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { num, type Row } from '@/lib/table'
 import { themed } from '@/lib/theme'
@@ -78,7 +78,6 @@ export function ModelForm(_props: SectionPageProps) {
   const ecOc = overlap[0], hips = overlap[1]
   const bands = rows(data, 'vip_bands')
   const share = (m: string, band: string) => num(bands.find((r) => r.model === m && r.band === band)?.vip2_share)
-  const pct = (v: number | null) => (v == null ? '—' : `${(100 * v).toFixed(0)} %`)
   const hipsMetrics = rows(data, 'hips_transfer')
   const kOf = (model: string) => num(hipsMetrics.find((r) => r.model === model)?.components)
   const vipSets: VipSet[] = [

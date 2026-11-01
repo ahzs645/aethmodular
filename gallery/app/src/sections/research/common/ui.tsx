@@ -10,6 +10,7 @@ import type { CrossLine, CrossPoint } from '@/components/Crossplot'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/format'
+import { clipText } from '@/lib/fitLabel'
 import { FONT, INK } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
@@ -124,8 +125,7 @@ export function Bars({ bars, label, max, format = (v) => fmt(v, 2) }: { bars: Ba
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
   const labelW = Math.min(240, Math.max(120, width * 0.34)), noteW = 70
-  // labels end at the bars: cut what would run off the left edge (about 6 px a character at 11.5 px)
-  const maxChars = Math.max(10, Math.floor((labelW - 8) / 6.2))
+  // labels end at the bars: cut what would run off the left edge, measured at the 11.5 px they are drawn at
   const w = Math.max(120, width - labelW - noteW - 8)
   const shown = bars.filter((b) => b.value !== null)
   const x = d3.scaleLinear().domain([0, max ?? (d3.max(shown, (b) => b.value!) || 1)]).range([0, w]).nice()
@@ -135,8 +135,8 @@ export function Bars({ bars, label, max, format = (v) => fmt(v, 2) }: { bars: Ba
       <svg width={labelW + w + noteW} height={shown.length * rowH + 30} fontFamily={FONT.family}>
         {shown.map((b, i) => {
           const c = b.signed == null ? INK.accent : b.signed >= 0 ? INK.positive : INK.negative
-          return <g key={b.key} transform={`translate(0,${i * rowH})`} onMouseMove={(e) => b.tip && tip.show(e, b.tip)} onMouseLeave={tip.hide}>
-            <text x={labelW - 6} y={rowH / 2} dy="0.35em" textAnchor="end" fontSize={11.5} fill={INK.text}>{b.label.length > maxChars ? `${b.label.slice(0, maxChars - 1)}…` : b.label}</text>
+          return <g key={b.key} transform={`translate(0,${i * rowH})`} {...(b.tip ? tip.bind(b.tip) : {})}>
+            <text x={labelW - 6} y={rowH / 2} dy="0.35em" textAnchor="end" fontSize={11.5} fill={INK.text}>{clipText(b.label, labelW - 8, { size: 11.5, minChars: 9 })}</text>
             <rect x={labelW} y={3} width={Math.max(1, x(b.value!))} height={rowH - 6} fill={c} fillOpacity={0.75} />
             <text x={labelW + x(b.value!) + 4} y={rowH / 2} dy="0.35em" fontSize={10.5} fontFamily={FONT.mono} fill={INK.muted}>{format(b.value!)}{b.note ? `  ${b.note}` : ''}</text>
           </g>
@@ -151,9 +151,6 @@ export function Bars({ bars, label, max, format = (v) => fmt(v, 2) }: { bars: Ba
     </div>
   )
 }
-
-/** "slope 0.403 · intercept 2.830 · R² 0.785 · n 378" */
-export const fitText = (f: Fit | null, digits = 3) => f ? `slope ${fmt(f.slope, digits)} · intercept ${fmt(f.intercept, digits)} · R² ${fmt(f.r2, 3)} · n ${f.n}` : '—'
 
 /** a p value: three significant figures, or "< 0.0001" */
 export const pText = (p: number) => (!Number.isFinite(p) ? '—' : p < 1e-4 ? '< 0.0001' : p.toPrecision(2))

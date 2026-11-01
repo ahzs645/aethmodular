@@ -60,9 +60,8 @@ export function DensityPlot({ id, cells, bins, x: [x0, x1], y: [y0, y1], xLabel,
           {cells.map((c) => {
             const v = mode === 'count' ? Math.log10(c[2]) : c[3]
             return <rect key={`${c[0]}-${c[1]}`} x={c[0] * cw} y={side - (c[1] + 1) * cw} width={cw + 0.5} height={cw + 0.5} fill={Number.isFinite(v) ? ramp(v) : INK.empty}
-              onMouseMove={(e) => tip.show(e, [`${xLabel}: ${fmt(x0 + (c[0] * (x1 - x0)) / bins, 2)}–${fmt(x0 + ((c[0] + 1) * (x1 - x0)) / bins, 2)}`,
-                `${yLabel}: ${fmt(y0 + (c[1] * (y1 - y0)) / bins, 2)}–${fmt(y0 + ((c[1] + 1) * (y1 - y0)) / bins, 2)}`, `${c[2].toLocaleString()} filters${c.length > 3 ? ` · ${valueLabel} ${fmt(c[3], 2)}` : ''}`])}
-              onMouseLeave={tip.hide} />
+              {...tip.bind(() => [`${xLabel}: ${fmt(x0 + (c[0] * (x1 - x0)) / bins, 2)}–${fmt(x0 + ((c[0] + 1) * (x1 - x0)) / bins, 2)}`,
+                `${yLabel}: ${fmt(y0 + (c[1] * (y1 - y0)) / bins, 2)}–${fmt(y0 + ((c[1] + 1) * (y1 - y0)) / bins, 2)}`, `${c[2].toLocaleString()} filters${c.length > 3 ? ` · ${valueLabel} ${fmt(c[3], 2)}` : ''}`])} />
           })}
           {box && <g pointerEvents="none">
             <rect x={xs(box.x[0])} y={ys(box.y[1])} width={Math.max(0, xs(box.x[1]) - xs(box.x[0]))} height={Math.max(0, ys(box.y[0]) - ys(box.y[1]))} fill="none" stroke={INK.warn} strokeWidth={1.6} strokeDasharray="5 3" />
