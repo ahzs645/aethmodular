@@ -8,6 +8,8 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { timeSeasonBands, type SeasonBand } from '@/components/SeasonBands'
 import { seasonOfDate, seasonOnly } from '@/lib/seasons'
 import { fmt } from '@/lib/stats'
+import { pct as pctOf } from '@/lib/format'
+import { fitsWidth } from '@/lib/fitLabel'
 import { FONT, INK, MARGIN } from '@/lib/theme'
 import { useFitHeight } from '@/lib/chartFit'
 import { useSingleView } from '@/lib/singleView'
@@ -240,8 +242,8 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
           ...species.slice().reverse().map((f) => {
             const c = typeof q.row[f] === 'number' ? (q.row[f] as number) : null
             const sh = share?.(q.row, f)
-            const shown = pct ? `${(q.v[f] * 100).toFixed(1)} %` : `${fmt(c, 2)} ${units}`
-            const other = pct ? (c !== null ? ` (${fmt(c, 2)} ${units})` : '') : sh != null ? ` (${(sh * 100).toFixed(1)} %)` : ''
+            const shown = pct ? pctOf(q.v[f], 1) : `${fmt(c, 2)} ${units}`
+            const other = pct ? (c !== null ? ` (${fmt(c, 2)} ${units})` : '') : sh != null ? ` (${pctOf(sh, 1)})` : ''
             return q.missing.includes(f) ? `${f}: not measured` : `${f}: ${shown}${other}`
           }),
           ...(extraTip?.(q.row) ?? []),
@@ -256,9 +258,9 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
               <g pointerEvents="none">
                 {bands.map((b, j) => <rect key={j} data-export-season={b.name} data-export-color={b.color} x={b.x} y={-14} width={b.w} height={11} fill={b.color} />)}
                 {bands.map((b, j) => {
-                  // the full name where it fits, else its first word (Belg), else nothing (about 5 px a character at 9 px)
+                  // the full name where it fits, else its first word (Belg), else nothing (measured at 9 px)
                   const full = seasonOnly(b.name), short = full.split(' (')[0]
-                  const text = full.length * 5 + 8 <= b.w ? full : short.length * 5 + 8 <= b.w ? short : ''
+                  const text = fitsWidth(full, b.w - 8, 9) ? full : fitsWidth(short, b.w - 8, 9) ? short : ''
                   return text && <text key={j} x={b.x + b.w / 2} y={-5.5} textAnchor="middle" fontSize={9} fill={INK.text}>{text}</text>
                 })}
               </g>
@@ -307,7 +309,7 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
  * reads as a cut and not as a sampling gap.
  */
 function SeasonBlockAxis({ segs, segX, segW, y }: { segs: Segment[]; segX: number[]; segW: (k: number) => number; y: number }) {
-  const fits = (text: string, w: number) => text.length * 6.2 + 6 <= w
+  const fits = (text: string, w: number, size = 11, weight = 600) => fitsWidth(text, w - 6, size, weight)
   return (
     <g transform={`translate(0,${y})`} fontFamily={FONT.family} pointerEvents="none">
       {segs.map((g, k) => {
@@ -321,7 +323,7 @@ function SeasonBlockAxis({ segs, segX, segW, y }: { segs: Segment[]; segX: numbe
             <line x1={x0} x2={x0} y2={5} stroke={INK.axis} />
             <line x1={x0 + w} x2={x0 + w} y2={5} stroke={INK.axis} />
             {label && <text x={x0 + w / 2} y={17} textAnchor="middle" fontSize={11} fontWeight={600} fill={INK.text}>{label}</text>}
-            {fits(ends, w) && <text x={x0 + w / 2} y={30} textAnchor="middle" fontSize={9.5} fill={INK.muted}>{ends}</text>}
+            {fits(ends, w, 9.5, 400) && <text x={x0 + w / 2} y={30} textAnchor="middle" fontSize={9.5} fill={INK.muted}>{ends}</text>}
           </g>
         )
       })}

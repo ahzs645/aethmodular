@@ -8,6 +8,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { fieldCoverage, matchPmf } from '@/lib/pmfCoverage'
 import { pickerName } from '@/lib/pmfGroups'
 import { FONT, INK } from '@/lib/theme'
+import { pct } from '@/lib/format'
 import type { FilterRow, MetaFile, PmfFile, PmfRow } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import { HIDDEN_DUPLICATES } from '@/fieldLineage'
@@ -69,7 +70,7 @@ export function PmfCoverage({ pmf, rows, meta }: { pmf: PmfFile; rows: PmfRow[];
   return (
     <ChartFrame id="pmf-coverage"
       title={`PMF coverage — the ${site} filters the PMF solution analysed, among all of them`}
-      subtitle={`${view.n.all} ${site} filters in the gallery${view.n.out ? ` (${view.n.out} more left out under Filters → excluded)` : ''}; ${view.n.pmf} have a PMF day (${view.n.all ? ((100 * view.n.pmf) / view.n.all).toFixed(1) : '0'} %), ${view.n.shown} of them in this view's seasons and sources; ${view.n.all - view.n.pmf} have none.${view.range ? ` The PMF days run ${view.range[0]} to ${view.range[1]} (shaded).` : ''}${view.unmatched.length ? ` ${view.unmatched.length} PMF days match no filter.` : ' Every PMF day matches a filter.'} A filter has a PMF day when the PMF row carries its id or, failing that, is dated within a day of it (the notebook's rule). The lanes below repeat it per measurement, so the parameters the PMF subset can and cannot speak to show at a glance.`}
+      subtitle={`${view.n.all} ${site} filters in the gallery${view.n.out ? ` (${view.n.out} more left out under Filters → excluded)` : ''}; ${view.n.pmf} have a PMF day (${view.n.all ? pct(view.n.pmf / view.n.all, 1) : '0 %'}), ${view.n.shown} of them in this view's seasons and sources; ${view.n.all - view.n.pmf} have none.${view.range ? ` The PMF days run ${view.range[0]} to ${view.range[1]} (shaded).` : ''}${view.unmatched.length ? ` ${view.unmatched.length} PMF days match no filter.` : ' Every PMF day matches a filter.'} A filter has a PMF day when the PMF row carries its id or, failing that, is dated within a day of it (the notebook's rule). The lanes below repeat it per measurement, so the parameters the PMF subset can and cannot speak to show at a glance.`}
       provenance="research/ftir_hips_chem/ETAD_Factor_Analysis.ipynb c11 (PMF coverage), c12 (timeline, all vs PMF-analysed), c13 (parameter coverage timeline) · from filters.json + pmf.json"
       controls={<Toggle label="A lane per measurement" checked={lanes === '1'} onChange={(v) => setLanes(v ? '1' : '0')} title="One lane per measurement the site's filters carry (c13), or only the all-filters lane (c12)" />}>
       <div ref={wrapRef} className="chart-wrap">

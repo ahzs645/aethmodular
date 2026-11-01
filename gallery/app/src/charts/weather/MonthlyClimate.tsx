@@ -86,10 +86,9 @@ export function MonthlyClimate({ meta, sites, id = 'weather-climate', title = 'M
                   <g key={m.m}>
                     {m.p !== null && <rect x={x(m.m)} width={x.bandwidth()} y={yP(m.p)} height={ih - yP(m.p)} fill="#4292c6" fillOpacity={0.75} />}
                     <rect x={x(m.m)} width={x.bandwidth()} height={ih + 22} fill="transparent"
-                      onMouseEnter={(e) => tip.show(e, [`${site.name} · ${d3.timeFormat('%B')(new Date(2023, m.m - 1, 1))}`,
+                      {...tip.bind(() => [`${site.name} · ${d3.timeFormat('%B')(new Date(2023, m.m - 1, 1))}`,
                         `precipitation ${fmt(m.p, 0)} mm/month`, `temperature ${fmt(m.t, 1)} °C`, `RH ${fmt(m.rh, 0)} %`,
-                        `season: ${seasons.find((s) => s.months.includes(m.m))?.name.replace(`${site.name} · `, '') ?? '—'}`, `${m.n} days`])}
-                      onMouseLeave={tip.hide} />
+                        `season: ${seasons.find((s) => s.months.includes(m.m))?.name.replace(`${site.name} · `, '') ?? '—'}`, `${m.n} days`])} />
                   </g>
                 ))}
                 <path d={line(months) ?? ''} fill="none" stroke="#c0392b" strokeWidth={1.8} pointerEvents="none" />

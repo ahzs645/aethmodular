@@ -90,7 +90,7 @@ export function AeronetEom({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }
                 return <g key={c.key}>
                   <path d={line(pts) ?? ''} fill="none" stroke={c.color} strokeWidth={2} />
                   {pts.map((p) => p.r === null ? null : <circle key={p.ex} cx={xs(p.ex)} cy={y(p.r)} r={4} fill={c.color}
-                    onMouseEnter={(e) => tip.show(e, [`${c.label} · Ex${p.ex}`, `r = ${fmt(p.r, 3)}`, `${p.n} filters`])} onMouseLeave={tip.hide} />)}
+                    {...tip.bind(() => [`${c.label} · Ex${p.ex}`, `r = ${fmt(p.r, 3)}`, `${p.n} filters`])} />)}
                 </g>
               })}
               {steps.map((s) => <text key={s.excluded} x={xs(s.excluded)} y={-4} textAnchor="middle" fontSize={10} fill={INK.muted}>n={s.n}</text>)}

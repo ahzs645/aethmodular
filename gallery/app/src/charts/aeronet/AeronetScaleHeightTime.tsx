@@ -119,7 +119,7 @@ export function AeronetScaleHeightTime({ rows, meta }: { rows: FilterRow[]; meta
                 focus={(p, [cx, cy]) => { const st = focusStyle(p.row.id, p.row.id, { r: 3 }); return <circle cx={cx} cy={cy} r={st.r} fill={colorOf(groupOf(p.row))} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} /> }} />
               {/* the medians over the dots' pointer layer, so each keeps its own tooltip */}
               {steps.map((s, i) => <line key={i} x1={x(s.a)} x2={Math.max(x(s.b), x(s.a) + 4)} y1={y(s.med)} y2={y(s.med)} stroke={colorOf(s.g)} strokeWidth={3} strokeLinecap="round"
-                onMouseEnter={(e) => tip.show(e, [label(s.g), `median H ${fmt(s.med, 0)} m`, `${s.n} filters, ${d3.utcFormat('%b %Y')(s.a)} – ${d3.utcFormat('%b %Y')(s.b)}`])} onMouseLeave={tip.hide} />)}
+                {...tip.bind(() => [label(s.g), `median H ${fmt(s.med, 0)} m`, `${s.n} filters, ${d3.utcFormat('%b %Y')(s.a)} – ${d3.utcFormat('%b %Y')(s.b)}`])} />)}
             </g>
           </svg>
         )}

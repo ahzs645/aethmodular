@@ -4,6 +4,7 @@ import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
+import { fitsWidth } from '@/lib/fitLabel'
 import { FONT, INK, inkOn } from '@/lib/theme'
 import { WEATHER_VARS, spearman } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -61,7 +62,7 @@ export function SiteWeatherSummary({ rows, meta, field, current, onSite }: {
               // short names, and on two lines where a column is too narrow for one
               const name = v.label.replace('Daily temperature range', 'Temp. range').replace('Boundary-layer height', 'BLH').replace('Relative humidity', 'RH').replace('Precipitation', 'Precip.').replace('Temperature', 'Temp.')
               const words = name.split(' ')
-              const lines = name.length * 6 + 6 > cell && words.length > 1 ? [words.slice(0, Math.ceil(words.length / 2)).join(' '), words.slice(Math.ceil(words.length / 2)).join(' ')] : [name]
+              const lines = !fitsWidth(name, cell - 6, 10.5) && words.length > 1 ? [words.slice(0, Math.ceil(words.length / 2)).join(' '), words.slice(Math.ceil(words.length / 2)).join(' ')] : [name]
               return <text key={v.key} x={labelW + numW * 2 + j * cell + cell / 2} y={head - 8 - (lines.length - 1) * 12} textAnchor="middle" fontSize={10.5} fill={INK.text}>
                 <title>{v.label}</title>
                 {lines.map((l, k) => <tspan key={k} x={labelW + numW * 2 + j * cell + cell / 2} dy={k ? 12 : 0}>{l}</tspan>)}</text>
@@ -79,8 +80,8 @@ export function SiteWeatherSummary({ rows, meta, field, current, onSite }: {
                   {t.cells.map((c, j) => {
                     const fill = c.rho === null ? INK.empty : color(c.rho)
                     return <g key={c.v.key} transform={`translate(${labelW + numW * 2 + j * cell},0)`}
-                      onMouseEnter={(e) => tip.show(e, [`${t.site}: ${field} vs ${c.v.label}`, c.rho === null ? `n = ${c.n} (too few)` : `ρ = ${fmt(c.rho, 2)} · n = ${c.n}`,
-                        `site mean ${c.v.label.toLowerCase()}: ${fmt(c.level, 1)}`, 'click to look at this site alone'])} onMouseLeave={tip.hide}>
+                      {...tip.bind(() => [`${t.site}: ${field} vs ${c.v.label}`, c.rho === null ? `n = ${c.n} (too few)` : `ρ = ${fmt(c.rho, 2)} · n = ${c.n}`,
+                        `site mean ${c.v.label.toLowerCase()}: ${fmt(c.level, 1)}`, 'click to look at this site alone'])}>
                       <rect x={1} width={cell - 2} height={rowH - 2} fill={fill} />
                       {c.rho !== null && <text x={cell / 2} y={rowH / 2} dy="0.1em" textAnchor="middle" fontSize={10.5} fontFamily={FONT.mono} fill={inkOn(fill)}>{fmt(c.rho, 2)}</text>}
                     </g>

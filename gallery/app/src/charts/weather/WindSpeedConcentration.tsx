@@ -89,9 +89,8 @@ export function WindSpeedConcentration({ rows, meta, field, wspdField, pickField
                     <path d={line(s.bins) ?? ''} fill="none" stroke={s.color} strokeWidth={2.4} pointerEvents="none" />
                     {s.bins.map((b) => (
                       <circle key={b.lo} cx={x(mid(b))} cy={y(b.median!)} r={3.6} fill={s.color} stroke={INK.panel} strokeWidth={0.8}
-                        onMouseEnter={(e) => tip.show(e, [`${s.name} · ${fmt(b.lo, 2)}–${fmt(b.hi, 2)} m/s`, `median = ${fmt(b.median)}`,
-                          b.q1 !== null ? `IQR ${fmt(b.q1)} – ${fmt(b.q3)}` : 'IQR n/a (n<4)', `n = ${b.n}`])}
-                        onMouseLeave={tip.hide} />
+                        {...tip.bind(() => [`${s.name} · ${fmt(b.lo, 2)}–${fmt(b.hi, 2)} m/s`, `median = ${fmt(b.median)}`,
+                          b.q1 !== null ? `IQR ${fmt(b.q1)} – ${fmt(b.q3)}` : 'IQR n/a (n<4)', `n = ${b.n}`])} />
                     ))}
                   </g>
                 )

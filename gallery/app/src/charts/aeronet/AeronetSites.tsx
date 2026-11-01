@@ -58,9 +58,9 @@ export function AeronetSiteTable({ rows, meta, stations, current, onSite }: {
               const others = t.st?.candidates.filter((c) => c.station !== t.st?.station) ?? []
               return (
                 <g key={t.site} transform={`translate(0,${head + i * rowH})`} style={{ cursor: onSite ? 'pointer' : undefined }} onClick={() => onSite?.(t.code)}
-                  onMouseEnter={(e) => tip.show(e, [t.site, t.st ? `${t.st.station}, ${fmt(t.st.km, 1)} km` : 'station unknown',
+                  {...tip.bind(() => [t.site, t.st ? `${t.st.station}, ${fmt(t.st.km, 1)} km` : 'station unknown',
                     ...others.map((c) => `also within 50 km: ${c.station} (${fmt(c.km, 1)} km, ${c.window_days_with_aod} window days with AOD)`),
-                    onSite ? 'click to look at this site alone' : ''].filter(Boolean))} onMouseLeave={tip.hide}>
+                    onSite ? 'click to look at this site alone' : ''].filter(Boolean))}>
                   <rect width={w} height={rowH - 2} fill={on ? INK.tint : 'transparent'} />
                   <circle cx={10} cy={rowH / 2 - 1} r={5} fill={siteColour(meta, t.site)} />
                   <text x={22} y={rowH / 2} dy="0.1em" fontSize={12} fontWeight={on ? 650 : 400} fill={INK.text}>{t.site}</text>
