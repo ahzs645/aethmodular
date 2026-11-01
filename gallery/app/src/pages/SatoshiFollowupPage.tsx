@@ -899,7 +899,8 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
             <YAxis scale={y} x={0} label="Fabs / 10 (µg/m³)" tickCount={5} gridWidth={iw} labelX={-42} />
             <XAxis scale={x} y={ih} label="PC1 score of the shape deviation" tickCount={5} labelDy={36} format={(v) => trim(v, 3)} />
             {outPts.length > 0 && <g fill="none" stroke={INK.muted} strokeWidth={1.3} strokeOpacity={0.85} strokeLinecap="round">
-              {outPts.filter((p) => p.pc1 >= x.domain()[0] && p.pc1 <= x.domain()[1] && p.ec >= y.domain()[0] && p.ec <= y.domain()[1]).map((p) => <path key={p.id} d={crossPath(x(p.pc1), y(p.ec))} {...tip.bind(() => markTip({ id: p.id }, reasonOf(p.id) ?? 'excluded', [`cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`]))} />)}
+              {outPts.filter((p) => p.pc1 >= x.domain()[0] && p.pc1 <= x.domain()[1] && p.ec >= y.domain()[0] && p.ec <= y.domain()[1]).map((p) => <path key={p.id} d={crossPath(x(p.pc1), y(p.ec))}>
+                <title>{markTip({ id: p.id }, reasonOf(p.id) ?? 'excluded', [`cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`]).join('\n')}</title></path>)}
             </g>}
             {pts.map((p) => <circle key={p.id} cx={x(p.pc1)} cy={y(p.ec)} r={4} fill={CLUSTER_COLORS[(p.c - 1) % 4]} {...dotFill('sparse')} {...dotRim()}
               onMouseEnter={(e) => tip.show(e, [p.id, `cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`, `standard spline model error ${signed(p.res)} µg/m³`])} onMouseLeave={tip.hide} />)}

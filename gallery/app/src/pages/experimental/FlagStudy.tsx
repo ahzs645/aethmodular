@@ -266,7 +266,8 @@ function BlindSpotMap({ d }: { d: FlagData }) {
             </g>
             {/* Filters → excluded: Mark — the overlay's excluded filters as muted ×, drawn only */}
             {overMarked.length > 0 && <g fill="none" stroke={INK.muted} strokeWidth={1.3} strokeOpacity={0.85} strokeLinecap="round">
-              {overMarked.map((r) => <path key={r.id} d={crossPath(lx(r), y(r.dist!))} {...tip.bind(() => markTip({ id: r.id, site: r.site, date: r.date }, reasonOf(r.id) ?? 'excluded', [`loading pct ${f2(r.load)}, distance pct ${f2(r.dist)}`]))} />)}
+              {overMarked.map((r) => <path key={r.id} d={crossPath(lx(r), y(r.dist!))}>
+                <title>{markTip({ id: r.id, site: r.site, date: r.date }, reasonOf(r.id) ?? 'excluded', [`loading pct ${f2(r.load)}, distance pct ${f2(r.dist)}`]).join('\n')}</title></path>)}
             </g>}
             {over.map((r) => (
               <circle key={r.id} cx={lx(r)} cy={y(r.dist!)} r={4} fill={r.population === 'Addis' ? ADDIS_ALL : '#7c3aed'} {...dotFill('dense')}

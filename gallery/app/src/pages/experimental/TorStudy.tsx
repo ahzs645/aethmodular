@@ -512,7 +512,7 @@ function WhereItSits({ d }: { d: TorData }) {
                 {sites.map((s) => { const val = s[siteVal[v.key]] as number; return Number.isFinite(val) && (!v.log || val > 0) ? <line key={s.site} x1={x(val)} x2={x(val)} y1={mid + 11} y2={mid + 16} stroke={IMPROVE_GREY} strokeWidth={0.8} /> : null })}
                 {addMarked.length > 0 && <g fill="none" stroke={INK.muted} strokeWidth={1.3} strokeOpacity={0.85} strokeLinecap="round">
                   {addMarked.map((p, i) => { const val = num(p[v.key]); return Number.isFinite(val) && (!v.log || val > 0) && val >= x.domain()[0] && val <= x.domain()[1]
-                    ? <path key={i} d={crossPath(x(val), mid - 6 + jitter(add.length + i) * 12, 2.6)} {...tip.bind(() => markTip({ id: String(p.id), site: String(p.site) }, reasonOf(String(p.id)) ?? 'excluded', [`${v.label}: ${v.fmt(val)}`]))} /> : null })}
+                    ? <path key={i} d={crossPath(x(val), mid - 6 + jitter(add.length + i) * 12, 2.6)}><title>{markTip({ id: String(p.id), site: String(p.site) }, reasonOf(String(p.id)) ?? 'excluded', [`${v.label}: ${v.fmt(val)}`]).join('\n')}</title></path> : null })}
                 </g>}
                 {add.map((p, i) => { const val = num(p[v.key]); return Number.isFinite(val) && (!v.log || val > 0) ? <circle key={i} cx={x(val)} cy={mid - 6 + jitter(i) * 12} r={2} fill={ADDIS_ALL} {...dotFill('dense')} /> : null })}
                 {ada.map((p, i) => { const val = num(p[v.key]); return Number.isFinite(val) && (!v.log || val > 0)
