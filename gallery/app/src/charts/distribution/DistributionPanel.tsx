@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { useChartOptions, type OptionContext } from '@/lib/chartOptions'
 import { YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -15,7 +16,6 @@ import { useChartGrouping } from '@/components/GroupingDialog'
 import { MeasurementControl } from '@/components/AxisFieldPopover'
 import { CategoryAxis, categoryAxisHeight } from '@/components/CategoryAxis'
 import { useDashboardDetails } from '@/lib/dashboardDetails'
-import { useSearchParam } from '@/lib/url'
 import { ExcludedNote, toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 
 const MODES = ['Boxplot', 'Box + points', 'Violin', 'Beeswarm'] as const
@@ -47,15 +47,22 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
   const hl = useHighlightActions()
   const height = useFitHeight() ?? 440
 
-  const [groupChoice, setGroupBy] = useSearchParam<(typeof GROUPS)[number]>('distribution.by', 'Site')
-  const [mode, setMode] = useSearchParam<(typeof MODES)[number]>('distribution.encoding', 'Boxplot')
-  const [comparison, setComparison] = useSearchParam<'Pooled' | 'Compare sites'>('distribution.compare', 'Compare sites')
-
   // Group: the reader's grouping (components/GroupingDialog), its bands in order, on the filters that carry the field
   const measured = useMemo(() => rows.filter((r) => typeof r[field] === 'number' && Number.isFinite(r[field] as number)), [rows, field])
-  const { grp, picker, missingNote } = useChartGrouping('distribution', measured, () => setGroupBy('Group'))
-  // Group is offered only once a grouping is picked; without one the panel groups by site
-  const groupBy = groupChoice === 'Group' && !grp ? 'Site' : groupChoice
+  const { grp, picker, missingNote } = useChartGrouping('distribution', measured, () => o.set('by', 'Group'))
+  // the options (lib/chartOptions; URL keys distribution.by / .compare / .encoding as before). Group is offered
+  // only once a grouping is picked (without one the panel groups by site), and sites pooled or compared only then
+  const o = useChartOptions('distribution', [
+    { key: 'measurement', node: () => <MeasurementControl /> },
+    { key: 'by', label: 'Group by', default: 'Site', choices: GROUPS.map((g) => ({ value: g, when: g === 'Group' ? (c: OptionContext) => !!c.hasGroup : undefined })) },
+    { key: 'grouping', node: () => picker },
+    { key: 'compare', label: 'Sites', choices: ['Pooled', 'Compare sites'], default: 'Compare sites', when: (c) => c.by === 'Group',
+      title: 'Apply shared grouping cutoffs to all filters; compare sites side by side within each band' },
+    { key: 'encoding', label: 'Encoding', choices: MODES, default: 'Boxplot' },
+  ], { hasGroup: !!grp })
+  const groupBy = o.values.by as (typeof GROUPS)[number]
+  const comparison = o.values.compare as 'Pooled' | 'Compare sites'
+  const mode = o.values.encoding as (typeof MODES)[number]
   const seasonColor = useMemo(() => new Map(meta.seasons.map((s) => [s.name, s.color])), [meta.seasons])
   const siteColor = useMemo(() => new Map(meta.sites.map((s) => [s.name, s.color])), [meta.sites])
 
@@ -140,15 +147,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
       title="Boxplot · Violin · Beeswarm — one distribution, four encodings"
       subtitle="The same grouped values drawn four ways. The notebooks commit to a boxplot at write time; here the encoding is a control, which is what makes the shape of a small group (Delhi, n≈97) legible rather than hidden behind a five-number summary. 'Box + points' is the gallery's boxplot-with-jitter: the summary and every filter it summarises."
       provenance="stands in for 50 boxplot + 3 violin figures · plotting/distributions.py · react-graph-gallery.com/boxplot · /boxplot-jitter"
-      controls={
-        <>
-          <MeasurementControl />
-          <Segmented label="Group by" value={groupBy} options={grp ? GROUPS : GROUPS.filter((g) => g !== 'Group')} onChange={setGroupBy} />
-          {picker}
-          {groupBy === 'Group' && <Segmented label="Sites" value={comparison} options={['Pooled', 'Compare sites'] as const} onChange={setComparison} title="Apply shared grouping cutoffs to all filters; compare sites side by side within each band" />}
-          <Segmented label="Encoding" value={mode} options={MODES} onChange={setMode} />
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap">
         {plotWidth > width + 1 && <p className="chart-note">Scroll horizontally to compare all {groups.length} groups.</p>}

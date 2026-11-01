@@ -31,6 +31,8 @@ export interface OptionDef {
   style?: 'segmented' | 'select'
   bind?: [OptionValue, (v: never) => void]
   persist?: boolean
+  /** older URL keys holding the same setting (lib/url useSearchParam legacy), so old links still open it */
+  legacy?: readonly string[]
   /** a control drawn by the chart, placed among the others; no value of its own */
   node?: (ctx: OptionContext) => ReactNode
   onChange?: (v: never) => void

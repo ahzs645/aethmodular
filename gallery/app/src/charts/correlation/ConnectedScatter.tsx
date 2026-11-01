@@ -3,7 +3,8 @@ import { StepButton } from '@/components/StepButton'
 import { IdentityLine } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { seasonsForSite } from '@/siteSeasons'
-import { ChartFrame, Empty, Segmented, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { useChartOptions } from '@/lib/chartOptions'
 import { Legend, toggleIn, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -42,9 +43,6 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
 
-  const [step, setStep] = useSearchParam<(typeof STEPS)[number]>('connected.step', 'Month of year', STEPS)
-  const [labelSetting, setLabels] = useSearchParam<string>('connected.labels', '1', ['0', '1'])
-  const labels = labelSetting === '1'
   const [pathChoice, setPathChoice] = useSearchParam<string>('connected.path', 'auto')
   const [pointChoice, setPointChoice] = useSearchParam<string>('connected.point', '')
   const narrow = useNarrowScreen()
@@ -54,10 +52,21 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
 
   // one path per site, or per band of the reader's grouping (components/GroupingDialog), every site pooled
   const paired = useMemo(() => rows.filter((r) => typeof r[xField] === 'number' && typeof r[yField] === 'number'), [rows, xField, yField])
-  const { grp, picker, missingNote } = useChartGrouping('connected', paired, () => { setPathsBy('Group'); setHidden(new Set()) })
-  const [pathsChoice, setPathsBy] = useSearchParam<'Site' | 'Group'>('connected.paths', 'Site', PATHS_BY)
-  // Group is offered only once a grouping is picked
-  const pathsBy = grp ? pathsChoice : 'Site'
+  const { grp, picker, missingNote } = useChartGrouping('connected', paired, () => o.set('paths', 'Group'))
+  // the options (lib/chartOptions; URL keys connected.paths / .step / .labels as before): paths by group only once a grouping is picked
+  const o = useChartOptions('connected', [
+    { key: 'paths', label: 'Paths', choices: PATHS_BY, default: 'Site', hidden: 'Site', when: (c) => !!c.hasGroup, onChange: () => setHidden(new Set()),
+      title: 'One path per site, or per band of a grouping (every site pooled in each band)' },
+    { key: 'grouping', node: () => picker },
+    { key: 'show', node: () => <Combobox label="Show" value={compareAll ? 'all' : selectedPath?.name ?? 'all'}
+      options={[{ key: 'all', label: 'Compare all' }, ...series.map(s => ({ key: s.name, label: s.name }))]}
+      onChange={setPathChoice} /> },
+    { key: 'step', label: 'Step', choices: STEPS, default: 'Month of year', onChange: () => setPointChoice('') },
+    { key: 'labels', label: 'Labels', toggle: true, default: true },
+  ], { hasGroup: !!grp })
+  const pathsBy = o.values.paths as 'Site' | 'Group'
+  const step = o.values.step as (typeof STEPS)[number]
+  const labels = o.values.labels as boolean
   const byGroup = pathsBy === 'Group'
   const sources = useMemo(() => byGroup
     ? grp!.labels.map((l, i) => ({ name: l, color: grp!.colors[i], keep: (r: FilterRow) => grp!.labelOf(r) === l }))
@@ -134,18 +143,7 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
       tip={<>{step === 'Month of year' ? 'Monthly medians · selected years pooled · Jan → Dec.' : 'Yearly medians · earliest → latest.'}
         {' '}{compareAll ? 'Tap a point to inspect its path on its own.' : 'Tap a point or use the step controls below.'}
         {opts.identity && ' Grey dashed line = equal measurements.'}</>}
-      controls={
-        <>
-          {grp && <Segmented label="Paths" value={pathsBy} options={PATHS_BY} onChange={(v) => { setPathsBy(v); setHidden(new Set()) }}
-            title="One path per site, or per band of a grouping (every site pooled in each band)" />}
-          {picker}
-          <Combobox label="Show" value={compareAll ? 'all' : selectedPath?.name ?? 'all'}
-            options={[{ key: 'all', label: 'Compare all' }, ...series.map(s => ({ key: s.name, label: s.name }))]}
-            onChange={setPathChoice} />
-          <Segmented label="Step" value={step} options={STEPS} onChange={v => { setStep(v); setPointChoice('') }} />
-          <Toggle label="Labels" checked={labels} onChange={v => setLabels(v ? '1' : '0')} />
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className={`chart-wrap centered${fit === null ? '' : ' fit-square'}`} style={fit === null ? undefined : { minHeight: fit }}>
         {all.length < 2 ? (

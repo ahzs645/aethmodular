@@ -27,6 +27,8 @@ import { COHORT, label } from '@/lib/labels'
  *   and `hiddenNote` can say why ("one fit per panel").
  * - `when` on a choice: offered only when true. A chosen value that is no longer offered
  *   resolves to the first one that is, so the chart never draws a combination it hides.
+ * - `legacy`: older URL keys for the option (a control moved from its own key into the chart's options), read
+ *   while `${chartId}.${key}` is absent, so old links open the same view.
  * - `bind`: state the chart does not own (the gallery-wide fit grouping). Every other option is kept in
  *   the URL as `${chartId}.${key}` (defaults are not written); `persist: false` keeps one in the chart's state.
  * - `node`: a control the engine does not draw itself (a field picker, a count), placed in order;
@@ -47,7 +49,8 @@ export function useChartOptions(chartId: string, defs: readonly OptionDef[], fac
   const { values, items, ctx } = resolveOptions(defs, stored.map((s) => s[0]), facts)
   const setter = (i: number) => (v: OptionValue) => { stored[i][1](v); (defs[i].onChange as ((v: OptionValue) => void) | undefined)?.(v) }
 
-  const controls = () => <>{items.map((it) => {
+  // null when nothing is drawn (every option hidden or fixed), so the frame keeps no empty controls row
+  const controls = () => { const drawn = items.map((it) => {
     const d = it.def, i = defs.indexOf(d), set = setter(i)
     // an axis option is drawn by its axis title (axisChoices), not in the row
     if (d.axis && it.kind === 'choice') return null
@@ -60,7 +63,7 @@ export function useChartOptions(chartId: string, defs: readonly OptionDef[], fac
     return it.offered.length <= 5 && d.style !== 'select'
       ? <Segmented key={d.key} label={d.label} value={it.value} options={it.offered.map((c) => c.value)} optionLabel={label} onChange={(v) => set(v)} title={d.title} />
       : <Combobox key={d.key} label={d.label ?? ''} value={it.value} title={d.title} onChange={(v) => set(v)} options={it.offered.map((c) => ({ key: c.value, label: c.label }))} />
-  })}</>
+  }).filter((x) => x !== null); return drawn.length ? <>{drawn}</> : null }
   // set an option from outside its control (a click on another chart picks the configuration)
   const set = (key: string, v: OptionValue) => { const i = defs.findIndex((d) => d.key === key); if (i >= 0) setter(i)(v) }
   // the axis options, for <AxisChoices {...o.axisChoices()}> around the plot (axes get pick="x" / "y"):
@@ -88,7 +91,7 @@ function useStoredOption(chartId: string, d: OptionDef, inTile: boolean): [Optio
   // hooks below run in the same order every render
   if (d.bind) return d.bind as [OptionValue, (v: OptionValue) => void]
   if (d.persist !== false || inTile) {
-    const [v, set] = useSearchParam<string>(`${chartId}.${d.key}`, d.toggle ? (d.default ? '1' : '0') : String(d.default ?? '')) // eslint-disable-line react-hooks/rules-of-hooks
+    const [v, set] = useSearchParam<string>(`${chartId}.${d.key}`, d.toggle ? (d.default ? '1' : '0') : String(d.default ?? ''), undefined, { legacy: d.legacy }) // eslint-disable-line react-hooks/rules-of-hooks
     return d.toggle ? [v === '1', (x) => set(x ? '1' : '0')] : [v, (x) => set(String(x))]
   }
   const [v, set] = useState<OptionValue>(d.default ?? '') // eslint-disable-line react-hooks/rules-of-hooks
