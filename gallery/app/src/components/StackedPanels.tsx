@@ -95,7 +95,8 @@ type Margin = { top?: number; right?: number; bottom?: number; left?: number | (
 export function StackedPanels<X extends StackX>({ x: xSpec, panels, margin = {}, gap = 14, panelHeight = 92, minPanelHeight = 40,
   xAxis = {}, seasons, seasonHover, xMarkers = [], readout, onLeave, overlay, ariaLabel }: {
   x: X
-  panels: readonly StackPanel<StackScaleOf<X>>[]
+  /** the scales come from `x` (NoInfer: the panels' render props do not widen it) */
+  panels: readonly StackPanel<StackScaleOf<NoInfer<X>>>[]
   /** px; `left` may depend on the panels' heights (titles wrapped to fit beside them) */
   margin?: Margin
   gap?: number
@@ -110,10 +111,10 @@ export function StackedPanels<X extends StackX>({ x: xSpec, panels, margin = {},
   /** vertical lines through every panel, labelled in the top one */
   xMarkers?: readonly StackMarker[]
   /** where the cursor stands for a pointer at `px`, and the tooltip; null: none here */
-  readout?: (px: number, x: StackScaleOf<X>) => { at: number; tip: TipBody } | null
+  readout?: (px: number, x: StackScaleOf<NoInfer<X>>) => { at: number; tip: TipBody } | null
   onLeave?: () => void
   /** marks over the whole stack, in plot coordinates (x from 0, y from the svg's top) */
-  overlay?: (s: { x: StackScaleOf<X>; width: number; tops: readonly number[]; heights: readonly number[] }) => ReactNode
+  overlay?: (s: { x: StackScaleOf<NoInfer<X>>; width: number; tops: readonly number[]; heights: readonly number[] }) => ReactNode
   ariaLabel?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)

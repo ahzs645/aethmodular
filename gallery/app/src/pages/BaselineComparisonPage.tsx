@@ -11,6 +11,7 @@ import { PageChoiceControls, PageChoices, usePageChoice, type PageChoiceDef } fr
 import { FullRangeVibesStatus } from '@/components/FullRangeVibesStatus'
 import { FullRangeVibesResults } from '@/components/FullRangeVibesResults'
 import { XAxis, YAxis } from '@/components/Axes'
+import { StackedPanels, type StackPanel } from '@/components/StackedPanels'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { BASELINE_COLOR, FONT, INK } from '@/lib/theme'
@@ -221,7 +222,7 @@ function LoadingPlot({ groups }: { groups: BaselineGroup[] }) {
 }
 function SpectraPlot({ spectrum:s, data, onSample, masks, archivedBenchmark=true }: { spectrum: BaselineSpectrum; data: BaselineData; onSample:(x:string)=>void; masks:HistoricalMask[]; archivedBenchmark?:boolean }) {
   const COLOR = useBaselineColors()
-  const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref);const lg=useLegend()
+  const lg=useLegend()
   const [view,setView]=useComparisonParam<string>('bview', 'Corrected spectra', archivedBenchmark?['Corrected spectra','Raw and baselines','VIBES − AIRSpec']:['Corrected spectra']);const [mask,setMask]=useComparisonParam<string>('bmask', archivedBenchmark?'no_co2_max3600':'full', ['full','no_co2','no_co2_max3600','no_co2_max3500'])
   const [regions,setRegions]=useComparisonParam<string>('bregions', 'Shade excluded regions', ['Shade excluded regions','Hide excluded regions'])
   const [range,setRange]=useComparisonParam<string>('brange', archivedBenchmark?'Shared (4000–1425)':'Full (4000–500)', ['Shared (4000–1425)','Full (4000–500)'])
@@ -234,8 +235,8 @@ function SpectraPlot({ spectrum:s, data, onSample, masks, archivedBenchmark=true
   const hidden=regions==='Hide excluded regions'
   const chosen=masks.find(m=>m.mask===mask)!
   const visible=(wn:number)=>wn>=(fullRange?500:1425)&&wn<=4000&&(!hidden||retainedWavenumber(wn,chosen))
-  const w=Math.max(300,width),iw=w-100,ih=270
-  const x=d3.scaleLinear().domain([4000,fullRange?500:1425]).range([0,iw])
+  // one wavenumber axis for every panel (components/StackedPanels), high to low as spectra are read
+  const xDomain:[number,number]=[4000,fullRange?500:1425]
   const difference=view==='VIBES − AIRSpec'
   const archived=difference?[{label:'VIBES − spline',values:s.vibes.map((v,i)=>v-s.airspec[i]),color:COLOR.VIBES}]:view==='Corrected spectra'?[{label:'Spline baseline',values:s.airspec,color:COLOR.AIRSpec},{label:'VIBES',values:s.vibes,color:COLOR.VIBES}]:[{label:'Raw',values:s.raw,color:INK.muted},{label:'Spline baseline curve',values:s.raw.map((v,i)=>v-s.airspec[i]),color:COLOR.AIRSpec},{label:'VIBES baseline',values:s.raw.map((v,i)=>v-s.vibes[i]),color:COLOR.VIBES}]
   const currentAir=fullSpectrum?.series.AIRSpec
@@ -248,9 +249,9 @@ function SpectraPlot({ spectrum:s, data, onSample, masks, archivedBenchmark=true
   const ext:[number,number]=[extent[0]??0,extent[1]??0.01]
   if(difference){const bound=Math.max(Math.abs(ext[0]),Math.abs(ext[1]));ext[0]=-bound;ext[1]=bound}
   const pad=(ext[1]-ext[0])*.06||0.01
-  const y=d3.scaleLinear().domain([ext[0]-pad,ext[1]+pad]).nice().range([ih,0])
-  const line=(r:typeof series[number])=>d3.line<number>().defined((v,i)=>visible(r.wn[i])&&Number.isFinite(v)).x((_,i)=>x(r.wn[i])).y(v=>y(v))(r.values)??''
-  const shade=(lo:number,hi:number)=><g key={lo}>{hidden?<><line x1={x(lo)} x2={x(lo)} y2={ih} stroke={INK.axis} strokeDasharray="3 3"/><line x1={x(hi)} x2={x(hi)} y2={ih} stroke={INK.axis} strokeDasharray="3 3"/><text x={(x(lo)+x(hi))/2} y={15} textAnchor="middle" fontFamily={FONT.family} fontSize={11} fill={INK.muted}>Hidden</text></>:<rect x={x(hi)} width={x(lo)-x(hi)} height={ih} fill="#c49442" fillOpacity={0.18}/>}</g>
+  const yDomain:[number,number]=[ext[0]-pad,ext[1]+pad]
+  const line=(r:typeof series[number],x:d3.ScaleLinear<number,number>,y:d3.ScaleLinear<number,number>)=>d3.line<number>().defined((v,i)=>visible(r.wn[i])&&Number.isFinite(v)).x((_,i)=>x(r.wn[i])).y(v=>y(v))(r.values)??''
+  const shade=(lo:number,hi:number,x:d3.ScaleLinear<number,number>,ih:number)=><g key={lo}>{hidden?<><line x1={x(lo)} x2={x(lo)} y2={ih} stroke={INK.axis} strokeDasharray="3 3"/><line x1={x(hi)} x2={x(hi)} y2={ih} stroke={INK.axis} strokeDasharray="3 3"/><text x={(x(lo)+x(hi))/2} y={15} textAnchor="middle" fontFamily={FONT.family} fontSize={11} fill={INK.muted}>Hidden</text></>:<rect x={x(hi)} width={x(lo)-x(hi)} height={ih} fill="#c49442" fillOpacity={0.18}/>}</g>
   return <ChartFrame id="baseline-spectrum" title={archivedBenchmark?'One physical filter, both corrections':'One physical filter, spline and full-range VIBES'} controls={<>
     <Segmented label="VIBES run" value={vibesRank} options={['70','30']} optionLabel={v=>v==='70'?'Completed · rank 70':'Archived · preliminary rank 30'} onChange={v=>setVibesRank(v as '30'|'70')}/>
     <Select label="Inspection case" value={s.sample_id} options={data.spectra.map(r=>r.sample_id)} optionLabel={id=>{const r=data.spectra.find(x=>x.sample_id===id)!; return `${r.site} / ${r.sample_id}${archivedBenchmark?` (${r.direction})`:''}`}} onChange={onSample}/>
@@ -267,12 +268,12 @@ function SpectraPlot({ spectrum:s, data, onSample, masks, archivedBenchmark=true
     {archivedBenchmark&&fullRange&&<Note>The archived raw spectrum and paired corrections end near 1425 cm⁻¹. {view==='Corrected spectra'?<>Orange shows the selected full-range VIBES correction (4000–500 cm⁻¹; 8-channel display means{fullTrace?`; ${traceVersionLabel(fullTrace)}`:''}). The prediction values below still refer to the archived fits.{!fullTrace&&' Full-range trace is loading or unavailable for this filter.'}</>:<>Choose Corrected spectra to display the current full-range VIBES trace. Raw/baseline and difference values below 1425 cm⁻¹ are unavailable.</>}</Note>}
     {!archivedBenchmark&&<Note>VIBES is corrected on 4000–500 cm⁻¹{fullTrace?` (${traceVersionLabel(fullTrace)})`:''}; the spline ends near 1425 cm⁻¹. Traces are 8-channel display means. Selecting the shared window crops the display of the full-range fit.{!fullTrace&&' Full-range VIBES is loading or unavailable; no archived trace is substituted.'}</Note>}
     {difference&&<Note>Pointwise corrected absorbance: VIBES − spline baseline. Zero means the corrections agree at that channel; a difference does not establish which is chemically correct.</Note>}
-    <div ref={ref} className="chart-wrap"><svg width={w} height={385*(layout==='Stacked'?Math.max(1,drawn.length):1)} role="img" aria-label={`Single-filter ${view.toLowerCase()}, ${range}, ${layout}`}>
-      {(layout==='Stacked'&&drawn.length?drawn.map(r=>[r]):[drawn]).map((panel,k)=><g key={k} transform={`translate(0,${k*385})`} data-spectrum-panel={layout==='Stacked'?panel[0]?.label??'comparison':'comparison'}>
-        <g transform="translate(72,20)"><YAxis scale={y} x={0} gridWidth={iw} label={difference?'Δ absorbance':'Absorbance'}/>{chosen.co2_low!==null&&shade(chosen.co2_low,chosen.co2_high!)}{chosen.upper!==null&&shade(chosen.upper,4000)}{difference&&<line x2={iw} y1={y(0)} y2={y(0)} stroke={INK.fit} strokeDasharray="4 3"/>}{panel.map(r=><path key={r.label} aria-label={r.label} d={line(r)} stroke={r.color} strokeWidth={1.7} strokeOpacity={lg.dim(r.label)} fill="none"/>)}<XAxis scale={x} y={ih} label="Wavenumber (cm⁻¹)" tickCount={7}/></g>
-        <MethodLegend width={w} y={350} items={(layout==='Stacked'&&k>0?panel:series).map(r=>({label:r.label,color:r.color}))} lg={lg}/><text x={24} y={375} fontFamily={FONT.family} fontSize={10} fill={INK.muted}>{`${range} · VIBES ${vibesRank==='70'?'completed rank 70':'preliminary rank 30'} · ${maskName(mask)} · display only`}</text>
-      </g>)}
-    </svg></div>
+    <div className="chart-wrap"><StackedPanels x={{type:'linear',domain:xDomain}} ariaLabel={`Single-filter ${view.toLowerCase()}, ${range}, ${layout}`}
+      margin={{top:20,right:28,left:72,bottom:96}} gap={28} panelHeight={270} xAxis={{label:'Wavenumber (cm⁻¹)',tickCount:7}}
+      panels={(layout==='Stacked'&&drawn.length?drawn.map(r=>[r]):[drawn]).map((panel,k):StackPanel<d3.ScaleLinear<number,number>>=>({key:layout==='Stacked'?panel[0]?.label??String(k):'comparison',
+        y:{domain:yDomain,nice:true,label:difference?'Δ absorbance':'Absorbance',tickCount:6},
+        children:({x,y,height})=><>{chosen.co2_low!==null&&shade(chosen.co2_low,chosen.co2_high!,x,height)}{chosen.upper!==null&&shade(chosen.upper,4000,x,height)}{difference&&<line x2={x.range()[1]} y1={y(0)} y2={y(0)} stroke={INK.fit} strokeDasharray="4 3"/>}{panel.map(r=><path key={r.label} aria-label={r.label} d={line(r,x,y)} stroke={r.color} strokeWidth={1.7} strokeOpacity={lg.dim(r.label)} fill="none"/>)}</>}))}
+      overlay={({width,tops,heights})=>{const end=tops[tops.length-1]+heights[heights.length-1];return <g transform="translate(-72,0)"><MethodLegend width={width+100} y={end+60} items={series.map(r=>({label:r.label,color:r.color}))} lg={lg}/><text x={24} y={end+85} fontFamily={FONT.family} fontSize={10} fill={INK.muted}>{`${range} · VIBES ${vibesRank==='70'?'completed rank 70':'preliminary rank 30'} · ${maskName(mask)} · display only`}</text></g>}}/></div>
     <Note>{s.site}, {s.sample_id}, {s.date}. TOR {f(s.truth)} µg/filter.{archivedBenchmark&&<> AIRSpec {f(s.AIRSpec_prediction)}, archived VIBES {f(s.VIBES_prediction)} µg/filter. Predictions refer to the archived full-pool benchmark.</>}</Note>
     <Note>These 12 cases were selected post hoc as three worse and three better cases at BRIS1 and CACR1 in the archived benchmark. They are individual spectra, not representative averages or a ranking of current full-range performance.</Note>
   </ChartFrame>
