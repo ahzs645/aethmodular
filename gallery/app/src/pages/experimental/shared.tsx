@@ -1,17 +1,11 @@
-import { useMemo, useRef, type ReactNode } from 'react'
+import { useMemo, type ComponentProps, type ReactNode } from 'react'
 import * as d3 from 'd3'
 import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
-import { XAxis, YAxis } from '@/components/Axes'
-import { IdentityLine } from '@/components/RefLines'
 import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
-import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
-import { FONT, INK } from '@/lib/theme'
-import { fidProps } from '@/lib/filterEdits'
-import { baseFilterId, dotFill, dotRim, useHighlightActions, type FilterRecord } from '@/lib/highlight'
-import { ScatterLayer } from '@/components/ScatterLayer'
-import { useCountedFilter, useExclMode, useExclusionSplit, useMarkReason, type MarkPoint } from '@/lib/markedRows'
+import { ScatterPlot } from '@/components/ScatterPlot'
+import { INK } from '@/lib/theme'
+import { useCountedFilter, useExclusionSplit } from '@/lib/markedRows'
 
 /** Helpers shared by the Experimental subpages (gallery/data/export_experiments.py exports). */
 
@@ -72,97 +66,17 @@ export function Forest({ rows, panels, labelWidth = 200, rowHeight = 24, noteWid
 }
 
 /** `id` links hover and pin across charts and follows Filters → excluded; `rec` opens the filter's record on click. */
-export interface ScatterPoint { x: number; y: number; color: string; r?: number; hollow?: boolean; tip?: string[]; key?: string; id?: string; rec?: FilterRecord
-  /** opacity factor, e.g. a legend's `dim(label)` while another series is pointed at */
-  dim?: number }
+export type { ScatterPoint } from '@/components/ScatterPlot'
 
 /**
- * A plain scatter for two different quantities (log axes, extra layers under and over the points). The plot
- * area is square and centred, sized like the shared Crossplot (`maxSide` caps the side); a 1:1 comparison of
- * two measurements of the same thing uses components/Crossplot instead, for its fits. Points with an `id` behave
- * like the Crossplot's filters (hover, pin, record, right-click exclusion); `pick` makes the axis titles open the
- * nearest axis picker (components/AxisChoices). As in the Crossplot, Filters → excluded acts on the points with an id
- * (lib/markedRows useCountedFilter: a hand exclusion, keep=, the export's exclusions unless Include): an excluded filter
- * leaves the points and the axis ranges, and under Mark it is drawn as × where it falls inside the axes.
+ * A plain scatter for two different quantities: components/ScatterPlot with this page's names (`xLog`/`yLog`,
+ * `under`/`over`). Square and centred like the Crossplot (`maxSide` caps the side); points with an `id` hover, pin,
+ * open their record and follow Filters → excluded; `pick` makes the axis titles open the nearest axis picker.
  */
-export function Scatter({ points, xLabel, yLabel, maxSide = 420, xLog = false, yLog = false, identity = false, xDomain, yDomain, under, over, pick = false }: {
-  points: ScatterPoint[]; xLabel: string; yLabel: string; maxSide?: number; xLog?: boolean; yLog?: boolean; identity?: boolean; pick?: boolean
-  xDomain?: [number, number]; yDomain?: [number, number]
-  under?: (s: { x: d3.ScaleContinuousNumeric<number, number>; y: d3.ScaleContinuousNumeric<number, number>; iw: number; ih: number }) => ReactNode
-  over?: (s: { x: d3.ScaleContinuousNumeric<number, number>; y: d3.ScaleContinuousNumeric<number, number>; iw: number; ih: number }) => ReactNode
+export function Scatter({ xLog = false, yLog = false, over, ...rest }: Omit<ComponentProps<typeof ScatterPlot>, 'xScale' | 'yScale' | 'children'> & {
+  xLog?: boolean; yLog?: boolean; over?: ComponentProps<typeof ScatterPlot>['children']
 }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
-  // pins and handlers only: a hover is drawn by the point layer (components/ScatterLayer), never by this chart
-  const hl = useHighlightActions()
-  // the one rule for whether a filter counts (lib/markedRows); points without an id, or with one the gallery does not
-  // know, always count. As presented (a meeting page) nothing is taken out
-  const counts = useCountedFilter()
-  const m = { top: 14, right: 18, bottom: 46, left: 62 }
-  const side = Math.max(200, Math.min((width || maxSide + m.left + m.right) - m.left - m.right, maxSide))
-  const iw = side, ih = side
-  const w = iw + m.left + m.right, h = ih + m.top + m.bottom
-  const drawable = useMemo(() => points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && (!xLog || p.x > 0) && (!yLog || p.y > 0)), [points, xLog, yLog])
-  const ok = useMemo(() => drawable.filter((p) => counts(p.id)), [drawable, counts])
-  const markMode = useExclMode() === 'mark'
-  const reasonOf = useMarkReason()
-  const nOut = drawable.length - ok.length
-  const outNote = nOut <= 0 ? null
-    : `${nOut} excluded filter${nOut === 1 ? '' : 's'} (Filters → excluded) ${nOut === 1 ? 'is' : 'are'} ${markMode ? 'drawn as × where inside the axes' : 'hidden here'}.`
-  const xd = xDomain ?? (d3.extent(ok, (p) => p.x) as [number, number])
-  const yd = yDomain ?? (d3.extent(ok, (p) => p.y) as [number, number])
-  const lo = Math.min(xd[0], yd[0]), hi = Math.max(xd[1], yd[1])
-  const xDom = identity ? [xLog ? Math.max(lo, 1e-3) : Math.min(0, lo), hi] : xd
-  const yDom = identity ? [yLog ? Math.max(lo, 1e-3) : Math.min(0, lo), hi] : yd
-  // the same scales until the ranges change, so the dots and the pointer index survive a re-render (a tooltip)
-  const x = useMemo(() => (xLog ? d3.scaleLog() : d3.scaleLinear()).domain(xDom).range([0, iw]).nice(), [xDom.join(), iw, xLog]) // eslint-disable-line react-hooks/exhaustive-deps
-  const y = useMemo(() => (yLog ? d3.scaleLog() : d3.scaleLinear()).domain(yDom).range([ih, 0]).nice(), [yDom.join(), ih, yLog]) // eslint-disable-line react-hooks/exhaustive-deps
-  const keyOf = (p: ScatterPoint) => (p.id ? baseFilterId(p.id) : null)
-  const xy = useMemo(() => ok.map((p) => [x(p.x), y(p.y)] as const), [ok, x, y])
-  // under Mark, the excluded points as × inside the axes (components/ScatterLayer `marks`), never in `ok`
-  const marks = useMemo<MarkPoint[]>(() => {
-    if (!markMode || !nOut) return []
-    const [xa, xb] = x.domain(), [ya, yb] = y.domain()
-    return drawable.flatMap((p) => !p.id || counts(p.id) || p.x < xa || p.x > xb || p.y < ya || p.y > yb ? []
-      : [{ id: baseFilterId(p.id), at: [x(p.x), y(p.y)] as const, tip: [...(p.tip ?? [p.id]), `excluded: ${reasonOf(p.id) ?? 'by hand'}`, 'drawn only: not in any fit, R² or count'] }])
-  }, [markMode, nOut, drawable, counts, x, y, reasonOf])
-  const dots = useMemo(() => ok.map((p, i) => {
-    const key = keyOf(p)
-    return <circle key={p.key ?? i} cx={xy[i][0]} cy={xy[i][1]} r={p.r ?? 3.5} fill={p.hollow ? 'none' : p.color} opacity={p.dim}
-      {...dotFill('sparse')} stroke={p.hollow ? p.color : dotRim().stroke} strokeWidth={p.hollow ? 1.5 : dotRim().strokeWidth}
-      {...(key ? fidProps(key) : {})} />
-  }), [ok, xy])
-  // log axes label only the 1-2-5 ticks of each decade, so minor ticks stay as marks without crowding text
-  const fmt = (log: boolean) => (v: any) => {
-    if (!log) return String(+(+v).toPrecision(3))
-    const m = Math.round(+v / 10 ** Math.floor(Math.log10(+v)))
-    return [1, 2, 5].includes(m) ? (+v >= 1 ? d3.format('~s')(+v) : String(+(+v).toPrecision(1))) : ''
-  }
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <svg width={w} height={h} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
-        <g transform={`translate(${m.left},${m.top})`}>
-          <YAxis scale={y} x={0} label={yLabel} tickCount={5} gridWidth={iw} labelX={-48} format={fmt(yLog)} pick={pick ? 'y' : undefined} />
-          <XAxis scale={x} y={ih} label={xLabel} tickCount={Math.max(3, Math.floor(iw / 80))} labelDy={38} format={fmt(xLog)} pick={pick ? 'x' : undefined} />
-          {identity && (() => { const [a, b] = x.domain(); return <IdentityLine x1={x(a)} y1={y(a)} x2={x(b)} y2={y(b)} /> })()}
-          {under?.({ x, y, iw, ih })}
-          {/* hover, click and right-click find the nearest point; a click on empty plot lets go of the pin (lib/highlight).
-              Points without an id show their tooltip only; the layers `over` the points sit under the pointer layer */}
-          <ScatterLayer items={ok} xy={xy} idOf={keyOf} dots={dots} width={iw} height={ih} tip={tip} reach={(p) => p.r ?? 3.5} marks={marks}
-            focusR={(p) => Math.max(p.r ?? 3.5, 6)}
-            focus={(p, [cx, cy]) => <circle cx={cx} cy={cy} r={Math.max(p.r ?? 3.5, 6)} fill={p.hollow ? 'none' : p.color} opacity={p.dim}
-              {...dotFill('sparse')} stroke={INK.text} strokeWidth={2} />}
-            tipOf={(p) => (p.tip ? (p.rec ? [...p.tip, 'click to pin it on every chart and open its record'] : p.tip) : null)}
-            onPick={(p) => { const key = keyOf(p); if (!key) return; if (p.rec) hl.openRecord(p.rec); hl.setPinned(key) }}>
-            {over?.({ x, y, iw, ih })}
-          </ScatterLayer>
-        </g>
-      </svg>
-      {tip.node}
-      {outNote && <p className="chart-note">{outNote}</p>}
-    </div>
-  )
+  return <ScatterPlot {...rest} xScale={xLog ? 'log' : 'linear'} yScale={yLog ? 'log' : 'linear'} outside="draw">{over}</ScatterPlot>
 }
 
 export interface PlacedLabel { key: string; text: string; bold: boolean; tx: number; ty: number; anchor: 'start' | 'middle' | 'end'; leader: boolean; ax: number; ay: number; lx: number; ly: number }

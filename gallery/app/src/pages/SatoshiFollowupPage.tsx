@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useId } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef } from 'react'
 import { robustDomain } from '@/lib/axes'
 import { AxisChoices } from '@/components/AxisChoices'
 import { Marker } from '@/components/RefLines'
@@ -15,8 +15,8 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
 import { PageChoiceControls, PageChoices, usePageChoice } from '@/lib/pageChoices'
 import { SidebarControls } from '@/lib/pageSidebar'
-import { dotFill, dotRim, useHighlightActions, type FilterRecord } from '@/lib/highlight'
-import { ScatterLayer } from '@/components/ScatterLayer'
+import { useHighlightActions, type FilterRecord } from '@/lib/highlight'
+import { ScatterPlot, type ScatterPoint } from '@/components/ScatterPlot'
 import { BANK_COLOR, BASELINE_COLOR, FONT, INK, OCT1_HATCH, SPECTRAL_REGION, themed } from '@/lib/theme'
 import { f2, f3, pct, signed, coef, coefSigned } from '@/lib/format'
 import { ALL_ADDIS, ANALYSIS_CALENDAR_NOTE, shortSeason } from '@/lib/seasons'
@@ -30,8 +30,7 @@ import { Key } from '@/components/Key'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { BandCell, FitCell } from '@/components/TableCells'
 import { ANALOG_SELECTION_EXCLUDED, OCT1_ALSO_EXCLUDED } from '@/components/SpectralRegions'
-import { ExcludedNote, FixedSetNote, useCountedFilter, useExclMode, useExclusionSplit, useMarkReason, type MarkPoint } from '@/lib/markedRows'
-import { crossPath, markTip } from '@/lib/exclusionMode'
+import { FixedSetNote, useCountedFilter } from '@/lib/markedRows'
 
 /**
  * Satoshi's questions after the 1 Oct 2026 meeting (his email of 2 Oct). Every
@@ -262,53 +261,29 @@ function Overlap({ data, mask }: { data: SatoshiData; mask: Mask }) {
 
 /** TOR EC vs OC/EC of the three parts: where the two analog sets sit in composition. */
 function OverlapScatter({ data, mask, group }: { data: SatoshiData; mask: Mask; group: string }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const hl = useHighlightActions()
-  const clip = useId()
   const mb = data.members
-  const all = useMemo(() => mb.mask.map((_, i) => i).filter((i) => mb.mask[i] === mask && mb.group[i] === group && (mb.tor_ec_ugm3[i] as number) > 0 && (mb.tor_oc_ec[i] as number) > 0), [mb, mask, group])
-  // Filters → excluded (lib/markedRows): an analog excluded by hand leaves the dots; under Mark it is drawn as ×
-  const isCounted = useCountedFilter()
-  const idx = useMemo(() => all.filter((i) => isCounted(`improve:${mb.filter_id[i]}`)), [all, isCounted, mb])
-  const outIdx = useExclusionSplit(all, (i) => `improve:${mb.filter_id[i]}`).marked
-  const markMode = useExclMode() === 'mark'
-  const reasonOf = useMarkReason()
-  const m = { top: 12, right: 16, bottom: 46, left: 60 }
-  // a square plot (1:1 aspect), centred
-  const iw = Math.max(240, Math.min(width - m.left - m.right, 440)), ih = iw
-  const x = d3.scaleLog().domain([0.01, 5]).range([0, iw]).clamp(true)
-  const y = d3.scaleLog().domain([0.3, 40]).range([ih, 0]).clamp(true)
-  const order = (p: string) => (p === 'shared' ? 2 : 1)
-  const sorted = useMemo(() => [...idx].sort((a, b) => order(String(mb.part[a])) - order(String(mb.part[b]))), [idx, mb])
   const idOf = (i: number) => `improve:${mb.filter_id[i]}`
-  // the dots, drawn once per set and size: a hover or pin is drawn over them (components/ScatterLayer)
-  const xy = useMemo(() => sorted.map((i) => [x(mb.tor_ec_ugm3[i] as number), y(mb.tor_oc_ec[i] as number)] as const), [sorted, mb, iw]) // eslint-disable-line react-hooks/exhaustive-deps
-  const dots = useMemo(() => sorted.map((i, k) => <circle key={i} cx={xy[k][0]} cy={xy[k][1]} r={3} fill={PART_COLOR[String(mb.part[i])]} {...dotFill('standard')}
-    stroke={dotRim().stroke} strokeWidth={dotRim().strokeWidth} />), [sorted, mb, xy])
-  const marks = useMemo<MarkPoint[]>(() => (markMode ? outIdx : []).map((i) => ({ id: idOf(i), at: [x(mb.tor_ec_ugm3[i] as number), y(mb.tor_oc_ec[i] as number)] as const,
-    tip: markTip({ id: `IMPROVE ${mb.Site[i]} · filter ${mb.filter_id[i]}` }, reasonOf(idOf(i)) ?? 'by hand', [String(mb.part[i])]) })), [markMode, outIdx, mb, iw, reasonOf]) // eslint-disable-line react-hooks/exhaustive-deps
+  // the shared parts drawn last, over the parts only one baseline selects; Filters → excluded acts in the plot
+  // (components/ScatterPlot: an analog excluded by hand leaves the dots, × under Mark)
+  const order = (p: string) => (p === 'shared' ? 2 : 1)
+  const points = useMemo<ScatterPoint[]>(() => mb.mask.map((_, i) => i)
+    .filter((i) => mb.mask[i] === mask && mb.group[i] === group && (mb.tor_ec_ugm3[i] as number) > 0 && (mb.tor_oc_ec[i] as number) > 0)
+    .sort((a, b) => order(String(mb.part[a])) - order(String(mb.part[b])))
+    .map((i) => {
+      const part = String(mb.part[i])
+      return { x: mb.tor_ec_ugm3[i] as number, y: mb.tor_oc_ec[i] as number, color: PART_COLOR[part], r: 3, key: String(i), id: idOf(i),
+        tip: [`IMPROVE ${mb.Site[i]} · filter ${mb.filter_id[i]}`, part, `TOR EC ${f2(mb.tor_ec_ugm3[i])} µg/m³ · OC/EC ${f2(mb.tor_oc_ec[i])}`, `rank spline ${mb.rank_spline[i] ?? '—'} · rank VIBES ${mb.rank_vibes[i] ?? '—'}`],
+        open: () => hl.openRecord(improveRecord(mb.filter_id[i] as number, String(mb.Site[i]), `Satoshi 2 Oct · analogs of ${group} · ${part}`, [
+          ['in analog set', part], ['rank, spline selection', mb.rank_spline[i]], ['rank, VIBES selection', mb.rank_vibes[i]],
+          ['Pearson r, spline', mb.r_spline[i]], ['Pearson r, VIBES', mb.r_vibes[i]], ['TOR EC (µg/m³)', mb.tor_ec_ugm3[i]],
+          ['TOR OC/EC', mb.tor_oc_ec[i]], ['Fabs / TOR EC (m²/g)', mb.mac_ratio[i]], ['TOR EC loading (µg/filter)', mb.loading_ug[i]], ['IMPROVE lot', mb.lot[i]]])) }
+    }), [mb, mask, group, hl]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div ref={ref} style={{ position: 'relative', marginTop: 12 }}>
-      <svg width={iw + m.left + m.right} height={ih + m.top + m.bottom} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
-        <g transform={`translate(${m.left},${m.top})`}>
-          <defs><clipPath id={clip}><rect width={iw} height={ih} /></clipPath></defs>
-          <YAxis scale={y as any} x={0} label="TOR OC/EC" tickCount={5} gridWidth={iw} labelX={-44} format={logTick} />
-          <XAxis scale={x as any} y={ih} label="TOR EC (µg/m³, log)" tickCount={5} format={logTick} labelDy={38} />
-          <g clipPath={`url(#${clip})`}>
-            <ScatterLayer items={sorted} xy={xy} idOf={idOf} dots={dots} width={iw} height={ih} tip={tip} marks={marks}
-              focus={(i, [cx, cy]) => <circle cx={cx} cy={cy} r={6} fill={PART_COLOR[String(mb.part[i])]} {...dotFill('standard')} stroke={INK.text} strokeWidth={2} />}
-              tipOf={(i) => [`IMPROVE ${mb.Site[i]} · filter ${mb.filter_id[i]}`, String(mb.part[i]), `TOR EC ${f2(mb.tor_ec_ugm3[i])} µg/m³ · OC/EC ${f2(mb.tor_oc_ec[i])}`, `rank spline ${mb.rank_spline[i] ?? '—'} · rank VIBES ${mb.rank_vibes[i] ?? '—'}`, 'click to pin and open its record']}
-              onPick={(i) => { const part = String(mb.part[i]); hl.setPinned(idOf(i)); hl.openRecord(improveRecord(mb.filter_id[i] as number, String(mb.Site[i]), `Satoshi 2 Oct · analogs of ${group} · ${part}`, [
-                ['in analog set', part], ['rank, spline selection', mb.rank_spline[i]], ['rank, VIBES selection', mb.rank_vibes[i]],
-                ['Pearson r, spline', mb.r_spline[i]], ['Pearson r, VIBES', mb.r_vibes[i]], ['TOR EC (µg/m³)', mb.tor_ec_ugm3[i]],
-                ['TOR OC/EC', mb.tor_oc_ec[i]], ['Fabs / TOR EC (m²/g)', mb.mac_ratio[i]], ['TOR EC loading (µg/filter)', mb.loading_ug[i]], ['IMPROVE lot', mb.lot[i]]])) }} />
-          </g>
-        </g>
-      </svg>
-      {tip.node}
-      <ExcludedNote count={all.length - idx.length} drawn={markMode} />
+    <div style={{ marginTop: 12 }}>
+      <ScatterPlot points={points} xScale="log" yScale="log" xDomain={[0.01, 5]} yDomain={[0.3, 40]} nice={false} outside="pin"
+        maxSide={440} minSide={240} margin={{ top: 12, right: 16, bottom: 46, left: 60 }} labelX={-44} density="standard" xTicks={5} yTicks={5}
+        xFormat={logTick} yFormat={logTick} xLabel="TOR EC (µg/m³, log)" yLabel="TOR OC/EC" note="mark" />
     </div>
   )
 }
@@ -858,20 +833,13 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
   const ptsAll: { id: string; pc1: number; ec: number; c: number; res: number }[] = []
   for (let i = 0; i < mem.baseline.length; i++) if (mem.baseline[i] === baseline && mem.region[i] === region && mem.group[i] === season)
     ptsAll.push({ id: String(mem.filter_id[i]), pc1: mem.pc1[i] as number, ec: mem.ec_fabs10[i] as number, c: mem.cluster[i] as number, res: mem.residual[i] as number })
-  // Filters → excluded (lib/markedRows): the clusters are the run's, fitted on every Addis filter; the dots follow the
-  // setting (out of the dots and the axis ranges; × under Mark)
-  const isCounted = useCountedFilter()
-  const pts = ptsAll.filter((p) => isCounted(p.id))
-  const outPts = useExclusionSplit(ptsAll, (p) => p.id).marked
-  const reasonOf = useMarkReason()
+  // Filters → excluded acts on the dots (components/ScatterPlot: out of the dots and the axis ranges; × under Mark);
+  // the clusters are the run's, fitted on every Addis filter
+  const dots = useMemo<ScatterPoint[]>(() => ptsAll.map((p) => ({ x: p.pc1, y: p.ec, color: CLUSTER_COLORS[(p.c - 1) % 4], r: 4, id: p.id,
+    tip: [p.id, `cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`, `standard spline model error ${signed(p.res)} µg/m³`] })), [ptsAll])
   const t = d.group_tests.find((x) => x.baseline === baseline && x.region === region && x.group === season)
   const summ = d.group_summary.filter((x) => x.baseline === baseline && x.region === region && x.group === season)
   const half = Math.max(260, Math.floor((width - 24) / 2))
-  const m = { top: 24, right: 12, bottom: 44, left: 56 }
-  // a square plot (1:1 aspect), at most as wide as its half of the row
-  const iw = Math.max(180, Math.min(half - m.left - m.right, 340)), ih = iw, h = ih + m.top + m.bottom
-  const x = d3.scaleLinear().domain(d3.extent(pts, (p) => p.pc1) as [number, number]).nice().range([0, iw])
-  const y = d3.scaleLinear().domain(d3.extent(pts, (p) => p.ec) as [number, number]).nice().range([ih, 0])
   const wn = d.group_spectra.wn[baseline] ?? []
   const lo = 500, hi = 1800
   const idx = wn.map((w, i) => [w, i] as const).filter(([w]) => w >= lo && w <= hi)
@@ -893,19 +861,11 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
       </>}>
       {seasonNote && <Note>{seasonNote}</Note>}
       <div ref={ref} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 24 }}>
-        <svg width={iw + m.left + m.right} height={h} fontFamily={FONT.family}>
-          <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>Main shape deviation (PC1) vs HIPS EC</text>
-          <g transform={`translate(${m.left},${m.top})`}>
-            <YAxis scale={y} x={0} label="Fabs / 10 (µg/m³)" tickCount={5} gridWidth={iw} labelX={-42} />
-            <XAxis scale={x} y={ih} label="PC1 score of the shape deviation" tickCount={5} labelDy={36} format={(v) => String(+(+v).toFixed(3))} />
-            {outPts.length > 0 && <g fill="none" stroke={INK.muted} strokeWidth={1.3} strokeOpacity={0.85} strokeLinecap="round">
-              {outPts.filter((p) => p.pc1 >= x.domain()[0] && p.pc1 <= x.domain()[1] && p.ec >= y.domain()[0] && p.ec <= y.domain()[1]).map((p) => <path key={p.id} d={crossPath(x(p.pc1), y(p.ec))}>
-                <title>{markTip({ id: p.id }, reasonOf(p.id) ?? 'excluded', [`cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`]).join('\n')}</title></path>)}
-            </g>}
-            {pts.map((p) => <circle key={p.id} cx={x(p.pc1)} cy={y(p.ec)} r={4} fill={CLUSTER_COLORS[(p.c - 1) % 4]} {...dotFill('sparse')} {...dotRim()}
-              onMouseEnter={(e) => tip.show(e, [p.id, `cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`, `standard spline model error ${signed(p.res)} µg/m³`])} onMouseLeave={tip.hide} />)}
-          </g>
-        </svg>
+        {/* a square plot (1:1 aspect), at most as wide as its half of the row */}
+        <div style={{ width: half }}>
+          <ScatterPlot points={dots} title="Main shape deviation (PC1) vs HIPS EC" maxSide={340} minSide={180} margin={{ top: 10, right: 12, bottom: 44, left: 56 }} labelX={-42}
+            xTicks={5} xFormat={(v) => String(+(+v).toFixed(3))} xLabel="PC1 score of the shape deviation" yLabel="Fabs / 10 (µg/m³)" note="mark" />
+        </div>
         <SpectrumPlot width={half} minWidth={260} height={262} title="Median spectrum of each cluster, 1800–500 cm⁻¹" window={[hi, lo]} yDomain={sDomain}
           regions={sRegions} hover="readout" yFormat={(v) => String(+v.toFixed(3))}
           series={specs.map((s) => ({ id: `c${s.c}`, label: `cluster ${s.c}`, wn, y: s.v, color: CLUSTER_COLORS[(s.c - 1) % 4], width: 1.8 }))} />
@@ -922,7 +882,6 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
         <tbody>{allTests.map((x) => <tr key={x.group}><td style={{ color: d.season_colors[x.group], fontWeight: 600 }}>{x.group}</td><td>{x.k}</td><td>{f2(x.silhouette)} / {f2(x.silhouette_null_p95)}</td><td>{x.structure_beyond_null ? 'yes' : x.min_cluster < 5 ? `no (only ${x.min_cluster} outlier${x.min_cluster > 1 ? 's' : ''} split off)` : 'no'}</td><td>{pfmt(x.kruskal_p_ec)}</td><td>{pfmt(x.kruskal_p_residual)}</td><td>{pfmt(x.kruskal_p_Al)}</td><td>{pfmt(x.kruskal_p_K_ion)}</td><td>{pfmt(x.kruskal_p_nitrate)}</td><td>{f2(x.pc1_spearman_ec)}</td></tr>)}</tbody>
       </table>
       <Note>SPARTAN chemistry in µg/m³ except Al (ng/m³); Kruskal–Wallis across clusters. Standard model error = all-IMPROVE spline model (lot 251) minus Fabs/10. Dry has no SPARTAN chemistry for most filters.</Note>
-      <ExcludedNote count={ptsAll.length - pts.length} drawn={outPts.length > 0} />
       <FixedSetNote subject="the cluster view (not the dots, which follow the setting)" what="the run's clustering of every Addis filter of the season" />
     </ChartFrame>
   )
