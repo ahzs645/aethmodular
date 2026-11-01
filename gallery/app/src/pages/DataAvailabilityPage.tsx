@@ -12,6 +12,7 @@ import { availabilityRecords, monthlyAvailability, recentCutoff, samplingStatus,
 import type { MetaFile } from '@/lib/types'
 import type { SpartanIndex } from '@/lib/spartan'
 import { useSearchParam } from '@/lib/url'
+import { usePageSite } from '@/lib/siteFocus'
 import { INK, FONT } from '@/lib/theme'
 import { HIDDEN_DUPLICATES } from '@/fieldLineage'
 import type { NotebookAvailability } from '@/lib/notebookAvailability'
@@ -48,7 +49,6 @@ function FilterAvailabilityExplorer() {
   const [asOf, setAsOf] = useSearchParam<string>('availability.asof', today())
   const [status, setStatus] = useSearchParam<string>('availability.status', 'All', ['All', 'Recent samples', 'No recent samples', 'No samples'])
   const [query, setQuery] = useSearchParam<string>('availability.search', '')
-  const [siteCode, setSite] = useSearchParam<string>('availability.site', '')
   const [fieldChoice, setField] = useSearchParam<string>('availability.field', '')
   const spartan = useExport<SpartanIndex>(network === 'SPARTAN' ? 'spartan_network/index.json' : null)
   const fallback = useExport<Inventory>(network === 'SPARTAN' && spartan.error ? 'spartan_map.json' : null)
@@ -59,7 +59,11 @@ function FilterAvailabilityExplorer() {
   const years = Math.max(0, Math.min(100, Math.round(Number(yearsText) || 0)))
   const cutoff = recentCutoff(asOf, years)
   const shown = useMemo(() => sites.filter(s => (!query || `${s.name} ${s.code} ${s.location ?? ''}`.toLowerCase().includes(query.toLowerCase())) && (status === 'All' || samplingStatus(s.date_max, cutoff, asOf) === status)).sort((a, b) => a.name.localeCompare(b.name)), [sites, query, status, cutoff, asOf])
-  const selected = sites.find(s => s.code === siteCode) ?? shown[0]
+  // the explorer's own site choice (lib/siteFocus usePageSite under `availability.site`: SPARTAN or IMPROVE sites, not the
+  // gallery's page site); the first site the filters leave by default, none when they leave none
+  const pick = usePageSite(sites, { key: 'availability.site' })
+  const selected = pick.stored ?? shown[0]
+  const setSite = pick.set
   const detail = useExport<AvailabilityFile>(selected ? network === 'IMPROVE' ? `improve_samples/${selected.code}.json` : selected.filters ?? null : null)
   const records = useMemo(() => (detail.data ? availabilityRecords(detail.data) : reference.data?.rows.filter(r => r.code === selected?.code) ?? []).filter(r => r.date <= asOf), [detail.data, reference.data, selected?.code, asOf])
   const fields = (inventory?.fields ?? Object.keys(inventory?.field_units ?? {})).filter(f => !HIDDEN_DUPLICATES.includes(f))

@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
-import { ChartFrame, Segmented, Select } from '@/components/ChartFrame'
+import { ChartFrame, Segmented } from '@/components/ChartFrame'
 import { SidebarControls } from '@/lib/pageSidebar'
 import { ExportState } from '@/components/ExportState'
 import { usePrefs } from '@/lib/prefs'
 import { useSearchParam } from '@/lib/url'
+import { SitePicker, usePageSite } from '@/lib/siteFocus'
 import { seasonsForSite } from '@/siteSeasons'
 import type { SectionPageProps } from '../../types'
 import { BrcTest, ChannelHealth, ChannelHealthScatter, EcAgainstBc880 } from '../diurnal/BrcTest'
@@ -33,11 +34,10 @@ export function Diurnal({ rows, meta }: SectionPageProps) {
     return meta.sites.filter((s) => codes.has(s.code))
   }, [rows, meta.sites])
   const withData = inView.filter((s) => column.data?.sites[s.code] || surface.data?.sites[s.code])
-  const codes = withData.map((s) => s.code)
-  const fallback = codes.includes('ETAD') ? 'ETAD' : codes[0] ?? ''
-  // the options arrive with the index, so the key takes any value and an unknown one falls back here
-  const [focus, setFocus] = useSearchParam<string>('dn.site', '')
-  const code = codes.includes(focus) ? focus : fallback
+  // the gallery's page site (lib/siteFocus `psite`; `dn.site` from older links), Addis by default; the options
+  // arrive with the index, so an unknown site falls back
+  const sitePick = usePageSite(withData, { legacy: ['dn.site'], prefer: 'ETAD' })
+  const code = sitePick.code
   // how the hour-of-day charts split the days: every day together, the site's seasons, the weekday, weekdays vs weekends
   const [split, setSplit] = useSearchParam<SplitBy>('dn.split', 'seasons', SPLITS)
   const { explain } = usePrefs()
@@ -65,7 +65,7 @@ export function Diurnal({ rows, meta }: SectionPageProps) {
   return (
     <>
       <SidebarControls title="Diurnal cycles">
-        {codes.length > 1 && <Select label="Site" value={code} options={codes} onChange={setFocus} optionLabel={(c) => meta.sites.find((s) => s.code === c)?.name ?? c} />}
+        <SitePicker as="select" {...sitePick.picker} />
         <Segmented label="Split by" value={split} options={SPLITS.filter((k) => k !== 'seasons' || seasons.length > 1)} onChange={setSplit}
           optionLabel={(k) => SPLIT_LABEL[k]} title="The hour-of-day charts: every day together, the site's seasons (its calendar under Samples), each day of the week, or weekdays (Mon–Fri) against weekends (Sat–Sun), in local time" />
       </SidebarControls>
@@ -79,7 +79,7 @@ export function Diurnal({ rows, meta }: SectionPageProps) {
         </div>
       </div>}
 
-      {column.data && <DaylightWindow index={column.data} sites={inView} focus={code} onFocus={setFocus} />}
+      {column.data && <DaylightWindow index={column.data} sites={inView} focus={code} onFocus={sitePick.set} />}
       {colFile && site && <ColumnCycle file={colFile} site={site} split={splitOn} />}
       {column.error && <ExportState title="Diurnal · the column" what="the AERONET hour-of-day export" error={column.error} command={`${EXPORT_COMMAND} --skip-aeth`} />}
 

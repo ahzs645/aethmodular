@@ -8,6 +8,7 @@ import { regression } from '@/lib/stats'
 import { useEstimator, type Estimator } from '@/lib/regressionPrefs'
 import { withUnit } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
+import { usePageSite } from '@/lib/siteFocus'
 import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { finite, instrumentColor, instrumentName, PERIOD_COLOR, PERIOD_LABEL, periodOf, type Period, type QualityIndex } from './data'
@@ -40,7 +41,9 @@ export function crossPoint(r: FilterRow, x: string, y: string, color: string, so
 export function FlowFixCompare({ rows, meta, index }: { rows: FilterRow[]; meta: MetaFile; index: QualityIndex }) {
   const method = useEstimator()
   const sites = Object.keys(index.flow_periods).filter((c) => index.flow_periods[c].before_end || index.flow_periods[c].after_start)
-  const [site, setSite] = useSearchParam<string>('aq.ffsite', 'USPA', sites)
+  // the data-quality page's one site choice (`aq.site`, shared with its Instrument control; `aq.ffsite` from older links)
+  const pick = usePageSite(sites.map((c) => ({ code: c, name: instrumentName(c, meta) })), { key: 'aq.site', legacy: ['aq.ffsite'], prefer: 'USPA' })
+  const site = pick.code, setSite = pick.set
   const [ref, setRef] = useSearchParam<string>('aq.ffref', 'HIPS BC', [...REFERENCES])
   const paired = useMemo(() => rows.filter((r) => finite(r[AETH_IR] as number) && finite(r[ref] as number)), [rows, ref])
   const byPeriod = useMemo(() => {
