@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 
 /**
  * The header's page menu: tabs in a few groups (Charts, Sites, Calibration, Meetings), each a
@@ -27,13 +28,7 @@ export function NavMenu({ groups, tab, meeting, sub, onPick, extra }: {
   const measure = useRef<HTMLDivElement>(null)
   const [fit, setFit] = useState(groups.length)
   // a phone (styles.css hides the header's display toggles below 560 px): More always exists to hold them
-  const [phone, setPhone] = useState(() => window.matchMedia('(max-width: 560px)').matches)
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 560px)')
-    const on = () => setPhone(mq.matches)
-    mq.addEventListener('change', on)
-    return () => mq.removeEventListener('change', on)
-  }, [])
+  const phone = useMediaQuery('(max-width: 560px)')
   // the group shows the open page's name, or its area's where the group has sub-headings
   const label = (g: NavGroup) => { const a = g.items.find((i) => isActive(i, tab, meeting, sub)); return a && !a.home ? `${g.label} · ${a.heading ?? a.label}` : g.label }
   const labels = groups.map(label).join('|')

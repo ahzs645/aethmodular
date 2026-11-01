@@ -192,6 +192,19 @@ const NO_HOVER: ReadonlySet<string> = new Set()
  */
 export const useHighlightActions = (): HighlightState => useHighlight(NO_HOVER)
 
+/**
+ * A page whose clicked filter stays pinned on every chart: Escape lets the pin go (empty plot space does too).
+ * Call it once in the page; it re-renders nothing on hover.
+ */
+export function useEscapeUnpin() {
+  const { setPinned } = useHighlightActions()
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPinned(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [setPinned])
+}
+
 export function useHighlight(keys?: ReadonlySet<string> | null): HighlightState {
   const c = useContext(Ctx)
   const read = () => { const h = c.store.get(); return !keys || (h !== null && keys.has(h)) ? h : null }

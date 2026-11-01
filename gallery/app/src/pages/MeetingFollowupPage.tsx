@@ -28,7 +28,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
 import { PageChoiceControls, PageChoices, usePageChoice } from '@/lib/pageChoices'
 import { SidebarControls } from '@/lib/pageSidebar'
-import { baseFilterId, dotRim, useHighlight, useHighlightActions } from '@/lib/highlight'
+import { baseFilterId, dotRim, useEscapeUnpin, useHighlight, useHighlightActions } from '@/lib/highlight'
 import { ADDIS_ALL, BASELINE_COLOR, FONT, IMPROVE_GREY, INK, OCT1_HATCH, SPECTRAL_REGION, dotOpacity } from '@/lib/theme'
 import { ANALOG_SELECTION_EXCLUDED, OCT1_ALSO_EXCLUDED } from '@/components/SpectralRegions'
 import { coef, coefSigned, f2, fmt, signed } from '@/lib/format'
@@ -170,15 +170,10 @@ function MeetingView({ data, galleryRows, galleryMeta, viewRows, viewMeta, versi
   data: MeetingData; galleryRows: FilterRow[]; galleryMeta?: MetaFile; viewRows: FilterRow[]; viewMeta?: MetaFile
   version: string; onVersion: (v: string) => void; showArchived: boolean; onShowArchived: (v: boolean) => void
 }) {
-  const hl = useHighlightActions()
   const seasonAxes = useSeasonAxes(viewRows, viewMeta)
   const baselines = useBaselineOptions()
   // a clicked filter stays pinned on every chart until empty plot space is clicked or Esc
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') hl.setPinned(null) }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [hl])
+  useEscapeUnpin()
   return (
     <SeasonAxesCtx.Provider value={seasonAxes.value}>
     <AxisChoices noun="measurements" options={seasonAxes.options} x={seasonAxes.x} y={seasonAxes.y}>
