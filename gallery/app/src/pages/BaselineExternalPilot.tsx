@@ -119,7 +119,7 @@ export function BaselineExternalPilot({ mac, demingLambda, completed = false }: 
 
     <ChartFrame title="Adama against quartz thermal EC" subtitle="Five date-candidate PTFE/quartz pairs. Ringed points have a sampler flag." controls={<Segmented label="Thermal convention" value={reference} options={['ECTR', 'ECTT']} optionLabel={(v) => (v === 'ECTR' ? 'TOR EC' : 'TOT EC')} onChange={(v) => setReference(v as Reference)} />}>
       <div className="chart-wrap" style={{ overflowX: 'auto' }}><svg viewBox="0 0 760 260" width="100%" style={{ minWidth: 620, maxWidth: 760, margin: '0 auto' }} role="img" aria-label={`Adama frozen prediction divided by quartz ${reference} for five candidate dates`}>
-        {[0, .5, 1, 1.5, 2].map(v => <g key={v}><line x1={75} x2={720} y1={y(v)} y2={y(v)} stroke={v === 1 ? INK.axis : INK.grid} strokeDasharray={v === 1 ? '4 3' : undefined}/><text x={68} y={y(v) + 4} textAnchor="end" fontSize={11} fill={INK.axis}>{v.toFixed(1)}</text></g>)}
+        {[0, .5, 1, 1.5, 2].map(v => <g key={v}><line x1={75} x2={720} y1={y(v)} y2={y(v)} stroke={v === 1 ? INK.axis : INK.grid} strokeDasharray={v === 1 ? '4 3' : undefined}/><text x={68} y={y(v) + 4} textAnchor="end" fontSize={11} fill={INK.axis}>{fmt(v, 1)}</text></g>)}
         {data.adama.map((r, i) => <g key={r.date}><text x={x(i)} y={215} textAnchor="middle" fontSize={11} fill={INK.text}>{r.date.slice(5)}</text>{r.flag && <text x={x(i)} y={232} textAnchor="middle" fontSize={10} fill={INK.negative}>{r.flag}</text>}{METHODS.map((m, j) => <circle key={m} cx={x(i) + (j ? 9 : -9)} cy={y(ratio(r, m))} r={5.5} fill={COLORS[m]} stroke={r.flag ? INK.text : INK.panel} strokeWidth={r.flag ? 2 : 1} style={{ cursor: 'pointer' }} onClick={() => hl.openRecord(adamaRecord(r))}><title>{`${r.date} ${m}: ${fmt(ratio(r, m), 3)}× ${reference}; PTFE ${r.FilterId_ptfe}, quartz ${r.FilterId_quartz}${r.flag ? `; ${r.flag}` : ''}`}</title></circle>)}</g>)}
         <text x={400} y={252} textAnchor="middle" fontSize={11} fill={INK.axis}>2024 sampling date · prediction / measured quartz {reference}</text>
         <circle cx={570} cy={20} r={4} fill={COLORS.AIRSpec}/><text x={580} y={24} fontSize={11}>AIRSpec</text><circle cx={645} cy={20} r={4} fill={COLORS.VIBES}/><text x={655} y={24} fontSize={11}>VIBES</text>
@@ -158,8 +158,8 @@ function siteRecord(r: PlotRow, source: string, mac: number): FilterRecord {
       [`HIPS Fabs ÷ MAC ${mac} (µg/m³)`, r.Fabs != null ? r.Fabs / mac : null],
       ['AIRSpec frozen FTIR EC (µg/m³)', r.AIRSpec_EC_ugm3],
       ['VIBES frozen FTIR EC (µg/m³)', r.VIBES_EC_ugm3],
-      ['AIRSpec local 1617 / 2920 (absorbance)', `${r.AIRSpec_band1617?.toFixed(5) ?? '—'} / ${r.AIRSpec_band2920?.toFixed(5) ?? '—'}`],
-      ['VIBES local 1617 / 2920 (absorbance)', `${r.VIBES_band1617?.toFixed(5) ?? '—'} / ${r.VIBES_band2920?.toFixed(5) ?? '—'}`],
+      ['AIRSpec local 1617 / 2920 (absorbance)', `${fmt(r.AIRSpec_band1617, 5)} / ${fmt(r.AIRSpec_band2920, 5)}`],
+      ['VIBES local 1617 / 2920 (absorbance)', `${fmt(r.VIBES_band1617, 5)} / ${fmt(r.VIBES_band2920, 5)}`],
     ],
     note: 'No thermal EC is measured for these filters; HIPS Fabs ÷ MAC is an optical equivalent.',
   }
@@ -197,7 +197,7 @@ function pairSide(r: MatchedRow, side: 'addis' | 'bishoftu'): FilterRecord {
       ['Fabs ratio, Bishoftu ÷ Addis', r.Fabs_ratio],
       ['AIRSpec frozen FTIR EC (µg/m³)', r[`${side}_AIRSpec_EC_ugm3`]],
       ['VIBES frozen FTIR EC (µg/m³)', r[`${side}_VIBES_EC_ugm3`]],
-      [`partner AIRSpec / VIBES (µg/m³)`, `${r[`${other}_AIRSpec_EC_ugm3`].toFixed(3)} / ${r[`${other}_VIBES_EC_ugm3`].toFixed(3)}`],
+      [`partner AIRSpec / VIBES (µg/m³)`, `${fmt(r[`${other}_AIRSpec_EC_ugm3`], 3)} / ${fmt(r[`${other}_VIBES_EC_ugm3`], 3)}`],
     ],
     note: 'Matched on HIPS Fabs (optical loading), lot 251; the pair cannot say which site has accurate EC.',
   }

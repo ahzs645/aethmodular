@@ -98,10 +98,10 @@ export function RangeRows({ rows, series, bandNames = ['5–95 %', '25–75 %'],
             {r.unit && <text x={labelW - 10} y={cy + 13} dy="0.32em" textAnchor="end" fontSize={9.5} fill={INK.muted}>{r.unit}</text>}
             <g transform={`translate(${labelW},0)`}>
               {band && bandSeries && <g opacity={op(bandSeries)}
-                onMouseEnter={(e) => tip.show(e, [r.label, bandSeries.label,
+                {...tip.bind([r.label, bandSeries.label,
                   ...(fin(band.lo) && fin(band.hi) ? [`${bandNames[0]}: ${fmt(band.lo)}–${fmt(band.hi)} ${r.unit ?? ''}`] : []),
                   ...(fin(band.q1) && fin(band.q3) ? [`${bandNames[1]}: ${fmt(band.q1)}–${fmt(band.q3)}`] : []),
-                  ...(fin(band.mid) ? [`median ${fmt(band.mid)}`] : [])])} onMouseLeave={tip.hide}>
+                  ...(fin(band.mid) ? [`median ${fmt(band.mid)}`] : [])])}>
                 {fin(band.lo) && fin(band.hi) && <rect x={x(band.lo)} y={cy - 8} width={Math.max(1, x(band.hi) - x(band.lo))} height={16} fill={bandSeries.color} fillOpacity={0.25} />}
                 {fin(band.q1) && fin(band.q3) && <rect x={x(band.q1)} y={cy - 8} width={Math.max(1, x(band.q3) - x(band.q1))} height={16} fill={bandSeries.color} fillOpacity={0.6} />}
                 {fin(band.mid) && <line x1={x(band.mid)} x2={x(band.mid)} y1={cy - 10} y2={cy + 10} stroke={d3.color(bandSeries.color)?.darker(1.4).formatHex() ?? INK.text} strokeWidth={2} />}
@@ -109,7 +109,7 @@ export function RangeRows({ rows, series, bandNames = ['5–95 %', '25–75 %'],
               {shown.filter((s) => s.kind === 'tick').map((s) => {
                 const v = r.ticks?.[s.key]
                 if (!fin(v) || (r.log && v <= 0)) return null
-                return <g key={s.key} opacity={op(s)} onMouseEnter={(e) => tip.show(e, [s.label, `${r.label}: ${fmt(v)} ${r.unit ?? ''}`])} onMouseLeave={tip.hide}>
+                return <g key={s.key} opacity={op(s)} {...tip.bind([s.label, `${r.label}: ${fmt(v)} ${r.unit ?? ''}`])}>
                   {/* a wider invisible line, so a 2 px tick is easy to point at */}
                   <line x1={x(v)} x2={x(v)} y1={cy - 13} y2={cy + 13} stroke="transparent" strokeWidth={8} />
                   <line x1={x(v)} x2={x(v)} y1={cy - 13} y2={cy + 13} stroke={s.color} strokeWidth={2} strokeDasharray="2 2" />

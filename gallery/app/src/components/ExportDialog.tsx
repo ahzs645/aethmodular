@@ -11,6 +11,7 @@ import {
   PUB_FONTS, PUB_SHOW, type ExportBackground, type ExportFormat, type Figure, type LegendPlacement, type PubLayout, type PubShow,
 } from '@/lib/export'
 import { XIcon } from '@/components/Icons'
+import { fmt } from '@/lib/format'
 import { ScrubField } from '@/components/ScrubField'
 import { LEGEND_FOCUS } from '@/components/Legend'
 
@@ -112,7 +113,7 @@ function saveSettings(s: Settings) {
   try { localStorage.setItem(KEY, JSON.stringify(s)) } catch { /* private window: nothing kept */ }
 }
 
-export const fileSize = (n: number) => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${(n / 1024).toFixed(n < 10240 ? 1 : 0)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`)
+export const fileSize = (n: number) => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${fmt(n / 1024, n < 10240 ? 1 : 0)} KB` : `${fmt(n / 1024 / 1024, 1)} MB`)
 
 /** `ask`: a count another control bumps to open the dialog (the phone's ⋯ menu, components/ChartFrame FrameMoreMenu) */
 export function ExportButton({ panelRef, title, ask = 0 }: { panelRef: RefObject<HTMLElement>; title: string; ask?: number }) {
@@ -256,7 +257,7 @@ function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: st
     if (!raster || !rasterSize) return px
     return `${px} · ${k === scale ? '' : '≈ '}${fileSize(Math.round(rasterSize * (k / scale) ** 2))}`
   }
-  const inches = (px: number) => (raster ? (px * scale) / 300 : px / 96).toFixed(1)
+  const inches = (px: number) => fmt(raster ? (px * scale) / 300 : px / 96, 1)
   const save = () => {
     if (!current?.blob) return
     downloadBlob(current.blob, `${slug(title)}.${s.format === 'jpeg' ? 'jpg' : s.format}`)
@@ -374,8 +375,8 @@ function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: st
                     ? <>{widthMm} × {Math.round(widthMm * height / width)} mm{raster ? ` · ${Math.round(width * scale).toLocaleString()} × ${Math.round(height * scale).toLocaleString()} px at ${dpi} dpi` : s.format === 'pdf' ? ` · vector, Inter font embedded${s.font !== 'screen' ? ' (the PDF can only embed Inter; SVG and PNG use the chosen font)' : ''}` : ' · vector'}</>
                     : raster
                     ? <>{Math.round(width * scale).toLocaleString()} × {Math.round(height * scale).toLocaleString()} px · prints at {inches(width)} × {inches(height)} in at 300 dpi</>
-                    : <>{width} × {height} px canvas · vector, sharp at any size{s.format === 'pdf' ? ` · page ${(width / 96).toFixed(1)} × ${(height / 96).toFixed(1)} in, Inter font embedded` : ''}</>}
-                  {pub && textPt && <><br />Text {textPt.median.toFixed(1)} pt, smallest {textPt.min.toFixed(1)} pt{widthMm ? '' : ' at 96 px to the inch'}
+                    : <>{width} × {height} px canvas · vector, sharp at any size{s.format === 'pdf' ? ` · page ${fmt(width / 96, 1)} × ${fmt(height / 96, 1)} in, Inter font embedded` : ''}</>}
+                  {pub && textPt && <><br />Text {fmt(textPt.median, 1)} pt, smallest {fmt(textPt.min, 1)} pt{widthMm ? '' : ' at 96 px to the inch'}
                     {textPt.min < MIN_PT - 0.05 && <span className="export-warn"> · under the usual {MIN_PT} pt minimum{widthMm && s.column !== '190' ? ': try a wider column' : ''}</span>}</>}
                 </p>
                 {current?.error && <p className="export-error">Could not make this file: {current.error}.</p>}

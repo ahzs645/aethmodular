@@ -177,7 +177,7 @@ export function SampleDrawer({
           <span className="med" style={{ left: `${s(p.med)}%` }} />
           <span className={`dot${outside ? ' outside' : ''}`} data-outside-range={outside ?? undefined} style={{ left: `${s(p.v)}%`, background: site?.color ?? INK.text }} />
         </td>
-        <td className="pct">{p.pct.toFixed(0)}<span className="u">{ordinal(Math.round(p.pct))}</span>{outside && <span className="u" style={{ display: 'block' }}>{outside} range</span>}</td>
+        <td className="pct">{fmt(p.pct, 0)}<span className="u">{ordinal(Math.round(p.pct))}</span>{outside && <span className="u" style={{ display: 'block' }}>{outside} range</span>}</td>
       </tr>
     )
   }

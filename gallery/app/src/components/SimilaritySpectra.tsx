@@ -6,6 +6,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
+import { fmt } from '@/lib/format'
 import { useAddisStatusBySample } from '@/lib/filterSpectrum'
 import { IMPROVE_GREY, INK, MARGIN, TRACE, themed } from '@/lib/theme'
 import { calendarOf, groupColor, groupLabel, members, siteName, siteWhere, type SimilarityMeta, type Traces } from '@/lib/similarity'
@@ -115,7 +116,7 @@ export function SpectraTraces({ meta, traces, target, topFilters, compare, mask,
       meta.filters.sample_id[f],
       `${s.site} · ${siteWhere(s)}`,
       `${meta.filters.date[f] ?? 'no date'} · ${k < 0 ? 'no season' : calendarOf(meta, meta.filters.site[f])[k].name}`,
-      targetSet.has(f) ? 'target filter' : hit ? `#${hit.rank} most similar · ${scoreLabel} ${hit.r.toFixed(4)}` : `member of ${groupLabel(meta, compare ?? target)}`,
+      targetSet.has(f) ? 'target filter' : hit ? `#${hit.rank} most similar · ${scoreLabel} ${fmt(hit.r, 4)}` : `member of ${groupLabel(meta, compare ?? target)}`,
       ...(addisStatus.get(meta.filters.sample_id[f]) && !addisStatus.get(meta.filters.sample_id[f])!.in_test_set
         ? [`not in the Addis test set: ${addisStatus.get(meta.filters.sample_id[f])!.note.replace(/^in the spectra run but not in the Addis test set: /, '')}`] : []),
     ]

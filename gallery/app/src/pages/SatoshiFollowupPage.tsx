@@ -18,7 +18,7 @@ import { SidebarControls } from '@/lib/pageSidebar'
 import { dotFill, dotRim, useHighlightActions, type FilterRecord } from '@/lib/highlight'
 import { ScatterLayer } from '@/components/ScatterLayer'
 import { BANK_COLOR, BASELINE_COLOR, FONT, INK, OCT1_HATCH, SPECTRAL_REGION, themed } from '@/lib/theme'
-import { f2, f3, pct, signed, coef, coefSigned } from '@/lib/format'
+import { f2, f3, fmt, pct, signed, coef, coefSigned, trim } from '@/lib/format'
 import { ALL_ADDIS, ANALYSIS_CALENDAR_NOTE, shortSeason } from '@/lib/seasons'
 import { baselineName, ecAxis } from '@/lib/labels'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
@@ -234,7 +234,7 @@ function Overlap({ data, mask }: { data: SatoshiData; mask: Mask }) {
                   {segs.map((s) => {
                     const x0 = acc; acc += s.n
                     return (
-                      <g key={s.part} onMouseEnter={(e) => tip.show(e, [`${o.group} · ${s.part}`, `${s.n} filters`, `shared ${o.shared} of 500 (Jaccard ${f2(o.jaccard)})`, `sites in common between the two sets: ${o.site_overlap}`])} onMouseLeave={tip.hide}>
+                      <g key={s.part} {...tip.bind([`${o.group} · ${s.part}`, `${s.n} filters`, `shared ${o.shared} of 500 (Jaccard ${f2(o.jaccard)})`, `sites in common between the two sets: ${o.site_overlap}`])}>
                         <rect x={x(x0)} y={2} width={Math.max(0, x(acc) - x(x0))} height={rowH - 12} fill={PART_COLOR[s.part]} fillOpacity={s.part === 'shared' ? 0.95 : 0.8} />
                         {x(acc) - x(x0) > 26 && <text x={(x(x0) + x(acc)) / 2} y={rowH / 2 - 4} dy="0.32em" textAnchor="middle" fontSize={11} fill="white" fontWeight={600}>{s.n}</text>}
                       </g>
@@ -448,7 +448,7 @@ function Ladder({ data, mask }: { data: SatoshiData; mask: Mask }) {
       <div style={{ maxWidth: 860 }}>
         <AxisChoices noun="readouts" y={[metric, (v) => setMetric(v as LadderMetric)]} options={LADDER_METRICS.map((m) => ({ key: m, label: ladderLabel(m), group: 'Readout', roles: ['y'] }))}>
         <SweepPlot series={sweep} xScale="point" xLabel="" yLabel={`${ladderLabel(metric)}${unit}`}
-          yDomain={yDomain} reference={ref0} dividers={['IMPROVE test sites']} pick="y" height={314} yFormat={(v) => String(+v.toFixed(2))} />
+          yDomain={yDomain} reference={ref0} dividers={['IMPROVE test sites']} pick="y" height={314} yFormat={(v) => trim(v, 2)} />
         </AxisChoices>
       </div>
       <Key items={series.map((s) => ({ label: s.label, color: s.color, kind: s.dash ? 'dash' as const : 'line' as const }))} />
@@ -617,7 +617,7 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
             <YAxis scale={hy} x={0} label="Share of analogs" tickCount={5} gridWidth={side} labelX={-42} format={(v) => `${Math.round(100 * v)} %`} />
             <XAxis scale={hx} y={side} label="Residual percentile (low = lower envelope)" tickCount={5} labelDy={36} />
             {hist.map((b, i) => <rect key={i} x={hx(b.x0!) + 1} width={Math.max(0, hx(b.x1!) - hx(b.x0!) - 2)} y={hy(b.length / Math.max(1, analogs.length))} height={side - hy(b.length / Math.max(1, analogs.length))} fill={color} fillOpacity={0.8}
-              onMouseEnter={(e) => tip.show(e, [`percentile ${b.x0}–${b.x1}`, `${b.length} analogs (${pct(b.length / Math.max(1, analogs.length))})`])} onMouseLeave={tip.hide} />)}
+              {...tip.bind([`percentile ${b.x0}–${b.x1}`, `${b.length} analogs (${pct(b.length / Math.max(1, analogs.length))})`])} />)}
             <Marker orient="h" at={hy(0.1)} from={0} to={side} />
             <text x={side - 4} y={hy(0.1) - 5} textAnchor="end" fontSize={10} fontFamily={FONT.mono} fill={INK.text}>typical: 10 % per bar</text>
           </g>
@@ -649,7 +649,7 @@ function Methods({ data }: { data: SatoshiData }) {
         <tr><td>Analogs</td><td>Top {s.n_analogs} IMPROVE filters by Pearson r to each group's median Addis spectrum. The "as presented" selections reproduce the Follow up meeting view's exactly.</td></tr>
         <tr><td>Standard model</td><td>{s.standard_model}.</td></tr>
         <tr><td>Swap test</td><td>{s.n_repeats} site-disjoint 80/20 splits per cohort (seed 20260917), each calibrated on both baselines; k by site-grouped cross-validation, first major minimum.</td></tr>
-        <tr><td>Deming</td><td>Addis: λ* {f2(s.lambda_addis)} (HIPS uncertainty vs IMPROVE cross-validation RMSE). IMPROVE stages: each calibration's RMSECV against a {(100 * (s.ref_rel_uncertainty ?? 0)).toFixed(1)} % reference uncertainty, so λ is large and Deming sits close to ordinary least squares of FTIR on TOR.</td></tr>
+        <tr><td>Deming</td><td>Addis: λ* {f2(s.lambda_addis)} (HIPS uncertainty vs IMPROVE cross-validation RMSE). IMPROVE stages: each calibration's RMSECV against a {pct(s.ref_rel_uncertainty ?? 0, 1)} reference uncertainty, so λ is large and Deming sits close to ordinary least squares of FTIR on TOR.</td></tr>
         <tr><td>Reproduce</td><td><code>uv run --no-sync python research/ftir_hips_chem/workflows/run_satoshi_followup_20261002.py</code> ({s.seconds} s), then <code>uv run --no-sync python gallery/data/export_satoshi_followup.py</code>.</td></tr>
         <tr><td>Rest of the 1 Oct list (7 Oct)</td><td>Blank banks and fingerprint groupings: the sections above, from <code>research/ftir_hips_chem/workflows/run_oct1_remaining_20261007.py</code> then <code>gallery/data/export_oct1_remaining.py</code>; the VIBES re-corrections ran on Colab via <code>scripts/vibes_fullrange_run.py --blank-policy</code>. Seasonal slope/intercept toggle and separate-calibration titles: Follow up meeting view. Agreed region: a Similarity tab mask and shaded on the meeting spectra. Excluded and out-of-test-set Addis filters: labelled in filter drawers and similarity tooltips. Closest-match spectra already reach 500 cm⁻¹ on full-range VIBES.</td></tr>
       </tbody></table>
@@ -780,7 +780,7 @@ function BlankBanks({ d }: { d: Oct1Data }) {
         <table className="census-table" style={{ marginTop: 10 }}>
           <thead><tr><th>Held-out ETAD blanks (n {res[0].n}): RMS corrected absorbance, median [90th pct]</th>{bands.map((b) => <th key={b}>{b}</th>)}</tr></thead>
           <tbody>{BANK_ORDER.filter((b) => res.some((r) => r.baseline === b)).map((b) => <tr key={b}><td style={{ color: BANK_COLOR[b], fontWeight: 600 }}>{BANK_SHORT[b]}</td>
-            {bands.map((band) => { const r = res.find((x) => x.baseline === b && x.band === band); return <td key={band}>{r ? `${(1e5 * r.rms_median).toFixed(1)} [${(1e5 * r.rms_p90).toFixed(1)}]` : '—'}</td> })}</tr>)}</tbody>
+            {bands.map((band) => { const r = res.find((x) => x.baseline === b && x.band === band); return <td key={band}>{r ? `${fmt(1e5 * r.rms_median, 1)} [${fmt(1e5 * r.rms_p90, 1)}]` : '—'}</td> })}</tr>)}</tbody>
         </table>
         <Note>×10⁻⁵ absorbance. A held-out blank should correct to zero. These 9 ETAD blanks are the only blanks no bank trained on (the all-labeled bank uses every IMPROVE blank).</Note>
       </>}
@@ -897,17 +897,16 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
           <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>Main shape deviation (PC1) vs HIPS EC</text>
           <g transform={`translate(${m.left},${m.top})`}>
             <YAxis scale={y} x={0} label="Fabs / 10 (µg/m³)" tickCount={5} gridWidth={iw} labelX={-42} />
-            <XAxis scale={x} y={ih} label="PC1 score of the shape deviation" tickCount={5} labelDy={36} format={(v) => String(+(+v).toFixed(3))} />
+            <XAxis scale={x} y={ih} label="PC1 score of the shape deviation" tickCount={5} labelDy={36} format={(v) => trim(v, 3)} />
             {outPts.length > 0 && <g fill="none" stroke={INK.muted} strokeWidth={1.3} strokeOpacity={0.85} strokeLinecap="round">
-              {outPts.filter((p) => p.pc1 >= x.domain()[0] && p.pc1 <= x.domain()[1] && p.ec >= y.domain()[0] && p.ec <= y.domain()[1]).map((p) => <path key={p.id} d={crossPath(x(p.pc1), y(p.ec))}>
-                <title>{markTip({ id: p.id }, reasonOf(p.id) ?? 'excluded', [`cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`]).join('\n')}</title></path>)}
+              {outPts.filter((p) => p.pc1 >= x.domain()[0] && p.pc1 <= x.domain()[1] && p.ec >= y.domain()[0] && p.ec <= y.domain()[1]).map((p) => <path key={p.id} d={crossPath(x(p.pc1), y(p.ec))} {...tip.bind(() => markTip({ id: p.id }, reasonOf(p.id) ?? 'excluded', [`cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`]))} />)}
             </g>}
             {pts.map((p) => <circle key={p.id} cx={x(p.pc1)} cy={y(p.ec)} r={4} fill={CLUSTER_COLORS[(p.c - 1) % 4]} {...dotFill('sparse')} {...dotRim()}
               onMouseEnter={(e) => tip.show(e, [p.id, `cluster ${p.c}`, `Fabs/10 ${f2(p.ec)} µg/m³`, `standard spline model error ${signed(p.res)} µg/m³`])} onMouseLeave={tip.hide} />)}
           </g>
         </svg>
         <SpectrumPlot width={half} minWidth={260} height={262} title="Median spectrum of each cluster, 1800–500 cm⁻¹" window={[hi, lo]} yDomain={sDomain}
-          regions={sRegions} hover="readout" yFormat={(v) => String(+v.toFixed(3))}
+          regions={sRegions} hover="readout" yFormat={(v) => trim(v, 3)}
           series={specs.map((s) => ({ id: `c${s.c}`, label: `cluster ${s.c}`, wn, y: s.v, color: CLUSTER_COLORS[(s.c - 1) % 4], width: 1.8 }))} />
         {tip.node}
       </div>

@@ -9,6 +9,7 @@ import { useColourScheme } from '@/lib/colourSchemes'
 import { dataUrl } from '@/lib/data'
 import { useSearchParam } from '@/lib/url'
 import { FONT, INK, themed } from '@/lib/theme'
+import { clipText } from '@/lib/fitLabel'
 import { calendarMonths, daysInMonth, studyOverlap, type AeronetAvailability as AeronetData, type AeronetAvailabilitySite, type AvailabilitySite, type CompletenessRule, type NotebookAvailability } from '@/lib/notebookAvailability'
 
 /** the Data availability views' colours, defined once: each data stream, and a site's sampling status */
@@ -99,11 +100,11 @@ function MonthMatrix({ sites, product, unit, rows, year }: { sites: Availability
     <div className="chart-scroll availability-month-matrix" ref={ref} tabIndex={0} role="region" aria-label="Monthly sampling heatmap, scroll for all months and sites"><svg width={w} height={h} fontFamily={FONT.family} role="img" aria-label={`${sites.length} sites, ${months.length} months, ${product} sampling counts`}>
       {months.map((month, j) => <g key={month}>{(j === 0 || month.endsWith('-01')) && <text x={labelW + j * cell} y={13} fontSize={11} fill={INK.text}>{month.slice(0, 4)}</text>}{(cell > 25 || [1, 4, 7, 10].includes(+month.slice(5))) && <text x={labelW + j * cell + cell / 2} y={32} textAnchor="middle" fontSize={9} fill={INK.muted}>{month.slice(5)}</text>}</g>)}
       {sites.map((s, i) => <g key={s.code}><text x={labelW - 8} y={48 + i * 24 + 14} textAnchor="end" fontSize={11} fill={INK.text}
-        onMouseEnter={(e) => tip.show(e, [siteLabel(s)])} onMouseLeave={tip.hide}>{s.name === s.code ? s.code : `${s.code} · ${s.name.slice(0, 17)}${s.name.length > 17 ? '…' : ''}`}</text>{months.map((month, j) => {
+        {...tip.bind([siteLabel(s)])}>{s.name === s.code ? s.code : clipText(`${s.code} · ${s.name}`, labelW - 12)}</text>{months.map((month, j) => {
         const n = counts.get(`${s.code}|${month}`) ?? 0, p = s.products[product]
         const inside = p?.date_min && p.date_max && month >= p.date_min.slice(0, 7) && month <= p.date_max.slice(0, 7)
         return <rect key={month} x={labelW + j * cell} y={48 + i * 24} width={cell - 1} height={20} fill={n ? color(n) : inside ? INK.empty : INK.panel} stroke={n || inside ? 'none' : INK.grid}
-          onMouseEnter={(e) => tip.show(e, [`${s.code} · ${month}`, `${n.toLocaleString()} ${unit}`, ...(!inside && !n ? ['outside the reported span'] : [])])} onMouseLeave={tip.hide} />
+          {...tip.bind(() => [`${s.code} · ${month}`, `${n.toLocaleString()} ${unit}`, ...(!inside && !n ? ['outside the reported span'] : [])])} />
       })}</g>)}
     </svg></div>
     <Key items={[{ label: 'none that month, inside the reported span', color: INK.empty, kind: 'square' }]}>
@@ -141,7 +142,7 @@ export function StudyAvailability({ data }: { data: NotebookAvailability }) {
           {([{ ...streams[0], days: s.ftir.days }, { ...streams[1], days: s.hips.days }, { ...streams[2], days: aeth }]).map((stream, k) => <g key={stream.label}>
             <text x={labelW - 9} y={34 + k * 24} textAnchor="end" fontSize={11} fill={INK.muted}>{stream.label}</text>
             {stream.days === null ? <text x={labelW + 5} y={34 + k * 24} fontSize={11} fill={INK.muted}>Completeness unavailable in this source</text> : stream.days.map(day => <line key={day} x1={x(new Date(day))} x2={x(new Date(day))} y1={23 + k * 24} y2={37 + k * 24} stroke={stream.color} strokeWidth={1.5}
-              onMouseEnter={(e) => tip.show(e, [day, `${s.name} · ${stream.label}`])} onMouseLeave={tip.hide} />)}
+              {...tip.bind(() => [day, `${s.name} · ${stream.label}`])} />)}
           </g>)}
         </g>)}
       </svg></div>
@@ -237,7 +238,7 @@ function AeronetLanes({ sites, rows, year }: { sites: AeronetAvailabilitySite[];
       const last = [s.filter_last, s.daily_last].filter(Boolean).sort().reverse()[0]?.slice(0, 7) ?? ''
       return <g key={s.code}>
         <text x={labelW - 62} y={y0 + 13} textAnchor="end" fontSize={11} fill={INK.text}
-          onMouseEnter={(e) => tip.show(e, [`${s.code} · ${s.name}`, `${s.station.replace(/_/g, ' ')}, ${fmt(s.km)} km`])} onMouseLeave={tip.hide}>{s.code} · {s.name.length > 15 ? `${s.name.slice(0, 14)}…` : s.name}</text>
+          {...tip.bind([`${s.code} · ${s.name}`, `${s.station.replace(/_/g, ' ')}, ${fmt(s.km)} km`])}>{clipText(`${s.code} · ${s.name}`, labelW - 66)}</text>
         {AERONET_LANES.map((l, k) => <text key={l.key} x={labelW - 6} y={y0 + k * (lane + gap) + lane - 0.5} textAnchor="end" fontSize={7.5} fill={INK.muted}>{l.label}</text>)}
         {months.map((month, j) => {
           const r = byKey.get(`${s.code}|${month}`), inside = month >= first && month <= last
@@ -248,7 +249,7 @@ function AeronetLanes({ sites, rows, year }: { sites: AeronetAvailabilitySite[];
             const extra = l.key === 'filters' && r ? ` (${r.filters_aod} with an AOD in the window, ${r.filters_inv} with an inversion)` : ''
             return <rect key={`${month}|${l.key}`} x={labelW + j * cell} y={y0 + k * (lane + gap)} width={Math.max(1, cell - 0.6)} height={lane}
               fill={n ? l.color : INK.empty} fillOpacity={n ? 0.25 + 0.75 * Math.min(1, share) : 1}
-              onMouseEnter={(e) => tip.show(e, [`${s.code} · ${month}`, `${n} ${l.unit}${extra}`])} onMouseLeave={tip.hide} />
+              {...tip.bind(() => [`${s.code} · ${month}`, `${n} ${l.unit}${extra}`])} />
           })
         })}
       </g>

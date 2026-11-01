@@ -6,7 +6,7 @@ import { SweepPlot } from '@/components/SweepPlot'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { useSearchParam } from '@/lib/url'
 import { ADDIS_ALL, INK } from '@/lib/theme'
-import { coef, coefSigned, f2, signed } from '@/lib/format'
+import { coef, coefSigned, f2, fitSummary, signed } from '@/lib/format'
 import { demingLambda, useMac } from '@/lib/mac'
 import { AxisChoices } from '@/components/AxisChoices'
 import { Crossplot, CrossplotBrushControls, sharedCrossDomains, useCrossplotBrush, type CrossPoint } from '@/components/Crossplot'
@@ -104,7 +104,7 @@ function AddisForest({ d }: { d: AnalogsData }) {
   const rows = fits.map((r) => ({
     key: r.model, label: r.model.replace('local: ', 'local · '), color: MODEL_COLOR[r.model], bold: r.model === 'local: shape + loading',
     values: { intercept: { v: r.intercept }, slope: { v: m.slope(r.slope) as number }, ratio: { v: m.slope(r['ratio (median)']) as number } },
-    tip: [r.model, `Deming slope ${coef(m.slope(r.slope))}, intercept ${coefSigned(r.intercept)} µg/m³`, `median FTIR ÷ HIPS ${f2(m.slope(r['ratio (median)']))}`, `n ${r.n}`,
+    tip: [r.model, fitSummary({ slope: m.slope(r.slope), intercept: r.intercept }, { label: 'Deming', sep: ', ', signedIntercept: true, unit: 'µg/m³' }), `median FTIR ÷ HIPS ${f2(m.slope(r['ratio (median)']))}`, `n ${r.n}`,
       ...(r['PM ÷ neighbours (median)'] != null ? [`PM ÷ neighbours ${f2(r['PM ÷ neighbours (median)'])}×, HIPS ÷ neighbours ${f2(r['HIPS ÷ neighbours (median)'])}×`] : [])],
   }))
   return (
@@ -229,7 +229,7 @@ function AddisScatter({ d }: { d: AnalogsData }) {
       <Crossplot points={overlay} marked={view === 'overlay' && out.length ? overlayOf(out) : undefined} title="Every model" xLabel={labelOf('hips_bc')} yLabel="FTIR EC (µg/m³)" brushable brush={brush} maxSide={520} errorRatio={lambda} grouping="site" />
       <Legend {...lg.props} items={models.map((m) => ({ label: m, color: colorOf(m) }))} />
     </>}
-    {view === 'one' && standard && fit && <Note>The Deming line here is the one in "Addis against HIPS" above, on the same filters (slope {coef(mac.slope(fit.slope))}, intercept {coefSigned(fit.intercept)} µg/m³, n {fit.n}, λ {f2(lambda)}). Choosing another estimator changes it here only.</Note>}
+    {view === 'one' && standard && fit && <Note>The Deming line here is the one in "Addis against HIPS" above, on the same filters ({fitSummary({ slope: mac.slope(fit.slope), intercept: fit.intercept, n: fit.n }, { sep: ', ', signedIntercept: true, unit: 'µg/m³' })}, λ {f2(lambda)}). Choosing another estimator changes it here only.</Note>}
     {view !== 'one' && <Note>Each model's Deming line is the one in "Addis against HIPS" above, on the same filters (λ {f2(lambda)}). Choosing another estimator changes them here only.</Note>}
     <ExcludedNote count={nOut} drawn />
   </ChartFrame>

@@ -31,7 +31,7 @@ import { SidebarControls } from '@/lib/pageSidebar'
 import { baseFilterId, dotRim, useHighlight, useHighlightActions } from '@/lib/highlight'
 import { ADDIS_ALL, BASELINE_COLOR, FONT, IMPROVE_GREY, INK, OCT1_HATCH, SPECTRAL_REGION, dotOpacity } from '@/lib/theme'
 import { ANALOG_SELECTION_EXCLUDED, OCT1_ALSO_EXCLUDED } from '@/components/SpectralRegions'
-import { coef, coefSigned, f2, fmt, signed } from '@/lib/format'
+import { coef, coefSigned, f2, fmt, pct, signed, trim } from '@/lib/format'
 import { ALL_ADDIS, ANALYSIS_CALENDAR_NOTE, inSeasonGroup, isAllAddis, seasonPhrase, shortSeason } from '@/lib/seasons'
 import { ColorLegend } from '@/components/ColorLegend'
 import { CV_PROTOCOL_SHORT, PREPROCESSING, baselineName, ecAxis } from '@/lib/labels'
@@ -291,7 +291,7 @@ function Answers({ data }: { data: MeetingData }) {
         {methods.includes('VIBES') && <li><strong>In the archived truncated VIBES fit, the analogs stop mirroring Addis.</strong> Addis slopes ({data.seasons.map((g, j) => <span key={g}>{j ? ', ' : ''}{shortSeason(g)} {coef(h('VIBES', g).addis_slope[0])}</span>)}) no longer track its cross-validation analogs ({data.seasons.map((g, j) => <span key={g}>{j ? ', ' : ''}{coef(h('VIBES', g).analog_ftir_fabs[0])}</span>)}): the wet seasons overshoot 1 while Dry stays low.</li>}
       </ol>
       <FixedSetNote subject="this table" what="the run's medians over 100 saved splits" />
-      <Note>Deming error ratios come from measurement uncertainties: Addis λ* {f2(data.summary.lambda)} (HIPS_Uncertainty vs IMPROVE cross-validation RMSE); IMPROVE FTIR panels use each calibration's cross-validation RMSE against a {(100 * (data.summary.ref_rel_uncertainty ?? 0)).toFixed(1)} % reference uncertainty (ETAD HIPS, the only one on file), so λ is 50–100: almost all the error is assigned to FTIR. Analog concentrations are low (median TOR EC 0.1–0.4 µg/m³) against Addis Fabs/10 of 4–6 µg/m³. Fabs/10 is an optical proxy, not thermal EC.</Note>
+      <Note>Deming error ratios come from measurement uncertainties: Addis λ* {f2(data.summary.lambda)} (HIPS_Uncertainty vs IMPROVE cross-validation RMSE); IMPROVE FTIR panels use each calibration's cross-validation RMSE against a {pct(data.summary.ref_rel_uncertainty ?? 0, 1)} reference uncertainty (ETAD HIPS, the only one on file), so λ is 50–100: almost all the error is assigned to FTIR. Analog concentrations are low (median TOR EC 0.1–0.4 µg/m³) against Addis Fabs/10 of 4–6 µg/m³. Fabs/10 is an optical proxy, not thermal EC.</Note>
     </ChartFrame>
   )
 }
@@ -677,7 +677,7 @@ function SpectraPanel({ data, method, group }: { data: MeetingData; method: stri
       {/* grey: dropped from analog selection; hatched: also dropped by the region agreed 1 Oct (similarity only; PLS still sees them) */}
       <SpectrumPlot series={series} bands={bands} window={[d3.max(wn) ?? 4000, lo]} height={286} includeZero
         regions={[...ANALOG_SELECTION_EXCLUDED, ...OCT1_ALSO_EXCLUDED]} hover={individual ? 'nearest' : 'readout'} highlight={hl} lookup={lookup}
-        yFormat={(v) => String(+v.toFixed(3))}
+        yFormat={(v) => trim(v, 3)}
         title={`Spectra: ${individual ? `${impT.length} most similar IMPROVE analogs and ${addT.length} Addis filters` : `median and IQR · ${topN === '500' ? 500 : impT.length} most similar IMPROVE analogs`}`} />
       <Key items={[
         { label: individual ? `IMPROVE analogs, ranks 1–${impT.length}` : `IMPROVE analogs, ranks 1–${topN === '500' ? 500 : impT.length}: median, IQR`, color: IMPROVE_GREY, kind: individual ? 'line' : 'bar' },
@@ -841,7 +841,7 @@ function ThreePlots({ data }: { data: MeetingData }) {
         { label: '1:1', color: INK.identity, kind: 'dash' },
       ]}>
         {colorBy === 'OP fraction' && <ColorLegend scale={opScale} scheme={opColours.scheme} label="IMPROVE: OP fraction = OPTR / (EC + OPTR)" width={200} />}
-        {colorBy === 'OC/EC' && <ColorLegend scale={ocScale} scheme={ocColours.scheme} label="IMPROVE: TOR OC/EC" width={200} format={(v) => v.toFixed(0)} />}
+        {colorBy === 'OC/EC' && <ColorLegend scale={ocScale} scheme={ocColours.scheme} label="IMPROVE: TOR OC/EC" width={200} format={(v) => fmt(v, 0)} />}
       </Key>
       {perFilter && <ExplainOnly><Note>Mass per filter = concentration × sampled air volume, filter by filter. IMPROVE samples about 33 m³ per filter, SPARTAN at Addis about 7 m³, so Addis is far less extreme in mass than in concentration: its median HIPS loading is about 9× the IMPROVE median (41× in µg/m³), though still above IMPROVE's 99th percentile. Fit lines are refitted on the converted points with the same error ratio.</Note></ExplainOnly>}
       <SpectraPanel data={data} method={method} group={season} />
@@ -870,7 +870,7 @@ function MacEnvelope({ data }: { data: MeetingData }) {
       subtitle="Ann: does TOR EC vs Fabs give a MAC near 10 for the analogs, or do these samples sit at the low-EC end of the envelope?"
       >
       <SweepPlot height={320} minWidth={560} xScale="log" xDomain={[edges[0], edges[edges.length - 1]]} yDomain={[0, ymax * 1.1]}
-        xLabel="Fabs / TOR EC (m²/g)" yLabel="Share of filters" yFormat={(v) => v.toFixed(2)} xMarkers={[{ at: 10, label: 'MAC 10' }]}
+        xLabel="Fabs / TOR EC (m²/g)" yLabel="Share of filters" yFormat={f2} xMarkers={[{ at: 10, label: 'MAC 10' }]}
         series={series.map((s) => ({ id: s.key, label: s.label, color: s.color, curve: 'monotone' as const, marks: false, interval: 'none' as const, width: s.key === 'pool' ? 3 : 2,
           points: dens(hst[s.key] ?? []).map((v, i) => ({ x: Math.sqrt(edges[i] * edges[i + 1]), y: v })) }))}>
         {/* each population's median as a tick on the x axis */}
@@ -1132,7 +1132,7 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
   const cy = (v: number) => y(Math.max(y.domain()[0], Math.min(y.domain()[1], v)))
   const mark = (p: P, key: number) => {
     const X = cx(p.x), Y = cy(p.y), r = p.r
-    const ev = { onMouseEnter: (e: React.MouseEvent) => tip.show(e, p.tip), onMouseLeave: tip.hide }
+    const ev = tip.bind(p.tip)
     if (p.shape === 'dot') return <circle key={key} cx={X} cy={Y} r={r} fill={p.color} fillOpacity={p.op} {...dotRim()} {...ev} />
     if (p.shape === 'sq') return <rect key={key} x={X - r * 0.8} y={Y - r * 0.8} width={r * 1.6} height={r * 1.6} fill={p.color} stroke={INK.panel} {...ev} />
     if (p.shape === 'x') return <g key={key} {...ev}><line x1={X - r} x2={X + r} y1={Y - r} y2={Y + r} stroke={p.color} strokeWidth={3} /><line x1={X - r} x2={X + r} y1={Y + r} y2={Y - r} stroke={p.color} strokeWidth={3} /></g>
@@ -1300,7 +1300,7 @@ function GridStep({ data }: { data: MeetingData }) {
                   const v = cell.v / cell.n
                   const faded = gate && mode === 'site_heldout' && metric !== 'CV R²' && cell.pass === 0
                   return <rect key={b} x={c * cw} y={1} width={cw - 0.5} height={chH - 2} fill={color(v)} opacity={faded ? 0.3 : 1} stroke={faded ? 'none' : INK.text} strokeWidth={faded ? 0 : 0.3}
-                    onMouseEnter={(e) => tip.show(e, [`${cat} · cutoff ≈ ${b}`, `${METRIC_LABEL[metric] ?? metric}${metric !== 'CV R²' ? ` (${READOUT_LABEL[readout] ?? readout})` : ''}: ${f2(v)}`, `${cell.n} fits · k ${d3.min(cell.k)}–${d3.max(cell.k)}`, mode === 'site_heldout' ? `${cell.pass}/${cell.n} pass IMPROVE cross-validation R² ≥ 0.85` : 'interleaved CV holds out no whole site: no cross-validation R² gate'])} onMouseLeave={tip.hide} />
+                    {...tip.bind(() => [`${cat} · cutoff ≈ ${b}`, `${METRIC_LABEL[metric] ?? metric}${metric !== 'CV R²' ? ` (${READOUT_LABEL[readout] ?? readout})` : ''}: ${f2(v)}`, `${cell.n} fits · k ${d3.min(cell.k)}–${d3.max(cell.k)}`, mode === 'site_heldout' ? `${cell.pass}/${cell.n} pass IMPROVE cross-validation R² ≥ 0.85` : 'interleaved CV holds out no whole site: no cross-validation R² gate'])} />
                 })}
               </g>
             ))}

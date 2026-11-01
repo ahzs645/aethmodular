@@ -4,6 +4,7 @@ import * as d3 from 'd3'
 import { RefLine } from '@/components/RefLines'
 import { XAxis, YAxis } from '@/components/Axes'
 import { INK, BASELINE_COLOR } from '@/lib/theme'
+import { fmt } from '@/lib/format'
 import { useDimensions } from '@/hooks/useGalleryData'
 import type { SpectrumMethod } from '@/lib/filterSpectrum'
 import { UndoIcon, XIcon } from '@/components/Icons'
@@ -144,7 +145,7 @@ export function SpectrumPlot({ spec, shown, expanded = false, names = NAME, colo
         {transform.k > 1 && <button type="button" className="btn quiet x-btn" aria-label="Reset zoom" title="Show the whole spectrum" onClick={reset}><UndoIcon /></button>}
       </span>
       <span className="spectrum-window" title="Zoom with − / +, or pinch (⌘/Ctrl + scroll) on the plot; drag to pan once zoomed. Absorbance follows the visible range.">
-        {Math.round(high)}–{Math.round(low)} cm⁻¹{transform.k > 1 ? ` · ${transform.k.toFixed(1)}×` : ''}</span>
+        {Math.round(high)}–{Math.round(low)} cm⁻¹{transform.k > 1 ? ` · ${fmt(transform.k, 1)}×` : ''}</span>
       {actions && <span className="spectrum-actions">{actions}</span>}
     </div>
     <div className="chart-scroll" role="region" aria-label="FTIR spectrum plot, scroll horizontally" tabIndex={0}>

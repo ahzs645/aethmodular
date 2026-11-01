@@ -21,7 +21,7 @@ import { SweepPlot } from '@/components/SweepPlot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { BANK_COLOR, FONT, INK, SPECTRAL_REGION } from '@/lib/theme'
 import { dotFill, dotRim } from '@/lib/highlight'
-import { f2, pct, sci } from '@/lib/format'
+import { f2, fmt, pct, sci } from '@/lib/format'
 import { FixedSetNote } from '@/lib/markedRows'
 
 /**
@@ -486,7 +486,7 @@ function AfterCorrection({ d }: { d: BlanksData }) {
       <Legend {...lg.props} items={banksOf(d).map((b) => ({ label: d.bank_labels[b], color: BANK_COLOR[b], shape: 'line' as const, detail: `rank ${d.banks[b].rank}` }))} />
       <table className="census-table" style={{ marginTop: 8 }}>
         <thead><tr><th>Median RMS residue (×10⁻⁵)</th>{bands.map(([l]) => <th key={l}>{l}</th>)}</tr></thead>
-        <tbody>{banksOf(d).map((b) => <tr key={b}><td style={{ color: BANK_COLOR[b], fontWeight: 600 }}>{d.bank_labels[b]}</td>{bands.map(([l, hi, lo]) => <td key={l}>{(1e5 * rms(b, hi, lo)).toFixed(1)}</td>)}</tr>)}</tbody>
+        <tbody>{banksOf(d).map((b) => <tr key={b}><td style={{ color: BANK_COLOR[b], fontWeight: 600 }}>{d.bank_labels[b]}</td>{bands.map(([l, hi, lo]) => <td key={l}>{fmt(1e5 * rms(b, hi, lo), 1)}</td>)}</tr>)}</tbody>
       </table>
     </ChartFrame>
   )

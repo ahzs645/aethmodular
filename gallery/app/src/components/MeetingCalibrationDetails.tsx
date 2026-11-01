@@ -1,4 +1,5 @@
 import { ExplainOnly } from '@/components/ChartFrame'
+import { coef } from '@/lib/format'
 
 interface CalibrationFit {
   train_n?: number | null
@@ -10,7 +11,7 @@ interface CalibrationFit {
 }
 
 const count = (v: number | null | undefined) => typeof v === 'number' && Number.isInteger(v) && v >= 0 ? v.toLocaleString() : '—'
-const score = (v: number | null | undefined) => typeof v === 'number' && Number.isFinite(v) ? v.toFixed(3) : '—'
+const score = coef
 
 /** Scores from the saved calibration's IMPROVE holdout, independent of Addis. */
 export function MeetingCalibrationDetails({ fit }: { fit?: CalibrationFit }) {
