@@ -103,13 +103,11 @@ export const passes = (r: CalibRow, calib: CalibFile) => {
   return m !== null && m >= calib.slope_box[0] && m <= calib.slope_box[1] && (r.ho ?? 0) >= calib.heldout_floor
 }
 
-/** A saved fit as "0.820x − 1.060", at the agreed coefficient precision (lib/format coef, 3 dp). */
-export const fmtFit = (m: number | null | undefined, b: number | null | undefined) => fitLine(m, b, 3)
-
 type TipRow = { dm: number | null; db: number | null; r2: number | null; ho: number | null; adm?: number | null; adb?: number | null; ar2?: number | null }
 
 /**
- * The two readout lines every calibration tooltip carries for one configuration:
+ * The two readout lines every calibration tooltip carries for one configuration (fits at the
+ * coefficient precision, fitLine(m, b, 3)):
  *   "Test set (Addis): Deming 0.950x − 1.230 · R² 0.912"
  *   "IMPROVE cross-validation R² (calibration set): 0.874"
  * `site` names the test set; `set: 'all'` reads the all-pairs fit; `both` shows the fixed and
@@ -121,8 +119,8 @@ export function configTipLines(r: TipRow, { site, set = 'fixed', both = false, l
 } = {}): [string, string] {
   const all = set === 'all'
   const fit = both
-    ? `${fmtFit(r.dm, r.db)} (fixed) · ${fmtFit(r.adm, r.adb)} (all pairs)`
-    : all ? fmtFit(r.adm, r.adb) : fmtFit(r.dm, r.db)
+    ? `${fitLine(r.dm, r.db, 3)} (fixed) · ${fitLine(r.adm, r.adb, 3)} (all pairs)`
+    : all ? fitLine(r.adm, r.adb, 3) : fitLine(r.dm, r.db, 3)
   const testSet = `${lead ? `${lead} · test set` : 'Test set'}${site ? ` (${site}):` : ''}`
   return [
     `${testSet} Deming ${fit} · R² ${coef(all ? r.ar2 : r.r2)}`,

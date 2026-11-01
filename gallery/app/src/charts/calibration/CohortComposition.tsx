@@ -57,7 +57,7 @@ export function CohortComposition({ info, label }: { info: CohortInfo | undefine
               {c.centers.map((cx, i) => (
                 <g key={i}>
                   <rect x={x(cx) - bw / 2} y={y(c.pool[i] / poolMax)} width={Math.max(0.5, bw - 0.5)} height={innerH - y(c.pool[i] / poolMax)} fill={INK.muted} fillOpacity={lg.show(POOL) ? 0.35 * lg.dim(POOL) : 0}
-                    onMouseEnter={(e) => tip.show(e, [`OC/EC ≈ ${fmt(cx, 2)}`, `pool: ${c.pool[i]} filters`, `cohort: ${c.cohort[i]} filters`])} onMouseLeave={tip.hide} />
+                    {...tip.bind([`OC/EC ≈ ${fmt(cx, 2)}`, `pool: ${c.pool[i]} filters`, `cohort: ${c.cohort[i]} filters`])} />
                   {lg.show(COHORT) && <rect x={x(cx) - bw / 2} y={y(c.cohort[i] / cohortMax)} width={Math.max(0.5, bw - 0.5)} height={innerH - y(c.cohort[i] / cohortMax)} fill={INK.accent} fillOpacity={0.55 * lg.dim(COHORT, 0.2)} pointerEvents="none" />}
                 </g>
               ))}

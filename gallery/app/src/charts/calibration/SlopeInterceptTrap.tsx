@@ -2,7 +2,7 @@ import { lazy, Suspense, useMemo, useRef, useState } from 'react'
 import { AxisChoices } from '@/components/AxisChoices'
 import { useSearchParam } from '@/lib/url'
 import { robustDomain } from '@/lib/axes'
-import { RefLine } from '@/components/RefLines'
+import { RefBand, RefLine } from '@/components/RefLines'
 import { EstimatorName } from '@/lib/regressionPrefs'
 import * as d3 from 'd3'
 import { hexbin as d3Hexbin } from 'd3-hexbin'
@@ -17,7 +17,8 @@ import { useColourScheme } from '@/lib/colourSchemes'
 import { ColorLegend } from '@/components/ColorLegend'
 import type { CalibFile, CalibRow } from '@/lib/types'
 import { fmt } from '@/lib/stats'
-import { cohortColor, fmtFit, passes as savedPasses, sameConfig, score, shortConfig, type Config } from './common'
+import { fitLine } from '@/lib/format'
+import { cohortColor, configTipLines, passes as savedPasses, sameConfig, score, shortConfig, type Config } from './common'
 import { COHORT, CV_PROTOCOL, METRIC, label } from '@/lib/labels'
 
 /**
@@ -170,8 +171,8 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
           <AxisChoices noun="metrics" x={ax} y={ay} options={METRIC_KEYS.map((k) => ({ key: k, group: METRICS[k].kind === 'other' ? 'Quality and size' : 'Test set Deming fit', unit: METRICS[k].unit }))}>
           <svg width={width} height={height} className="animated">
             <g transform={`translate(${left},${MARGIN.top})`}>
-              {mx.kind === 'slope' && <rect x={x(calib.slope_box[0])} y={0} width={x(calib.slope_box[1]) - x(calib.slope_box[0])} height={innerH} fill={INK.accent} fillOpacity={0.07} />}
-              {my.kind === 'slope' && <rect x={0} y={y(calib.slope_box[1])} width={innerW} height={y(calib.slope_box[0]) - y(calib.slope_box[1])} fill={INK.accent} fillOpacity={0.07} />}
+              {mx.kind === 'slope' && <RefBand orient="v" at={[x(calib.slope_box[0]), x(calib.slope_box[1])]} size={innerW} length={innerH} />}
+              {my.kind === 'slope' && <RefBand orient="h" at={[y(calib.slope_box[0]), y(calib.slope_box[1])]} size={innerH} length={innerW} />}
               <YAxis scale={y} x={0} label={`${my.kind !== 'other' ? 'Test set ' : ''}${ay[0]}${my.kind !== 'other' ? ` (${calib.targets[target]?.site ?? target}${my.unit ? `, ${my.unit}` : ''})` : ''}`} gridWidth={innerW} pick="y" />
               <XAxis scale={x} y={innerH} label={`${mx.kind !== 'other' ? 'Test set ' : ''}${ax[0]}${mx.kind !== 'other' ? ` (${calib.targets[target]?.site ?? target}${mx.unit ? `, ${mx.unit}` : ''})` : ''}`} pick="x" />
               {my.kind === 'intercept' && <line x1={0} x2={innerW} y1={y(0)} y2={y(0)} stroke={INK.axis} />}
@@ -182,8 +183,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
                 <path
                   key={i} d={h.path} transform={`translate(${h.bin.x},${h.bin.y})`}
                   fill={hexColor(h.bin.length)} stroke={INK.panel} strokeWidth={0.6}
-                  onMouseEnter={(e) => tip.show(e, [`${h.bin.length} configuration${h.bin.length === 1 ? '' : 's'} in this hex`, `${h.pass} pass the guardrails`, `${ax[0]} ≈ ${x.invert(h.bin.x).toFixed(2)} · ${ay[0]} ≈ ${y.invert(h.bin.y).toFixed(2)}`])}
-                  onMouseLeave={tip.hide}
+                  {...tip.bind(() => [`${h.bin.length} configuration${h.bin.length === 1 ? '' : 's'} in this hex`, `${h.pass} pass the guardrails`, `${ax[0]} ≈ ${fmt(x.invert(h.bin.x), 2)} · ${ay[0]} ≈ ${fmt(y.invert(h.bin.y), 2)}`])}
                 />
               ))}
               {rows.map((r, i) => {
@@ -205,16 +205,12 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
                     strokeWidth={isSel ? 2 : r.sp === 'airspec' ? 1.5 : 0.8}
                     strokeDasharray={r.sp === 'deriv2' ? '1 1' : undefined}
                     style={{ cursor: 'pointer' }}
-                    onMouseEnter={(e) =>
-                      tip.show(e, [
-                        shortConfig(cfg),
-                        `${METRIC.k}: ${r.k}`,
-                        `Test set Deming ${fmtFit(r.dm, r.db)} (fixed) · ${fmtFit(r.adm, r.adb)} (all pairs) · R² ${r.r2?.toFixed(3) ?? '—'}`,
-                        `${METRIC.cvR2}: ${r.ho?.toFixed(3) ?? '—'} · score ${score(r)?.toFixed(2) ?? '—'}`,
-                        ok ? 'passes the selected guardrails' : 'fails the guardrails',
-                      ])
-                    }
-                    onMouseLeave={tip.hide}
+                    {...tip.bind(() => [
+                      shortConfig(cfg),
+                      `${METRIC.k}: ${r.k}`,
+                      ...configTipLines(r, { both: true, cvExtra: ` · score ${fmt(score(r), 2)}` }),
+                      ok ? 'passes the selected guardrails' : 'fails the guardrails',
+                    ])}
                     onClick={() => onSelect(cfg)}
                   />
                 )
@@ -244,7 +240,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
                   <td className="f">{i + 1}</td>
                   <td className="f">{shortConfig({ co: r.co, cut: r.cut, sel: r.sel, sp: r.sp })}</td>
                   <td className="v">{r.k}</td>
-                  <td className="v">{fmtFit(r.dm, r.db)}</td>
+                  <td className="v">{fitLine(r.dm, r.db, 3)}</td>
                   <td className="v">{fmt(r.r2, 3)}</td>
                   <td className="v">{fmt(r.ho, 3)}</td>
                   <td className="v">{fmt(score(r), 2)}</td>

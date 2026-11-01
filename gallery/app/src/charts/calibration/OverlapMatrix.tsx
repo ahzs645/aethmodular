@@ -8,6 +8,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { INK, FONT, inkOn } from '@/lib/theme'
 import type { OverlapRow } from '@/lib/types'
 import { cohortColor } from './common'
+import { pct } from '@/lib/format'
 import { useColourScheme } from '@/lib/colourSchemes'
 
 const VIEWS = ['Matrix', 'Chord'] as const
@@ -120,7 +121,7 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
                     const v = diag ? sizes.get(a) ?? 0 : cell.get(`${a}|${b}`) ?? 0
                     const frac = diag ? 1 : v / Math.max(1, Math.min(sizes.get(a) ?? 1, sizes.get(b) ?? 1))
                     return (
-                      <g key={b} onMouseEnter={(e) => tip.show(e, diag ? [a, `${v} filters`] : [`${short(a)} ∩ ${short(b)}`, `${v} shared filters`, `${(frac * 100).toFixed(0)} % of the smaller cohort`])} onMouseLeave={tip.hide}>
+                      <g key={b} {...tip.bind(diag ? [a, `${v} filters`] : [`${short(a)} ∩ ${short(b)}`, `${v} shared filters`, `${pct(frac)} of the smaller cohort`])}>
                         <rect x={j * size + 1} y={1} width={size - 2} height={size - 2} rx={3} fill={diag ? INK.empty : color(frac)} stroke={INK.panel} />
                         <text x={j * size + size / 2} y={size / 2} dy="0.32em" textAnchor="middle" fontSize={10.5} fontFamily={FONT.mono} fill={inkOn(diag ? INK.empty : color(frac))} pointerEvents="none">
                           {v}
@@ -144,14 +145,11 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
                   stroke={colorForCohort(vnames[c.source.index])}
                   strokeOpacity={ribbonTouches(c) ? 0.8 : 0.1}
                   style={{ transition: 'fill-opacity 0.2s, stroke-opacity 0.2s' }}
-                  onMouseEnter={(e) =>
-                    tip.show(e, [
-                      `${short(vnames[c.source.index])} ∩ ${short(vnames[c.target.index])}`,
-                      `${c.source.value} shared filters`,
-                      `${((c.source.value / Math.max(1, Math.min(sizes.get(vnames[c.source.index]) ?? 1, sizes.get(vnames[c.target.index]) ?? 1))) * 100).toFixed(0)} % of the smaller cohort`,
-                    ])
-                  }
-                  onMouseLeave={tip.hide}
+                  {...tip.bind(() => [
+                    `${short(vnames[c.source.index])} ∩ ${short(vnames[c.target.index])}`,
+                    `${c.source.value} shared filters`,
+                    `${pct(c.source.value / Math.max(1, Math.min(sizes.get(vnames[c.source.index]) ?? 1, sizes.get(vnames[c.target.index]) ?? 1)))} of the smaller cohort`,
+                  ])}
                 />
               ))}
               {chord.layout.groups.map((g) => {

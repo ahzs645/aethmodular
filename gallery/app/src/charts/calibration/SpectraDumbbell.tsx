@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { robustDomain } from '@/lib/axes'
-import { Marker } from '@/components/RefLines'
+import { Marker, RefBand } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
@@ -9,9 +9,10 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { BASELINE_COLOR, INK, MARGIN, FONT } from '@/lib/theme'
 import type { CalibFile, CalibRow } from '@/lib/types'
-import { METRICS, SPECTRA_COLOR, cohortColor, fmtFit, isInterceptMetric, isSlopeMetric, metricLabel, metricOf, sameConfig, type Config, type Metric } from './common'
+import { METRICS, SPECTRA_COLOR, cohortColor, configTipLines, isInterceptMetric, isSlopeMetric, metricLabel, metricOf, sameConfig, type Config, type Metric } from './common'
 import { COHORT, COHORT_SHORT, CV_PROTOCOL, METRIC, PREPROCESSING, SELECTION_SPACE, label as nameOf } from '@/lib/labels'
 import { AxisChoices } from '@/components/AxisChoices'
+import { coef } from '@/lib/format'
 import { ChartAside } from '@/lib/singleView'
 import { FixedSetNote } from '@/lib/markedRows'
 
@@ -116,13 +117,9 @@ export function SpectraDumbbell({ calib, selected, onSelect }: { calib: CalibFil
           <AxisChoices noun="readouts" x={[metric, (v) => setMetric(v as Metric)]} options={METRICS.map((m) => ({ key: m, label: metricLabel(m), group: 'Readout', roles: ['x'] }))}>
           <svg width={width} height={innerH + MARGIN.top + MARGIN.bottom} className="animated">
             <g transform={`translate(${labelW},${MARGIN.top})`}>
-              {isSlopeMetric(metric) && (
-                <rect x={Math.max(0, x(calib.slope_box[0]))} y={0} width={Math.max(0, Math.min(innerW, x(calib.slope_box[1])) - Math.max(0, x(calib.slope_box[0])))} height={innerH} fill={INK.accent} fillOpacity={0.06} />
-              )}
+              {isSlopeMetric(metric) && <RefBand orient="v" at={[x(calib.slope_box[0]), x(calib.slope_box[1])]} size={innerW} length={innerH} />}
               {metric === 'held-out TOR R²' && <Marker orient="v" at={x(calib.heldout_floor)} from={0} to={innerH} />}
-              {x.ticks(6).map((t) => (
-                <line key={t} x1={x(t)} x2={x(t)} y1={0} y2={innerH} stroke={INK.grid} />
-              ))}
+              <XAxis scale={x} y={innerH} label={axisLabel} pick="x" gridHeight={innerH} />
               {ref !== null && ref >= x0 && ref <= x1 && <line x1={x(ref)} x2={x(ref)} y1={0} y2={innerH} stroke={INK.axis} strokeWidth={1} strokeOpacity={0.7} />}
               {vis.map((row, i) => {
                 const cy = i * rowH + rowH / 2
@@ -145,16 +142,12 @@ export function SpectraDumbbell({ calib, selected, onSelect }: { calib: CalibFil
                           fill={pinned ? INK.panel : spectraColor(p.sp)} stroke={isSel ? INK.text : spectraColor(p.sp)} strokeWidth={isSel ? 2.2 : 1.2}
                           opacity={hoverSp ? lg.dim(spLabel(p.sp)) : 1}
                           style={{ cursor: 'pointer' }}
-                          onMouseEnter={(e) =>
-                            tip.show(e, [
-                              `${row.label} × ${spLabel(p.sp)}`,
-                              `${axisLabel} = ${p.v.toFixed(3)}${pinned ? ' (off the axis)' : ''}`,
-                              `${METRIC.k}: ${p.r.k} · test set Deming ${fmtFit(p.r.dm, p.r.db)} · R² ${p.r.r2?.toFixed(3) ?? '—'}`,
-                              `${METRIC.cvR2}: ${p.r.ho?.toFixed(3) ?? '—'}`,
-                              'click to load this configuration',
-                            ])
-                          }
-                          onMouseLeave={tip.hide}
+                          {...tip.bind(() => [
+                            `${row.label} × ${spLabel(p.sp)}`,
+                            `${axisLabel} = ${coef(p.v)}${pinned ? ' (off the axis)' : ''}`,
+                            ...configTipLines(p.r, { lead: `${METRIC.k}: ${p.r.k}` }),
+                            'click to load this configuration',
+                          ])}
                           onClick={() => onSelect(cfg)}
                         />
                       )
@@ -162,7 +155,6 @@ export function SpectraDumbbell({ calib, selected, onSelect }: { calib: CalibFil
                   </g>
                 )
               })}
-              <XAxis scale={x} y={innerH} label={axisLabel} pick="x" />
             </g>
           </svg>
           </AxisChoices>

@@ -6,8 +6,9 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { INK, FONT, inkOn } from '@/lib/theme'
 import type { CalibFile, CalibRow } from '@/lib/types'
-import { configKey, fmtFit, passes, sameConfig, score, shortConfig, type Config } from './common'
+import { configKey, configTipLines, passes, sameConfig, score, shortConfig, type Config } from './common'
 import { METRIC } from '@/lib/labels'
+import { fmt } from '@/lib/format'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { FixedSetNote } from '@/lib/markedRows'
 
@@ -114,17 +115,15 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
                       return (
                         <g key={t}>
                           <rect x={j * cellW} y={1} width={cellW - 2} height={rowH - 2} rx={2} fill={v === null ? INK.empty : color(v)} stroke={isSel ? INK.text : INK.panel} strokeWidth={isSel ? 1.2 : 1}
-                            onMouseEnter={(e) => r && tip.show(e, [
+                            {...(r ? tip.bind(() => [
                               `${shortConfig(cfg)} @ ${calib.targets[t]?.site ?? t}`,
                               `${METRIC.k}: ${r.k}`,
-                              `Test set Deming ${fmtFit(r.dm, r.db)} · R² ${r.r2?.toFixed(3) ?? '—'}`,
-                              `${METRIC.cvR2}: ${r.ho?.toFixed(3) ?? '—'}`,
-                            ])}
-                            onMouseLeave={tip.hide}
+                              ...configTipLines(r),
+                            ]) : {})}
                           />
                           {v !== null && (
                             <text x={j * cellW + cellW / 2} y={rowH / 2} dy="0.32em" textAnchor="middle" fontSize={10.5} fontFamily={FONT.mono} fill={inkOn(color(v))} pointerEvents="none">
-                              {cell === 'R²' ? v.toFixed(2) : v.toFixed(2)}
+                              {fmt(v, 2)}
                             </text>
                           )}
                         </g>

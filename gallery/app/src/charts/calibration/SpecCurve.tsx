@@ -383,7 +383,7 @@ export function SpecCurve({
         {file && m > 0 && layout !== 'overlay' && (
           <div className="legend">
             <ColorLegend scale={d3.scaleSequential(heat).domain([0, 100])} width={180} scheme={stripColours.scheme}
-              label="strip colour: % of the specifications at that position that use the choice" format={(v) => `${v.toFixed(0)}%`} />
+              label="strip colour: % of the specifications at that position that use the choice" format={(v) => `${fmt(v, 0)}%`} />
           </div>
         )}
         {layout === 'overlay' && <ChartAside><p className="chart-note">Each baseline is sorted independently on a percentile axis. Curves compare distributions, not matched configurations. Choice strips are shown in the One curve and Per baseline views.</p></ChartAside>}
