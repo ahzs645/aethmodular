@@ -1,3 +1,4 @@
+import { MONTHS } from './theme.ts'
 /**
  * The arithmetic behind components/HeatMatrix and components/BarRows, kept free of React and the DOM
  * so it can be tested in Node: where each row starts when rows come in groups, which row and column a
@@ -41,7 +42,6 @@ export function groupStarts(groups: readonly (string | undefined)[]): { index: n
   return out
 }
 
-export const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
 
 export interface MonthColumn { key: string; label: string; short: string; group?: string; title: string }
 
@@ -55,10 +55,10 @@ export function monthColumns(months: readonly (string | number)[]): MonthColumn[
     const s = String(m)
     if (/^\d{4}-\d{2}$/.test(s)) {
       const k = +s.slice(5, 7)
-      return { key: s, label: s.slice(5), short: '', group: s.slice(0, 4), title: `${MONTH_ABBR[k - 1] ?? s.slice(5)} ${s.slice(0, 4)}` }
+      return { key: s, label: s.slice(5), short: '', group: s.slice(0, 4), title: `${MONTHS[k - 1] ?? s.slice(5)} ${s.slice(0, 4)}` }
     }
     const k = +s
-    const name = MONTH_ABBR[k - 1] ?? s
+    const name = MONTHS[k - 1] ?? s
     return { key: s, label: name, short: name[0], title: name }
   })
 }
