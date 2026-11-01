@@ -3,7 +3,7 @@ import { seasonOnly } from '@/lib/seasons'
 import { SeasonBands, timeSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
-import { Legend, toggleIn } from '@/components/Legend'
+import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -47,8 +47,9 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
   // the brush only: the points read the hover themselves (components/ScatterLayer)
   const hl = useHighlightActions()
 
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
-  const [hover, setHover] = useState<string | null>(null)
+  // sites are series; seasons are background keys (their shading deepens on hover, they do not hide)
+  const lg = useLegend(undefined, { background: meta.seasons.map((s) => s.name) })
+  const hidden = lg.hidden
   const [cursor, setCursor] = useState<Date | null>(null)
 
   // series by site, or by the bands of the reader's grouping (components/GroupingDialog), every site pooled
@@ -96,9 +97,9 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
   const seasonShading = o.values.shading as boolean
 
   // a hovered site dims the other sites; a hovered season (a background key, not a series) deepens its own bands
-  const siteHover = hover && series.some((s) => s.name === hover) ? hover : null
-  const seasonHover = seasonShading && hover && meta.seasons.some((s) => s.name === hover) ? hover : null
-  const dim = (name: string) => (siteHover === null || siteHover === name ? 1 : 0.15)
+  const siteHover = lg.hover
+  const seasonHover = seasonShading ? lg.backgroundHover : null
+  const dim = lg.dim
 
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const fit = useFitHeight()
@@ -233,10 +234,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
             ...meta.sites.filter((s) => rows.some((r) => r.site === s.name)).map((s) => ({ label: s.name, color: s.color })),
             ...(seasonShading ? meta.seasons.map((s) => ({ label: s.name, color: s.color, shape: 'band' as const })) : []),
           ]}
-          hidden={hidden}
-          onToggle={(l) => { if (meta.sites.some((s) => s.name === l)) setHidden((h) => toggleIn(h, l)) }}
-          onHover={setHover}
-          highlighted={siteHover ?? seasonHover}
+          {...lg.props}
           note="hover any panel: the dashed cursor is the same date on every panel"
         />
         {byGroup && missingNote('left out of the series')}

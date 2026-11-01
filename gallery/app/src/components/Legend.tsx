@@ -179,26 +179,56 @@ export function Legend({
   )
 }
 
+export interface LegendOptions {
+  /**
+   * Background keys: legend entries for what sits behind the data (season shading), not series. Hovering
+   * one reports it as `backgroundHover` (the chart deepens its own shading) and dims no series; a click
+   * hides one only with `hideBackground`.
+   */
+  background?: Iterable<string>
+  /** background keys hide on a click as series do (the chart then drops that shading and its data) */
+  hideBackground?: boolean
+  /**
+   * Entries whose visibility a control owns (an overlay toggle beside the chart): shown off in the legend
+   * while `shown` is false, a click calls `toggle`, and a hover on one that is off dims nothing.
+   */
+  external?: Record<string, { shown: boolean; toggle: () => void }>
+}
+
 /**
  * The state behind a reactive legend: which series are hidden and which one
  * the pointer is on. `show(label)` is the filter, `dim(label)` the opacity
  * factor for a series (1, or `low` while another series is hovered), and
  * `props` spreads straight onto `<Legend>`. A hovered series that is hidden
- * dims nothing, so the chart never fades out entirely.
+ * dims nothing, so the chart never fades out entirely. Background keys and
+ * control-owned entries: `LegendOptions`.
  */
-export function useLegend(initialHidden?: Iterable<string>) {
+export function useLegend(initialHidden?: Iterable<string>, options: LegendOptions = {}) {
   const [hidden, setHidden] = useState<Set<string>>(() => new Set(initialHidden))
   const [hover, setHover] = useState<string | null>(null)
-  const active = hover !== null && !hidden.has(hover) ? hover : null
+  const { external = {}, hideBackground = false } = options
+  const background = new Set(options.background)
+  const offOutside = Object.keys(external).filter((l) => !external[l].shown)
+  const legendHidden = offOutside.length ? new Set([...hidden, ...offOutside]) : hidden
+  const live = hover !== null && !legendHidden.has(hover) ? hover : null
+  const active = live !== null && !background.has(live) ? live : null
+  const backgroundHover = live !== null && background.has(live) ? live : null
+  const toggle = (label: string) => {
+    if (external[label]) external[label].toggle()
+    else if (hideBackground || !background.has(label)) setHidden((h) => toggleIn(h, label))
+  }
   return {
     hidden,
     setHidden,
+    /** the hovered series (never a background key) */
     hover: active,
+    /** the hovered background key, e.g. a season whose shading deepens */
+    backgroundHover,
     setHover,
     show: (label: string) => !hidden.has(label),
     dim: (label: string, low = 0.15) => (active === null || active === label ? 1 : low),
-    toggle: (label: string) => setHidden((h) => toggleIn(h, label)),
-    props: { hidden, highlighted: active, onToggle: (l: string) => setHidden((h) => toggleIn(h, l)), onHover: setHover },
+    toggle,
+    props: { hidden: legendHidden, highlighted: active ?? backgroundHover, onToggle: toggle, onHover: setHover },
   }
 }
 
