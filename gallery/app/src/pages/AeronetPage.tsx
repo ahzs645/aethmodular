@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import * as d3 from 'd3'
 import { SidebarControls } from '@/lib/pageSidebar'
 import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
@@ -16,6 +16,8 @@ import { EtaBySite } from '@/charts/aeronet/EtaBySite'
 import { useExport } from '@/lib/data'
 import { usePrefs } from '@/lib/prefs'
 import { useSearchParam } from '@/lib/url'
+import { useSiteMode } from '@/lib/siteFocus'
+import { SiteModeHead } from '@/components/SiteModeHead'
 import { RATIO_GROUP } from '@/lib/viewFields'
 import { AAOD675, hasAod, LEVEL_PARAM, LEVELS, levelLabel, stationsPath, useAeronet, withLevel, type AeronetLevel, type AeronetStations } from '@/lib/aeronet'
 import type { AxesOpts } from '@/lib/axes'
@@ -41,10 +43,10 @@ import type { FilterRow, MetaFile } from '@/lib/types'
  * (gallery/data/export_aeronet.py); dates, seasons and hand edits apply as on every tab. The Level
  * toggle (`aerlev`) swaps this tab's AERONET values for Level 2.0; the other tabs keep Level 1.5.
  */
-export function AeronetPage({ rows: rows15, picked, onPick, meta, field, axes, setField }: {
+export function AeronetPage({ rows: rows15, meta, field, axes, setField }: {
   rows: FilterRow[]
-  /** the Samples panel's SPARTAN pick, and a way to set it (absent outside a SPARTAN network) */
-  picked: Set<string>
+  /** unused: one site opens through the Page › analysis choice (lib/siteFocus), not by narrowing the pick */
+  picked?: Set<string>
   onPick?: (codes: string[]) => void
   meta: MetaFile; field: string; axes: AxesOpts
   setField: (f: string) => void
@@ -59,33 +61,31 @@ export function AeronetPage({ rows: rows15, picked, onPick, meta, field, axes, s
   const rows = useMemo(() => (level === '20' ? withLevel(rows15, lev20, ratioFields) : rows15), [level, rows15, lev20, ratioFields])
 
   // the picked sites' filters that have a retrieval in their window
-  const axRows = useMemo(() => rows.filter((r) => hasAod(r) || typeof r[AAOD675] === 'number'), [rows])
+  const allAxRows = useMemo(() => rows.filter((r) => hasAod(r) || typeof r[AAOD675] === 'number'), [rows])
   const sites = useMemo(() => {
-    const n = d3.rollup(axRows, (v) => v.length, (r) => r.site)
+    const n = d3.rollup(allAxRows, (v) => v.length, (r) => r.site)
     return meta.sites.filter((s) => n.has(s.name)).map((s) => ({ name: s.name, code: s.code, n: n.get(s.name)! }))
-  }, [axRows, meta.sites])
-  const one = sites.length === 1 ? sites[0] : null
+  }, [allAxRows, meta.sites])
+  // several sites picked: the comparison, or one of them on its own (Page › analysis, or a click on a site);
+  // the one-site view draws that site's filters only, as a pick of it alone would
+  const mode = useSiteMode(sites)
+  const one = mode.one
+  const focusKey = mode.focused ? one?.code : ''
+  const axRows = useMemo(() => mode.rowsOf(allAxRows), [allAxRows, focusKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  const inView = useMemo(() => mode.rowsOf(rows), [rows, focusKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  const inView15 = useMemo(() => mode.rowsOf(rows15), [rows15, focusKey]) // eslint-disable-line react-hooks/exhaustive-deps
   const station = one ? stations?.sites[one.code] : undefined
 
   // how much absorption each level leaves in view: Level 2.0 keeps an inversion's AAOD only at AOD 440 ≥ 0.4
   const absorption = useMemo(() => ({
-    l15: rows15.filter((r) => typeof r[AAOD675] === 'number').length,
-    here: rows.filter((r) => typeof r[AAOD675] === 'number').length,
-  }), [rows15, rows])
+    l15: inView15.filter((r) => typeof r[AAOD675] === 'number').length,
+    here: inView.filter((r) => typeof r[AAOD675] === 'number').length,
+  }), [inView15, inView])
 
-  const [previous, setPrevious] = useState<string[] | null>(null)
-  useEffect(() => { if (sites.length > 1) setPrevious(null) }, [sites.length])
-  const openSite = useCallback((code: string) => {
-    if (!onPick) return
-    setPrevious([...picked])
-    onPick([code])
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [onPick, picked])
-
-  // the scatter's x is an AERONET quantity of its own; its y is the tab's measurement
-  const [axX, setAxX] = useState(AAOD675)
+  // the scatter's x is an AERONET quantity of its own (in the URL); its y is the tab's measurement
+  const [axX, setAxX] = useSearchParam<string>('aeronet.x', AAOD675)
   const axisValue = useMemo(() => ({ x: axX, y: field, field }), [axX, field])
-  const setAxis = useCallback((role: AxisRole, f: string) => (role === 'x' ? setAxX(f) : setField(f)), [setField])
+  const setAxis = useCallback((role: AxisRole, f: string) => (role === 'x' ? setAxX(f) : setField(f)), [setField]) // eslint-disable-line react-hooks/exhaustive-deps
   const scatter = (title: string, id: string) => (
     <AxisFieldsProvider meta={meta} value={axisValue} set={setAxis}>
       <Scatterplot rows={axRows.filter((r) => typeof r[axX] === 'number')} meta={meta} xField={axX} yField={field}
@@ -118,42 +118,27 @@ export function AeronetPage({ rows: rows15, picked, onPick, meta, field, axes, s
     <>
       <SidebarControls title="AERONET">{levelControl}</SidebarControls>
       {/* the comparison's heading is reading guidance (only with Explain on); one site's heading and the Level 2.0 caveat always show */}
-      {(one || explain || levelNote) && <div className="panel weather-head">
-        <div>
-          {one ? <>
-            <h2 style={{ margin: 0 }}>{one.name} · the column over the filters</h2>
-            <p className="subtitle" style={{ margin: '4px 0 0' }}>
-              {one.n} filters, {span}, each with the mean of the AERONET retrievals inside its own sampling window
-              {station ? ` at ${station.station.replace(/_/g, ' ')}, ${station.km.toFixed(1)} km away (of all ${station.filters} filters from this site, ${station.with_aod} have AOD and ${station.with_inversion} an inversion)` : ''}.
-              {' '}{levelLabel(level)}: daylight, cloud-free retrievals only. Pick more sites in the Samples panel to compare them.
-            </p>
-          </> : explain && <>
-            <h2 style={{ margin: 0 }}>AERONET and the filters · {sites.length} sites compared</h2>
-            <p className="subtitle" style={{ margin: '4px 0 0' }}>
-              The sites picked in the Samples panel, each filter with the mean of the {levelLabel(level)} retrievals inside its sampling window at the
-              site's AERONET station. Click a site in the table{onPick ? ' (or pick just one in the Samples panel)' : ''} for its daily timeline.
-            </p>
-          </>}
-          {levelNote}
-        </div>
-        {one && <div className="weather-head-controls">
-          {previous && previous.length > 1 && onPick && <button type="button" className="btn" onClick={() => { onPick(previous); setPrevious(null) }}
-            title="Put the Samples panel's pick back to the sites you were comparing">← Back to comparing {previous.length} sites</button>}
-        </div>}
-      </div>}
+      {one ? <SiteModeHead mode={mode} title={`${one.name} · the column over the filters`} extra={levelNote}>
+        {one.n} filters, {span}, each with the mean of the AERONET retrievals inside its own sampling window
+        {station ? ` at ${station.station.replace(/_/g, ' ')}, ${station.km.toFixed(1)} km away (of all ${station.filters} filters from this site, ${station.with_aod} have AOD and ${station.with_inversion} an inversion)` : ''}.
+        {' '}{levelLabel(level)}: daylight, cloud-free retrievals only.
+      </SiteModeHead> : (explain || levelNote) && <SiteModeHead mode={mode} title={explain ? `AERONET and the filters · ${sites.length} sites compared` : undefined} extra={levelNote}>
+        {explain && <>The sites picked in the Samples panel, each filter with the mean of the {levelLabel(level)} retrievals inside its sampling window at the
+          site's AERONET station. Click a site in the table (or choose One site under Page › analysis) for its daily timeline.</>}
+      </SiteModeHead>}
       {one ? <>
         <AeronetTimeline rows={axRows} meta={meta} field={field} site={one} station={station?.station.replace(/_/g, ' ')} level={level} />
         {scatter(`${one.name} · ${field} against the column`, 'aeronet-site-scatter')}
         <ScaleHeightStrip rows={axRows} meta={meta} by="season" />
       </> : <>
-        <AeronetSiteTable rows={axRows} meta={meta} stations={stations} current={null} onSite={onPick ? openSite : undefined} />
-        <ScaleHeightStrip rows={axRows} meta={meta} onSite={onPick ? openSite : undefined} />
+        <AeronetSiteTable rows={axRows} meta={meta} stations={stations} current={null} onSite={mode.open} />
+        <ScaleHeightStrip rows={axRows} meta={meta} onSite={mode.open} />
         {scatter(`${field} against the column — the picked sites`, 'aeronet-compare-scatter')}
       </>}
       {/* PM2.5 / AOD (η) by site and season, or by season at one site (charts/aeronet/EtaBySite.tsx) */}
       <EtaBySite rows={axRows} meta={meta} />
       <AeronetScaleHeightTime rows={axRows} meta={meta} />
-      <AeronetClimatology sites={sites} level={level} />
+      <AeronetClimatology sites={one ? [one] : sites} level={level} />
       <AeronetSsaSpectrum rows={axRows} meta={meta} />
       <AeronetTyping rows={axRows} meta={meta} />
       <AeronetNonAbsorbing rows={axRows} meta={meta} />

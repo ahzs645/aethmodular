@@ -37,7 +37,7 @@ let lastCode: string | null = null
  * Samples panel's order) and read the choice. `site` is null in the comparison, or when the
  * linked site is not among the picked ones (it was dropped from the pick).
  */
-export function useSiteFocus(sites: readonly FocusSite[]) {
+export function useSiteFocus<S extends FocusSite>(sites: readonly S[]) {
   const [code, setCode] = useSearchParam<string>(URL_KEY, '')
   const key = sites.map((s) => s.code).join('|')
   useEffect(() => {
@@ -48,6 +48,38 @@ export function useSiteFocus(sites: readonly FocusSite[]) {
   if (site) lastCode = site.code
   return { site, set: (c: string | null) => setCode(c ?? '') }
 }
+
+/**
+ * A page with a comparison and a one-site analysis (Weather, AERONET, the Aethalometer's overview and
+ * filters), in one hook: `one` is the site the one-site analysis is for (the focused site, or the only
+ * site picked), null in the comparison. A click on a site in the comparison opens it (`open`) without
+ * changing the Samples pick, and `back` returns to the comparison; `rowsOf` keeps the focused site's
+ * rows (all of them otherwise), so the one-site view draws what a pick of that site alone would.
+ * Draw the heading with components/SiteModeHead.
+ *
+ *   const mode = useSiteMode(sites)
+ *   const oneRows = mode.rowsOf(rows)
+ *   if (mode.one) …one-site analysis… else …comparison, with onSite={mode.open}…
+ */
+export function useSiteMode<S extends FocusSite>(sites: readonly S[]) {
+  const focus = useSiteFocus(sites)
+  const one = focus.site ?? (sites.length === 1 ? sites[0] : null)
+  const name = focus.site?.name ?? null
+  return {
+    /** every site the page can draw (the comparison's) */
+    sites,
+    one,
+    /** the one-site view is one of several picked sites (so there is a comparison to go back to) */
+    focused: name !== null,
+    /** open one site's analysis from the comparison, keeping the pick */
+    open: (code: string) => { focus.set(code); window.scrollTo({ top: 0, behavior: 'smooth' }) },
+    /** back to the comparison */
+    back: () => focus.set(null),
+    /** the rows (or pairs) of the site in view: the focused site's, or all of them */
+    rowsOf: <T extends { site: string }>(rows: readonly T[]): T[] => (name === null ? [...rows] : rows.filter((r) => r.site === name)),
+  }
+}
+export type SiteMode<S extends FocusSite = FocusSite> = ReturnType<typeof useSiteMode<S>>
 
 /** whether the open page offers the choice right now (several sites in view) */
 export const useSiteFocusOffered = () => (useOffered()?.length ?? 0) > 1
