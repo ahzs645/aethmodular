@@ -70,7 +70,7 @@ export function AeronetClimatology({ sites, level }: { sites: { name: string; co
                 {g.months!.map((m, i) => {
                   const fill = m.mean === null ? INK.empty : color(m.mean)
                   return <g key={i} transform={`translate(${labelW + i * cellW},0)`}
-                    onMouseEnter={(e) => tip.show(e, [`${g.site.name} · ${MONTHS[i]}`, m.mean === null ? 'no days' : `${q.label}: ${fmt(m.mean, q.digits + 1)}`, `${m.n} days`])} onMouseLeave={tip.hide}>
+                    {...tip.bind(() => [`${g.site.name} · ${MONTHS[i]}`, m.mean === null ? 'no days' : `${q.label}: ${fmt(m.mean, q.digits + 1)}`, `${m.n} days`])}>
                     <rect width={cellW - 1} height={cellH - 1} fill={fill} fillOpacity={m.mean !== null && m.n < FEW ? 0.35 : 1} />
                     {m.mean !== null && cellW >= 34 && <text x={(cellW - 1) / 2} y={cellH / 2} dy="0.32em" textAnchor="middle" fontSize={9.5} fontFamily={FONT.mono}
                       fill={m.n < FEW ? INK.muted : inkOn(fill)}>{fmt(m.mean, q.digits)}</text>}

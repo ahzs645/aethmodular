@@ -3,7 +3,7 @@ import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { useFitHeight } from '@/lib/chartFit'
 import { useTileSetting } from '@/lib/url'
-import { chemText } from '@/lib/format'
+import { chemText, f2, pct } from '@/lib/format'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { RATIO_GROUP } from '@/lib/viewFields'
 import { whyMissing } from '@/lib/fieldEquivalents'
@@ -12,7 +12,7 @@ const SKIP = new Set([RATIO_GROUP, 'Sampling'])
 /** Full: every group with its filter count. Compact: the measured groups as a share, the rest on one line. Ticker: one scrolling line. */
 const VIEWS = ['Full', 'Compact', 'Ticker'] as const
 type View = (typeof VIEWS)[number]
-const pctOf = (k: number, n: number) => `${Math.round((100 * k) / Math.max(1, n))} %`
+const pctOf = (k: number, n: number) => pct(k / Math.max(1, n))
 /** a group's name without its qualifier ("Weather (sampling window)" → "Weather"), for the short views; the tooltip keeps it */
 const shortLabel = (label: string) => chemText(label.replace(/\s*\([^)]*\)$/, ''))
 
@@ -67,7 +67,7 @@ export function SiteSummary({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
             <div className="site-summary-head">
               <span className="swatch" style={{ background: s.color }} />
               <strong>{s.site}</strong><span className="site-card-n">{s.code}</span>
-              <span className="site-summary-meta">{s.location !== s.site ? s.location : null}{s.lat != null && s.lon != null ? `${s.location && s.location !== s.site ? ' · ' : ''}${s.lat.toFixed(2)}°, ${s.lon.toFixed(2)}°` : ''}</span>
+              <span className="site-summary-meta">{s.location !== s.site ? s.location : null}{s.lat != null && s.lon != null ? `${s.location && s.location !== s.site ? ' · ' : ''}${f2(s.lat)}°, ${f2(s.lon)}°` : ''}</span>
             </div>
             <div className="site-summary-meta">{s.n} filters · {s.from} → {s.to} · {s.months} months</div>
             <div className="site-summary-groups">

@@ -3,7 +3,8 @@ import * as d3 from 'd3'
 import { ChartFrame, Segmented } from '@/components/ChartFrame'
 import { Key } from '@/components/Key'
 import { SpectrumPlot } from '@/components/SpectrumPlot'
-import { f2, f3 } from '@/lib/format'
+import { f2, f3, pct } from '@/lib/format'
+import { fitsWidth } from '@/lib/fitLabel'
 import { num } from '@/lib/table'
 import { themed, INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
@@ -86,7 +87,7 @@ export function VipSpectra({ data, sets, colors, provenance, missing }: {
               const x0 = x(bd.hi), x1 = x(bd.lo)
               return <g key={bd.label}>
                 <rect x={x0} width={x1 - x0} height={ih} fill={bd.fill} fillOpacity={0.8} />
-                {x1 - x0 >= bd.label.length * 6 + 4 && <text x={(x0 + x1) / 2} y={11} textAnchor="middle" fontSize={10} fill={INK.muted}>{bd.label}</text>}
+                {fitsWidth(bd.label, x1 - x0 - 4, 10) && <text x={(x0 + x1) / 2} y={11} textAnchor="middle" fontSize={10} fill={INK.muted}>{bd.label}</text>}
               </g>
             })}</g>
           }
@@ -101,8 +102,8 @@ export function VipSpectra({ data, sets, colors, provenance, missing }: {
       ]} />
       <div className="legend-note" style={{ marginTop: 6 }}>
         Recomputed in the browser from the drawn profiles: Spearman r {f3(overlap.spearman_r)}, VIP ≥ 1 at {overlap.important_a_n} and {overlap.important_b_n} wavenumbers,
-        Jaccard {f3(overlap.important_jaccard)}, {overlap.top_n_overlap} of the top 200 shared, {(100 * overlap.a_vip_mass_on_b_important).toFixed(1)} % of {ma}'s VIP² where {mb} has VIP ≥ 1.
-        {shown ? <> The notebook displayed r {f3(shown.spearman_r)}, {String(shown.important_a_n)} and {String(shown.important_b_n)}, Jaccard {f3(shown.important_jaccard)}, {String(shown.top_n_overlap)} shared, {(100 * (num(shown.a_vip_mass_on_b_important) ?? NaN)).toFixed(1)} %{agree ? ': the same' : ''}; band shares agree within {shareGap < 5e-4 ? 'the export’s 4 decimals' : f3(shareGap)}.</> : null}
+        Jaccard {f3(overlap.important_jaccard)}, {overlap.top_n_overlap} of the top 200 shared, {pct(overlap.a_vip_mass_on_b_important, 1)} of {ma}'s VIP² where {mb} has VIP ≥ 1.
+        {shown ? <> The notebook displayed r {f3(shown.spearman_r)}, {String(shown.important_a_n)} and {String(shown.important_b_n)}, Jaccard {f3(shown.important_jaccard)}, {String(shown.top_n_overlap)} shared, {pct(num(shown.a_vip_mass_on_b_important), 1)}{agree ? ': the same' : ''}; band shares agree within {shareGap < 5e-4 ? 'the export’s 4 decimals' : f3(shareGap)}.</> : null}
       </div>
     </ChartFrame>
   )

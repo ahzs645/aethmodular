@@ -13,6 +13,7 @@ import { INK, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
 import { ExcludedNote } from '@/lib/markedRows'
+import { clipText } from '@/lib/fitLabel'
 
 const COLOR_BY = ['Site', 'Season'] as const
 /** an axis needs this many numeric values before it earns a column */
@@ -280,8 +281,7 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
                 const row = stagger && i % 2 === 0 ? -24 : 0
                 // a name gets the room to its same-row neighbours (two axes apart when staggered), shortened past it
                 const room = (xs.length > 1 ? Math.abs(xs[1] - xs[0]) : innerW) * (stagger ? 2 : 1) - 8
-                const maxChars = Math.max(4, Math.floor(room / 6.6))
-                const name = a.name.length > maxChars ? `${a.name.slice(0, maxChars - 1)}…` : a.name
+                const name = clipText(a.name, room, { size: 11, weight: 600, minChars: 3 })
                 return (
                   <g key={a.field} transform={`translate(${xs[i]},0)`} fontFamily={FONT.family}>
                     <line y1={0} y2={innerH} stroke={INK.axis} />

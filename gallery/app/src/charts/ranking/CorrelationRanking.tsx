@@ -8,6 +8,8 @@ import { useChartOptions } from '@/lib/chartOptions'
 import { useParamScope } from '@/lib/url'
 import { Legend, useLegend } from '@/components/Legend'
 import { XAxis } from '@/components/Axes'
+import { RefLine } from '@/components/RefLines'
+import { clipText, labelGutter, textWidth } from '@/lib/fitLabel'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { RESTATES, isBookkeeping, sameProduct } from '@/fieldLineage'
@@ -28,9 +30,9 @@ const POOLED = 'All sites (pooled)'
 const VIEWS = ['One site', 'Side by side'] as const
 /** side by side draws one column per site, readable up to this many */
 const MAX_COLUMNS = 12
-/** the label column fits the longest field name (about 6.4 px a character at 11.5 px), within reason */
-const labelWidth = (fields: string[], cap: number) => Math.min(cap, Math.max(60, ...fields.map((f) => f.length * 6.4 + 14)))
-const clip = (f: string, w: number) => { const n = Math.floor((w - 14) / 6.4); return f.length > n ? `${f.slice(0, Math.max(1, n - 1))}…` : f }
+/** the label column fits the longest field name as drawn at 11.5 px, within reason */
+const labelWidth = (fields: string[], cap: number) => labelGutter(fields, { size: 11.5, pad: 14, min: 60, max: cap })
+const clip = (f: string, w: number, weight = 400) => clipText(f, w - 14, { size: 11.5, weight })
 
 type Ranked = { field: string; r2: number; r: number; rho: number; n: number; trivial: boolean; stats: RegressionStats }
 
@@ -169,12 +171,16 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
   const rowHeight = (count: number, extraTop = 0) =>
     fit === null ? 22 : Math.max(12, Math.min(22, (fit - MARGIN.top - extraTop - MARGIN.bottom) / Math.max(1, count)))
 
-  const fieldLabel = (f: string, labelW: number, cy: number, muted: boolean) => (
-    <text x={-10} y={cy} dy="0.32em" textAnchor="end" fontSize={11.5} fill={muted ? INK.muted : INK.text} fontFamily={FONT.family}
-      fontWeight={hoverField === f ? 600 : undefined}>
-      {f.length * 6.4 + 14 > labelW ? <><title>{f}</title>{clip(f, labelW)}</> : f}
-    </text>
-  )
+  // `full`: a native <title> with the whole name when it is clipped, only where the row has no gallery tooltip
+  const fieldLabel = (f: string, labelW: number, cy: number, muted: boolean, full = true) => {
+    const cut = clip(f, labelW)
+    return (
+      <text x={-10} y={cy} dy="0.32em" textAnchor="end" fontSize={11.5} fill={muted ? INK.muted : INK.text} fontFamily={FONT.family}
+        fontWeight={hoverField === f ? 600 : undefined}>
+        {cut !== f && full ? <><title>{f}</title>{cut}</> : cut}
+      </text>
+    )
+  }
 
   let plot: ReactNode
   let count: number
@@ -193,24 +199,24 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
     ) : (
       <svg width={width} height={innerH + MARGIN.top + MARGIN.bottom} className="animated">
         <g transform={`translate(${labelW},${MARGIN.top})`}>
-          {x.ticks(6).map((t) => <line key={t} x1={x(t)} x2={x(t)} y1={0} y2={innerH} stroke={t === 0 && signed ? INK.axis : INK.grid} />)}
+          <XAxis scale={x} y={innerH} label={`${measureText} against ${target}`} gridHeight={innerH} />
+          {signed && <RefLine orient="v" at={x(0)} from={0} to={innerH} />}
           {shown.map((d, i) => {
             const cy = i * rowH + rowH / 2
             const col = colourOf(d)
             return (
-              <g key={d.field} opacity={lg.dim(kindOf(d), 0.2)} onMouseEnter={(e) => tip.show(e, tipLines(d, site))} onMouseLeave={tip.hide}>
+              <g key={d.field} opacity={lg.dim(kindOf(d), 0.2)} {...tip.bind(() => tipLines(d, site))}>
                 {Number.isFinite(val(d)) && <>
                   <line x1={x(0)} x2={x(val(d))} y1={cy} y2={cy} stroke={col} strokeWidth={2} strokeOpacity={0.55} strokeDasharray={d.trivial ? '3 3' : undefined} />
                   <circle cx={x(val(d))} cy={cy} r={5} fill={d.trivial ? INK.panel : col} stroke={col} strokeWidth={d.trivial ? 1.5 : 0} />
                 </>}
-                {fieldLabel(d.field, labelW, cy, d.trivial)}
+                {fieldLabel(d.field, labelW, cy, d.trivial, false)}
                 <text x={x(Number.isFinite(val(d)) ? Math.max(0, val(d)) : 0) + 10} y={cy} dy="0.32em" fontSize={10.5} fill={INK.muted} fontFamily={FONT.mono}>
-                  {Number.isFinite(val(d)) ? val(d).toFixed(3) : '–'} · n={d.n}
+                  {Number.isFinite(val(d)) ? fmt(val(d), 3) : '–'} · n={d.n}
                 </text>
               </g>
             )
           })}
-          <XAxis scale={x} y={innerH} label={`${measureText} against ${target}`} />
         </g>
       </svg>
     )
@@ -239,7 +245,8 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
           {shown.map((f, i) => <g key={f}>{fieldLabel(f, labelW, i * rowH + rowH / 2, per.every((m) => m.get(f)?.trivial ?? true))}</g>)}
           {sites.map((s, j) => {
             const m = per[j]
-            const name = colW < 9 * 6.4 ? s.code : clip(s.name, colW + 8)
+            // the code when not even nine characters of the name would fit
+            const name = colW + 8 - 14 < textWidth(s.name.slice(0, 9), 11.5, 600) ? s.code : clip(s.name, colW + 8, 600)
             return (
               <g key={s.code} transform={`translate(${j * colW},0)`}>
                 <text x={(colW - GAP) / 2} y={-HEAD + 8} textAnchor="middle" fontSize={11.5} fontWeight={600} fill={INK.text} fontFamily={FONT.family}>
@@ -273,7 +280,7 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
                         // signed: on the empty side of zero, clear of the stem; R²: beside the dot
                         <text x={signed ? x(0) + (v >= 0 ? -5 : 5) : x(v) + (right ? -9 : 9)} y={cy} dy="0.32em" textAnchor={signed ? (v >= 0 ? 'end' : 'start') : right ? 'end' : 'start'} fontSize={10} fill={INK.muted}
                           fontFamily={FONT.mono} stroke={INK.panel} strokeWidth={3} paintOrder="stroke">
-                          {v.toFixed(2)}
+                          {fmt(v, 2)}
                         </text>
                       )}
                     </g>

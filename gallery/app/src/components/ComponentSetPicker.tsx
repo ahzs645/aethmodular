@@ -9,6 +9,7 @@ import { BASIS_LABEL, BUILT_IN_SETS, describeSet, LEGEND_ORDER_LABEL, mergeSets,
   type Basis, type BuiltInSet, type ComponentSetDef, type LegendOrder } from '@/lib/componentSets'
 import { fmt } from '@/lib/stats'
 import { inkOnFill } from '@/lib/theme'
+import { pct } from '@/lib/format'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 
@@ -253,7 +254,7 @@ function ComponentSetDialog({ start, mode, note, bases, standardColor, onSave, o
         </section>
         <div className="cset-preview" role="img" aria-label="The chosen components' mean over the filters in view">
           <div className="cset-preview-bar">
-            {parts.map((p) => <span key={p.f} style={{ flexGrow: p.v, background: colorOf(p.f), color: inkOnFill(colorOf(p.f)) }} title={`${nameOf(p.f)}: ${fmt(p.v, 2)} µg/m³ (${((p.v / total) * 100).toFixed(1)}%)`}>
+            {parts.map((p) => <span key={p.f} style={{ flexGrow: p.v, background: colorOf(p.f), color: inkOnFill(colorOf(p.f)) }} title={`${nameOf(p.f)}: ${fmt(p.v, 2)} µg/m³ (${pct(p.v / total, 1)})`}>
               {p.v / total > 0.08 ? nameOf(p.f) : ''}</span>)}
           </div>
           <span className="grouping-range">{parts.length ? `mean over ${info.rows.length.toLocaleString()} filters in view, all sites pooled: ${fmt(total, 1)} µg/m³${pm ? ` of PM2.5 ${fmt(pm, 1)}` : ''}` : 'no component with a positive mean in view'}</span>

@@ -2,6 +2,8 @@ import { useRef, useState } from 'react'
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import * as d3 from 'd3'
 import { INK, FONT } from '@/lib/theme'
+import { adaptive } from '@/lib/format'
+import { labelGutter } from '@/lib/fitLabel'
 import { SchemePopover, type SchemeChoice } from '@/components/ColourSchemePicker'
 
 /**
@@ -43,7 +45,7 @@ export function ColorLegend({
   const dom = scale.domain()
   const lo = dom[0]
   const hi = dom[dom.length - 1]
-  const fmtV = format ?? ((v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(2)))
+  const fmtV = format ?? adaptive
   const n = 40
   const stops = d3.range(n + 1).map((i) => scale(lo + ((hi - lo) * i) / n))
   const x = d3.scaleLinear().domain([lo, hi]).range([0, width])
@@ -73,7 +75,7 @@ export function ColorLegend({
   // every export, the ramp lies under the plot
   const y = d3.scaleLinear().domain([lo, hi]).range([width, 0])
   const VPAD = 7
-  const tickW = Math.max(...tickVals.map((t) => fmtV(t).length), 1) * 6.2
+  const tickW = labelGutter(tickVals.map((t) => fmtV(t)), { size: 10, min: 6 })
   const vW = h + 7 + tickW + 2
   const vertical = (
     <svg className="ramp-v" width={vW} height={width + 2 * VPAD} viewBox={`0 0 ${vW} ${width + 2 * VPAD}`} fontFamily={FONT.family}>
@@ -121,7 +123,7 @@ export function SizeLegend({
   const method = useEstimator()
   const [, hi] = scale.domain() as [number, number]
   if (!Number.isFinite(hi) || hi <= 0) return null
-  const fmtV = format ?? ((v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(2)))
+  const fmtV = format ?? adaptive
   const vals = [hi / 16, hi / 4, hi].filter((v) => v > 0)
   const rMax = scale(hi)
   const gap = 10

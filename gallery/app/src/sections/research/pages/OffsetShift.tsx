@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { Crossplot } from '@/components/Crossplot'
 import { SweepPlot } from '@/components/SweepPlot'
-import { fmt } from '@/lib/format'
+import { fitSummary, fmt } from '@/lib/format'
 import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import { INK, MONTHS } from '@/lib/theme'
 import type { FilterRow } from '@/lib/types'
@@ -81,7 +81,7 @@ export function OffsetShift({ rows: viewRows, meta }: SectionPageProps) {
             xMarkers={[{ at: ratio, label: 'assumed', color: INK.negative }]} yMarkers={[{ at: fit.intercept, label: `OLS ${fmt(fit.intercept, 1)}`, color: INK.muted }]} title="Intercept" />
         </Grid>
         <ExcludedNote count={marked.length} />
-        <Note>OLS: slope {fmt(fit.slope, 3)}, intercept {fmt(fit.intercept, 2)} Mm⁻¹, R² {fmt(fit.r2, 3)}, n {fit.n}. Deming at the assumed ratio: slope {fmt(dem?.slope, 3)}, intercept {fmt(dem?.intercept, 2)}. Orthogonal (λ = 1): slope {fmt(deming(xs, ys, 1)?.slope, 3)}, intercept {fmt(deming(xs, ys, 1)?.intercept, 2)}. Inverse OLS slope {fmt(1 / (ols(ys, xs)?.slope ?? NaN), 3)}.</Note>
+        <Note>OLS: {fitSummary({ slope: fit.slope, intercept: fit.intercept, r2: fit.r2, n: fit.n }, { interceptDigits: 2, unit: 'Mm⁻¹', sep: ', ' })}. Deming at the assumed ratio: {fitSummary({ slope: dem?.slope, intercept: dem?.intercept }, { interceptDigits: 2, sep: ', ' })}. Orthogonal (λ = 1): {fitSummary({ slope: deming(xs, ys, 1)?.slope, intercept: deming(xs, ys, 1)?.intercept }, { interceptDigits: 2, sep: ', ' })}. Inverse OLS slope {fmt(1 / (ols(ys, xs)?.slope ?? NaN), 3)}.</Note>
       </ChartFrame>
 
       <ChartFrame id="os-shift" title="How far must EC move to remove the intercept? — additive Δ against a multiplier k"

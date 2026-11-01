@@ -100,7 +100,7 @@ export function SelectionRanking({ runs, calib }: { runs: CalibRunsFile; calib: 
                 const w = innerW / primary.hist.centers.length
                 const selected = c <= primary.cutoff_metric
                 return <rect key={i} x={hx(c) - w / 2} y={hy(primary.hist.counts[i])} width={Math.max(0.5, w - 0.6)} height={innerH - hy(primary.hist.counts[i])} fill={selected ? cohortColor(cohort) : INK.muted} fillOpacity={selected ? 0.7 : 0.35}
-                  onMouseEnter={(e) => tip.show(e, [`${fmt(c, 4)}`, `${primary.hist.counts[i]} filters`, selected ? 'inside the cutoff' : 'rest of pool'])} onMouseLeave={tip.hide} />
+                  {...tip.bind([`${fmt(c, 4)}`, `${primary.hist.counts[i]} filters`, selected ? 'inside the cutoff' : 'rest of pool'])} />
               })}
               <Marker orient="v" at={hx(primary.cutoff_metric)} from={0} to={innerH} color={INK.negative} />
               <text x={hx(primary.cutoff_metric) + 4} y={12} fontSize={10} fill={INK.negative} fontFamily={FONT.mono}>cutoff {cutoff} → {fmt(primary.cutoff_metric, 3)}</text>

@@ -1,6 +1,6 @@
 import { PageTabSlot, usePageSidebarNote, usePageTab } from '@/lib/pageSidebar'
 import { RegressionControls } from '@/lib/regressionPrefs'
-import { chemText } from '@/lib/format'
+import { chemText, trim } from '@/lib/format'
 import { CONVENTION_LABEL, seasonOnly } from '@/lib/seasons'
 import { useEffect, useRef, useState } from 'react'
 import { Dialog } from '@/components/Dialog'
@@ -383,7 +383,7 @@ export function SubsetBar({
             title="Mass absorption cross-section (m²/g) turning HIPS absorption into BC: HIPS BC = Fabs / MAC. It multiplies the absorption axis, so it scales a fit's slope; the intercept stays put for OLS and moves only slightly for Deming (fixed error ratio). Drag sideways or click to type.">
             MAC
             <ScrubField label="MAC (m²/g)" value={s.mac ?? s.exportMac ?? 10} min={MAC_CHOICES[0]} max={MAC_CHOICES[MAC_CHOICES.length - 1]} step={0.1}
-              format={(m) => String(Number(m.toFixed(1)))} unit="m²/g" width={96}
+              format={(m) => trim(m, 1)} unit="m²/g" width={96}
               onChange={(m) => a.onMac!(m === s.exportMac ? null : m)} />
             {s.mac != null && s.mac !== s.exportMac && <button type="button" className="btn quiet" title="Back to the MAC the data was exported with"
               onClick={() => a.onMac!(null)}>Export ({s.exportMac ?? 10})</button>}

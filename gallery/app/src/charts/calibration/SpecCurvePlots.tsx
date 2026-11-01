@@ -6,6 +6,8 @@ import { FONT, INK, inkNow } from '@/lib/theme'
 import { useTheme } from '@/lib/colorTheme'
 import { PREPROCESSING, label } from '@/lib/labels'
 import { selectionPanels } from '@/lib/specification'
+import { clipText, labelGutter } from '@/lib/fitLabel'
+import { fmt } from '@/lib/format'
 import type { SpecCurveFile, SpecMetricInfo } from './SpecCurve'
 
 export type SpecLayout = 'combined' | 'stacked' | 'overlay'
@@ -44,7 +46,7 @@ export function SpecCurvePlots(props: Props) {
   const choiceIndices = file.choices.map((_, c) => c).filter(c => !(file.groups ?? []).some(g => g.title === 'Spectral preprocessing' && c >= g.start && c < g.end))
   const topH = props.curveOnly?.height ?? TOP_H
   // the curve alone needs room for the y axis only, and sets its panels side by side where they fit
-  const labelPad = props.curveOnly ? 64 : Math.ceil(Math.max(0, ...choiceIndices.map(c => file.choices[c].length * 6.3))) + 22
+  const labelPad = props.curveOnly ? 64 : labelGutter(choiceIndices.map(c => file.choices[c]), { size: 11, pad: 22 })
   const space = Math.max(240, width - labelPad - 20)
   const panelCount = layout === 'combined' ? 1 : panels.length
   const columns = props.curveOnly ? Math.max(1, Math.min(panelCount, Math.floor((space + 36) / 330))) : 1
@@ -81,14 +83,14 @@ export function SpecCurvePlots(props: Props) {
       <rect x={0} y={0} width={Math.max(240, width - 100)} height={topH} fill="transparent"
         onMouseMove={e => {
           const r = e.currentTarget.getBoundingClientRect(), t = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))
-          props.showTip(e, [`${(100 * t).toFixed(1)}th percentile within each selection`, ...panels.flatMap(p => {
+          props.showTip(e, [`${fmt(100 * t, 1)}th percentile within each selection`, ...panels.flatMap(p => {
             const i = p.indices[Math.round(t * (p.indices.length - 1))]
             return [selectionName(p.key), ...props.describe(i)]
           }), 'Percentiles compare distributions; configurations are not paired.'])
         }} onMouseLeave={props.hideTip} />
       {panels.map((p, k) => <g key={p.key} transform={`translate(${(k % 2) * Math.max(240, (width - 100) / 2)},${topH + 70 + Math.floor(k / 2) * 18})`}>
         <line x1={0} x2={14} stroke={colorOf(p.key)} strokeWidth={2} />
-        <text x={20} dy="0.32em" fontSize={10.5} fill={INK.text}>{selectionName(p.key).slice(0, Math.max(20, Math.floor((width - 100) / 11) - 20))}{selectionName(p.key).length > Math.max(20, Math.floor((width - 100) / 11) - 20) ? '…' : ''} · n={p.indices.length.toLocaleString()}<title>{selectionName(p.key)}</title></text>
+        <text x={20} dy="0.32em" fontSize={10.5} fill={INK.text}>{clipText(selectionName(p.key), Math.max(120, (width - 100) / 2 - 116), { size: 10.5 })} · n={p.indices.length.toLocaleString()}<title>{selectionName(p.key)}</title></text>
       </g>)}
     </g> : panelList.map((p, k) => <SpecPanel key={p.key} {...props} indices={p.indices}
       name={p.key === 'combined' ? 'All selected cohorts combined' : selectionName(p.key)}
@@ -134,7 +136,7 @@ function SpecPanel(props: Props & {
   const locate = (e: React.MouseEvent<SVGRectElement>) => Math.min(n - 1, Math.max(0, Math.floor(x.invert(e.clientX - e.currentTarget.getBoundingClientRect().left))))
   const count = indices.filter(i => highlighted[i]).length
   return <g transform={`translate(${props.xOffset},${props.yOffset})`} data-selection={props.name}>
-    <text x={0} y={-22} fontSize={11.5} fontWeight={600} fill={props.color}>{props.name.length > plotW / 6.1 ? props.name.slice(0, Math.max(10, Math.floor(plotW / 6.1) - 1)) + '…' : props.name}<title>{props.name}</title></text>
+    <text x={0} y={-22} fontSize={11.5} fontWeight={600} fill={props.color}>{clipText(props.name, plotW, { size: 11.5, weight: 600, minChars: 10 })}<title>{props.name}</title></text>
     <text x={0} y={-6} fontSize={10.5} fill={INK.muted}>{n.toLocaleString()} configurations · {count.toLocaleString()} match</text>
     <defs><clipPath id={props.clipId}><rect width={plotW} height={topH} /></clipPath></defs>
     {labels ? <YAxis scale={y} x={0} label={props.metric.axis} gridWidth={plotW} tickCount={6} pick="y" /> : y.ticks(6).map(v => <line key={v} x1={0} x2={plotW} y1={y(v)} y2={y(v)} stroke={INK.grid} />)}

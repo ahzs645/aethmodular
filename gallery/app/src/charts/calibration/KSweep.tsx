@@ -8,7 +8,8 @@ import { Legend, useLegend } from '@/components/Legend'
 import { SweepPlot } from '@/components/SweepPlot'
 import { INK } from '@/lib/theme'
 import type { CalibFile } from '@/lib/types'
-import { configKey, configLabel, sameConfig, type Config } from './common'
+import { configKey, configLabel, configTipLines, sameConfig, type Config } from './common'
+import { RefBand } from '@/components/RefLines'
 import { COHORT, CV_PROTOCOL, METRIC, PREPROCESSING, SELECTION_SPACE, label } from '@/lib/labels'
 import { ChartAside } from '@/lib/singleView'
 import { FixedSetNote } from '@/lib/markedRows'
@@ -72,8 +73,7 @@ export function KSweep({ calib, selected, onSelect }: { calib: CalibFile; select
     const r = rows.find((q) => q.k === k)!
     return [
       `${METRIC.k}: ${k}${k === autoK ? ' (rule)' : ''}`,
-      `Test set (Addis): Deming ${r.dm?.toFixed(3) ?? '—'}x ${(r.db ?? 0) < 0 ? '−' : '+'} ${Math.abs(r.db ?? 0).toFixed(3)} · R² ${r.r2?.toFixed(3) ?? '—'}`,
-      `${METRIC.cvR2}: ${r.ho?.toFixed(3) ?? '—'}`,
+      ...configTipLines(r, { site: 'Addis' }),
     ]
   }
 
@@ -105,10 +105,7 @@ export function KSweep({ calib, selected, onSelect }: { calib: CalibFile; select
                 chosen={autoK !== null ? keys.map((k) => ({ series: k.key, x: autoK })) : []}
                 series={keys.map((k) => ({ id: k.key, label: k.label, group: k.label, color: k.color, dash: k.dash, marks: true,
                   points: rows.filter((r) => r[k.key] !== null).map((r) => ({ x: r.k, y: r[k.key], tip: tipOf(r.k) })) }))}
-                background={({ y, iw, ih }) => panel.id === 'slope' && (() => {
-                  const top = Math.max(0, y(calib.slope_box[1])), bot = Math.min(ih, y(calib.slope_box[0]))
-                  return <rect x={0} y={top} width={iw} height={Math.max(0, bot - top)} fill={INK.accent} fillOpacity={0.06} />
-                })()} />
+                background={({ y, iw, ih }) => panel.id === 'slope' && <RefBand orient="h" at={[y(calib.slope_box[0]), y(calib.slope_box[1])]} size={ih} length={iw} />} />
               <Legend items={panel.keys.map((k) => ({ label: k.label, color: k.color, shape: k.dash ? ('dashed' as const) : ('line' as const) }))} {...lg.props} highlighted={hot} />
             </>
           }} />

@@ -9,6 +9,7 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
 import { ChartAside } from '@/lib/singleView'
 import { seasonColor } from '@/lib/siteColours'
+import { pct } from '@/lib/format'
 
 const STAGE3 = ['HIPS coverage', 'Season'] as const
 const FEED_BOTH = 'FTIR EC: both exports'
@@ -154,22 +155,19 @@ export function MethodSankey({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
                   strokeOpacity={touches(l) ? 0.42 : 0.06}
                   strokeWidth={Math.max(1, l.width)}
                   style={{ transition: 'stroke-opacity 0.2s' }}
-                  onMouseEnter={(e) =>
-                    tip.show(e, [
-                      `${(l.source as N).label} → ${(l.target as N).label}`,
-                      `${l.value} filters`,
-                      `${((l.value / (l.source as any).value) * 100).toFixed(0)} % of ${(l.source as N).label}`,
-                      `${((l.value / total) * 100).toFixed(1)} % of the ${total} filters drawn`,
-                    ])
-                  }
-                  onMouseLeave={tip.hide}
+                  {...tip.bind([
+                    `${(l.source as N).label} → ${(l.target as N).label}`,
+                    `${l.value} filters`,
+                    `${pct(l.value / (l.source as any).value)} of ${(l.source as N).label}`,
+                    `${pct(l.value / total, 1)} of the ${total} filters drawn`,
+                  ])}
                 />
               ))}
             </g>
             {layout.nodes.map((n: any) => (
               <g
                 key={n.id}
-                onMouseEnter={(e) => { setHoverNode(n.id); tip.show(e, [n.label, `${n.value} filters`, `${((n.value / total) * 100).toFixed(1)} % of the ${total} filters drawn`]) }}
+                onMouseEnter={(e) => { setHoverNode(n.id); tip.show(e, [n.label, `${n.value} filters`, `${pct(n.value / total, 1)} of the ${total} filters drawn`]) }}
                 onMouseLeave={() => { setHoverNode(null); tip.hide() }}
                 style={{ cursor: 'default' }}
               >

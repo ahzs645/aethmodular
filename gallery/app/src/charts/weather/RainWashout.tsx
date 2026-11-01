@@ -9,7 +9,7 @@ import { focusStyle, useHighlightActions } from '@/lib/highlight'
 import { fidProps, fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { boxStats, fmt } from '@/lib/stats'
 import { FONT, INK, withUnit } from '@/lib/theme'
-import { AxisTitle } from '@/components/Axes'
+import { YAxis } from '@/components/Axes'
 import { Legend } from '@/components/Legend'
 import { useAxisFields } from '@/components/AxisFieldPopover'
 import { RAIN_CLASSES, WEATHER_MIN_PAIRS, rainClass } from '@/lib/weather'
@@ -121,10 +121,8 @@ function WashoutPanel({ p, pw, h, meta, field, prcpField, selected, tip, axisPic
   return (
     <svg width={pw} height={h} fontFamily={FONT.family}>
       <g transform={`translate(${M.left},${M.top})`}>
-        {y.ticks(4).map((t) => <g key={t}><line x1={0} x2={iw} y1={y(t)} y2={y(t)} stroke={INK.grid} /><text x={-5} y={y(t)} dy="0.32em" textAnchor="end" fontSize={10} fill={INK.muted}>{t}</text></g>)}
         {/* the measurement is the page's: its title opens the same field picker as the crossplots */}
-        <AxisTitle pick="field"><text transform={`translate(${-38},${ih / 2}) rotate(-90)`} textAnchor="middle" fontSize={10.5} fontWeight={600} fill={INK.text}>
-          {withUnit(field, meta.field_units)}{axisPicker && <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>}</text></AxisTitle>
+        <YAxis scale={y} x={0} tickCount={4} gridWidth={iw} label={withUnit(field, meta.field_units)} pick={axisPicker ? 'field' : undefined} />
         {p.classes.map((c) => {
           const cx = centre(c.key)
           return (

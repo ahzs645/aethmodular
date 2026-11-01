@@ -1,28 +1,28 @@
 import type * as d3 from 'd3'
 import { FONT, INK } from '@/lib/theme'
+import { fitsWidth } from '@/lib/fitLabel'
 
-export function wrapCategory(label: string, room = 92): string[] {
-  const words = label.split(/\s+/).flatMap(word => word.length * 6 > room && word.includes('-') ? word.match(/[^-]+-?/g) ?? [word] : [word])
+/** Wrap a label into lines no wider than `room` px, measured at the size and weight it is drawn at (11 px by default); long hyphenated words break after a hyphen. */
+export function wrapCategory(label: string, room = 92, size = 11, weight = 400): string[] {
+  const words = label.split(/\s+/).flatMap(word => !fitsWidth(word, room, size, weight) && word.includes('-') ? word.match(/[^-]+-?/g) ?? [word] : [word])
   const lines: string[] = []
   for (const word of words) {
     const last = lines.length - 1
     const join = last >= 0 && lines[last].endsWith('-') ? '' : ' '
-    if (last >= 0 && (lines[last] + join + word).length * 6 <= room) lines[last] += join + word
+    if (last >= 0 && fitsWidth(lines[last] + join + word, room, size, weight)) lines[last] += join + word
     else lines.push(word)
   }
   return lines
 }
-export function categoryLines(label: string, room = 92): string[] {
+export function categoryLines(label: string, room = 92, size = 11, weight = 400): string[] {
   const paren = label.indexOf(' (')
-  return paren < 0 ? wrapCategory(label, room) : [
-    ...wrapCategory(label.slice(0, paren), room),
-    ...wrapCategory(label.slice(paren + 2).replace(/\)$/, '').split(',')[0], room),
+  return paren < 0 ? wrapCategory(label, room, size, weight) : [
+    ...wrapCategory(label.slice(0, paren), room, size, weight),
+    ...wrapCategory(label.slice(paren + 2).replace(/\)$/, '').split(',')[0], room, size, weight),
   ]
 }
 export interface CategoryLabel { key: string; label: string; parent?: string; color?: string; parentColor?: string }
 
-// parent labels are 12px bold, a little wider per character than the 11px leaves wrapCategory measures
-const PARENT_WIDTH = 6.2 / 6
 function layout(items: CategoryLabel[], scale: d3.ScaleBand<string>) {
   const lines = (label: string) => categoryLines(label, Math.max(80, scale.step() - 10))
   const maxLines = Math.max(1, ...items.map(i => lines(i.label).length))
@@ -31,7 +31,7 @@ function layout(items: CategoryLabel[], scale: d3.ScaleBand<string>) {
     const mine = items.filter(i => i.parent === parent)
     const left = scale(mine[0].key) ?? 0, right = (scale(mine[mine.length - 1].key) ?? 0) + scale.bandwidth()
     // wrap within the cluster plus the padding either side, so neighbouring clusters' labels never meet
-    return { parent, mine, left, right, lines: categoryLines(parent, Math.max(60, (right - left + gap - 8) / PARENT_WIDTH)) }
+    return { parent, mine, left, right, lines: categoryLines(parent, Math.max(60, right - left + gap - 8), 12, 600) }
   })
   return { lines, maxLines, parents }
 }

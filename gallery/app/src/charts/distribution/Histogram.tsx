@@ -7,6 +7,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { kde, fmt, twoSample } from '@/lib/stats'
+import { pct } from '@/lib/format'
 import { useChartOptions } from '@/lib/chartOptions'
 import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
@@ -198,17 +199,14 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
               fill={s.color} fillOpacity={0.4} stroke={s.color} strokeOpacity={0.6}
               style={{ cursor: 'pointer' }}
               {...fidsProps(b.map((k) => s.ids[k]), `${s.name} · ${field} ${fmt(b.x0, 2)} – ${fmt(b.x1, 2)}`)}
-              onMouseEnter={(e) =>
-                tip.show(e, [s.name, `${fmt(b.x0, 2)} – ${fmt(b.x1, 2)}`, `${b.length} filters`, `${((b.length / s.values.length) * 100).toFixed(1)} % of ${s.name}`, 'click to list them · right-click to exclude'])
-              }
-              onMouseLeave={tip.hide}
+              {...tip.bind(() => [s.name, `${fmt(b.x0, 2)} – ${fmt(b.x1, 2)}`, `${b.length} filters`, `${pct(b.length / s.values.length, 1)} of ${s.name}`, 'click to list them · right-click to exclude'])}
               onClick={(e) => { e.stopPropagation(); tip.hide(); edits.openGroup({ title: `${s.name} · ${field} ${fmt(b.x0, 2)} – ${fmt(b.x1, 2)}`, ids: b.map((k) => s.ids[k]), fields: [field] }) }}
             />
           )
         })}
         {showDensity && (
           <path d={(densityOnly ? area(grid) : line(grid)) ?? ''} fill={densityOnly ? s.color : 'none'} fillOpacity={densityOnly ? 0.18 : 0} stroke={s.color} strokeWidth={2.2} pointerEvents={densityOnly ? 'visiblePainted' : 'none'}
-            onMouseEnter={densityOnly ? (e) => tip.show(e, [s.name, `n = ${s.values.length}`, `median ${fmt(d3.median(s.values), 2)}`]) : undefined} onMouseLeave={densityOnly ? tip.hide : undefined} />
+            {...(densityOnly ? tip.bind(() => [s.name, `n = ${s.values.length}`, `median ${fmt(d3.median(s.values), 2)}`]) : {})} />
         )}
       </g>
     )
@@ -250,7 +248,7 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
           onMouseMove={(e) => {
             const v = x.invert(d3.pointer(e.nativeEvent, e.currentTarget)[0])
             setProbe(v)
-            tip.show(e, [`${field} ≤ ${fmt(v, 3)}`, ...sortedSeries.map((s) => { const f = ecdfAt(s.sorted, v); return `${s.name}: ${(100 * f).toFixed(1)} % (${Math.round(f * s.sorted.length)} of ${s.sorted.length})` })])
+            tip.show(e, [`${field} ≤ ${fmt(v, 3)}`, ...sortedSeries.map((s) => { const f = ecdfAt(s.sorted, v); return `${s.name}: ${pct(f, 1)} (${Math.round(f * s.sorted.length)} of ${s.sorted.length})` })])
           }}
           onMouseLeave={() => { setProbe(null); tip.hide() }} />
       </g>

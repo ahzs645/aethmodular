@@ -30,6 +30,7 @@ import { XIcon } from '@/components/Icons'
 import { createPortal } from 'react-dom'
 import { Dialog, NESTED_POPOVERS } from '@/components/Dialog'
 import { chemText } from '@/lib/format'
+import { labelGutter } from '@/lib/fitLabel'
 import { ExcludedNote } from '@/lib/markedRows'
 import { seasonColor, siteColor } from '@/lib/siteColours'
 
@@ -191,10 +192,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
                   return (
                     <g
                       key={`${i}-${j}`}
-                      onMouseEnter={(e) =>
-                        tip.show(e, [fa, `vs ${fb}`, `r = ${fmt(r, 3)} · R² = ${fmt(r * r, 3)}`, `n = ${Math.min(block.n[fa] ?? 0, block.n[fb] ?? 0)}`])
-                      }
-                      onMouseLeave={tip.hide}
+                      {...tip.bind(() => [fa, `vs ${fb}`, `r = ${fmt(r, 3)} · R² = ${fmt(r * r, 3)}`, `n = ${Math.min(block.n[fa] ?? 0, block.n[fb] ?? 0)}`])}
                     >
                       <rect x={cx} y={cy} width={cell} height={cell} fill={encoding === 'Colour' ? color(r) : INK.panel} stroke={INK.panel} strokeWidth={1} />
                       {encoding === 'Circle size' && <circle cx={cx + cell / 2} cy={cy + cell / 2} r={Math.max(1, rad)} fill={color(r)} />}
@@ -204,7 +202,7 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
                           fontSize={Math.min(10, cell / 3.4)} fill={inkOn(color(r))}
                           fontFamily={FONT.mono} pointerEvents="none"
                         >
-                          {r.toFixed(2)}
+                          {fmt(r, 2)}
                         </text>
                       )}
                     </g>
@@ -306,7 +304,7 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, dimKey, meta,
   const pad = 6
   // the row labels sit in the left gutter, as wide as the longest name up to ROW_ROOM; longer names wrap
   const ROW_ROOM = 132
-  const rowRoom = Math.min(ROW_ROOM, Math.max(48, ...fields.map((f) => f.length * 6)))
+  const rowRoom = labelGutter(fields.map((f) => chemText(f)), { size: 10.5, min: 48, max: ROW_ROOM })
   const labelW = rowRoom + 12
   // as wide as the panel allows, and no taller than a fitted height (a Dashboard tile, the single-chart view);
   // the column labels under the matrix take up to three lines
@@ -446,7 +444,7 @@ const SplomCell = memo(function SplomCell({ rows, fx, fy, sx, sy, cellS, ox, oy,
     <g ref={veilRef} className="splom-veil" data-export="skip" pointerEvents="none"><rect width={cellS} height={cellS} fill={INK.panel} fillOpacity={0.65} /></g>
     {grouping !== 'pooled' ? <RegressionGroupLines groups={fitGroups} x={sx} y={v => cellS - sy(v)} width={cellS} height={cellS} />
       : <RegressionLines stats={st} x={sx} y={v => cellS - sy(v)} domain={sx.domain() as number[]} width={cellS} height={cellS} />}
-    {st && <text x={cellS - 4} y={11} textAnchor="end" fontSize={9.5} fill={INK.text} fontFamily={FONT.mono} pointerEvents="none">r={st.r.toFixed(2)}</text>}
+    {st && <text x={cellS - 4} y={11} textAnchor="end" fontSize={9.5} fill={INK.text} fontFamily={FONT.mono} pointerEvents="none">r={fmt(st.r, 2)}</text>}
     <g data-export="skip">
     <FocusLayer keys={keys} items={pts} idOf={(p) => p.row.id} groupRef={veilRef} focusClass="on" render={(p, pinned) => {
       const f = focusStyle(p.row.id, p.row.id, { r: 2, level: 'dense' })

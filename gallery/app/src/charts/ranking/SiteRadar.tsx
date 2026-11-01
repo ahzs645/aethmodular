@@ -5,6 +5,7 @@ import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
+import { pct } from '@/lib/format'
 import { INK, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
@@ -150,15 +151,12 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
                   <circle
                     key={`${s.name}-${f}`} data-export-site={s.name} data-export-color={s.color}
                     cx={px} cy={py} r={3.5} fill={s.color} stroke={INK.panel} strokeWidth={1} opacity={dim(s.name)}
-                    onMouseEnter={(e) =>
-                      tip.show(e, [
-                        `${s.name} · ${f}`,
-                        `median = ${fmt(rec.m, 3)} µg/m³`,
-                        norm === '÷ pooled median' ? `${fmt(ratio, 2)}× the pooled median` : `${Math.round(ratio * 100)} % of the highest site`,
-                        `n = ${rec.n}`,
-                      ])
-                    }
-                    onMouseLeave={tip.hide}
+                    {...tip.bind([
+                      `${s.name} · ${f}`,
+                      `median = ${fmt(rec.m, 3)} µg/m³`,
+                      norm === '÷ pooled median' ? `${fmt(ratio, 2)}× the pooled median` : `${pct(ratio)} of the highest site`,
+                      `n = ${rec.n}`,
+                    ])}
                   />
                 )
               })

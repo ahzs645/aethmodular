@@ -9,6 +9,7 @@ import { groupedRegressions, type FitGrouping } from '@/lib/siteRegression'
 import { fidProps, useFilterEdits } from '@/lib/filterEdits'
 import { monthBlocks } from '@/lib/regressionCI'
 import { regression, type RegressionStats } from '@/lib/stats'
+import { trim } from '@/lib/format'
 import { useRegressions, FitGroupingControl } from '@/lib/regressionPrefs'
 import type { Estimator } from '@/lib/regressionMethods'
 import { baseFilterId, dotFill, dotRim, useHighlight, type FilterRecord } from '@/lib/highlight'
@@ -212,8 +213,8 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
         <g transform="translate(12,22)">{summary.node}</g>
         <g className="regression-plot" transform={`translate(${m.left},${top})`}>
           <defs><clipPath id={clipId}><rect width={iw} height={ih} /></clipPath></defs>
-          <YAxis scale={y} x={0} label={yLabel} wrapLabel={brushable} tickCount={5} gridWidth={iw} labelX={-42} format={(v) => String(+(+v).toFixed(2))} pick={pick === true || pick === 'y' ? 'y' : undefined} />
-          <XAxis scale={x} y={ih} label={xLabel} wrapLabel={brushable} tickCount={5} format={(v) => String(+(+v).toFixed(2))} labelDy={38} pick={pick === true || pick === 'x' ? 'x' : undefined} />
+          <YAxis scale={y} x={0} label={yLabel} wrapLabel={brushable} tickCount={5} gridWidth={iw} labelX={-42} format={(v) => trim(v, 2)} pick={pick === true || pick === 'y' ? 'y' : undefined} />
+          <XAxis scale={x} y={ih} label={xLabel} wrapLabel={brushable} tickCount={5} format={(v) => trim(v, 2)} labelDy={38} pick={pick === true || pick === 'x' ? 'x' : undefined} />
           <g clipPath={`url(#${clipId})`}>
             {background?.(x, y)}
             {sameScale && <IdentityLine {...line(1, 0)} />}

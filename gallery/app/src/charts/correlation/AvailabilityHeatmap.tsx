@@ -94,8 +94,7 @@ export function AvailabilityHeatmap({ rows, meta, xField, yField }: { rows: Filt
                   // a cell is a site's month of filters: click lists them in the side panel, right-click excludes or keeps them
                   {...fidsProps(c.ids, `${c.site} · ${c.period}`)} style={{ cursor: 'pointer' }}
                   onClick={() => { tip.hide(); edits.openGroup({ title: `${c.site} · ${c.period}`, ids: c.ids, fields: [xField, yField] }) }}
-                  onMouseEnter={(e) => tip.show(e, [c.site, c.period, `${c.count} filters with ${label}`, 'click to list them · right-click to exclude or keep'])}
-                  onMouseLeave={tip.hide}
+                  {...tip.bind([c.site, c.period, `${c.count} filters with ${label}`, 'click to list them · right-click to exclude or keep'])}
                 />
               )
             })}

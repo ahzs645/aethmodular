@@ -7,6 +7,7 @@ import { INK, FONT } from '@/lib/theme'
 import { wrapCategory } from '@/components/CategoryAxis'
 import { fieldHelp } from '@/lib/glossary'
 import { useTooltip } from '@/hooks/useTooltip'
+import { textWidth } from '@/lib/fitLabel'
 
 type AnyScale =
   | ScaleLinear<number, number>
@@ -22,8 +23,8 @@ function ticksOf(scale: AnyScale, count: number): { v: any; pos: number }[] {
   return s.ticks(count).map((t) => ({ v: t, pos: s(t) }))
 }
 
-/** a tick label's width at the axis's 11 px (about 6.2 px a character) plus a gap */
-const labelWidth = (text: string) => text.length * 6.2 + 12
+/** a tick label's width as drawn at the axis's 11 px, plus a gap */
+const labelWidth = (text: string) => textWidth(text, 11) + 12
 
 /**
  * The scale's ticks, thinned until no two labels overlap and none runs off the axis: d3 is asked
@@ -54,6 +55,8 @@ export function XAxis({
   labelDy,
   wrapLabel = false,
   pick,
+  gridHeight,
+  gridFrom,
 }: {
   scale: AnyScale
   y: number
@@ -66,6 +69,10 @@ export function XAxis({
   rotate?: number
   /** y (relative to the axis) for the title; defaults below the ticks */
   labelDy?: number
+  /** vertical grid lines at the ticks, this tall (the plot height); mirrors YAxis gridWidth. Draw the axis before the marks so the grid sits under them. */
+  gridHeight?: number
+  /** where grid lines start (their top, in the parent's y); defaults to gridHeight above the axis */
+  gridFrom?: number
 }) {
   const method = useEstimator()
   // as many ticks as fit: fewer when the labels (dates above all, 'Feb 2023') would touch at this width
@@ -75,6 +82,9 @@ export function XAxis({
   const x1 = Math.max(...range)
   return (
     <g transform={`translate(0,${y})`} fontFamily={FONT.family}>
+      {gridHeight ? ticks.map(({ pos }, i) => (
+        <line key={`g${i}`} x1={pos} x2={pos} y1={(gridFrom ?? y - gridHeight) - y} y2={(gridFrom ?? y - gridHeight) - y + gridHeight} stroke={INK.grid} strokeWidth={1} />
+      )) : null}
       <line x1={x0} x2={x1} stroke={INK.axis} strokeWidth={1} />
       {ticks.map(({ v, pos }, i) => (
         <g key={i} transform={`translate(${pos},0)`}>
@@ -100,7 +110,7 @@ export function XAxis({
             fontWeight={600}
             fill={INK.text}
           >
-            {wrapLabel ? wrapCategory(chemText(estimatorText(label, method)), Math.max(100, x1 - x0 - 8)).map((line, i) => <tspan key={i} x={(x0 + x1) / 2} dy={i ? 14 : 0}>{line}</tspan>) : chemText(estimatorText(label, method))}{pick && <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>}
+            {wrapLabel ? wrapCategory(chemText(estimatorText(label, method)), Math.max(100, x1 - x0 - 8), 12, 600).map((line, i) => <tspan key={i} x={(x0 + x1) / 2} dy={i ? 14 : 0}>{line}</tspan>) : chemText(estimatorText(label, method))}{pick && <tspan className="axis-pick-caret" dx={4} data-export="skip">▾</tspan>}
           </text>
         </AxisTitle>
       )}
@@ -139,7 +149,7 @@ export function YAxis({
   const range = scale.range() as [number, number]
   const y0 = Math.min(...range)
   const y1 = Math.max(...range)
-  const titleLines = wrapLabel && label ? wrapCategory(chemText(estimatorText(label, method)), Math.max(100, y1 - y0 - 8)) : []
+  const titleLines = wrapLabel && label ? wrapCategory(chemText(estimatorText(label, method)), Math.max(100, y1 - y0 - 8), 12, 600) : []
   // the title sits the same distance from the tick labels as the x axis's title does from its own (about 13 px):
   // measured as drawn, so short labels ("0–30") do not leave it stranded and the readable text size is counted
   const tickBox = useRef<SVGGElement>(null)

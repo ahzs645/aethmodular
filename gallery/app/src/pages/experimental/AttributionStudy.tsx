@@ -11,7 +11,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { useSearchParam } from '@/lib/url'
 import { FONT, INK, inkOn, PREPROCESSING_COLOR } from '@/lib/theme'
-import { coef, coefSigned, f2, signed } from '@/lib/format'
+import { coef, coefSigned, f2, fitSummary, signed } from '@/lib/format'
 import { useMac, type MacView } from '@/lib/mac'
 import { Scatter, runLine, sourceOf, useXp, type XpBase } from './shared'
 import { FixedSetNote } from '@/lib/markedRows'
@@ -90,7 +90,7 @@ function GridHeat({ d }: { d: AttributionData }) {
   return (
     <ChartFrame id="xt-grid" source={source('GridHeat')} provenance={runLine(d)}
       title="The grid — every combination on the same filters"
-      subtitle={`Rows: preprocessing and spectral window (spline exists only above 1425 cm⁻¹, so its full-range cell is missing). Columns: calibration pool (all IMPROVE, or the 500 lowest TOR OC/EC filters) and k (fixed 8, as on the poster, or the one-SE choice; the cell shows the k used). SPARTAN published on the same Addis filters: slope ${coef(d.published.slope)}, intercept ${coefSigned(d.published.intercept)} µg/m³.`}
+      subtitle={`Rows: preprocessing and spectral window (spline exists only above 1425 cm⁻¹, so its full-range cell is missing). Columns: calibration pool (all IMPROVE, or the 500 lowest TOR OC/EC filters) and k (fixed 8, as on the poster, or the one-SE choice; the cell shows the k used). SPARTAN published on the same Addis filters: ${fitSummary({ slope: d.published.slope, intercept: d.published.intercept }, { sep: ', ', signedIntercept: true, unit: 'µg/m³' })}.`}
       controls={<Segmented label="Colour" value={out} options={OUTCOMES} onChange={setOut} />}>
       <div ref={ref} style={{ position: 'relative', overflowX: 'auto' }}>
         <svg width={labelW + cols.length * cw + 10} height={rows.length * ch + 60} fontFamily={FONT.family}>
@@ -102,7 +102,7 @@ function GridHeat({ d }: { d: AttributionData }) {
             return <g key={`${i}-${j}`}>
               <HeatCell x={labelW + j * cw + 1} y={36 + i * ch + 1} width={cw - 2} height={ch - 2} fill={fill}
                 onEnter={(e) => tip.show(e, [`${rowKey(c)} · ${colKey(c)} (k ${c.k})`, `IMPROVE out-of-site RMSE ${f2(c['IMPROVE RMSE'])} µg (heaviest tenth ${f2(c['IMPROVE RMSE heaviest tenth'])}), bias ${signed(c['IMPROVE bias'])}, R² ${f2(c['IMPROVE R²'])}`,
-                  `Addis vs HIPS: slope ${coef(c['Addis slope'])}, intercept ${coefSigned(c['Addis intercept'])} µg/m³ (n ${c['Addis n']})`])} onLeave={tip.hide} />
+                  `Addis vs HIPS: ${fitSummary({ slope: c['Addis slope'], intercept: c['Addis intercept'] }, { sep: ', ', signedIntercept: true, unit: 'µg/m³' })} (n ${c['Addis n']})`])} onLeave={tip.hide} />
               <text x={labelW + j * cw + cw / 2} y={36 + i * ch + ch / 2 - 4} textAnchor="middle" fontSize={11} fontWeight={600} fill={inkOn(fill)} pointerEvents="none">{out.includes('RMSE') ? f2(v) : out === 'IMPROVE bias' ? signed(v) : out === 'Addis slope' ? coef(v) : coefSigned(v)}</text>
               <text x={labelW + j * cw + cw / 2} y={36 + i * ch + ch / 2 + 10} textAnchor="middle" fontSize={9} fill={inkOn(fill)} opacity={0.8} pointerEvents="none">k {c.k}</text>
             </g>
@@ -141,7 +141,7 @@ function Effects({ d }: { d: AttributionData }) {
             <RefLine orient="v" at={labelW + x(0)} from={20} to={20 + es.length * rowH} />
             {es.map((e, i) => {
               const v = e[out as keyof Effect] as number, cy = 20 + i * rowH + rowH / 2, inter = e.term.includes('×')
-              return <g key={e.term} onMouseEnter={(ev) => tip.show(ev, [e.term, e.contrast, `${out}: ${signed(v, 3)}`, `IMPROVE RMSE ${signed(e['IMPROVE RMSE'], 3)} · Addis intercept ${signed(e['Addis intercept'], 3)} · Addis slope ${signed(e['Addis slope'], 3)}`])} onMouseLeave={tip.hide}>
+              return <g key={e.term} {...tip.bind([e.term, e.contrast, `${out}: ${signed(v, 3)}`, `IMPROVE RMSE ${signed(e['IMPROVE RMSE'], 3)} · Addis intercept ${signed(e['Addis intercept'], 3)} · Addis slope ${signed(e['Addis slope'], 3)}`])}>
                 <text x={labelW - 8} y={cy} dy="0.32em" textAnchor="end" fontSize={10.5} fill={inter ? INK.muted : INK.text} fontStyle={inter ? 'italic' : 'normal'}>{e.term}</text>
                 <rect x={labelW + Math.min(x(0), x(v))} y={cy - 7} width={Math.abs(x(v) - x(0))} height={14} fill={v < 0 ? INK.positive : INK.negative} fillOpacity={inter ? 0.45 : 0.85} />
                 <text x={labelW + x(v) + (v < 0 ? -4 : 4)} y={cy} dy="0.32em" textAnchor={v < 0 ? 'end' : 'start'} fontSize={9.5} fill={INK.muted}>{signed(v)}</text>

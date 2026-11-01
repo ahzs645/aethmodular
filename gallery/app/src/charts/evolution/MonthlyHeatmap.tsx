@@ -138,7 +138,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
   const topStrip = seasonStrip && !mixed
   const unit = withUnit(field, meta.field_units)
   const statLabel = stat === 'Count' ? 'filters' : `${stat.toLowerCase()} ${unit}`
-  const fmtCell = (v: number) => (stat === 'Count' ? v.toFixed(0) : fmt(v, 2))
+  const fmtCell = (v: number) => fmt(v, stat === 'Count' ? 0 : 2)
 
   // year labels: under the first column (if it is not a January) and under
   // every January, skipping any that would overprint the previous one
@@ -188,8 +188,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
                     <rect
                       key={p} x={i * cellW} y={-stripH - 6} width={Math.max(1, cellW - 0.6)} height={stripH}
                       fill={s?.color ?? INK.neutral} fillOpacity={SEASON_SHADE.strip} rx={1}
-                      onMouseEnter={(e) => tip.show(e, [p, `season: ${s ? seasonOnly(s.name) : '—'}`])}
-                      onMouseLeave={tip.hide}
+                      {...tip.bind([p, `season: ${s ? seasonOnly(s.name) : '—'}`])}
                     />
                   )
                 })}
@@ -208,17 +207,14 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
                     {...(c.ids.length ? fidsProps(c.ids, `${c.site} · ${c.period}`) : {})}
                     style={{ cursor: c.ids.length ? 'pointer' : 'default' }}
                     onClick={() => { if (c.ids.length) { tip.hide(); edits.openGroup({ title: `${c.site} · ${c.period}`, ids: c.ids, fields: [field] }) } }}
-                    onMouseEnter={(e) =>
-                      tip.show(e, [
-                        c.site,
-                        c.period,
-                        c.value === null ? 'no filters' : `${statLabel} = ${fmtCell(c.value)}`,
-                        `n = ${c.n} filter${c.n === 1 ? '' : 's'}`,
-                        ...(c.n ? ['click to list them · right-click to exclude or keep'] : []),
-                        `season: ${s ? seasonOnly(s.name) : '—'}`,
-                      ])
-                    }
-                    onMouseLeave={tip.hide}
+                    {...tip.bind(() => [
+                      c.site,
+                      c.period,
+                      c.value === null ? 'no filters' : `${statLabel} = ${fmtCell(c.value)}`,
+                      `n = ${c.n} filter${c.n === 1 ? '' : 's'}`,
+                      ...(c.n ? ['click to list them · right-click to exclude or keep'] : []),
+                      `season: ${s ? seasonOnly(s.name) : '—'}`,
+                    ])}
                   />
                   </g>
                 )
@@ -248,7 +244,7 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
               scale={color}
               scheme={colours.scheme}
               label={stat === 'Count' ? 'filters per month' : unit}
-              format={stat === 'Count' ? (v) => v.toFixed(0) : undefined}
+              format={stat === 'Count' ? (v) => fmt(v, 0) : undefined}
               note={stat === 'Count' ? undefined : 'ramp spans the 2–98 % of cell values; the ends are clamped'}
             />
           </div>

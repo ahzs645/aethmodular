@@ -101,7 +101,7 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
             {fc.cells.flatMap((row, i) => row.map((c, j) => {
               const fill = c.rho === null ? INK.empty : color(c.rho)
               return <g key={`${i}-${j}`} transform={`translate(${labelW + j * cell},${50 + i * cell})`}
-                onMouseEnter={(e) => tip.show(e, [`${fc.name}: ${c.v.label} vs ${c.f}`, c.rho === null ? `n = ${c.n} (too few)` : `ρ = ${fmt(c.rho, 2)} · n = ${c.n}`])} onMouseLeave={tip.hide}>
+                {...tip.bind(() => [`${fc.name}: ${c.v.label} vs ${c.f}`, c.rho === null ? `n = ${c.n} (too few)` : `ρ = ${fmt(c.rho, 2)} · n = ${c.n}`])}>
                 <rect width={cell - 1} height={cell - 1} fill={fill} />
                 {c.rho !== null && Math.abs(c.rho) >= 0.3 && cell >= 18 && <text x={cell / 2} y={cell / 2} dy="0.35em" textAnchor="middle" fontSize={9} fill={inkOn(fill)} fontFamily={FONT.mono}>{fmt(c.rho, 1)}</text>}
               </g>

@@ -4,14 +4,14 @@ import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { Crossplot } from '@/components/Crossplot'
 import { Key } from '@/components/Key'
 import { SweepPlot } from '@/components/SweepPlot'
-import { fmt } from '@/lib/format'
+import { fitSummary, fmt } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow } from '@/lib/types'
 import type { SectionPageProps } from '../../types'
 import { ols, pearson, quadratic, quantile, slidingWindow, median, type OlsFit as Fit } from '@/lib/stats'
-import { BASIS_NOTE, DataTable, Grid, SitePick, fitText, line, num, ofSite, point, sitesOf, useConcRows, useSite } from '../common/ui'
+import { BASIS_NOTE, DataTable, Grid, SitePick, line, num, ofSite, point, sitesOf, useConcRows, useSite } from '../common/ui'
 import { useMarkedRows } from '@/lib/markedRows'
 
 const ADDIS_NB = 'notebooks/analysis/meteorology/addis_hips_two_problem_decomposition.ipynb'
@@ -167,7 +167,7 @@ export function TwoProblem({ rows: viewRows, meta }: SectionPageProps) {
         subtitle={`Left: OLS slope of HIPS BC on FTIR EC in windows of ${size} filters sorted by EC (step ${Math.max(3, Math.floor(size / 8))}), against the window's mean EC; a slope that falls as EC rises would be saturation. Right: linear (black) and quadratic (pink) fits.`}
         provenance={`${ADDIS_NB} (§4) · ${MULTI_NB} (§3)`} controls={<Segmented label="Window" value={winParam} options={['auto', '20', '40', '60']} onChange={setWin} optionLabel={(o) => (o === 'auto' ? `n / 6 (${Math.max(20, Math.floor(pairs.length / 6))})` : o)} />}>
         <Grid>
-          {windows.length >= 2 ? <SweepPlot series={[{ id: 'w', label: 'window slope', color, points: windows.map((w) => ({ x: w.center, y: w.slope, tip: [`EC ${fmt(w.min, 2)}–${fmt(w.max, 2)} (mean ${fmt(w.center, 2)})`, `slope ${fmt(w.slope, 3)}, intercept ${fmt(w.intercept, 2)}, r ${fmt(w.r, 2)}`, `n ${w.n}`] })) }]}
+          {windows.length >= 2 ? <SweepPlot series={[{ id: 'w', label: 'window slope', color, points: windows.map((w) => ({ x: w.center, y: w.slope, tip: [`EC ${fmt(w.min, 2)}–${fmt(w.max, 2)} (mean ${fmt(w.center, 2)})`, `${fitSummary({ slope: w.slope, intercept: w.intercept }, { interceptDigits: 2, sep: ', ' })}, r ${fmt(w.r, 2)}`, `n ${w.n}`] })) }]}
             xLabel="Window mean FTIR EC (µg/m³)" yLabel="Local OLS slope" reference={1} yMarkers={[{ at: d.bcFit.slope, label: `overall ${fmt(d.bcFit.slope, 2)}`, color: INK.muted }]}
             background={({ y, iw }) => <rect x={0} width={iw} y={y(1.1)} height={Math.max(0, y(0.9) - y(1.1))} fill={INK.good} fillOpacity={0.08} />} />
             : <Empty>Too few filters for windows of {size}.</Empty>}
@@ -188,7 +188,7 @@ export function TwoProblem({ rows: viewRows, meta }: SectionPageProps) {
             <Crossplot points={validation.pts.map((p) => point(p.r, p.a, p.corr, p.corr < 0 ? NEG : color, 'IR BCc', 'corrected', 'Research · two problems', [], p.corr < 0))} title="Corrected HIPS EC" xLabel="Aethalometer IR BCc (µg/m³)" yLabel="Corrected HIPS EC (µg/m³)" fit={false} extraLines={line(validation.rows[1].f, INK.good, 'OLS')} />
           </Grid>
           <DataTable rows={validation.rows} rowKey={(r) => r.name} columns={fitCols<(typeof validation.rows)[number]>().slice(0, 5)} />
-          <Note>Original: {fitText(validation.rows[0].f)}. Corrected: {fitText(validation.rows[1].f)}.</Note>
+          <Note>Original: {fitSummary(validation.rows[0].f)}. Corrected: {fitSummary(validation.rows[1].f)}.</Note>
         </>}
       </ChartFrame>}
     </>

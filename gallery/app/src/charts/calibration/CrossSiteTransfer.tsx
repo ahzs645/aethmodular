@@ -13,9 +13,10 @@ import { prettyUnit } from '@/components/FieldSelect'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
+import { fitLine } from '@/lib/format'
 import { INK, FONT } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile, FilterRow, MetaFile } from '@/lib/types'
-import { cohortColor, deployedECFrom, fmtFit, presetName, useNetworkRows } from './common'
+import { cohortColor, deployedECFrom, presetName, useNetworkRows } from './common'
 import { metricRowLive, type KeepIndex } from './runFit'
 import { COHORT, PREPROCESSING, label } from '@/lib/labels'
 import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
@@ -339,9 +340,9 @@ function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, gallery
                       {seg && <svg width={S} height={S} overflow="hidden" pointerEvents="none"><RegressionBand stats={st} method={estimator} color={fitStyle.color} x={x} y={y} domain={x.domain()} /></svg>}
                       {seg && <line {...seg} pointerEvents="none" stroke={fitStyle.color} strokeWidth={1.8} strokeDasharray={fitStyle.dash} />}
                     </TransferPoints>
-                    {savedPair && <text x={S / 2} y={S + 36} textAnchor="middle" fontSize={11} fontFamily={FONT.mono} fill={fitStyle.color}>
-                      {`${fitName} ${fmtFit(fit?.slope ?? null, fit?.intercept ?? null)} · R² ${fmt(fit?.m.R2 ?? null, 2)}`}
-                      <title>{showCI ? ci ? `${ci.description}; slope [${fmt(ci.slope[0], 3)}, ${fmt(ci.slope[1], 3)}]; intercept [${fmt(ci.intercept[0], 3)}, ${fmt(ci.intercept[1], 3)}]` : '95% CI unavailable: too few filters' : ''}</title>
+                    {savedPair && <text x={S / 2} y={S + 36} textAnchor="middle" fontSize={11} fontFamily={FONT.mono} fill={fitStyle.color}
+                      {...(showCI ? tip.bind(ci ? [ci.description, `slope [${fmt(ci.slope[0], 3)}, ${fmt(ci.slope[1], 3)}]`, `intercept [${fmt(ci.intercept[0], 3)}, ${fmt(ci.intercept[1], 3)}]`] : ['95% CI unavailable: too few filters']) : {})}>
+                      {`${fitName} ${fitLine(fit?.slope, fit?.intercept, 3)} · R² ${fmt(fit?.m.R2 ?? null, 2)}`}
                     </text>}
                   </g>
                 </svg>
@@ -500,8 +501,7 @@ function OrderingAcrossCalibrations({ runs, sites, presetKey, mac, at, onPick }:
           options={DOT_METRICS.map((m) => ({ key: m, label: m === 'R²' ? 'Test set R²' : `Test set Deming ${m}`, group: 'Readout', roles: ['x'] }))}>
         <svg width={width} height={ih + 96} fontFamily={FONT.family}>
           <g transform={`translate(${left},12)`}>
-            <XAxis scale={x} y={ih} label={`Test set ${metric === 'R²' ? 'R²' : `Deming ${metric}`}${metric === 'intercept' ? ' (µg/m³)' : ''} · MAC ${mac}`} pick="x" />
-            {x.ticks(6).map((t) => <line key={t} x1={x(t)} x2={x(t)} y1={0} y2={ih} stroke={INK.grid} />)}
+            <XAxis scale={x} y={ih} label={`Test set ${metric === 'R²' ? 'R²' : `Deming ${metric}`}${metric === 'intercept' ? ' (µg/m³)' : ''} · MAC ${mac}`} pick="x" gridHeight={ih} />
             {ref !== null && <RefLine orient="v" at={x(ref)} from={0} to={ih} />}
             {sites.map((s) => {
               const t = runs.targets[s]
@@ -520,15 +520,14 @@ function OrderingAcrossCalibrations({ runs, sites, presetKey, mac, at, onPick }:
               const path = d3.symbol().type(SPECTRA_SHAPE[r.preset.spectra] ?? d3.symbolTriangle).size(picked ? 110 : 55)() ?? ''
               return (
                 <g key={i}>
-                {r.interval && <line data-fit-uncertainty="site-coefficient" x1={x(r.interval[0])} x2={x(r.interval[1])} y1={cy} y2={cy} stroke={cohortColor(r.preset.cohort)} strokeOpacity={0.45}><title>95% {metric} CI [{fmt(r.interval[0], 3)}, {fmt(r.interval[1], 3)}]</title></line>}
+                {r.interval && <line data-fit-uncertainty="site-coefficient" x1={x(r.interval[0])} x2={x(r.interval[1])} y1={cy} y2={cy} stroke={cohortColor(r.preset.cohort)} strokeOpacity={0.45} />}
                 <path
                   key={i} d={path} transform={`translate(${x(r.v)},${cy})`}
                   fill={cohortColor(r.preset.cohort)} fillOpacity={picked ? 1 : 0.7}
                   stroke={picked ? INK.text : INK.panel} strokeWidth={picked ? 2 : 0.8}
                   style={{ cursor: 'pointer' }}
                   onClick={() => onPick(r.preset.key)}
-                  onMouseEnter={(e) => tip.show(e, [presetName(r.preset), `${runs.targets[r.site]?.site ?? r.site}: ${metric} ${fmt(r.v, 3)}`, picked ? 'picked above' : 'click to pick this calibration'])}
-                  onMouseLeave={tip.hide}
+                  {...tip.bind([presetName(r.preset), `${runs.targets[r.site]?.site ?? r.site}: ${metric} ${fmt(r.v, 3)}`, ...(r.interval ? [`95% ${metric} CI [${fmt(r.interval[0], 3)}, ${fmt(r.interval[1], 3)}]`] : []), picked ? 'picked above' : 'click to pick this calibration'])}
                 />
                 </g>
               )

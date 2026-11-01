@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { fmt, fixed, f2, f3, signed, pct, sci, fitLine } from './format.ts'
+import { fmt, fixed, f2, f3, signed, pct, percent, trim, adaptive, sci, fitLine, fitSummary } from './format.ts'
 import { ALL_ADDIS, inSeasonGroup, isAllAddis, normalizeSeasonName, seasonOfMonth, seasonPhrase, shortSeason } from './seasons.ts'
 import { BASELINE_COLOR, baselineColor } from './theme.ts'
 import { baselineName, ecAxis } from './labels.ts'
@@ -20,6 +20,16 @@ test('formatters print a dash for missing values and keep their digit defaults',
   assert.equal(sci(0.000123), '1.2e-4')
   assert.equal(fitLine(0.82, -1.06), '0.82x − 1.06')
   assert.equal(fitLine(1, 0.5), '1.00x + 0.50')
+  assert.equal(fitLine(0.82, -1.06, 3), '0.820x − 1.060')
+  assert.equal(fitLine(null, 1), '—'); assert.equal(fitLine(1, null), '—')
+  assert.equal(pct(0.2567, 1), '25.7 %'); assert.equal(pct(null, 1), '—')
+  assert.equal(percent(25.64), '26 %'); assert.equal(percent(25.64, 1), '25.6 %'); assert.equal(percent(undefined), '—')
+  assert.equal(fitSummary({ slope: 0.95, intercept: -1.23, r2: 0.9, n: 40 }), 'slope 0.950 · intercept -1.230 · R² 0.900 · n 40')
+  assert.equal(fitSummary({ slope: 0.95, intercept: 0.5 }, { digits: 2, interceptDigits: 1, sep: ', ' }), 'slope 0.95, intercept 0.5')
+  assert.equal(fitSummary({ slope: 1, intercept: -0.2, r2: null }, { signedIntercept: true, unit: 'µg/m³', label: 'Deming' }), 'Deming slope 1.000 · intercept −0.200 µg/m³ · R² —')
+  assert.equal(fitSummary(null), '—')
+  assert.equal(trim(0.5), '0.5'); assert.equal(trim(2), '2'); assert.equal(trim(0.12345, 3), '0.123'); assert.equal(trim(null), '—')
+  assert.equal(adaptive(123.4), '123'); assert.equal(adaptive(-12.34), '-12.3'); assert.equal(adaptive(1.234), '1.23')
 })
 
 test('season helpers agree on names, the all-Addis group and month bins', () => {

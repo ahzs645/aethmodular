@@ -68,7 +68,7 @@ function Performance({ scores, source }: { scores: Score[]; source: string }) {
       <g transform={`translate(${left},15)`}>{scores.map(s => <g key={s.method}>
         <text x={-10} y={y(s.method)!+y.bandwidth()/2} textAnchor="end" dy=".35em" fontSize={11}>{NAMES[s.method]}</text>
         <rect x={0} y={y(s.method)} width={x(s.RMSE)} height={y.bandwidth()} fill={COLORS[s.method]} fillOpacity={.8}
-          onMouseEnter={e => tip.show(e, [NAMES[s.method], `RMSE ${f(s.RMSE)} µg/filter`, `Predictive R² ${f(s.predictive_R2)}`, `PLS factors K=${s.k}`])} onMouseLeave={tip.hide} />
+          {...tip.bind([NAMES[s.method], `RMSE ${f(s.RMSE)} µg/filter`, `Predictive R² ${f(s.predictive_R2)}`, `PLS factors K=${s.k}`])} />
         <text x={x(s.RMSE)+7} y={y(s.method)!+y.bandwidth()/2} dy=".35em" fontSize={11}>{f(s.RMSE)}</text>
       </g>)}<XAxis scale={x} y={ih} label="Held-out TOR EC RMSE (µg/filter)" /></g>
     </svg>{tip.node}</div>
@@ -84,7 +84,7 @@ function Intervals({ rows }: { rows: Interval[] }) {
   return <ChartFrame id="completed-vibes-intervals" title="Paired uncertainty · VIBES minus spline RMSE">
     <div ref={ref} className="chart-wrap"><svg width={w} height={ih+78} role="img" aria-label="Paired site-bootstrap RMSE intervals" fontFamily={FONT.family}><g transform={`translate(${left},20)`}>
       <RefLine orient="v" at={x(0)} from={0} to={ih} />
-      {rows.map((r, i) => <g key={r.method} transform={`translate(0,${22+i*44})`} onMouseEnter={e => tip.show(e,[NAMES[r.method], `ΔRMSE ${f(r.delta_rmse)} µg/filter`, `95% interval ${f(r.ci_low)} to ${f(r.ci_high)}`, `${r.n_sites} held-out sites; 2,000 paired resamples`])} onMouseLeave={tip.hide}>
+      {rows.map((r, i) => <g key={r.method} transform={`translate(0,${22+i*44})`} {...tip.bind([NAMES[r.method], `ΔRMSE ${f(r.delta_rmse)} µg/filter`, `95% interval ${f(r.ci_low)} to ${f(r.ci_high)}`, `${r.n_sites} held-out sites; 2,000 paired resamples`])}>
         <text x={-10} textAnchor="end" dy=".35em" fontSize={11}>{NAMES[r.method]}</text><line x1={x(r.ci_low)} x2={x(r.ci_high)} stroke={COLORS[r.method]} strokeWidth={2} /><circle cx={x(r.delta_rmse)} r={5} fill={COLORS[r.method]} />
       </g>)}<XAxis scale={x} y={ih} label="RMSE difference (µg/filter); negative favours VIBES" /></g></svg>{tip.node}</div>
     <Note>Intervals resample {rows[0].n_sites} held-out sites and remain conditional on these fitted models. An interval crossing zero does not establish a gain. Cohorts have different held-out populations and cannot be ranked by their errors alone.</Note>

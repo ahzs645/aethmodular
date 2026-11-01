@@ -87,9 +87,8 @@ export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate, spl
                   const r0 = r(acc), r1 = r(acc + v)
                   acc += v
                   return v > 0 ? <path key={`${s}-${k}`} d={arc({ a: (s * Math.PI) / 4, r0, r1 }) ?? ''} fill={SPEED_COLORS[k]} stroke={INK.panel} strokeWidth={0.5}
-                    onMouseEnter={(e) => tip.show(e, [`${label(g.name)} · from ${roses.sectors[s]}`, `${roses.speed_classes[k]}: ${fmt(v, 1)} % of hours`,
-                      `all speeds from ${roses.sectors[s]}: ${fmt(g.pct[s * 3] + g.pct[s * 3 + 1] + g.pct[s * 3 + 2], 1)} %`])}
-                    onMouseLeave={tip.hide} /> : null
+                    {...tip.bind(() => [`${label(g.name)} · from ${roses.sectors[s]}`, `${roses.speed_classes[k]}: ${fmt(v, 1)} % of hours`,
+                      `all speeds from ${roses.sectors[s]}: ${fmt(g.pct[s * 3] + g.pct[s * 3 + 1] + g.pct[s * 3 + 2], 1)} %`])} /> : null
                 })
               })}
               <circle r={14} fill={INK.panel} stroke={INK.grid} />

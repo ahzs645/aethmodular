@@ -3,6 +3,7 @@
  * reads at another. See lib/mac.tsx for why slopes, λ and HIPS BC are the only things that move.
  */
 import { median } from './stats.ts'
+import { trim } from './format.ts'
 
 /** the MAC the exports use (config.MAC_VALUE) */
 export const EXPORT_MAC = 10
@@ -47,7 +48,7 @@ export function macView(mac: number, exportMac: number = EXPORT_MAC, lambda10: n
     slope: (s, from = exportMac) => slopeAt(s, mac, from),
     bc: (v, from = exportMac) => bcAt(v, mac, from),
     fromFabs: (fabs) => (fabs == null || !Number.isFinite(fabs) ? null : fabs / mac),
-    label: `MAC ${+mac.toFixed(2)}`,
+    label: `MAC ${trim(mac, 2)}`,
   }
 }
 

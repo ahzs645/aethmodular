@@ -7,7 +7,8 @@ import { AreaHeader } from '@/components/AreaHeader'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { Key } from '@/components/Key'
-import { YAxis } from '@/components/Axes'
+import { XAxis, YAxis } from '@/components/Axes'
+import { clipText } from '@/lib/fitLabel'
 import { useExport } from '@/lib/data'
 import { availabilityRecords, monthlyAvailability, recentCutoff, samplingStatus, type AvailabilityFile, type DatedRecord } from '@/lib/availability'
 import type { MetaFile } from '@/lib/types'
@@ -108,10 +109,10 @@ function SamplingSpans({ sites, selected, onSelect, cutoff }: { sites: Inventory
   const x = d3.scaleTime().domain(dated.length ? extent : [new Date('2000-01-01'), new Date()]).range([labelW, w - 24])
   return <div ref={wrap}>
     <div ref={ref} className="chart-scroll availability-spans" tabIndex={0} role="region" aria-label="Sampling spans by site"><svg width={w} height={height} fontFamily={FONT.family} role="img" aria-label="First to last exported sample by site">
-      {x.ticks(6).map(t => <g key={+t}><line x1={x(t)} x2={x(t)} y2={height - 24} stroke={INK.grid} /><text x={x(t)} y={height - 5} textAnchor="middle" fontSize={11} fill={INK.muted}>{d3.timeFormat('%Y')(t)}</text></g>)}
+      <XAxis scale={x} y={height - 24} gridHeight={height - 24} tickCount={6} format={d3.timeFormat('%Y')} />
       {dated.map((s, i) => <g key={s.code} role="button" tabIndex={0} aria-label={`Inspect ${s.name}`} onClick={() => { tip.hide(); onSelect(s.code) }} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(s.code) } }} style={{ cursor: 'pointer' }}
-        onMouseEnter={(e) => tip.show(e, [`${s.name} · ${s.code}`, `${s.date_min} → ${s.date_max}`, `${s.n_filters.toLocaleString()} exported filters`, 'a span is not continuous sampling', 'click to inspect'])} onMouseLeave={tip.hide}>
-        <text x={labelW - 10} y={i * 23 + 17} textAnchor="end" fill={INK.text} fontSize={11}>{s.name.length > 23 ? `${s.name.slice(0, 22)}…` : s.name}</text><rect x={x(new Date(s.date_min))} y={i * 23 + 7} width={Math.max(3, x(new Date(s.date_max)) - x(new Date(s.date_min)))} height={12} rx={3} fill={s.code === selected ? INK.accent : s.date_max < cutoff ? AVAIL_COLOR.stale : AVAIL_COLOR.recent} /></g>)}
+        {...tip.bind([`${s.name} · ${s.code}`, `${s.date_min} → ${s.date_max}`, `${s.n_filters.toLocaleString()} exported filters`, 'a span is not continuous sampling', 'click to inspect'])}>
+        <text x={labelW - 10} y={i * 23 + 17} textAnchor="end" fill={INK.text} fontSize={11}>{clipText(s.name, labelW - 14)}</text><rect x={x(new Date(s.date_min))} y={i * 23 + 7} width={Math.max(3, x(new Date(s.date_max)) - x(new Date(s.date_min)))} height={12} rx={3} fill={s.code === selected ? INK.accent : s.date_max < cutoff ? AVAIL_COLOR.stale : AVAIL_COLOR.recent} /></g>)}
     </svg></div>
     <Key items={[{ label: `sampled since ${cutoff}`, color: AVAIL_COLOR.recent, kind: 'bar' }, { label: `no sample since ${cutoff}`, color: AVAIL_COLOR.stale, kind: 'bar' }, { label: 'site being inspected', color: INK.accent, kind: 'bar' }]} />
     {tip.node}
@@ -126,7 +127,7 @@ function MonthlyCounts({ months, field }: { months: { period: string; samples: n
   return <div ref={wrap}>
     <div ref={ref} className="chart-scroll" tabIndex={0} role="region" aria-label="Monthly sample counts, scroll for all months"><svg width={w} height={h} fontFamily={FONT.family}>
       <YAxis scale={y} x={left} label="Filters per month" tickCount={4} format={d3.format('d')} gridWidth={w - 10 - left} />
-      {months.map((m, i) => <g key={m.period} onMouseEnter={(e) => tip.show(e, [m.period, `${m.samples} physical filters`, `${m.measured} with ${field}`])} onMouseLeave={tip.hide}>
+      {months.map((m, i) => <g key={m.period} {...tip.bind([m.period, `${m.samples} physical filters`, `${m.measured} with ${field}`])}>
         <rect x={x(m.period)} y={y(m.samples)} width={x.bandwidth()} height={190 - y(m.samples)} fill={AVAIL_COLOR.all} /><rect x={x(m.period)} y={y(m.measured)} width={x.bandwidth()} height={190 - y(m.measured)} fill={INK.accent} />
         {(i === 0 || m.period.endsWith('-01')) && <text x={x(m.period)} y={209} fontSize={10} fill={INK.muted}>{m.period.slice(0, 4)}</text>}</g>)}
     </svg></div>

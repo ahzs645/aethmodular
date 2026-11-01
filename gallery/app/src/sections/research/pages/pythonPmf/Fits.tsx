@@ -14,7 +14,7 @@ import { Key } from '@/components/Key'
 import { timeSeasonBands } from '@/components/SeasonBands'
 import { SpectrumPlot, type SpectrumBand, type SpectrumSeries } from '@/components/SpectrumPlot'
 import { SweepPlot, type SweepMark, type SweepPoint, type SweepSeries } from '@/components/SweepPlot'
-import { fmt } from '@/lib/format'
+import { fmt, pct } from '@/lib/format'
 import { markTip } from '@/lib/exclusionMode'
 import { ExcludedNote, FixedSetNote, useExclusionSplit, useKnownFilter, useMarkReason } from '@/lib/markedRows'
 import { num, type Row } from '@/lib/table'
@@ -35,7 +35,6 @@ const WINDOW: [number, number] = [4000, 1520]
 const COHORT_COLOR: Record<string, string> = { etad246: RESEARCH_SERIES[0], etad102: RESEARCH_SERIES[1], etbi53: RESEARCH_SERIES[2] }
 const COHORT_LABEL: Record<string, string> = { etad246: 'ETAD 246', etad102: 'ETAD 102', etbi53: 'ETBI 53' }
 /** a share as a percentage with one decimal, as the report quotes them */
-const pct1 = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? `${(100 * v).toFixed(1)} %` : '—')
 const FIT_NOTE = 'the package\'s saved fits, each made on every filter its cohort modelled'
 
 /** a NaN between channels more than `step` cm⁻¹ apart, so a line breaks across the unmodelled window */
@@ -193,7 +192,7 @@ export function Floor({ data }: { data: PythonPmfExport }) {
       panels={[{ value: 'rmse', lo: 'bound', hi: 'rmse', label: 'Scaled RMSE: the negative-cell floor (bar start) to the fit (dot)', reference: 0 },
         { value: 'share', label: 'Floor as % of the fit\'s Q(true)' }, { value: 'neg', label: '% of input cells below zero' }]}
       title="Why more factors cannot fix it — negative observations set a floor no nonnegative fit can go below"
-      subtitle={`G H is nonnegative, so every negative observation X is missed by at least |X|: Q(true) ≥ Σ (X/U)² over the negative cells, whatever the factor count. ${primary ? `For ETAD 246, robust: ${pct1(primary.frac_negative)} of cells are negative, the floor is a scaled RMSE of ${fmt(primary.negative_rmse_lower_bound, 3)} against the fit's ${fmt(primary.rmse, 3)}, ${pct1(primary.lower_bound_share_of_q)} of its Q(true), and ${pct1(primary.frac_gt3)} of its residuals lie outside ±3U.` : ''} The floor is a mathematical bound, not the measured share of Q from negative cells; it points at the baseline and the U proxy, and the package does not clip X or enlarge U to beat it.`}
+      subtitle={`G H is nonnegative, so every negative observation X is missed by at least |X|: Q(true) ≥ Σ (X/U)² over the negative cells, whatever the factor count. ${primary ? `For ETAD 246, robust: ${pct(primary.frac_negative, 1)} of cells are negative, the floor is a scaled RMSE of ${fmt(primary.negative_rmse_lower_bound, 3)} against the fit's ${fmt(primary.rmse, 3)}, ${pct(primary.lower_bound_share_of_q, 1)} of its Q(true), and ${pct(primary.frac_gt3, 1)} of its residuals lie outside ±3U.` : ''} The floor is a mathematical bound, not the measured share of Q from negative cells; it points at the baseline and the U proxy, and the package does not clip X or enlarge U to beat it.`}
       provenance={<>Reproduces {REPORT} §4 (the negative-cell table). Data: python_pmf/analysis/rank_diagnostics.csv (negative_observation_Q_lower_bound, Q_true, n_observed_cells).</>}
       aside={<FixedSetNote what={FIT_NOTE} />} />
   )
@@ -225,9 +224,9 @@ export function Residuals({ data, c, setCase }: { data: PythonPmfExport; c: PmfC
         { key: 'f', label: 'Channels', num: true, value: (r) => r.features },
         { key: 'm', label: 'Mean scaled residual', num: true, value: (r) => fmt(r.mean_scaled_residual, 2) },
         { key: 'r', label: 'Scaled RMSE', num: true, value: (r) => fmt(r.scaled_rmse, 2) },
-        { key: 'g', label: '|r| > 3', num: true, value: (r) => pct1(r.fraction_abs_gt3) },
-        { key: 'n', label: 'X < 0', num: true, value: (r) => pct1(r.fraction_negative_X) },
-        { key: 'u', label: 'X < −3U', num: true, value: (r) => pct1(r.fraction_X_below_minus3U) },
+        { key: 'g', label: '|r| > 3', num: true, value: (r) => pct(r.fraction_abs_gt3, 1) },
+        { key: 'n', label: 'X < 0', num: true, value: (r) => pct(r.fraction_negative_X, 1) },
+        { key: 'u', label: 'X < −3U', num: true, value: (r) => pct(r.fraction_X_below_minus3U, 1) },
       ]} />
       <Note>Correlated neighbouring channels and the proxy U make a chi-square or parameter-count reading of these numbers inappropriate (report §4).</Note>
       <FixedSetNote what={FIT_NOTE} />

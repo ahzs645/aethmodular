@@ -5,7 +5,7 @@ import { FacetGrid } from '@/components/FacetGrid'
 import { Key } from '@/components/Key'
 import { baseFilterId } from '@/lib/filterId'
 import { ExcludedNote, useCountedFilter, useExclusionSplit } from '@/lib/markedRows'
-import { f2, f3 } from '@/lib/format'
+import { f2, f3, pct } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { median } from '@/lib/stats'
 import { num, type Row } from '@/lib/table'
@@ -112,7 +112,7 @@ export function HipsTransfer({ filters, shown, runs, provenance }: { filters: Ro
       <div className="legend-note" style={{ marginTop: 6 }}>
         {panelsOut.map((p) => p.metrics && <span key={p.m.col}>{p.m.name}: bias {f2(p.metrics.bias)} {unit} (median {f2(p.metrics.median_bias)}), MAE {f2(p.metrics.MAE)}. </span>)}
         {excluded > 0 && <>{excluded} filter{excluded === 1 ? '' : 's'} excluded under Filters → excluded {excluded === 1 ? 'is' : 'are'} left out of these metrics. </>}
-        {Number.isFinite(worst) && <>On the notebook's set (all 239, nothing excluded, Fabs) the browser's metrics reproduce ftir_08's table for all three models {worst < 1e-3 ? `to its stored digits (largest relative difference ${worst.toExponential(0)})` : `within ${(100 * worst).toFixed(2)} %`}.</>}
+        {Number.isFinite(worst) && <>On the notebook's set (all 239, nothing excluded, Fabs) the browser's metrics reproduce ftir_08's table for all three models {worst < 1e-3 ? `to its stored digits (largest relative difference ${worst.toExponential(0)})` : `within ${pct(worst, 2)}`}.</>}
       </div>
       <ExcludedNote count={split.marked.length} drawn />
     </ChartFrame>

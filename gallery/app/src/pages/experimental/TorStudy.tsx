@@ -15,8 +15,9 @@ import { useSearchParam } from '@/lib/url'
 import { useExport } from '@/lib/data'
 import { useMac } from '@/lib/mac'
 import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, themed } from '@/lib/theme'
+import { clipText } from '@/lib/fitLabel'
 import { dotFill } from '@/lib/highlight'
-import { coef, coefSigned, f2, pct, signed } from '@/lib/format'
+import { coef, coefSigned, f2, fitSummary, pct, signed } from '@/lib/format'
 import { hashUnit } from '@/lib/stats'
 import { Crossplot } from '@/components/Crossplot'
 import { RangeRows, type RangeRow, type RangeSeries } from '@/components/RangeRows'
@@ -326,7 +327,7 @@ function SeasonPanel({ d }: { d: TorData }) {
   const rows = d.seasons.map((s) => ({
     key: s.season, label: `${s.season}${s['Adama pairs'] ? `  ← all ${s['Adama pairs']} Adama pairs` : ''}`, color: s['Adama pairs'] ? ADAMA : ADDIS_ALL, bold: s['Adama pairs'] > 0,
     values: { ratio: { v: k(s['published ÷ HIPS (median)']), lo: k(s['published ÷ HIPS p25']), hi: k(s['published ÷ HIPS p75']) }, slope: { v: k(s['Deming slope']) }, intercept: { v: s['Deming intercept'] } },
-    tip: [s.season, `${s['Addis filters']} Addis filters`, `published FTIR ÷ HIPS (${mac.label}): median ${f2(k(s['published ÷ HIPS (median)']))} (25–75 % ${f2(k(s['published ÷ HIPS p25']))}–${f2(k(s['published ÷ HIPS p75']))})`, `Deming slope ${coef(k(s['Deming slope']))}, intercept ${coefSigned(s['Deming intercept'])} µg/m³`, `${s['Adama pairs']} Adama pairs`],
+    tip: [s.season, `${s['Addis filters']} Addis filters`, `published FTIR ÷ HIPS (${mac.label}): median ${f2(k(s['published ÷ HIPS (median)']))} (25–75 % ${f2(k(s['published ÷ HIPS p25']))}–${f2(k(s['published ÷ HIPS p75']))})`, fitSummary({ slope: k(s['Deming slope']), intercept: s['Deming intercept'] }, { label: 'Deming', sep: ', ', signedIntercept: true, unit: 'µg/m³' }), `${s['Adama pairs']} Adama pairs`],
   }))
   return (
     <ChartFrame id="xd-season" source={source('SeasonPanel')} provenance={runLine(d)}
@@ -426,8 +427,8 @@ function NetworkMap({ d }: { d: TorData }) {
             return <MapMarker key={s.site} longitude={s.lon!} latitude={s.lat!}>
               <MarkerContent className="bubble-marker" style={{ cursor: 'default' }}>
                 <svg width={2 * r + 4} height={2 * r + 4} viewBox={`${-r - 2} ${-r - 2} ${2 * r + 4} ${2 * r + 4}`}
-                  onMouseEnter={(e) => tip.show(e, [`${s.name} (${s.site})${n?.urban ? ' · urban' : ''}`, `${n?.filters ?? '?'} calibration filters (${pct(s['IMPROVE share of filters'])} of IMPROVE)`,
-                    `share of Addis neighbours ${pct(s.Addis)} · of Adama ${pct(s.Adama)}`, `median TOR EC ${f2(n?.ec_ug)} µg/filter, ${f2(n?.ec_ugm3)} µg/m³`])} onMouseLeave={tip.hide}>
+                  {...tip.bind([`${s.name} (${s.site})${n?.urban ? ' · urban' : ''}`, `${n?.filters ?? '?'} calibration filters (${pct(s['IMPROVE share of filters'])} of IMPROVE)`,
+                    `share of Addis neighbours ${pct(s.Addis)} · of Adama ${pct(s.Adama)}`, `median TOR EC ${f2(n?.ec_ug)} µg/filter, ${f2(n?.ec_ugm3)} µg/m³`])}>
                   <circle r={r} fill={s[of] > 0 ? colour(s[of]) : INK.panel} stroke={s[of] > 0 ? '#7a2d0b' : IMPROVE_GREY} strokeWidth={0.6} />
                 </svg>
               </MarkerContent>
@@ -437,7 +438,7 @@ function NetworkMap({ d }: { d: TorData }) {
             const lon = label === 'Adama pilot' ? d.adama_latlon[1] : row.lon!, lat = label === 'Adama pilot' ? d.adama_latlon[0] : row.lat!
             return <MapMarker key={label} longitude={lon} latitude={lat}>
               <MarkerContent className="bubble-marker" style={{ cursor: 'default' }}>
-                <svg width={22} height={22} viewBox="-11 -11 22 22" onMouseEnter={(e) => tip.show(e, [label, `${row.filters} filters · median EC ${f2(row.ec_ug)} µg/filter`, `median distance percentile ${Math.round(row.distance)}`])} onMouseLeave={tip.hide}>
+                <svg width={22} height={22} viewBox="-11 -11 22 22" {...tip.bind([label, `${row.filters} filters · median EC ${f2(row.ec_ug)} µg/filter`, `median distance percentile ${Math.round(row.distance)}`])}>
                   <path d={d3.symbol(label === 'Adama pilot' ? d3.symbolDiamond : d3.symbolStar, 160)() ?? ''} fill={c} stroke={INK.text} strokeWidth={1} />
                 </svg>
                 <span data-export="text" className="map-marker-label" style={label === 'Adama pilot' ? { top: 'calc(50% + 9px)' } : { bottom: 'calc(50% + 9px)' }}>{label}</span>
@@ -598,9 +599,9 @@ function NearestSites({ d }: { d: TorData }) {
       <div ref={ref} style={{ position: 'relative' }}>
         <svg width={labelW + pw + 30} height={rows.length * rowH + 44} fontFamily={FONT.family}>
           {rows.map((r, i) => { const cy = i * rowH + rowH / 2
-            return <g key={r.site} onMouseEnter={(e) => tip.show(e, [`${r.name} (${r.site})`, `Addis ${pct(r.Addis)} · Adama ${pct(r.Adama)}`, `${pct(r['IMPROVE share of filters'])} of calibration filters`])} onMouseLeave={tip.hide}>
+            return <g key={r.site} {...tip.bind([`${r.name} (${r.site})`, `Addis ${pct(r.Addis)} · Adama ${pct(r.Adama)}`, `${pct(r['IMPROVE share of filters'])} of calibration filters`])}>
               <rect x={0} y={cy - rowH / 2} width={labelW + pw} height={rowH} fill={i % 2 ? 'transparent' : INK.zebra} />
-              <text x={labelW - 8} y={cy} dy="0.32em" textAnchor="end" fontSize={10.5} fill={INK.text}>{r.name.length > 26 ? `${r.name.slice(0, 25)}…` : r.name}</text>
+              <text x={labelW - 8} y={cy} dy="0.32em" textAnchor="end" fontSize={10.5} fill={INK.text}>{clipText(r.name, labelW - 12, { size: 10.5 })}</text>
               <rect x={labelW} y={cy - 6} width={x(r.Addis)} height={5} fill={ADDIS_ALL} />
               <rect x={labelW} y={cy + 1} width={x(r.Adama)} height={5} fill={ADAMA} />
               <line x1={labelW + x(r['IMPROVE share of filters'])} x2={labelW + x(r['IMPROVE share of filters'])} y1={cy - 8} y2={cy + 8} stroke={INK.text} strokeWidth={1.5} />

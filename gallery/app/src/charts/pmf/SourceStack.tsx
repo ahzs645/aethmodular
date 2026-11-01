@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react'
 import { CompositionTreemap } from '@/charts/partOfWhole/CompositionTreemap'
 import { PAPER_CALENDAR, PAPER_ORDER } from '@/lib/pmfPaper'
 import type { FilterRow, MetaFile, PmfFile, PmfRow } from '@/lib/types'
+import { pct } from '@/lib/format'
 import { ExcludedNote, useCountedFilter, useExclusionSplit } from '@/lib/markedRows'
 
 const PAPER = 'Paper (four seasons)'
@@ -45,7 +46,7 @@ export function SourceStack({ pmf, rows: inView, meta, id = 'sourcestack', initi
   // the export keys the dominant source (polluted_marine); readers see its name
   const dominant = (row: FilterRow): [string, string | null] => {
     const r = byId.get(row.id)
-    return ['dominant source', r?.dominant_source ? `${labelOfKey(r.dominant_source)} (${((r.dominant_fraction ?? 0) * 100).toFixed(0)} %)` : null]
+    return ['dominant source', r?.dominant_source ? `${labelOfKey(r.dominant_source)} (${pct(r.dominant_fraction ?? 0)})` : null]
   }
 
   // dominant_source is meaningful only on the normalised fractions: on the raw GF columns the largest tops out near 0.24

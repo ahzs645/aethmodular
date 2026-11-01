@@ -11,6 +11,7 @@ import { baseFilterId, focusStyle, useHighlightActions } from '@/lib/highlight'
 import { ScatterLayer } from '@/components/ScatterLayer'
 import { fidProps } from '@/lib/filterEdits'
 import { fmt, splitAtGaps } from '@/lib/stats'
+import { pct } from '@/lib/format'
 import { rollingByTime } from '@/lib/rolling'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { INK, MARGIN } from '@/lib/theme'
@@ -178,7 +179,7 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
           <table className="placement" style={{ maxWidth: 640 }}>
             <tbody>
               <tr><td className="f">n dated</td><td className="v">{preds.length}</td><td className="f">median [IQR]</td><td className="v">{fmt(q(0.5), 2)} [{fmt(q(0.25), 2)} – {fmt(q(0.75), 2)}]</td></tr>
-              <tr><td className="f">negative days</td><td className="v" style={{ color: neg ? INK.negative : INK.good }}>{neg} ({((100 * neg) / preds.length).toFixed(1)} %)</td><td className="f">days above 8 µg/m³</td><td className="v" style={{ color: high ? INK.negative : INK.good }}>{high}</td></tr>
+              <tr><td className="f">negative days</td><td className="v" style={{ color: neg ? INK.negative : INK.good }}>{neg} ({pct(neg / preds.length, 1)})</td><td className="f">days above 8 µg/m³</td><td className="v" style={{ color: high ? INK.negative : INK.good }}>{high}</td></tr>
               <tr><td className="f">group medians</td><td className="u" colSpan={3}>{gmed.map((g) => `${g.g}: ${fmt(g.med, 2)} (n=${g.n})`).join(' · ')}</td></tr>
             </tbody>
           </table>

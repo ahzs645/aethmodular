@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react'
 import { useChartOptions } from '@/lib/chartOptions'
 import { robustDomain } from '@/lib/axes'
-import { Marker } from '@/components/RefLines'
+import { Marker, RefBand } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
@@ -10,12 +10,16 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { INK, MARGIN, FONT } from '@/lib/theme'
 import type { CalibFile, CalibRow } from '@/lib/types'
-import { METRICS, fmtFit, spectraColor, isInterceptMetric, isSlopeMetric, metricLabel, metricOf, sameConfig, type Config, type Metric } from './common'
+import { METRICS, configTipLines, spectraColor, isInterceptMetric, isSlopeMetric, metricLabel, metricOf, sameConfig, type Config, type Metric } from './common'
 import { COHORT, COHORT_SHORT, CV_PROTOCOL, CV_PROTOCOL_SHORT, METRIC, PREPROCESSING, SELECTION_SPACE, label } from '@/lib/labels'
 import { calibrationReadout, cutoffPosition, fittingCounts, cutoffConfig, type CalibrationReadout, type CutoffAxis } from '@/lib/cutoffSweep'
 import { AxisChoices } from '@/components/AxisChoices'
 import { ChartAside } from '@/lib/singleView'
 import { FixedSetNote } from '@/lib/markedRows'
+import { coef } from '@/lib/format'
+
+/** a saved readout at the coefficient precision, or "unavailable" when the batch did not save it */
+const readout = (v: number | null | undefined) => (v == null ? 'unavailable' : coef(v))
 
 /**
  * Cutoff sweep — the "try somewhat more and somewhat less" experiment from
@@ -135,10 +139,10 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
           `${label(COHORT_SHORT, cohort)} ${p.r.cut} × ${label(PREPROCESSING, s.sp)}${s.sel !== 'raw' ? ` (${label(SELECTION_SPACE, s.sel)})` : ''}`,
           `Selected cohort: ${fmtCount(fittingCounts(p.r).cohort)} · fitted: ${fmtCount(fittingCounts(p.r).fitted)} · held-out: ${fmtCount(fittingCounts(p.r).heldout)} filters`,
           `${METRIC.k}: ${p.r.k ?? '—'} (rule)`,
-          `Test set (${siteName}): Deming ${fmtFit(allPairs ? p.r.adm : p.r.dm, allPairs ? p.r.adb : p.r.db)} · R² ${(allPairs ? p.r.ar2 : p.r.r2)?.toFixed(3) ?? '—'}`,
-          `Calibration set: IMPROVE cross-validation R² ${p.r.ho?.toFixed(3) ?? '—'}`,
-          `Calibration set: IMPROVE cross-validation RMSE ${calibrationReadout(p.r, 'cv_rmse')?.toFixed(3) ?? 'unavailable'} µg/filter`,
-          `Internal cross-validation RMSE: ${calibrationReadout(p.r, 'rmsecv')?.toFixed(3) ?? 'unavailable'} µg/filter`,
+          configTipLines(p.r, { site: siteName, set: allPairs ? 'all' : 'fixed' })[0],
+          `Calibration set: IMPROVE cross-validation R² ${coef(p.r.ho)}`,
+          `Calibration set: IMPROVE cross-validation RMSE ${readout(calibrationReadout(p.r, 'cv_rmse'))} µg/filter`,
+          `Internal cross-validation RMSE: ${readout(calibrationReadout(p.r, 'rmsecv'))} µg/filter`,
           'click to load into the PLS-factor sweep',
         ])
       }
@@ -200,7 +204,7 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
             <thead><tr><th>Spectra / selection</th><th>Selected cohort</th><th>Fitted</th><th>Held-out</th><th>Site-grouped cross-validation R²</th><th>Site-grouped cross-validation RMSE (µg/filter)</th><th>Internal cross-validation RMSE (µg/filter)</th></tr></thead>
             <tbody>{countRows.map((r) => {
               const counts = fittingCounts(r)
-              return <tr key={`${r.sp}|${r.sel}`}><td>{label(PREPROCESSING, r.sp)}{r.sel && r.sel !== 'raw' ? ` · ${label(SELECTION_SPACE, r.sel)}` : ''}</td><td>{fmtCount(counts.cohort)}</td><td>{fmtCount(counts.fitted)}</td><td>{fmtCount(counts.heldout)}</td><td>{r.ho?.toFixed(3) ?? 'unavailable'}</td><td>{calibrationReadout(r, 'cv_rmse')?.toFixed(3) ?? 'unavailable'}</td><td>{calibrationReadout(r, 'rmsecv')?.toFixed(3) ?? 'unavailable'}</td></tr>
+              return <tr key={`${r.sp}|${r.sel}`}><td>{label(PREPROCESSING, r.sp)}{r.sel && r.sel !== 'raw' ? ` · ${label(SELECTION_SPACE, r.sel)}` : ''}</td><td>{fmtCount(counts.cohort)}</td><td>{fmtCount(counts.fitted)}</td><td>{fmtCount(counts.heldout)}</td><td>{readout(r.ho)}</td><td>{readout(calibrationReadout(r, 'cv_rmse'))}</td><td>{readout(calibrationReadout(r, 'rmsecv'))}</td></tr>
             })}</tbody>
           </table>
           </div>
@@ -252,9 +256,7 @@ function SweepPanel({ series, metric, height, width, innerW, x, calib, yLabel, d
     <>
       <svg width={width} height={height} className="animated">
         <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-          {slope && (
-            <rect x={0} y={Math.max(0, y(calib.slope_box[1]))} width={innerW} height={Math.max(0, Math.min(innerH, y(calib.slope_box[0])) - Math.max(0, y(calib.slope_box[1])))} fill={INK.accent} fillOpacity={0.06} />
-          )}
+          {slope && <RefBand orient="h" at={[y(calib.slope_box[0]), y(calib.slope_box[1])]} size={innerH} length={innerW} />}
           {(metric === CV_METRIC || metric === 'ho') && <Marker orient="h" at={y(calib.heldout_floor)} from={0} to={innerW} />}
           <YAxis scale={y} x={0} label={yLabel} gridWidth={innerW} pick="y" />
           <XAxis scale={x} y={innerH} label={X_LABELS[axis]} pick="x" />

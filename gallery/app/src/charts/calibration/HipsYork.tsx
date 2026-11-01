@@ -9,6 +9,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useMac } from '@/lib/mac'
 import { fmt } from '@/lib/stats'
+import { fitSummary, pct } from '@/lib/format'
 import { MARGIN, BLANK_LINE_COLOR } from '@/lib/theme'
 import type { CalibRunsFile, YorkFit } from '@/lib/types'
 import { FixedSetNote } from '@/lib/markedRows'
@@ -70,8 +71,8 @@ export function HipsYork({ runs }: { runs: CalibRunsFile }) {
               const fits = shown.map((v) => [v, r.fits![v]] as const).filter((e): e is readonly [typeof e[0], YorkFit] => !!e[1] && !('error' in e[1]))
               return { key: r.site, label: runs.targets[r.site]?.site ?? r.site, labelColor: runs.targets[r.site]?.color,
                 tip: [`${runs.targets[r.site]?.site ?? r.site}`,
-                  ...fits.map(([v, f]) => `${VARIANT_LABEL[v]}: ${what} ${fmt(f[what], 3)}${showCI ? ` · approx. 95% CI [${fmt(f[what] - 1.96 * f[`${what}_se`], 3)}, ${fmt(f[what] + 1.96 * f[`${what}_se`], 3)}]` : ''} (slope ${fmt(f.slope, 3)} · intercept ${fmt(f.intercept, 3)} · κ ${fmt(f.kappa, 2)})`),
-                  `${r.n_matched} of ${r.n} filters matched · ${((r.frac_below_blank_r1 ?? 0) * 100).toFixed(0)} % below the blank R1 range`],
+                  ...fits.map(([v, f]) => `${VARIANT_LABEL[v]}: ${what} ${fmt(f[what], 3)}${showCI ? ` · approx. 95% CI [${fmt(f[what] - 1.96 * f[`${what}_se`], 3)}, ${fmt(f[what] + 1.96 * f[`${what}_se`], 3)}]` : ''} (${fitSummary({ slope: f.slope, intercept: f.intercept })} · κ ${fmt(f.kappa, 2)})`),
+                  `${r.n_matched} of ${r.n} filters matched · ${pct(r.frac_below_blank_r1 ?? 0)} below the blank R1 range`],
                 // one mark per blank-line convention, stacked within the site's row
                 marks: [VARIANTS.map((v, k) => {
                   const f = r.fits![v]

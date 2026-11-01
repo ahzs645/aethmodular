@@ -84,8 +84,8 @@ export function JacrosChain({ days }: { days: Day[] }) {
       subtitle="The raw MA350 export at Addis (MA350-0238, its Jacros file: 1,047 daily means): the loading factor BCc/BC1 and the compensation share 1 − BC1/BCc (median, interquartile range of days); the instrument's K (filled, 5–95 %) beside K* = (BC1 − BC2)/(BC1·ATN2 − BC2·ATN1), the K that would make the two spots agree on daily means (hollow, IQR); and spot 2 compensated with the instrument's K over the reported BCc (IQR), 1 if the spots agreed. ftir_49 reads these as: the compensation is 37–48 % of BCc at the channels that matter, so it is not a small correction."
       provenance="ftir_49_ma350_raw_chain_diagnostics (A1 daily fallback: k_distribution_daily_fallback, k_sensitivity_daily_fallback) · processed_sites/df_Jacros_9am_resampled.pkl">
       {days.length ? <IntervalStrip blocks={blocks} labelWidth={70} noteWidth={56} minPanelWidth={170}
-        panels={[{ label: 'BCc / BC1', reference: 1, format: (v) => v.toFixed(1) }, { label: '1 − BC1 / BCc', reference: 0, format: (v) => v.toFixed(1) },
-          { label: 'K (filled), K* (hollow)', reference: 0, format: (v) => v.toFixed(3) }, { label: 'BC2/(1−K·ATN2) ÷ BCc', reference: 1, format: (v) => v.toFixed(2) }]} />
+        panels={[{ label: 'BCc / BC1', reference: 1, format: (v) => fmt(v, 1) }, { label: '1 − BC1 / BCc', reference: 0, format: (v) => fmt(v, 1) },
+          { label: 'K (filled), K* (hollow)', reference: 0, format: (v) => fmt(v, 3) }, { label: 'BC2/(1−K·ATN2) ÷ BCc', reference: 1, format: (v) => fmt(v, 2) }]} />
         : <Empty>Addis's daily bins did not load.</Empty>}
     </ChartFrame>
   )
@@ -126,7 +126,7 @@ export function WindowEffect({ all, rows, meta }: { all: Record<string, Day[]>; 
       subtitle="On every filter date in the current subset the mean of the bins labelled the day before, the day and the day after (data_matching's legacy ±1-day match) against the single bin labelled on the date, in percent of the single bin. Thick: interquartile range; thin: 2.5–97.5 %. The gallery's own per-filter values use the overlap of the bins with each filter's sampling window instead (export_aethalometer.py)."
       provenance="ftir_49_ma350_raw_chain_diagnostics B6 (daily fallback), generalised to every instrument · data_matching.match_aeth_filter_data">
       {blocks[0].rows.length ? <IntervalStrip blocks={blocks} labelWidth={130} noteWidth={56} minPanelWidth={260}
-        panels={[{ label: '±1-day mean − single bin (% of the single bin)', reference: 0, format: (v) => v.toFixed(0) }]} />
+        panels={[{ label: '±1-day mean − single bin (% of the single bin)', reference: 0, format: (v) => fmt(v, 0) }]} />
         : <Empty>No filter dates in the current subset fall on a bin with IR BCc.</Empty>}
       {/* Filters → excluded: Mark (lib/markedRows): the excluded filters' dates are not among those counted */}
       {blocks[0].rows.length > 0 && <ExcludedNote of={(r) => r.code in all} />}

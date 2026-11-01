@@ -11,6 +11,7 @@ import { useFitHeight } from '@/lib/chartFit'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { ExcludedNote } from '@/lib/markedRows'
 import { seasonColor, siteColor } from '@/lib/siteColours'
+import { labelGutter } from '@/lib/fitLabel'
 
 const ROWS = ['Season', 'Site', 'Year'] as const
 const OVERLAPS = ['None', 'Some', 'Ridge'] as const
@@ -65,10 +66,7 @@ export function Ridgeline({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
 
   // Row labels can be long ("Belg (Feb-May, short rains)"), so the gutter is
   // sized from the actual text rather than a fixed margin that clips them.
-  const labelPad = useMemo(() => {
-    const longest = Math.max(8, ...groups.map((g) => g.name.length))
-    return Math.min(210, Math.round(longest * 6.4) + 26)
-  }, [groups])
+  const labelPad = useMemo(() => labelGutter(groups.map((g) => g.name), { size: 11.5, pad: 26, min: 77, max: 210 }), [groups])
 
   const fit = useFitHeight()
   // how far a row's peak may rise into the row above: the ridgeline's defining

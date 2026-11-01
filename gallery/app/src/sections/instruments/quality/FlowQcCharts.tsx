@@ -110,7 +110,7 @@ export function FlowRatioSites({ records }: { records: { instrument: FlowRecord[
       tip={<>No instrument runs near the nominal 3.0; each sits at its own split, and JPL/Pasadena and Delhi move a long way within their records. The saved 4-site figure counts 629 days at Pasadena (JPL); this union has 628 (the minute record's 9am days are taken from its local clock).</>}
       controls={<Segmented label="Records" value={group} options={['instrument', 'record'] as const} onChange={setGroup} optionLabel={(g) => (g === 'instrument' ? 'One per instrument' : 'Six records')} />}>
       {!list.length ? <Empty>No flow columns in the daily bins.</Empty> : <div className="chart-wrap">
-        <IntervalStrip blocks={blocks} labelWidth={190} noteWidth={60} panels={[{ label: 'Daily R = Flow1 / Flow2', marker: { value: NOMINAL_R, label: `nominal ${NOMINAL_R}.0` }, format: (v) => v.toFixed(1) }]} />
+        <IntervalStrip blocks={blocks} labelWidth={190} noteWidth={60} panels={[{ label: 'Daily R = Flow1 / Flow2', marker: { value: NOMINAL_R, label: `nominal ${NOMINAL_R}.0` }, format: (v) => fmt(v, 1) }]} />
         <SweepPlot series={series} xScale="time" height={300} yLabel="R (Flow1 / Flow2)" xLabel="9am day" yMarkers={[{ at: NOMINAL_R, label: `nominal ${NOMINAL_R}.0`, color: INK.muted }]} />
         <Key items={list.map((r) => ({ label: `${r.label} (median ${fmt(r.box?.median, 2)}, ${r.box?.n ?? 0} d)`, color: r.color, kind: r.dash ? 'dash' : 'line' }))} />
       </div>}
@@ -146,7 +146,7 @@ export function FlowRatioSite({ code, records, meta }: { code: string; records: 
           <g transform={`translate(8,${m.top})`}>
             <rect y={y(b.q75)} width={histW - 44} height={Math.max(0, y(b.q25) - y(b.q75))} fill={r.color} fillOpacity={0.1} />
             {bins.map((bn, i) => bn.length > 0 && <rect key={i} x={0} y={y(bn.x1!)} width={x(bn.length)} height={Math.max(0.5, y(bn.x0!) - y(bn.x1!) - 0.6)} fill={r.color} fillOpacity={0.8}
-              onMouseMove={(e) => tip.show(e, [`R ${fmt(bn.x0, 3)}–${fmt(bn.x1, 3)}`, `${bn.length} days`])} onMouseLeave={tip.hide} />)}
+              {...tip.bind([`R ${fmt(bn.x0, 3)}–${fmt(bn.x1, 3)}`, `${bn.length} days`])} />)}
             <line x1={0} x2={histW - 44} y1={y(b.median)} y2={y(b.median)} stroke={INK.text} strokeDasharray="4 3" />
             <XAxis scale={x} y={height - m.top - m.bottom} tickCount={3} label="Days" labelDy={38} />
           </g>
@@ -312,7 +312,7 @@ export function MinuteRDistribution({ site, flow, name }: { site: MinuteSite | n
             { id: 'k', label: 'KDE', color: INK.negative, width: 1.8, marks: false, points: d.kde }]} />
         <IntervalStrip labelWidth={62} noteWidth={0} blocks={[{ key: 'box', rows: [{ key: 'R', label: 'R', tip: [name, `quartiles ${fmt(b.q25, 3)}–${fmt(b.q75, 3)}`, `whiskers ${fmt(b.whisker_lo, 3)}–${fmt(b.whisker_hi, 3)}`, `range ${fmt(b.min, 3)}–${fmt(b.max, 3)}`, `mean ${fmt(b.mean, 3)}`],
           marks: [[{ mid: null, lo: b.whisker_lo, hi: b.whisker_hi, color: INK.accent, faint: true }, { mid: b.median, lo: b.q25, hi: b.q75, color: INK.accent }, { mid: b.mean, color: INK.accent, shape: 'hollow', r: 3 }]] }] }]}
-          panels={[{ label: 'R = Flow1 / Flow2 (box plot)', domain: d.dom, ...(nominal ? { marker: { value: NOMINAL_R, label: `target ${NOMINAL_R}.0` } } : {}), format: (v) => v.toFixed(2) }]} />
+          panels={[{ label: 'R = Flow1 / Flow2 (box plot)', domain: d.dom, ...(nominal ? { marker: { value: NOMINAL_R, label: `target ${NOMINAL_R}.0` } } : {}), format: (v) => fmt(v, 2) }]} />
         <Key items={[{ label: 'density of minutes', color: INK.accent, kind: 'square' }, { label: 'KDE', color: INK.negative, kind: 'line' }, { label: 'median and quartiles', color: INK.accent, kind: 'dot' }, { label: 'mean', color: INK.accent, kind: 'hollow' }, { label: 'whiskers (1.5 IQR)', color: INK.muted, kind: 'line' }]} />
       </>}
     </ChartFrame>
@@ -359,8 +359,8 @@ function ClassHeat({ f, width }: { f: MinuteSite['flow_qc']; width: number }) {
             if (c <= 0) return null
             const cx = h.x[0] + (i + 0.5) * dx, cy = h.y[0] + (j + 0.5) * dy, cls = ratioClass(cy / cx, T)
             return <rect key={`${i}-${j}`} x={i * cw} y={side - (j + 1) * ch} width={cw + 0.3} height={ch + 0.3} fill={CLASS_COLOR[cls]()} fillOpacity={shade(c)}
-              onMouseMove={(e) => tip.show(e, [`Flow2 ${fmt(h.x[0] + i * dx, 2)}–${fmt(h.x[0] + (i + 1) * dx, 2)} mL/min`, `Flow1 ${fmt(h.y[0] + j * dy, 2)}–${fmt(h.y[0] + (j + 1) * dy, 2)} mL/min`,
-                `R at the centre ${fmt(cy / cx, 3)}: ${CLASS_LABEL[cls]}`, `${c.toLocaleString()} minutes`])} onMouseLeave={tip.hide} />
+              {...tip.bind(() => [`Flow2 ${fmt(h.x[0] + i * dx, 2)}–${fmt(h.x[0] + (i + 1) * dx, 2)} mL/min`, `Flow1 ${fmt(h.y[0] + j * dy, 2)}–${fmt(h.y[0] + (j + 1) * dy, 2)} mL/min`,
+                `R at the centre ${fmt(cy / cx, 3)}: ${CLASS_LABEL[cls]}`, `${c.toLocaleString()} minutes`])} />
           }))}
           <g clipPath={`url(#${clip})`} pointerEvents="none">
             {lines.map((l, k) => <line key={k} x1={x(h.x[0])} y1={y(l.k * h.x[0])} x2={x(h.x[1])} y2={y(l.k * h.x[1])} stroke={l.color} strokeWidth={l.w} strokeDasharray={l.dash} />)}

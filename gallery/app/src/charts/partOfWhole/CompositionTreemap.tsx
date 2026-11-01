@@ -13,7 +13,9 @@ import { categoricalScale, hasNamedColours } from '@/lib/palettes'
 import type { FilterRow, MetaFile, SeasonMeta } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
 import { useChartLabel, useFitHeight } from '@/lib/chartFit'
-import { fitInCircle, fitInRect } from '@/lib/fitLabel'
+import { fitInCircle, fitInRect, fitsWidth } from '@/lib/fitLabel'
+import { pct as pctOf } from '@/lib/format'
+import { YAxis } from '@/components/Axes'
 import { useHighlightActions } from '@/lib/highlight'
 import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
 import { collapsePanelAxes } from '@/lib/axes'
@@ -335,7 +337,7 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
     leaf.data.name,
     `${leaf.data.family ?? ''}`,
     `${fmt(leaf.value, 3)} ${UNITS}`,
-    `${(((leaf.value ?? 0) / total) * 100).toFixed(1)} % of ${totalNoun} mass`,
+    `${pctOf((leaf.value ?? 0) / total, 1)} of ${totalNoun} mass`,
     `n = ${leaf.data.n}`,
   ]
 
@@ -351,7 +353,7 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
       ...timeSpecies.map((f): [string, string] => {
         const c = typeof p.row[f] === 'number' ? (p.row[f] as number) : null
         const sh = share?.(p.row, f)
-        return [f, c === null && sh == null ? '—' : [sh != null ? `${(sh * 100).toFixed(1)} %` : null, c !== null ? `${fmt(c, 2)} ${UNITS}` : null].filter(Boolean).join(' · ')]
+        return [f, c === null && sh == null ? '—' : [sh != null ? pctOf(sh, 1) : null, c !== null ? `${fmt(c, 2)} ${UNITS}` : null].filter(Boolean).join(' · ')]
       }),
       ...(extraFields?.(p.row) ?? []),
       // the measured species under the reconstructed components shown, from the filter's own row
@@ -428,7 +430,7 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
                         {twoLevel && root.children?.map((fam: any) => (
                           <g key={fam.data.name} pointerEvents="none">
                             <rect x={fam.x0} y={fam.y0} width={Math.max(0, fam.x1 - fam.x0)} height={Math.max(0, fam.y1 - fam.y0)} fill={familyColor(fam.data.name)} fillOpacity={0.1 * famDimOf(fam.data.name)} stroke={familyColor(fam.data.name)} strokeOpacity={0.5 * famDimOf(fam.data.name)} rx={3} />
-                            {fam.x1 - fam.x0 > 60 && <text x={fam.x0 + 5} y={fam.y0 + 12} fontSize={10} fontWeight={600} fill={familyColor(fam.data.name)} fontFamily={FONT.family}>{fam.data.name} · {(((fam.value ?? 0) / total) * 100).toFixed(0)}%</text>}
+                            {fam.x1 - fam.x0 > 60 && <text x={fam.x0 + 5} y={fam.y0 + 12} fontSize={10} fontWeight={600} fill={familyColor(fam.data.name)} fontFamily={FONT.family}>{fam.data.name} · {fmt(((fam.value ?? 0) / total) * 100, 0)}%</text>}
                           </g>
                         ))}
                         {root.leaves().map((leaf: any, i) => {
@@ -444,7 +446,7 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
                           const label = withName ?? (roomW > 14 ? fitInRect(leaf.data.name, roomW, roomH) : null)
                           const withPct = !!withName
                           return (
-                            <g key={i} opacity={dimK(leaf.data)} onMouseEnter={(e) => tip.show(e, leafTip(leaf, total))} onMouseLeave={tip.hide}>
+                            <g key={i} opacity={dimK(leaf.data)} {...tip.bind(() => leafTip(leaf, total))}>
                               <rect x={leaf.x0} y={leaf.y0} width={w} height={h} fill={color(leaf.data.name)} fillOpacity={0.85} stroke={INK.panel} rx={2} />
                               {label && (
                                 <text x={leaf.x0 + 5} y={leaf.y0 + 4 + label.size} fontSize={label.size} fill={inkOnFill(color(leaf.data.name))} fontFamily={FONT.family} pointerEvents="none">
@@ -452,7 +454,7 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
                                 </text>
                               )}
                               {label && withPct && (
-                                <text x={leaf.x0 + 5} y={leaf.y0 + 4 + label.size + label.lines.length * label.lineHeight + 1} fontSize={Math.min(9.5, label.size)} fill={inkOnFill(color(leaf.data.name))} fillOpacity={0.85} fontFamily={FONT.mono} pointerEvents="none">{pct.toFixed(1)}%</text>
+                                <text x={leaf.x0 + 5} y={leaf.y0 + 4 + label.size + label.lines.length * label.lineHeight + 1} fontSize={Math.min(9.5, label.size)} fill={inkOnFill(color(leaf.data.name))} fillOpacity={0.85} fontFamily={FONT.mono} pointerEvents="none">{fmt(pct, 1)}%</text>
                               )}
                             </g>
                           )
@@ -474,7 +476,7 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
                           // shrink, then wrap, so the name stays inside its circle
                           const label = leaf.r > 12 ? fitInCircle(leaf.data.name, leaf.r) : null
                           return (
-                            <g key={i} opacity={dimK(leaf.data)} onMouseEnter={(e) => tip.show(e, leafTip(leaf, total))} onMouseLeave={tip.hide}>
+                            <g key={i} opacity={dimK(leaf.data)} {...tip.bind(() => leafTip(leaf, total))}>
                               <circle cx={leaf.x} cy={leaf.y} r={leaf.r} fill={color(leaf.data.name)} fillOpacity={0.85} stroke={INK.panel} />
                               {label && (
                                 <text x={leaf.x} y={leaf.y - ((label.lines.length - 1) * label.lineHeight) / 2} textAnchor="middle" fontSize={label.size} fill={inkOnFill(color(leaf.data.name))} fontFamily={FONT.family} pointerEvents="none">
@@ -499,12 +501,11 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
                         {arcs.map((a, i) => (
                           <path
                             key={i} d={arc(a) ?? ''} fill={color(a.data.name)} fillOpacity={0.88 * dimK(a.data)} stroke={INK.panel} strokeWidth={1}
-                            onMouseEnter={(e) => tip.show(e, [a.data.name, a.data.family, `${fmt(val(a.data), 3)} ${UNITS}`, `${((val(a.data) / total) * 100).toFixed(1)} %`, `n = ${a.data.n}`])}
-                            onMouseLeave={tip.hide}
+                            {...tip.bind(() => [a.data.name, a.data.family, `${fmt(val(a.data), 3)} ${UNITS}`, pctOf(val(a.data) / total, 1), `n = ${a.data.n}`])}
                           />
                         ))}
                         {twoLevel && famArcs.map((a, i) => (
-                          <path key={`f${i}`} d={famArc(a) ?? ''} fill={familyColor(a.data.name)} fillOpacity={0.7 * famDimOf(a.data.name)} onMouseEnter={(e) => tip.show(e, [a.data.name, `${fmt(a.data.v, 2)} ${UNITS}`, `${((a.data.v / total) * 100).toFixed(1)} % of ${totalNoun} mass`])} onMouseLeave={tip.hide} />
+                          <path key={`f${i}`} d={famArc(a) ?? ''} fill={familyColor(a.data.name)} fillOpacity={0.7 * famDimOf(a.data.name)} {...tip.bind(() => [a.data.name, `${fmt(a.data.v, 2)} ${UNITS}`, `${pctOf(a.data.v / total, 1)} of ${totalNoun} mass`])} />
                         ))}
                         <text textAnchor="middle" dy="0.35em" fontSize={12} fill={INK.muted} fontFamily={FONT.mono}>{fmt(total, 1)}</text>
                       </g>
@@ -592,13 +593,7 @@ function StackedBars({ bars, grouped, pct, families, famMarks, solid, val, dim, 
   return (
     <div className="chart-scroll" tabIndex={0} role="region" aria-label="Stacked bars, scroll horizontally for all seasons"><svg width={plotWidth} height={innerH + margin.top + margin.bottom} className="animated">
       <g transform={`translate(${margin.left},${margin.top})`}>
-        {y.ticks(5).map((t) => (
-          <g key={t} transform={`translate(0,${y(t)})`}>
-            <line x2={innerW} stroke={INK.grid} />
-            <text x={-8} dy="0.32em" textAnchor="end" fontSize={10.5} fill={INK.muted} fontFamily={FONT.family}>{pct ? `${Math.round(t * 100)}%` : fmt(t, 1)}</text>
-          </g>
-        ))}
-        <text transform={`translate(${-margin.left + 13},${innerH / 2}) rotate(-90)`} textAnchor="middle" fontSize={11} fill={INK.axis} fontFamily={FONT.family}>{yLabel}</text>
+        <YAxis scale={y} x={0} tickCount={5} gridWidth={innerW} label={yLabel} format={(t) => (pct ? `${Math.round(t * 100)}%` : fmt(t, 1))} />
         {bars.map((bar) => {
           const kids = kidsOf(bar)
           const total = d3.sum(kids, val)
@@ -626,9 +621,9 @@ function StackedBars({ bars, grouped, pct, families, famMarks, solid, val, dim, 
                 const h = y(y0) - y(y1)
                 const share = total ? (val(k) / total) * 100 : 0
                 return (
-                  <g key={k.name} opacity={dim(k)} onMouseEnter={(e) => tip.show(e, [k.name, `${where} · ${k.family}`, `${fmt(val(k), 3)} ${units}`, `${share.toFixed(1)} % of the ${totalNoun} ${fmt(total, 1)} ${units}`, `${mass ? `PM2.5 ${fmt(bar.pm25_mean, 1)} µg/m³ · ` : ''}n = ${k.n} of ${bar.nRows} filters`, ...(dominance?.kidTip(bar, k.name) ?? []), ...(kidSource?.(bar, k.name) ?? [])])} onMouseLeave={tip.hide}>
+                  <g key={k.name} opacity={dim(k)} {...tip.bind(() => [k.name, `${where} · ${k.family}`, `${fmt(val(k), 3)} ${units}`, `${fmt(share, 1)} % of the ${totalNoun} ${fmt(total, 1)} ${units}`, `${mass ? `PM2.5 ${fmt(bar.pm25_mean, 1)} µg/m³ · ` : ''}n = ${k.n} of ${bar.nRows} filters`, ...(dominance?.kidTip(bar, k.name) ?? []), ...(kidSource?.(bar, k.name) ?? [])])}>
                     <rect x={bx} y={y(y1)} width={bw} height={Math.max(0, h)} fill={color(k.name)} fillOpacity={solid ? 1 : 0.88} stroke={INK.panel} strokeWidth={0.6} />
-                    {h > 13 && bw > 70 && <text x={bx + bw / 2} y={y(y1) + h / 2} dy="0.35em" textAnchor="middle" fontSize={9.5} fill={inkOnFill(color(k.name))} fontFamily={FONT.family} pointerEvents="none">{k.name} {pct ? `${share.toFixed(0)}%` : fmt(val(k), 1)}</text>}
+                    {h > 13 && bw > 70 && <text x={bx + bw / 2} y={y(y1) + h / 2} dy="0.35em" textAnchor="middle" fontSize={9.5} fill={inkOnFill(color(k.name))} fontFamily={FONT.family} pointerEvents="none">{k.name} {pct ? `${fmt(share, 0)}%` : fmt(val(k), 1)}</text>}
                   </g>
                 )
               })}
@@ -649,13 +644,13 @@ function StackedBars({ bars, grouped, pct, families, famMarks, solid, val, dim, 
                 <>
                   <text x={bx + bw / 2} y={innerH + 16} textAnchor="middle" fontSize={11.5} fontWeight={600} fill={bar.siteColor} fontFamily={FONT.family}>{bar.label}</text>
                   {/* two short lines, so neighbouring bars' readouts never run into each other; on a narrow
-                      bar the unit and the 'of PM2.5' words go (about 6 px a character at 10 px mono) */}
+                      bar the unit and the 'of PM2.5' words go (measured as drawn, in mono) */}
                   {(() => {
-                    const room = bw + 10, wide = `${fmt(total, 1)} ${units}`.length * 6 <= room
+                    const room = bw + 10, wide = fitsWidth(`${fmt(total, 1)} ${units}`, room, 10, 400, FONT.mono)
                     return <>
                       <text x={bx + bw / 2} y={innerH + 30} textAnchor="middle" fontSize={10} fill={INK.muted} fontFamily={FONT.mono}>{wide ? `${fmt(total, 1)} ${units}` : fmt(total, 1)}</text>
                       {mass && <text x={bx + bw / 2} y={innerH + 42} textAnchor="middle" fontSize={9.5} fill={INK.muted} fontFamily={FONT.mono}>
-                        <title>{`${fmt(total, 1)} of PM2.5 ${fmt(bar.pm25_mean, 1)} ${units}`}</title>{`of PM₂.₅ ${fmt(bar.pm25_mean, 1)}`.length * 5.8 <= room ? `of PM₂.₅ ${fmt(bar.pm25_mean, 1)}` : `/ ${fmt(bar.pm25_mean, 1)}`}</text>}
+                        <title>{`${fmt(total, 1)} of PM2.5 ${fmt(bar.pm25_mean, 1)} ${units}`}</title>{fitsWidth(`of PM₂.₅ ${fmt(bar.pm25_mean, 1)}`, room, 9.5, 400, FONT.mono) ? `of PM₂.₅ ${fmt(bar.pm25_mean, 1)}` : `/ ${fmt(bar.pm25_mean, 1)}`}</text>}
                       {!mass && dominance && <text x={bx + bw / 2} y={innerH + 42} textAnchor="middle" fontSize={9.5} fill={INK.muted} fontFamily={FONT.mono}>{dominance.footer(bar)}</text>}
                     </>
                   })()}

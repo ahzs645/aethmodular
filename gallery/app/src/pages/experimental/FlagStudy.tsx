@@ -14,6 +14,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { useSearchParam } from '@/lib/url'
 import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, inkOn, themed } from '@/lib/theme'
+import { clipText } from '@/lib/fitLabel'
 import { dotFill, dotRim } from '@/lib/highlight'
 import { useTheme } from '@/lib/colorTheme'
 import { f2, f3, pct, signed } from '@/lib/format'
@@ -278,7 +279,7 @@ function BlindSpotMap({ d }: { d: FlagData }) {
             {sitesDrawn.map((s) => (
               <circle key={s.code} cx={x(s.load)} cy={y(s.dist)} r={rSite(s.n)} fill={flagColour(s.flagged)} fillOpacity={0.95}
                 stroke={s.code === 'ETAD' ? INK.text : INK.panel} strokeWidth={s.code === 'ETAD' ? 2.5 : 1.5}
-                onMouseEnter={(e) => tip.show(e, [`${s.site} (${s.code})`, `${s.n} filters · median loading pct ${f2(s.load)}, distance pct ${f2(s.dist)}`, `${pct(s.flagged)} flagged · ${pct(s.beyond)} heavier than any IMPROVE filter`])} onMouseLeave={tip.hide} />
+                {...tip.bind([`${s.site} (${s.code})`, `${s.n} filters · median loading pct ${f2(s.load)}, distance pct ${f2(s.dist)}`, `${pct(s.flagged)} flagged · ${pct(s.beyond)} heavier than any IMPROVE filter`])} />
             ))}
             {labels.map((l) => <g key={l.key} pointerEvents="none">
               {l.leader && <line x1={l.ax} y1={l.ay} x2={l.lx} y2={l.ly} stroke={INK.axis} strokeWidth={0.6} />}
@@ -465,8 +466,8 @@ function SiteKeepChart({ d }: { d: FlagData }) {
             <XAxis scale={x} y={ih} label="RMSE against TOR (µg per filter)" labelDy={36} tickCount={6} />
             {rows.map((r, i) => {
               const cy = i * rowH + rowH / 2, kept = r['RMSE kept']
-              return <g key={r.site} onMouseEnter={(e) => tip.show(e, [`${r.site}${r.urban ? ' (urban)' : ''}`, `${r.filters} filters, ${pct(r['impacted share'])} impacted`, `kept ${pct(r['kept share'])}`,
-                `RMSE ${f2(r['RMSE all'])} → ${f2(kept)} µg`, `${r['missed failures']} missed failures`])} onMouseLeave={tip.hide}>
+              return <g key={r.site} {...tip.bind([`${r.site}${r.urban ? ' (urban)' : ''}`, `${r.filters} filters, ${pct(r['impacted share'])} impacted`, `kept ${pct(r['kept share'])}`,
+                `RMSE ${f2(r['RMSE all'])} → ${f2(kept)} µg`, `${r['missed failures']} missed failures`])}>
                 <rect x={-m.left} y={cy - rowH / 2} width={iw + m.left + m.right} height={rowH} fill={i % 2 ? 'transparent' : INK.zebra} />
                 <text x={-6} y={cy} dy="0.32em" textAnchor="end" fontSize={10} fill={r.urban ? INK.negative : INK.text}>{r.site}</text>
                 {kept != null && <line x1={x(r['RMSE all'])} x2={x(kept)} y1={cy} y2={cy} stroke={INK.axis} strokeWidth={1} />}
@@ -518,10 +519,10 @@ function SpartanSites({ d }: { d: FlagData }) {
           <g transform={`translate(0,${m.top})`}>
             {rows.map((s, i) => {
               const cy = i * rowH + rowH / 2, addis = s.code === 'ETAD'
-              return <g key={s.code} onMouseEnter={(e) => tip.show(e, [`${s.site} (${s.code.replace('*', '')})`, `${s.n} filters · ${pct(s.flagged)} flagged · median risk ${f2(s.risk)}`,
-                `median loading pct ${f2(s.load)} · ${pct(s.beyond)} heavier than any IMPROVE filter`, `median distance pct ${f2(s.dist)}`])} onMouseLeave={tip.hide}>
+              return <g key={s.code} {...tip.bind([`${s.site} (${s.code.replace('*', '')})`, `${s.n} filters · ${pct(s.flagged)} flagged · median risk ${f2(s.risk)}`,
+                `median loading pct ${f2(s.load)} · ${pct(s.beyond)} heavier than any IMPROVE filter`, `median distance pct ${f2(s.dist)}`])}>
                 <rect x={0} y={cy - rowH / 2} width={m.left + 3 * colW} height={rowH} fill={i % 2 ? 'transparent' : INK.zebra} />
-                <text x={m.left - 8} y={cy} dy="0.32em" textAnchor="end" fontSize={10.5} fontWeight={addis ? 700 : 400} fill={addis ? ADDIS_ALL : INK.text}>{s.site.length > 26 ? `${s.site.slice(0, 25)}…` : s.site}</text>
+                <text x={m.left - 8} y={cy} dy="0.32em" textAnchor="end" fontSize={10.5} fontWeight={addis ? 700 : 400} fill={addis ? ADDIS_ALL : INK.text}>{clipText(s.site, m.left - 12, { size: 10.5, weight: addis ? 700 : 400 })}</text>
                 {cols.map((c, ci) => {
                   const v = s[c.key] as number | null, sc = d3.scaleLinear().domain(c.dom).range([0, colW - 46])
                   const ex = c.extra?.(s) ?? 0

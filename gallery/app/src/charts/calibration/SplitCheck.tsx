@@ -8,6 +8,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
+import { fitSummary } from '@/lib/format'
 import { INK, MARGIN, FONT } from '@/lib/theme'
 import { dotRim } from '@/lib/highlight'
 import type { CalibRun, CalibRunsFile } from '@/lib/types'
@@ -95,7 +96,7 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
               {sx[0] === 'Deming slope' && x.domain()[0] <= 1 && 1 <= x.domain()[1] && <RefLine orient="v" at={x(1)} from={0} to={innerH} />}
               {sy[0] === 'Deming intercept' && y.domain()[0] <= 0 && 0 <= y.domain()[1] && <RefLine orient="h" at={y(0)} from={0} to={innerW} />}
               {rows.map((r, i) => (
-                <g key={r.split} onMouseEnter={(e) => tip.show(e, [`${SPLIT_LABEL[r.split] ?? r.split} (n=${r.n})`, `Deming slope ${fmt(slopeOf(r), 3)} · intercept ${fmt(icOf(r), 3)} µg/m³`, `R² ${fmt(r.m!.R2 ?? null, 3)}`])} onMouseLeave={tip.hide}>
+                <g key={r.split} {...tip.bind([`${SPLIT_LABEL[r.split] ?? r.split} (n=${r.n})`, `Deming ${fitSummary({ slope: slopeOf(r), intercept: icOf(r) }, { unit: 'µg/m³' })}`, `R² ${fmt(r.m!.R2 ?? null, 3)}`])}>
                   {r.split === 'all'
                     ? <rect x={x(fx(r)) - 6} y={y(fy(r)) - 6} width={12} height={12} transform={`rotate(45 ${x(fx(r))} ${y(fy(r))})`} fill={SPLIT_COLOR.all} />
                     : <circle cx={x(fx(r))} cy={y(fy(r))} r={6} fill={SPLIT_COLOR[r.split] ?? INK.muted} {...dotRim()} />}

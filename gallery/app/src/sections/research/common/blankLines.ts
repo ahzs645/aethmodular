@@ -7,6 +7,7 @@
  * under each construction. Polynomials here are lowest power first (numpy's are highest first).
  */
 import { quadratic, quantile, sd } from '../../../lib/stats.ts'
+import { fmt } from '../../../lib/format.ts'
 
 /** lines with fewer blanks get no refit (hips_lab.blank_lines, ftir_47 MIN_BLANKS) */
 export const MIN_BLANKS = 5
@@ -15,7 +16,7 @@ export interface LineRef { lot: string; intercept: number; slope: number }
 /** hips_lab._line_id: the deployed line's key */
 export const lineKey = (l: LineRef) => `${l.lot}|I=${l.intercept.toFixed(3)}|S=${l.slope.toFixed(4)}`
 /** "251 · 1416.2 − 2.783·R1" */
-export const lineLabel = (l: LineRef) => `${l.lot} · ${l.intercept.toFixed(1)} ${l.slope < 0 ? '−' : '+'} ${Math.abs(l.slope).toFixed(3)}·R1`
+export const lineLabel = (l: LineRef) => `${l.lot} · ${fmt(l.intercept, 1)} ${l.slope < 0 ? '−' : '+'} ${fmt(Math.abs(l.slope), 3)}·R1`
 
 export interface BlankPoint extends LineRef { R1: number; T1: number; date?: string | null }
 /** a loaded sample: its shipped Fabs and dv = 100·A/V, so Fabs = τ·dv */

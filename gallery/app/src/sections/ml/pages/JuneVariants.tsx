@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Figure } from '@/components/Figure'
-import { f2 } from '@/lib/format'
+import { f2, fitSummary, percent } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { median } from '@/lib/stats'
 import { num, type Row } from '@/lib/table'
@@ -12,7 +12,6 @@ import { TABLEAU } from '@/lib/palettes'
 
 const TARGET = 'target: slope 1, intercept 0'
 const s = (v: unknown) => String(v ?? '')
-const pct0 = (v: unknown) => (typeof v === 'number' ? `${v.toFixed(0)} %` : '—')
 const last = <T,>(a: T[]): T | undefined => a[a.length - 1]
 
 /**
@@ -130,7 +129,7 @@ export function JuneVariants(_props: SectionPageProps) {
     <Figure kind="intervals" id="june-variant-fit" data={d.vrows} row="label" block="block"
       panels={[{ value: 'in-sample R² (06)', label: 'In-sample R² (06, k = 20)' }, { value: 'in-sample RMSE (06, µg)', label: 'In-sample RMSE (06, µg)', reference: 0 }, { value: '%RMSECV (09/10)', label: '%RMSECV at k* (09/10; RMSECV ÷ mean EC)', reference: 0 }]}
       aggregate={{ stat: 'median', interval: 'none' }} labelWidth={240}
-      title={`CAL-1's 3σ trim fits best in sample (R² ${f2(vr('CAL-1')?.['in-sample R² (06)'])}) but cross-validates worse than keeping everything (%RMSECV ${pct0(vr('CAL-1')?.['%RMSECV (09/10)'])} vs ${pct0(vr('CAL-0')?.['%RMSECV (09/10)'])})`}
+      title={`CAL-1's 3σ trim fits best in sample (R² ${f2(vr('CAL-1')?.['in-sample R² (06)'])}) but cross-validates worse than keeping everything (%RMSECV ${percent(vr('CAL-1')?.['%RMSECV (09/10)'])} vs ${percent(vr('CAL-0')?.['%RMSECV (09/10)'])})`}
       subtitle="In-sample numbers (06, common k = 20; CAL-4 capped at 15) measure fit, not accuracy; %RMSECV (09 and 10, 10-fold interleaved, each variant at its own k*) is the comparison across variants. CAL-6 and CAL-7 were added in 10, so they have no 06 numbers. The diagnostics' small n makes their in-sample R² meaningless."
       provenance={provenance(data, ['variants'])} />
 
@@ -183,7 +182,7 @@ export function JuneVariants(_props: SectionPageProps) {
     <Figure kind="table" id="june-frontier-table" data={d.lot}
       columns={[{ key: 'family', label: 'Change' }, { key: 'label', label: 'Calibration' }, { key: 'n', label: 'Training n', format: 'int' }, { key: 'slope', label: `Slope (${m.label})`, format: 'f2' }, { key: 'intercept', label: 'Intercept (µg/m³)', format: 'f2' }, { key: 'r2', label: 'R²', format: 'f2' }, { key: 'distance', label: `Distance to (1, 0) at ${m.label}`, format: 'f2' }]}
       title={`Ranked by distance to slope 1, intercept 0 at ${m.label}`}
-      subtitle={`Distance = √((slope − 1)² + intercept²), recomputed at the reader's MAC (13 saved it at MAC 10). The full set itself (n = 13,012) is the reference row: slope ${f2(d.lot.find((r) => r.correction === 'raw')?.slope)}, intercept ${f2(d.lot.find((r) => r.correction === 'raw')?.intercept)}.`}
+      subtitle={`Distance = √((slope − 1)² + intercept²), recomputed at the reader's MAC (13 saved it at MAC 10). The full set itself (n = 13,012) is the reference row: ${fitSummary({ slope: d.lot.find((r) => r.correction === 'raw')?.slope, intercept: d.lot.find((r) => r.correction === 'raw')?.intercept }, { digits: 2, sep: ', ' })}.`}
       provenance={provenance(data, ['frontier', 'subsets', 'selection'])} />
 
     <Figure kind="table" id="june-checks" data={checks}

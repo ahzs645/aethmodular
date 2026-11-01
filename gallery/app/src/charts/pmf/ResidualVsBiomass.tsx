@@ -5,7 +5,7 @@ import { Crossplot, sharedCrossDomains, type CrossLine, type CrossPoint } from '
 import { FacetGrid } from '@/components/FacetGrid'
 import { RefLine } from '@/components/RefLines'
 import { useGalleryData } from '@/hooks/useGalleryData'
-import { coef, f2, fmt } from '@/lib/format'
+import { coef, f2, fmt, percent } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { biomassPct, BIOMASS_SOURCES } from '@/lib/pmfCoverage'
 import { regression } from '@/lib/stats'
@@ -88,7 +88,7 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
   const yLabel = pct ? `(${a} − ${b}) / ${a} (%)` : `${a} − ${b} (µg/m³)`
   const point = (d: Day): CrossPoint => ({
     x: d.bm, y: d.res, color: colorOf.get(d.season) ?? INK.neutral, id: d.p.id, site: pmf.site_name, season: d.season, seasonColor: colorOf.get(d.season),
-    tip: [d.p.id, `${pmf.site_name} · ${d.p.date}`, `biomass: ${d.bm.toFixed(1)} % of the sources`, `${pct ? 'difference' : `${a} − ${b}`}: ${f2(d.res)}${pct ? ' %' : ' µg/m³'}`, d.season],
+    tip: [d.p.id, `${pmf.site_name} · ${d.p.date}`, `biomass: ${percent(d.bm, 1)} of the sources`, `${pct ? 'difference' : `${a} − ${b}`}: ${f2(d.res)}${pct ? ' %' : ' µg/m³'}`, d.season],
     rec: { id: d.p.id, source: 'PMF sources · residual against biomass', site: pmf.site_name, date: d.p.date, fields: [['biomass (% of sources)', +d.bm.toFixed(2)], [yLabel, +d.res.toFixed(3)], ['season', d.season]] },
   })
   const all = days.map(point)
@@ -130,7 +130,7 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
             <thead><tr><th>Season</th><th>n</th><th>R²</th><th>slope (per % biomass)</th><th>intercept</th><th>mean biomass %</th></tr></thead>
             <tbody>{table.map((t) => (
               <tr key={t.name}><td><span className="swatch" style={{ background: colorOf.get(t.name) ?? 'transparent' }} /> {t.name}</td><td>{t.n}</td>
-                <td>{t.st ? coef(t.st.r2) : '—'}</td><td>{t.st ? fmt(t.st.slope, 4) : '—'}</td><td>{t.st ? coef(t.st.intercept) : '—'}</td><td>{Number.isFinite(t.bm) ? t.bm.toFixed(1) : '—'}</td></tr>
+                <td>{t.st ? coef(t.st.r2) : '—'}</td><td>{t.st ? fmt(t.st.slope, 4) : '—'}</td><td>{t.st ? coef(t.st.intercept) : '—'}</td><td>{fmt(t.bm, 1)}</td></tr>
             ))}</tbody>
           </table>
           <p className="chart-note">OLS of the difference on the biomass share (scipy.stats.linregress, as ETAD_Factor_Analysis printed it); a season with fewer than three days has no fit.</p>

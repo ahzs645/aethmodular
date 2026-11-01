@@ -8,6 +8,7 @@ import { useChartOptions } from '@/lib/chartOptions'
 import { averageLinkage, corrDistance, leafOrder, type Clade } from '@/lib/cluster'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { f2, fmt } from '@/lib/format'
+import { labelGutter } from '@/lib/fitLabel'
 import { FixedSetNote } from '@/lib/markedRows'
 import { num, type Table } from '@/lib/table'
 import { FONT, INK } from '@/lib/theme'
@@ -71,7 +72,9 @@ export function SiteSimilarityMatrix({ table, provenance }: { table: Table | und
     const font = Math.min(11, cell * 0.85)
     // every name once the rows are tall enough to read; otherwise the SPARTAN targets only
     const allLabels = font >= 6.5
-    const left = allLabels ? Math.max(left0, 8 + font * 0.62 * Math.max(...view.names.map((s) => label(s).length))) : left0
+    // the row names as drawn: the SPARTAN targets bold and at least 10 px, the rest at the cell's font
+    const left = allLabels ? Math.max(labelGutter(view.names.filter((s) => !isTarget(s)).map(label), { size: font, pad: 8, min: left0 }),
+      labelGutter(view.names.filter(isTarget).map(label), { size: Math.max(font, 10), weight: 700, pad: 8, min: left0 })) : left0
     const side = cell * n
     const pos = new Map(view.order.map((idx, k) => [idx, k]))
     // dendrogram: leaves at their cell centre, internal nodes at their children's mid and merge height

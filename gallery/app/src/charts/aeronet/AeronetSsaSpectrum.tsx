@@ -60,7 +60,7 @@ export function AeronetSsaSpectrum({ rows, meta }: { rows: FilterRow[]; meta: Me
                       <g key={p.w}>
                         {p.se !== null && <line x1={x(p.w)} x2={x(p.w)} y1={y(p.mean - p.se)} y2={y(p.mean + p.se)} stroke={c} strokeWidth={1.4} />}
                         <circle cx={x(p.w)} cy={y(p.mean)} r={4} fill={c} stroke={INK.panel} strokeWidth={1}
-                          onMouseEnter={(e) => tip.show(e, [col.label(l.k), `SSA ${p.w} nm: ${fmt(p.mean, 3)} ± ${fmt(p.se, 3)} (SE)`, `${p.n} filter windows`])} onMouseLeave={tip.hide} />
+                          {...tip.bind(() => [col.label(l.k), `SSA ${p.w} nm: ${fmt(p.mean, 3)} ± ${fmt(p.se, 3)} (SE)`, `${p.n} filter windows`])} />
                       </g>
                     ))}
                   </g>

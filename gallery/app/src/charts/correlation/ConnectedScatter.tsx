@@ -193,17 +193,14 @@ export function ConnectedScatter({ rows, meta, xField, yField, axes }: { rows: F
                         fill={i === 0 ? INK.panel : s.color}
                         stroke={s.color}
                         strokeWidth={i === 0 ? 2.2 : 1}
-                        onMouseEnter={(e) =>
-                          tip.show(e, [
-                            `${s.name} · ${label(p.key)}`,
-                            `${xField} median = ${fmt(p.x)}`,
-                            `${yField} median = ${fmt(p.y)}`,
-                            `ratio y/x = ${fmt(p.x !== 0 ? p.y / p.x : null, 3)}`,
-                            `n = ${p.n}`,
-                            ...(step === 'Month of year' && !byGroup ? [seasonOf(p.key, s.name) ?? ''] : []),
-                          ])
-                        }
-                        onMouseLeave={tip.hide}
+                        {...tip.bind([
+                          `${s.name} · ${label(p.key)}`,
+                          `${xField} median = ${fmt(p.x)}`,
+                          `${yField} median = ${fmt(p.y)}`,
+                          `ratio y/x = ${fmt(p.x !== 0 ? p.y / p.x : null, 3)}`,
+                          `n = ${p.n}`,
+                          ...(step === 'Month of year' && !byGroup ? [seasonOf(p.key, s.name) ?? ''] : []),
+                        ])}
                       />
                       {labels && (compareAll ? labelOk(x(p.x) + 7, y(p.y) - 6, i === 0 || i === s.pts.length - 1) : selectedPoint?.key === p.key) && (
                         <text x={Math.max(4, Math.min(innerW - 25, x(p.x) + 10))} y={Math.max(12, y(p.y) - 9)} fontSize={11} fill={s.color} fontFamily={FONT.mono} pointerEvents="none" stroke={INK.panel} strokeWidth={3} paintOrder="stroke">

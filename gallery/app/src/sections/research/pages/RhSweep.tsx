@@ -3,7 +3,7 @@ import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { FieldSelect } from '@/components/FieldSelect'
 import { Key } from '@/components/Key'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
-import { fmt } from '@/lib/format'
+import { fitSummary, fmt } from '@/lib/format'
 import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
@@ -65,7 +65,7 @@ export function RhSweep({ rows: viewRows, meta: viewMeta }: SectionPageProps) {
     id: `${g.name}-${side}`, label: `${shortSeason(g.name)} · ${side === 'low' ? `${split} ≤ threshold` : 'above'}`,
     color: mode === 'Pooled' ? (side === 'low' ? LOW : HIGH) : g.color, dash: side === 'high' ? '5 4' : undefined,
     points: g.sweep.map((f) => ({ x: f.threshold, y: metric(f, side), tip: [`${shortSeason(g.name)}, ${side === 'low' ? '≤' : '>'} ${f.threshold}`, `n ${side === 'low' ? f.nLow : f.nHigh}`,
-      `slope ${fmt(f[side]?.slope, 3)} · intercept ${fmt(f[side]?.intercept, 3)} · R² ${fmt(f[side]?.r2, 2)}`] })),
+      fitSummary({ slope: f[side]?.slope, intercept: f[side]?.intercept, r2: f[side]?.r2 }, { r2Digits: 2 })] })),
   })))
   const best = groups.map((g) => ({ g, b: bestLowThreshold(g.sweep, minN) }))
   const chosen = best.flatMap(({ g, b }) => (b ? [{ series: `${g.name}-low`, x: b.threshold }] : []))

@@ -85,7 +85,7 @@ function StationPanel({ v, data, side, tip }: {
         <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />
         <RegressionLines stats={stats} x={x} y={y} domain={x.domain()} width={side} height={side} />
         {pairs.map((p) => <circle key={p.d} cx={x(p.s)} cy={y(p.e)} r={r} fill={DOT} {...dotFill('dense')} {...dotRim()}
-          onMouseEnter={(e) => tip.show(e, [p.d, `station ${fmt(p.s, 1)} · ERA5 ${fmt(p.e, 1)} ${v.unit}`])} onMouseLeave={tip.hide} />)}
+          {...tip.bind(() => [p.d, `station ${fmt(p.s, 1)} · ERA5 ${fmt(p.e, 1)} ${v.unit}`])} />)}
       </g>
     </svg>
   )

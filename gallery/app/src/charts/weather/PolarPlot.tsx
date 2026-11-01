@@ -113,13 +113,11 @@ export function PolarPlot({ rows, meta, field, source, site, splits = SPLITS, pi
                   {g.cells.map((c) => c.value === null || c.speed > topBin ? null : (
                     <path key={`${c.sector}-${c.speed}`} d={arc({ a: (c.sector * 2 * Math.PI) / nSectors, r0: rs(edges[c.speed]), r1: rs(upper(c.speed)) }) ?? ''}
                       fill={color(c.value)} stroke={color(c.value)} strokeWidth={0.4}
-                      onMouseEnter={(e) => tip.show(e, [`${label(g.name)} · from ${wind!.sectors[c.sector]} at ${speedText(c.speed)}`,
-                        `mean ${f}: ${fmt(c.value, 2)} ${unit}`, `${smooth ? 'kernel-weighted ' : ''}${fmt(c.hours, smooth ? 1 : 0)} h · ${c.filters} filters`])}
-                      onMouseLeave={tip.hide} />
+                      {...tip.bind(() => [`${label(g.name)} · from ${wind!.sectors[c.sector]} at ${speedText(c.speed)}`,
+                        `mean ${f}: ${fmt(c.value, 2)} ${unit}`, `${smooth ? 'kernel-weighted ' : ''}${fmt(c.hours, smooth ? 1 : 0)} h · ${c.filters} filters`])} />
                   ))}
                   <circle r={rs(edges[0] ?? 0.5)} fill={g.calmValue === null ? INK.panel : color(g.calmValue)} stroke={INK.grid}
-                    onMouseEnter={(e) => tip.show(e, [`${label(g.name)} · calm (${wind!.calm})`, g.calmValue === null ? `${g.calm} h: too few` : `mean ${f}: ${fmt(g.calmValue, 2)} ${unit}`])}
-                    onMouseLeave={tip.hide} />
+                    {...tip.bind(() => [`${label(g.name)} · calm (${wind!.calm})`, g.calmValue === null ? `${g.calm} h: too few` : `mean ${f}: ${fmt(g.calmValue, 2)} ${unit}`])} />
                 </RosePanel>
               ))}
         </div>

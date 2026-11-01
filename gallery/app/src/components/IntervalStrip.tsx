@@ -5,6 +5,7 @@ import { XAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { FONT, INK } from '@/lib/theme'
+import { trim } from '@/lib/format'
 
 /**
  * Grouped dot-interval rows (a forest plot): blocks of rows, e.g. one block per
@@ -129,12 +130,12 @@ export function IntervalStrip({ blocks, panels, labelWidth = 220, rowHeight = 20
                 <Marker orient="v" at={x(p.marker.value)} from={-6} to={ih + 4} />
                 <text x={x(p.marker.value)} y={-10} textAnchor="middle" fontSize={10} fontFamily={FONT.mono} fill={INK.muted}>{p.marker.label}</text>
               </g>}
-              <XAxis scale={x} y={ih + 4} tickCount={6} label={p.label} labelDy={36} pick={p.pick ? 'x' : undefined} format={(v) => p.format ? p.format(+v) : String(+(+v).toFixed(2))} />
+              <XAxis scale={x} y={ih + 4} tickCount={6} label={p.label} labelDy={36} pick={p.pick ? 'x' : undefined} format={(v) => p.format ? p.format(+v) : trim(v, 2)} />
             </g>
           })}
           {layout.map(({ b, rowsTop }) => b.rows.map((r, j) => {
             const cy = rowsTop + j * rowHeight + rowHeight / 2
-            return <g key={`${b.key}|${r.key}`} onMouseMove={(e) => r.tip && tip.show(e, r.tip)} onMouseLeave={tip.hide}
+            return <g key={`${b.key}|${r.key}`} {...(r.tip && tip.bind(r.tip))}
               onClick={r.onClick} style={r.onClick ? { cursor: 'pointer' } : undefined}>
               {/* the whole row answers the pointer, so its note follows along the line and not only over the marks */}
               {r.tip && <rect x={-m.left + 4} y={cy - rowHeight / 2} width={w - 8} height={rowHeight} fill="transparent" />}

@@ -20,6 +20,7 @@ import { useSearchParam } from '@/lib/url'
 import { RATIO_GROUP } from '@/lib/viewFields'
 import { AAOD675, hasAod, LEVEL_PARAM, LEVELS, levelLabel, stationsPath, useAeronet, withLevel, type AeronetLevel, type AeronetStations } from '@/lib/aeronet'
 import type { AxesOpts } from '@/lib/axes'
+import { fmt } from '@/lib/format'
 import type { FilterRow, MetaFile } from '@/lib/types'
 
 /**
@@ -125,7 +126,7 @@ export function AeronetPage({ rows: rows15, picked, onPick, meta, field, axes, s
             <h2 style={{ margin: 0 }}>{one.name} · the column over the filters</h2>
             <p className="subtitle" style={{ margin: '4px 0 0' }}>
               {one.n} filters, {span}, each with the mean of the AERONET retrievals inside its own sampling window
-              {station ? ` at ${station.station.replace(/_/g, ' ')}, ${station.km.toFixed(1)} km away (of all ${station.filters} filters from this site, ${station.with_aod} have AOD and ${station.with_inversion} an inversion)` : ''}.
+              {station ? ` at ${station.station.replace(/_/g, ' ')}, ${fmt(station.km, 1)} km away (of all ${station.filters} filters from this site, ${station.with_aod} have AOD and ${station.with_inversion} an inversion)` : ''}.
               {' '}{levelLabel(level)}: daylight, cloud-free retrievals only. Pick more sites in the Samples panel to compare them.
             </p>
           </> : explain && <>

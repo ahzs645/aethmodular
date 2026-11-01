@@ -10,6 +10,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { belowAbove, dominantShare } from '@/lib/pmfCoverage'
 import { PAPER_ORDER } from '@/lib/pmfPaper'
 import { FONT, INK } from '@/lib/theme'
+import { fmt, percent } from '@/lib/format'
 import type { PmfFile, PmfRow } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import { ExcludedNote, useCountedFilter, useExclusionSplit } from '@/lib/markedRows'
@@ -50,7 +51,7 @@ export function DominanceHistogram({ pmf, rows: inView }: { pmf: PmfFile; rows: 
       controls={<Segmented label="Bars" value={colour} options={COLOURS} onChange={setColour} title="One colour, as the notebook; or each bar split by the source that dominates its days" />}>
       {rows.length < 3 ? <Empty>Too few PMF days in view ({rows.length}).</Empty> : <>
         <FacetGrid items={panels} minCell={300} maxCols={2} title={(p) => p.title}
-          note={(p) => `n=${p.n} · mean ${p.mean.toFixed(1)} % · median ${p.median.toFixed(1)} %`}
+          note={(p) => `n=${p.n} · mean ${percent(p.mean, 1)} · median ${percent(p.median, 1)}`}
           render={(p, w) => <DominancePanel days={p.days} counts={p.counts} width={w} axis={p.axis} stacked={colour === 'By dominant source'} sources={labels} />} />
         <Key items={colour === 'By dominant source' ? labels.map((s) => ({ label: s.label, color: s.color, kind: 'square' as const })) : [{ label: 'PMF days', color: INK.accent, kind: 'square' }, { label: 'dominance thresholds', color: INK.negative, kind: 'dash' }]} />
       </>}
@@ -88,8 +89,8 @@ function DominancePanel({ days, counts, width, axis, stacked, sources }: {
             const bx = x(b.x0) + 0.5, bw = Math.max(0, x(b.x1) - x(b.x0) - 1)
             const parts = stacked ? order.map((s) => ({ s, n: b.days.filter((d) => d.source === s).length })).filter((p) => p.n) : [{ s: '', n: b.days.length }]
             let acc = 0
-            return <g key={i} onMouseMove={(e) => tip.show(e, [`${b.x0.toFixed(1)} – ${b.x1.toFixed(1)} %`, `${b.days.length} PMF days`,
-              ...order.flatMap((s) => { const n = b.days.filter((d) => d.source === s).length; return n ? [`${s}: ${n}`] : [] })])} onMouseLeave={tip.hide}>
+            return <g key={i} {...tip.bind(() => [`${fmt(b.x0, 1)} – ${fmt(b.x1, 1)} %`, `${b.days.length} PMF days`,
+              ...order.flatMap((s) => { const n = b.days.filter((d) => d.source === s).length; return n ? [`${s}: ${n}`] : [] })])}>
               {parts.map((p) => {
                 const y0 = y(acc), y1 = y(acc + p.n)
                 acc += p.n

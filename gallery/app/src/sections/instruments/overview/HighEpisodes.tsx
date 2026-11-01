@@ -88,9 +88,8 @@ export function HighEpisodes({ hs, meta }: { hs: HourlySeries; meta: MetaFile })
                 const on = e.i === sel?.i, has = traced.has(e.i)
                 return <circle key={e.i} cx={x(e.start)} cy={yTop(e.peak)} r={2 + Math.sqrt(e.hours) * 1.6 + (on ? 1.5 : 0)} fill={has ? color(e) : INK.panel} fillOpacity={0.8}
                   stroke={on ? INK.text : color(e)} strokeWidth={on ? 2 : 1.2} style={{ cursor: 'pointer' }} onClick={() => setPick(e.i)}
-                  onMouseEnter={(ev) => tip.show(ev, [`${hhmm(e.start)} (${DOW[e.dow]})${e.season ? ` · ${seasonOnly(e.season.name)}` : ''}`, `${e.hours} h above ${fmt(hs.threshold, 1)} µg/m³`,
-                    `peak ${fmt(e.peak, 1)} µg/m³ in hour ${e.peakAt + 1}, mean ${fmt(e.mean, 1)}`, `rise ${e.peakAt} h, fall ${e.hours - 1 - e.peakAt} h`, has ? 'minute trace: click' : 'no minute trace: click for the hourly view'])}
-                  onMouseLeave={tip.hide} />
+                  {...tip.bind([`${hhmm(e.start)} (${DOW[e.dow]})${e.season ? ` · ${seasonOnly(e.season.name)}` : ''}`, `${e.hours} h above ${fmt(hs.threshold, 1)} µg/m³`,
+                    `peak ${fmt(e.peak, 1)} µg/m³ in hour ${e.peakAt + 1}, mean ${fmt(e.mean, 1)}`, `rise ${e.peakAt} h, fall ${e.hours - 1 - e.peakAt} h`, has ? 'minute trace: click' : 'no minute trace: click for the hourly view'])} />
               })}
               <XAxis scale={x} y={topH} tickCount={8} format={d3.utcFormat('%b %Y')} />
             </g>

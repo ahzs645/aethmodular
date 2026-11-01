@@ -15,7 +15,7 @@ import { useLoaded } from '@/lib/data'
 import { useSearchParam } from '@/lib/url'
 import { baseFilterId, type FilterRecord, useHighlightActions } from '@/lib/highlight'
 import { FONT, INK } from '@/lib/theme'
-import { f3 } from '@/lib/format'
+import { f3, fmt } from '@/lib/format'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { HeatCell } from '@/components/HeatCell'
 import { ColorLegend } from '@/components/ColorLegend'
@@ -154,7 +154,7 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
         ['Compared with', targetLabel],
         ['Filter role', isTarget ? 'Target filter' : rank >= 0 ? 'Most similar filter' : 'Comparison filter'],
         ['Similarity rank (displayed list)', rank >= 0 ? rank + 1 : null],
-        ['Mean signed Pearson r', rank >= 0 ? topFilters.rows[rank].r.toFixed(4) : null],
+        ['Mean signed Pearson r', rank >= 0 ? fmt(topFilters.rows[rank].r, 4) : null],
         ['Baseline', baselineName(method)],
         ['Selection mask', maskMeta.label],
       ],
@@ -291,19 +291,19 @@ function GroupRanking({ meta, ranked, target, selfR, compare, onCompare, onTarge
       provenance="export_similarity.py · pairs_{method}_{mask}.bin"
       controls={<>{controls}<button type="button" className="btn quiet" onClick={() => downloadCsv(
         ['rank', 'group', 'site', 'site_name', 'season', 'split', 'n_filters', 'mean_r', 'target', 'method', 'mask'],
-        ranked.map((r, i) => { const g = meta.groups[r.g]; return [i + 1, groupLabel(meta, r.g), meta.sites[g.site].site, siteName(meta.sites[g.site]), g.season == null ? 'all year' : calendarOf(meta, g.site)[g.season].name, meta.sites[g.site].split, g.n, r.r.toFixed(4), groupLabel(meta, target), method, maskLabel] }),
+        ranked.map((r, i) => { const g = meta.groups[r.g]; return [i + 1, groupLabel(meta, r.g), meta.sites[g.site].site, siteName(meta.sites[g.site]), g.season == null ? 'all year' : calendarOf(meta, g.site)[g.season].name, meta.sites[g.site].split, g.n, fmt(r.r, 4), groupLabel(meta, target), method, maskLabel] }),
         title)}>CSV</button></>}
     >
       <div ref={ref} className="chart-wrap">
         {loading ? <LoadState what="scores" /> : rows.length === 0 ? <Empty>No group passes these filters.</Empty> : (
           <IntervalStrip labelWidth={labelW} rowHeight={rowH} noteWidth={nW} minPanelWidth={160}
-            panels={[{ label: 'Mean Pearson r', domain: x.domain() as [number, number], stems: true, format: (v) => v.toFixed(3),
-              marker: selfR != null && x(selfR) >= 0 && x(selfR) <= innerW ? { value: selfR, label: `target within-group r ${selfR.toFixed(3)}` } : undefined }]}
+            panels={[{ label: 'Mean Pearson r', domain: x.domain() as [number, number], stems: true, format: (v) => f3(v),
+              marker: selfR != null && x(selfR) >= 0 && x(selfR) <= innerW ? { value: selfR, label: `target within-group r ${f3(selfR)}` } : undefined }]}
             blocks={[{ key: 'ranked', rows: rows.map((r) => {
               const g = meta.groups[r.g], s = meta.sites[g.site], sel = compare === r.g
               return { key: String(r.g), label: `${groupLabel(meta, r.g)}${s.split === 'test' ? ' †' : ''}`, labelColor: s.split === 'test' ? TEST_COLOR : undefined,
                 note: `n=${g.n}`, selected: sel, onClick: () => onCompare(sel ? null : r.g),
-                tip: [groupLabel(meta, r.g), siteWhere(s), `mean r ${r.r.toFixed(4)}`, `${g.n} filters · ${splitName(s.split)}`, selfR != null ? `${r.r >= selfR ? '+' : ''}${(r.r - selfR).toFixed(4)} vs target's own r` : '', sel ? 'click to clear the overlay' : 'click to overlay its spectra'].filter(Boolean),
+                tip: [groupLabel(meta, r.g), siteWhere(s), `mean r ${fmt(r.r, 4)}`, `${g.n} filters · ${splitName(s.split)}`, selfR != null ? `${r.r >= selfR ? '+' : ''}${fmt(r.r - selfR, 4)} vs target's own r` : '', sel ? 'click to clear the overlay' : 'click to overlay its spectra'].filter(Boolean),
                 marks: [[{ mid: r.r, color: groupColor(meta, r.g, INK.accent), r: 4.5 }]] }
             }) }]} />
         )}
@@ -351,7 +351,7 @@ function SeasonMatrix({ meta, pairs, target, columns }: { meta: SimilarityMeta; 
           <svg width={Math.max(width, labelW + cw * columns.length + 10)} height={top + rowGroups.length * ch + 8}>
             <g fontFamily={FONT.family}>
               {columns.map((c, j) => (
-                <text key={c} transform={`translate(${labelW + j * cw + cw / 2},${top - 6}) rotate(-45)`} fontSize={10.5} onMouseMove={(e) => tip.show(e, [groupLabel(meta, c), siteWhere(meta.sites[meta.groups[c].site]), `${meta.groups[c].n} filters`])} onMouseLeave={tip.hide} fill={meta.sites[meta.groups[c].site].split === 'test' ? TEST_COLOR : INK.text}>{groupLabel(meta, c)}</text>
+                <text key={c} transform={`translate(${labelW + j * cw + cw / 2},${top - 6}) rotate(-45)`} fontSize={10.5} {...tip.bind([groupLabel(meta, c), siteWhere(meta.sites[meta.groups[c].site]), `${meta.groups[c].n} filters`])} fill={meta.sites[meta.groups[c].site].split === 'test' ? TEST_COLOR : INK.text}>{groupLabel(meta, c)}</text>
               ))}
               {rowGroups.map((r, i) => (
                 <text key={r} x={labelW - 8} y={top + i * ch + ch / 2} dy="0.35em" textAnchor="end" fontSize={11.5} fontWeight={r === target ? 700 : 400} fill={groupColor(meta, r, INK.text)}>
@@ -363,13 +363,13 @@ function SeasonMatrix({ meta, pairs, target, columns }: { meta: SimilarityMeta; 
                 const j = columns.indexOf(c)
                 return (
                   <HeatCell key={`${r}-${c}`} x={labelW + j * cw} y={top + i * ch} width={cw - 1} height={ch - 1} fill={v == null ? null : color(v)} outline={r === target}
-                    label={cw >= 40 && v != null ? v.toFixed(3) : null} onEnter={(e) => tip.show(e, [`${groupLabel(meta, r)} vs ${groupLabel(meta, c)}`, `mean r ${v == null ? '—' : v.toFixed(4)}`, siteWhere(meta.sites[meta.groups[c].site])])} onLeave={tip.hide} />
+                    label={cw >= 40 && v != null ? f3(v) : null} onEnter={(e) => tip.show(e, [`${groupLabel(meta, r)} vs ${groupLabel(meta, c)}`, `mean r ${fmt(v, 4)}`, siteWhere(meta.sites[meta.groups[c].site])])} onLeave={tip.hide} />
                 )
               })}
             </g>
           </svg>
         )}
-        {vals.length > 0 && <div className="legend"><ColorLegend scale={color} scheme={colours.scheme} label="mean Pearson r between the two groups" width={200} format={(v) => v.toFixed(3)} /></div>}
+        {vals.length > 0 && <div className="legend"><ColorLegend scale={color} scheme={colours.scheme} label="mean Pearson r between the two groups" width={200} format={f3} /></div>}
         {vals.length > 0 && <Note>The outlined row is the current target.</Note>}
         {tip.node}
       </div>
@@ -419,8 +419,7 @@ function TopComposition({ meta, rows, available, targetLabel }: { meta: Similari
                 let acc = 0
                 return (
                   <g key={s.site} transform={`translate(0,${i * rowH})`}
-                    onMouseMove={(e) => tip.show(e, [`${meta.sites[s.site].site} · ${splitName(meta.sites[s.site].split)}`, siteWhere(meta.sites[s.site]), `${s.fs.length} of ${total} (${Math.round((100 * s.fs.length) / total)}%)`, ...counts.filter((c) => c.n).map((c) => `${c.c.name}: ${c.n}`), ...(undated ? [`undated: ${undated}`] : [])])}
-                    onMouseLeave={tip.hide}>
+                    {...tip.bind([`${meta.sites[s.site].site} · ${splitName(meta.sites[s.site].split)}`, siteWhere(meta.sites[s.site]), `${s.fs.length} of ${total} (${Math.round((100 * s.fs.length) / total)}%)`, ...counts.filter((c) => c.n).map((c) => `${c.c.name}: ${c.n}`), ...(undated ? [`undated: ${undated}`] : [])])}>
                     <text x={-8} y={rowH / 2} dy="0.35em" textAnchor="end" fontSize={11.5} fill={meta.sites[s.site].split === 'test' ? TEST_COLOR : INK.text}>{meta.sites[s.site].label}{meta.sites[s.site].split === 'test' ? ' †' : ''}</text>
                     {counts.map(({ c, n }) => {
                       seasonsSeen.set(c.name, c.color)
@@ -437,7 +436,7 @@ function TopComposition({ meta, rows, available, targetLabel }: { meta: Similari
           </svg>
         )}
         <Legend {...lg.props} items={[...seasonsSeen.entries()].map(([label, color]) => ({ label, color, shape: 'square' as const }))} />
-        {total > 0 && <ExplainOnly><Note>{total} filters from {bySite.length} sites{rest ? `, of which ${bySite.length - 20} smaller contributors (${rest} filters) are not drawn` : ''}. The top 5 sites supply {Math.round(top5 * 100)}%, and the effective number of sites (1/Σp²) is {effective.toFixed(1)}: a lower number means the list is more concentrated. † marks an outer test site.</Note></ExplainOnly>}
+        {total > 0 && <ExplainOnly><Note>{total} filters from {bySite.length} sites{rest ? `, of which ${bySite.length - 20} smaller contributors (${rest} filters) are not drawn` : ''}. The top 5 sites supply {Math.round(top5 * 100)}%, and the effective number of sites (1/Σp²) is {fmt(effective, 1)}: a lower number means the list is more concentrated. † marks an outer test site.</Note></ExplainOnly>}
         {available < meta.top_k && <Note>Outer test sites are hidden, so {available} of the {meta.top_k} stored most-similar filters remain.</Note>}
         {tip.node}
       </div>
@@ -458,7 +457,7 @@ function FilterTable({ meta, rows, targetLabel, maskLabel, method, onHover, pinn
       subtitle={`Each filter's mean signed r against every ${targetLabel} filter (${baselineName(method)}, ${maskLabel}). This is the score the 500-filter analog selections rank by. Selected here from all sites, training and outer test alike, unless the test-site switch is off.`}
       controls={<button type="button" className="btn quiet" onClick={() => downloadCsv(
         ['rank', 'sample_id', 'site', 'site_name', 'latitude', 'longitude', 'split', 'date', 'season', 'mean_r', 'target', 'method', 'mask'],
-        rows.map((t, i) => { const s = meta.sites[meta.filters.site[t.filter]]; return [i + 1, meta.filters.sample_id[t.filter], s.site, siteName(s), s.lat, s.lon, s.split, meta.filters.date[t.filter], seasonName(t.filter), t.r.toFixed(4), targetLabel, method, maskLabel] }),
+        rows.map((t, i) => { const s = meta.sites[meta.filters.site[t.filter]]; return [i + 1, meta.filters.sample_id[t.filter], s.site, siteName(s), s.lat, s.lon, s.split, meta.filters.date[t.filter], seasonName(t.filter), fmt(t.r, 4), targetLabel, method, maskLabel] }),
         title)}>CSV ({rows.length})</button>}>
       <div style={{ overflowX: 'auto' }} onMouseLeave={() => onHover(null)}>
         <table className="census-table">
@@ -472,7 +471,7 @@ function FilterTable({ meta, rows, targetLabel, maskLabel, method, onHover, pinn
                 <td title={siteWhere(s)} style={{ color: s.split === 'test' ? TEST_COLOR : undefined }}>{s.site}{s.split === 'test' ? ' †' : ''} <span style={{ color: INK.muted, fontSize: 12 }}>{siteName(s)}</span></td>
                 <td className="mono">{meta.filters.date[t.filter] ?? '—'}</td>
                 <td>{seasonName(t.filter)}</td>
-                <td className="mono">{t.r.toFixed(4)}</td>
+                <td className="mono">{fmt(t.r, 4)}</td>
               </tr>
             )
           })}</tbody>

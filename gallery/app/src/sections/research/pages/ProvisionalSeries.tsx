@@ -3,7 +3,7 @@ import * as d3 from 'd3'
 import { Figure } from '@/components/Figure'
 import { RunSeries } from '@/charts/calibration/RunSeries'
 import { groupColorFn } from '@/charts/calibration/common'
-import { f2, fmt } from '@/lib/format'
+import { f2, fitSummary, fmt } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { ExcludedNote, FixedSetNote, useCountedFilter, useExclStatus } from '@/lib/markedRows'
 import { num, type Row } from '@/lib/table'
@@ -93,7 +93,7 @@ export function ProvisionalSeries(props: SectionPageProps) {
       <p>The locked Lowest-OC/EC 800 × spline-baseline calibration (k = {view.prov.k}) over {view.n === view.dated ? `all ${view.n}` : `${view.n} of the ${view.dated}`} dated Addis filters{view.n === view.dated ? '' : ' (the rest excluded under Filters → excluded)'}: median {f2(view.median)} µg/m³ (IQR {f2(view.q1)}–{f2(view.q3)}), maximum {f2(view.max)},
         {' '}{fmt(view.card.negative_pct, 2)} % negative and {fmt(view.card.above_8_pct, 2)} % above 8 µg/m³. ftir_29's committed summary gives median {f2(committed?.median_ugm3)} and maximum {f2(committed?.max)} on its {committed?.n_dated} filters: {view.n === committed?.n_dated ? 'the explorer readouts reproduce it on the same filters' : 'on the same filters (Filters → excluded: Include, nothing excluded by hand) the explorer readouts reproduce it'}.
         {' '}No MAC enters the series (predicted µg per filter ÷ sampled volume). Season medians: {Object.entries(seasons).map(([g, v]) => `${seasonOf(g)} ${f2(v)}`).join(', ')}.</p>
-      <p>Held out at IMPROVE sites the model never saw, at Addis-like composition, it reproduces TOR EC at slope {f2(view.prov.heldout?.slope)}, R² {f2(view.prov.heldout?.R2)}; {fmt(view.prov.extrap_pct, 2)} % of Addis filters sit beyond its training score envelope, against {fmt(view.raw.extrap_pct, 2)} % for the raw-spectra model (ftir_30).
+      <p>Held out at IMPROVE sites the model never saw, at Addis-like composition, it reproduces TOR EC at {fitSummary({ slope: view.prov.heldout?.slope, r2: view.prov.heldout?.R2 }, { digits: 2, r2Digits: 2, sep: ', ' })}; {fmt(view.prov.extrap_pct, 2)} % of Addis filters sit beyond its training score envelope, against {fmt(view.raw.extrap_pct, 2)} % for the raw-spectra model (ftir_30).
         {' '}What it cannot claim: no Addis filter has thermal EC, so the validation is the right composition on the wrong continent. Say “provisional” with every number.</p>
       <FixedSetNote subject="the offset figure" what="ftir_15's saved bootstrap intervals (the series, its summaries here, the season intervals, the crossplot and the explorer's Kiremt/Dry ratios follow it)" />
     </PageIntro>

@@ -14,7 +14,7 @@ import { Legend, useLegend } from '@/components/Legend'
 import { ANALOG_SELECTION_EXCLUDED, OCT1_ALSO_EXCLUDED, type Region } from '@/components/SpectralRegions'
 import { SpectrumPlot, type SpectrumAnnotation, type SpectrumBand, type SpectrumSeries } from '@/components/SpectrumPlot'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
-import { coef, f2, f3, fmt, pct } from '@/lib/format'
+import { coef, f2, f3, fmt, pct, percent } from '@/lib/format'
 import { Markdown } from '@/lib/markdown'
 import { densities, num, rowsOf, summarize, uniq, where, INTERVAL_LABEL, type Interval, type Row, type Table, type Value } from '@/lib/table'
 import { BASELINE_COLOR, FONT, INK, SPECTRAL_REGION } from '@/lib/theme'
@@ -104,7 +104,7 @@ const REGIONS: Record<RegionName, readonly Region[]> = {
   analog: ANALOG_SELECTION_EXCLUDED, oct1: OCT1_ALSO_EXCLUDED, ptfe: [SPECTRAL_REGION.ptfe], co2: [SPECTRAL_REGION.co2],
 }
 export const FORMAT: Record<FormatName, (v: unknown) => string> = {
-  f2, f3, coef, pct: (v) => pct(v), percent: (v) => (typeof v === 'number' ? `${v.toFixed(0)} %` : '—'),
+  f2, f3, coef, pct: (v) => pct(v), percent: (v) => percent(v),
   int: (v) => (typeof v === 'number' ? Math.round(v).toLocaleString() : '—'), text: (v) => (v == null ? '—' : String(v)),
 }
 const PALETTE = [TABLEAU.blue, TABLEAU.orange, TABLEAU.green, TABLEAU.red, TABLEAU.teal, TABLEAU.yellow, TABLEAU.purple, TABLEAU.pink, TABLEAU.brown, TABLEAU.grey]

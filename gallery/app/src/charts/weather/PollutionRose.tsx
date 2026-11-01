@@ -130,7 +130,7 @@ export function PollutionRose({ rows, meta, field, source, site, splits = SPLITS
                   if (!freq) {
                     if (sec.value === null) return null
                     return <path key={s} d={arc({ a, r0: 16, r1: r(sec.value) }) ?? ''} fill={valueColor(sec.value)} stroke={INK.panel} strokeWidth={0.5}
-                      onMouseEnter={(e) => tip.show(e, [...head, `${statName}: ${fmt(sec.value, 2)} ${unit}`])} onMouseLeave={tip.hide} />
+                      {...tip.bind(() => [...head, `${statName}: ${fmt(sec.value, 2)} ${unit}`])} />
                   }
                   let acc = 0
                   return sec.classHours.map((h, k) => {
@@ -138,8 +138,7 @@ export function PollutionRose({ rows, meta, field, source, site, splits = SPLITS
                     const r0 = r(acc), r1 = r(acc + v)
                     acc += v
                     return v > 0 ? <path key={`${s}-${k}`} d={arc({ a, r0, r1 }) ?? ''} fill={classColors[k]} stroke={INK.panel} strokeWidth={0.5}
-                      onMouseEnter={(e) => tip.show(e, [...head, `${classLabel(k)} ${unit}: ${fmt(v, 1)} % of hours`, `all from ${sectorName(s)}: ${fmt(pctOf(sec.hours, g.rose), 1)} %`])}
-                      onMouseLeave={tip.hide} /> : null
+                      {...tip.bind(() => [...head, `${classLabel(k)} ${unit}: ${fmt(v, 1)} % of hours`, `all from ${sectorName(s)}: ${fmt(pctOf(sec.hours, g.rose), 1)} %`])} /> : null
                   })
                 })}
                 <circle r={14} fill={INK.panel} stroke={INK.grid} />

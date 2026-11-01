@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Figure } from '@/components/Figure'
-import { f2 } from '@/lib/format'
+import { f2, signed } from '@/lib/format'
 import { ExcludedNote, useExclusionSplit } from '@/lib/markedRows'
 import type { Row } from '@/lib/table'
 import { provenance, rows as tableRows, type SpectralExport } from '../spectralCommon'
@@ -77,7 +77,7 @@ export function LotsPaired({ data }: { data: SpectralExport }) {
   const points = a.map((x, i): Row => ({ lot251: x, both: b[i], id: ec.ids[i], ratio: b[i] / x }))
   return <Figure kind="crossplot" id="ethiopia-lots-paired" data={points} x="lot251" y="both" idColumn="id" tipColumns={['ratio']} fit={false} maxSide={400}
     xLabel="Lot 251 only, 906 filters, k = 30 (µg/m³)" yLabel="Both lots, 935 filters, k = 30 (µg/m³)"
-    title={`Per spectrum, adding the 29 lot-248 filters barely moves the ETAD EC: the median goes ×${f2(effect)} (${effect >= 1 ? '+' : '−'}${Math.abs(100 * (effect - 1)).toFixed(1)} %)`}
+    title={`Per spectrum, adding the 29 lot-248 filters barely moves the ETAD EC: the median goes ×${f2(effect)} (${signed(100 * (effect - 1), 1)} %)`}
     subtitle="June 10 [12] panel B: each ETAD spectrum's EC from the 2026-07-07 export's lot-251 filters alone (which reproduce the old 906 set exactly) against the same export with the 29 lot-248 filters added, both at k = 30 (the both-lots curve's first major minimum), with the 1:1. Ratio of the medians over the spectra that count (10 printed 1.030 on all 319: Filters → excluded: Include). ETAD spans filter lots 248 and 251; the lot-248+251 mirror of notebooks 12–15 is the bigger step (see the progression above)."
     provenance={provenance(data, ['per_filter'], 'research/ftir_ec_calibration_2026_06_25/10_ethiopia_ec_both_lots.ipynb fig10_ethiopia_both_lots (panel B).')} />
 }

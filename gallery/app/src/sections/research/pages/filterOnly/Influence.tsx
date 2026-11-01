@@ -7,7 +7,7 @@ import type { ScalePoint } from 'd3'
 import { ChartFrame, Empty, Note, Segmented, Select } from '@/components/ChartFrame'
 import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
-import { fmt, signed } from '@/lib/format'
+import { fitSummary, fmt, signed } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
@@ -72,7 +72,7 @@ export function CoefficientInfluence({ points, s, meta, omitDefault }: { points:
   return frame(<>
     <IntervalStrip blocks={[{ key: 'rows', rows }]} labelWidth={130} noteWidth={92} rowHeight={22}
       panels={[{ label: `Change in OLS slope (${s.u} per µg/m³)`, reference: 0, format: (v) => fmt(v, 2) }, { label: `Change in OLS intercept (${s.u})`, reference: 0, format: (v) => fmt(v, 1) }]} />
-    <Note>Full-cohort fit at {inf.site}: slope {fmt(inf.full.slope * s.k, 3)}, intercept {fmt(inf.full.intercept * s.k, 3)} {s.u}, n {inf.cohort.length}. The rank compares leaving out {omitted.id} with leaving out each of the site's other filters in turn.</Note>
+    <Note>Full-cohort fit at {inf.site}: {fitSummary({ slope: inf.full.slope * s.k, intercept: inf.full.intercept * s.k, n: inf.cohort.length }, { unit: s.u, sep: ', ' })}. The rank compares leaving out {omitted.id} with leaving out each of the site's other filters in turn.</Note>
   </>)
 }
 
