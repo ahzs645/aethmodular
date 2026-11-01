@@ -1,16 +1,13 @@
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, ExplainOnly, Note, Segmented } from '@/components/ChartFrame'
-import { ColorLegend } from '@/components/ColorLegend'
-import { HeatCell } from '@/components/HeatCell'
+import { HeatMatrix } from '@/components/HeatMatrix'
+import { BarRows, type BarRow } from '@/components/BarRows'
 import { Legend } from '@/components/Legend'
-import { XAxis } from '@/components/Axes'
 import { RefLine } from '@/components/RefLines'
-import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { useSearchParam } from '@/lib/url'
-import { FONT, INK, inkOn, themed } from '@/lib/theme'
+import { INK, themed } from '@/lib/theme'
 import { coef, coefSigned, f2, signed } from '@/lib/format'
 import { useMac, type MacView } from '@/lib/mac'
 import { Scatter, runLine, sourceOf, useXp, type XpBase } from './shared'
@@ -72,9 +69,6 @@ function Findings({ d }: { d: AttributionData }) {
 
 function GridHeat({ d }: { d: AttributionData }) {
   const { label } = useMac()
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const [out, setOut] = useSearchParam<Outcome>('xt-grid.outcome', 'Addis intercept', OUTCOMES)
   const div = useColourScheme('xt-grid-div', 'diverging')
   const seq = useColourScheme('xt-grid-seq', 'sequential')
@@ -86,31 +80,25 @@ function GridHeat({ d }: { d: AttributionData }) {
   const colour = diverging
     ? d3.scaleDiverging(d3.interpolateRgbBasis(div.stops)).domain([centre - ext, centre, centre + ext])
     : d3.scaleSequential(d3.interpolateRgbBasis(seq.stops)).domain(d3.extent(vals) as [number, number])
-  const labelW = 150, cw = Math.max(90, Math.min(150, (width - labelW - 20) / cols.length)), ch = 40
+  const fmtOut = (v: number) => (out.includes('RMSE') ? f2(v) : out === 'IMPROVE bias' ? signed(v) : out === 'Addis slope' ? coef(v) : coefSigned(v))
+  const byKey = new Map(d.grid.map((c) => [`${rowKey(c)}|${colKey(c)}`, c]))
   return (
     <ChartFrame id="xt-grid" source={source('GridHeat')} provenance={runLine(d)}
       title="The grid — every combination on the same filters"
       subtitle={`Rows: preprocessing and spectral window (spline exists only above 1425 cm⁻¹, so its full-range cell is missing). Columns: calibration pool (all IMPROVE, or the 500 lowest TOR OC/EC filters) and k (fixed 8, as on the poster, or the one-SE choice; the cell shows the k used). SPARTAN published on the same Addis filters: slope ${coef(d.published.slope)}, intercept ${coefSigned(d.published.intercept)} µg/m³.`}
       controls={<Segmented label="Colour" value={out} options={OUTCOMES} onChange={setOut} />}>
-      <div ref={ref} style={{ position: 'relative', overflowX: 'auto' }}>
-        <svg width={labelW + cols.length * cw + 10} height={rows.length * ch + 60} fontFamily={FONT.family}>
-          {cols.map((c, j) => <text key={c} x={labelW + j * cw + cw / 2} y={14} textAnchor="middle" fontSize={10} fill={INK.muted}>{c.split(' · ')[0]}</text>)}
-          {cols.map((c, j) => <text key={`k${c}`} x={labelW + j * cw + cw / 2} y={27} textAnchor="middle" fontSize={10} fill={INK.text} fontWeight={600}>{c.split(' · ')[1]}</text>)}
-          {rows.map((r, i) => <text key={r} x={labelW - 8} y={36 + i * ch + ch / 2} dy="0.32em" textAnchor="end" fontSize={11} fill={PREP_COLOR[r.split(' · ')[0]]} fontWeight={600}>{r}</text>)}
-          {d.grid.map((c) => {
-            const i = rows.indexOf(rowKey(c)), j = cols.indexOf(colKey(c)), v = c[out], fill = colour(v)
-            return <g key={`${i}-${j}`}>
-              <HeatCell x={labelW + j * cw + 1} y={36 + i * ch + 1} width={cw - 2} height={ch - 2} fill={fill}
-                onEnter={(e) => tip.show(e, [`${rowKey(c)} · ${colKey(c)} (k ${c.k})`, `IMPROVE out-of-site RMSE ${f2(c['IMPROVE RMSE'])} µg (heaviest tenth ${f2(c['IMPROVE RMSE heaviest tenth'])}), bias ${signed(c['IMPROVE bias'])}, R² ${f2(c['IMPROVE R²'])}`,
-                  `Addis vs HIPS: slope ${coef(c['Addis slope'])}, intercept ${coefSigned(c['Addis intercept'])} µg/m³ (n ${c['Addis n']})`])} onLeave={tip.hide} />
-              <text x={labelW + j * cw + cw / 2} y={36 + i * ch + ch / 2 - 4} textAnchor="middle" fontSize={11} fontWeight={600} fill={inkOn(fill)} pointerEvents="none">{out.includes('RMSE') ? f2(v) : out === 'IMPROVE bias' ? signed(v) : out === 'Addis slope' ? coef(v) : coefSigned(v)}</text>
-              <text x={labelW + j * cw + cw / 2} y={36 + i * ch + ch / 2 + 10} textAnchor="middle" fontSize={9} fill={inkOn(fill)} opacity={0.8} pointerEvents="none">k {c.k}</text>
-            </g>
-          })}
-        </svg>
-        {tip.node}
-      </div>
-      <div className="legend"><ColorLegend scale={colour} label={out} format={(v) => out.includes('RMSE') ? f2(v) : out === 'Addis slope' ? coef(v) : signed(v)} scheme={diverging ? div.scheme : seq.scheme} /></div>
+      {/* columns: the pool over its two k rules (a column group), the k rule under it */}
+      <HeatMatrix rows={rows.map((r) => ({ key: r, color: PREP_COLOR[r.split(' · ')[0]], weight: 600 }))}
+        columns={cols.map((c) => ({ key: c, label: c.split(' · ')[1], group: c.split(' · ')[0], weight: 600, size: 10 }))}
+        cellWidth={[90, 150]} cellHeight={40} gap={2} labelSize={11} labelWeight={600} colLabelSize={10}
+        cell={(i, j) => {
+          const c = byKey.get(`${rows[i]}|${cols[j]}`)
+          if (!c) return undefined
+          return { value: c[out], fill: colour(c[out]), label: fmtOut(c[out]), sublabel: `k ${c.k}`,
+            tip: [`${rowKey(c)} · ${colKey(c)} (k ${c.k})`, `IMPROVE out-of-site RMSE ${f2(c['IMPROVE RMSE'])} µg (heaviest tenth ${f2(c['IMPROVE RMSE heaviest tenth'])}), bias ${signed(c['IMPROVE bias'])}, R² ${f2(c['IMPROVE R²'])}`,
+              `Addis vs HIPS: slope ${coef(c['Addis slope'])}, intercept ${coefSigned(c['Addis intercept'])} µg/m³ (n ${c['Addis n']})`] }
+        }}
+        legend={{ scale: colour, label: out, scheme: diverging ? div.scheme : seq.scheme, format: (v) => out.includes('RMSE') ? f2(v) : out === 'Addis slope' ? coef(v) : signed(v) }} />
       <Note>IMPROVE: every filter predicted by a model trained without its site fold (the common test set); Addis: models fitted on all of IMPROVE, against HIPS BC; slopes at {label} (set under Filters; the run used MAC 10, and the MAC moves only the slopes).</Note>
       <FixedSetNote what="the run's grid, each cell scored on the run's own IMPROVE and Addis filters" />
     </ChartFrame>
@@ -118,40 +106,24 @@ function GridHeat({ d }: { d: AttributionData }) {
 }
 
 function Effects({ d }: { d: AttributionData }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const [out, setOut] = useSearchParam<Outcome>('xt-effects.outcome', 'Addis intercept', OUTCOMES.filter((o) => o !== 'IMPROVE RMSE heaviest tenth'))
-  const grids = [...new Set(d.effects.map((e) => e.grid))]
-  const labelW = 230, rowH = 24
-  const pw = Math.max(240, width - labelW - 60)
   const ext = Math.max(...d.effects.map((e) => Math.abs(e[out as keyof Effect] as number))) || 1
-  const x = d3.scaleLinear().domain([-ext, ext]).nice().range([0, pw])
-  let yy = 0
-  const blocks = grids.map((g) => { const es = d.effects.filter((e) => e.grid === g); const top = yy; yy += es.length * rowH + 34; return { g, es, top } })
+  const domain = d3.scaleLinear().domain([-ext, ext]).nice().domain() as [number, number]
+  // grouped by sub-grid, in the export's order
+  const grids = [...new Set(d.effects.map((e) => e.grid))]
+  const bars: BarRow[] = grids.flatMap((g) => d.effects.filter((e) => e.grid === g)).map((e) => {
+    const v = e[out as keyof Effect] as number, inter = e.term.includes('×')
+    return { key: `${e.grid}|${e.term}`, label: e.term, group: e.grid, value: v, valueLabel: signed(v), color: v < 0 ? INK.positive : INK.negative, opacity: inter ? 0.45 : 0.85,
+      italic: inter, labelColor: inter ? INK.muted : INK.text,
+      tip: [e.term, e.contrast, `${out}: ${signed(v, 3)}`, `IMPROVE RMSE ${signed(e['IMPROVE RMSE'], 3)} · Addis intercept ${signed(e['Addis intercept'], 3)} · Addis slope ${signed(e['Addis slope'], 3)}`] }
+  })
   return (
     <ChartFrame id="xt-effects" source={source('Effects')} provenance={runLine(d)}
       title="Effects and interactions — which choice moves the result, alone and together"
       subtitle="Bars: the average change in the chosen outcome when a factor moves from its first level to its second (main effects), and how much one factor's effect depends on another (interactions, marked ×). Two complete 2 × 2 × 2 sub-grids: raw vs spline at 1425–4000, and full vs 1425 window on raw spectra."
       controls={<Segmented label="Outcome" value={out} options={OUTCOMES.filter((o) => o !== 'IMPROVE RMSE heaviest tenth')} onChange={setOut} />}>
-      <div ref={ref} style={{ position: 'relative' }}>
-        <svg width={labelW + pw + 60} height={yy + 30} fontFamily={FONT.family}>
-          {blocks.map(({ g, es, top }) => <g key={g} transform={`translate(0,${top})`}>
-            <text x={0} y={14} fontSize={11} fontWeight={700} fill={INK.text}>{g}</text>
-            <RefLine orient="v" at={labelW + x(0)} from={20} to={20 + es.length * rowH} />
-            {es.map((e, i) => {
-              const v = e[out as keyof Effect] as number, cy = 20 + i * rowH + rowH / 2, inter = e.term.includes('×')
-              return <g key={e.term} onMouseEnter={(ev) => tip.show(ev, [e.term, e.contrast, `${out}: ${signed(v, 3)}`, `IMPROVE RMSE ${signed(e['IMPROVE RMSE'], 3)} · Addis intercept ${signed(e['Addis intercept'], 3)} · Addis slope ${signed(e['Addis slope'], 3)}`])} onMouseLeave={tip.hide}>
-                <text x={labelW - 8} y={cy} dy="0.32em" textAnchor="end" fontSize={10.5} fill={inter ? INK.muted : INK.text} fontStyle={inter ? 'italic' : 'normal'}>{e.term}</text>
-                <rect x={labelW + Math.min(x(0), x(v))} y={cy - 7} width={Math.abs(x(v) - x(0))} height={14} fill={v < 0 ? INK.positive : INK.negative} fillOpacity={inter ? 0.45 : 0.85} />
-                <text x={labelW + x(v) + (v < 0 ? -4 : 4)} y={cy} dy="0.32em" textAnchor={v < 0 ? 'end' : 'start'} fontSize={9.5} fill={INK.muted}>{signed(v)}</text>
-              </g>
-            })}
-          </g>)}
-          <g transform={`translate(${labelW},${yy})`}><XAxis scale={x} y={0} label={`effect on ${out}`} tickCount={6} labelDy={28} format={(v) => signed(+v)} /></g>
-        </svg>
-        {tip.node}
-      </div>
+      <BarRows rows={bars} domain={domain} rowHeight={24} barHeight={14} labelSize={10.5} maxLabelWidth={230} groupLabels
+        axis={{ label: `effect on ${out}`, ticks: 6, format: (v) => signed(+v) }} />
       <Legend items={[{ label: 'raises the outcome', color: INK.negative, shape: 'square' }, { label: 'lowers it', color: INK.positive, shape: 'square' }]} />
       <FixedSetNote what="the run's grid, each cell scored on the run's own IMPROVE and Addis filters" />
     </ChartFrame>

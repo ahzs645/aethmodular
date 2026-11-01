@@ -15,6 +15,7 @@ import { useLegend } from '@/components/Legend'
 import { BaselineFollowup } from '@/pages/BaselineFollowup'
 import type { ApplicabilityData, ApplicabilityRow, BaselineCohort, BaselineContribution, BaselineData, BaselineMethod, BaselinePair } from '@/lib/baselineComparison'
 import { FixedSetNote } from '@/lib/markedRows'
+import { HeatMatrix } from '@/components/HeatMatrix'
 
 const METHODS: BaselineMethod[] = ['AIRSpec','VIBES']
 const BANDS = ['1425_1799','1800_2499','2500_2999','3000_4000'] as const
@@ -108,24 +109,24 @@ export function RegionContribution({data,sample}:{data:BaselineData;sample:strin
 }
 
 export function SiteBandPattern({rows,cohort}:{rows:BaselinePair[];cohort:BaselineCohort}) {
-  // the diverging palette is the reader's pick (lib/colourSchemes), Purple–orange by default
+  // the diverging palette is the reader's pick (lib/colourSchemes), Purple–orange by default; the ramp under the matrix opens the list
   const colours=useColourScheme('baseline-research-pattern','diverging','Purple–orange')
-  const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref)
-  const tip=useTooltip(ref)
   const sites=Array.from(new Set(rows.map(r=>r.Site))).sort()
   const bands=['Q1','Q2','Q3','Q4']
-  const cells=sites.flatMap(site=>bands.map(band=>{
+  const cells=sites.map(site=>bands.map(band=>{
     const group=rows.filter(r=>r.Site===site&&r.loading_band===band)
     return {site,band,n:group.length,delta:d3.mean(group,r=>Math.abs(r.VIBES-r.y)-Math.abs(r.AIRSpec-r.y))??null}
   }))
-  const bound=d3.quantile(cells.filter(c=>c.n>=5).map(c=>Math.abs(c.delta!)).sort(d3.ascending),.9)||1
-  const w=Math.max(300,width),iw=w-115,ih=sites.length*22
-  const x=d3.scaleBand().domain(bands).range([0,iw]).padding(.07)
-  const y=d3.scaleBand().domain(sites).range([0,ih]).padding(.06)
+  const bound=d3.quantile(cells.flat().filter(c=>c.n>=5).map(c=>Math.abs(c.delta!)).sort(d3.ascending),.9)||1
   const color=d3.scaleDiverging([-bound,0,bound],d3.interpolateRgbBasis(colours.stops)).clamp(true)
-  return <ChartFrame title="Site and loading pattern" controls={colours.picker} subtitle="Mean VIBES minus AIRSpec absolute EC error in the selected frozen test population. This screens for heterogeneity; it is not a trained model-routing rule.">
+  return <ChartFrame title="Site and loading pattern" subtitle="Mean VIBES minus AIRSpec absolute EC error in the selected frozen test population. This screens for heterogeneity; it is not a trained model-routing rule.">
     <ExplainOnly><Note>{cohort==='full_pool'?'Full pool':'Restricted lowest-OC/EC'}, current display subset ({rows.length} paired physical filters). Colors show ΔMAE in µg/filter: the negative end of the palette favors VIBES, the positive end favors the spline baseline (AIRSpec. Cells with fewer than five filters are gray; blank cells have none.</Note></ExplainOnly>
-    <div ref={ref} className="chart-wrap"><svg width={w} height={ih+118} role="img" aria-label="Site by training loading quartile heatmap of paired absolute error difference"><g transform="translate(77,25)" fontFamily={FONT.family}>{cells.map(c=>c.n?<rect key={c.site+c.band} x={x(c.band)} y={y(c.site)} width={x.bandwidth()} height={y.bandwidth()} fill={c.n<5?INK.grid:color(c.delta!)} stroke={INK.panel} onMouseEnter={e=>tip.show(e,[`${c.site} / ${c.band}`,`${c.n} physical filters`,`ΔMAE ${f(c.delta,3)} µg/filter`,c.n<5?'Shown gray: fewer than five filters':''])} onMouseLeave={tip.hide}></rect>:null)}{sites.map(s=><text key={s} x={-8} y={y(s)!+y.bandwidth()/2+4} textAnchor="end" fontSize={10} fill={INK.text}>{s}</text>)}<XAxis scale={x} y={ih} label="Training-defined EC loading quartile"/></g><ColorKey x={77} y={ih+92} bound={bound} color={color}/></svg>{tip.node}</div>
+    <HeatMatrix rows={sites} columns={bands} cellWidth={[40,400]} cellHeight={22} gap={1.5} rowLabelSize={10} colLabelPosition="bottom" colHeader="Training-defined EC loading quartile" cellLabels="never"
+      ariaLabel="Site by training loading quartile heatmap of paired absolute error difference"
+      cell={(i,j)=>{const c=cells[i][j];return c.n?{value:c.delta,fill:c.n<5?INK.grid:color(c.delta!),stroke:INK.panel,
+        tip:[`${c.site} / ${c.band}`,`${c.n} physical filters`,`ΔMAE ${f(c.delta,3)} µg/filter`,...(c.n<5?['Shown gray: fewer than five filters']:[])]}:undefined}}
+      legend={{scale:color,scheme:colours.scheme,label:'ΔMAE, µg/filter',width:220,format:v=>f(v,2),note:'negative: VIBES closer · positive: AIRSpec closer'}}
+      legendItems={[{label:'fewer than 5 filters',color:INK.grid,kind:'square'}]}/>
     <ExplainOnly><Note>Color saturates beyond ±{f(bound,2)} µg/filter, the 90th percentile of displayed cell magnitudes; hover gives exact values and counts. The quartiles use measured TOR EC, so they cannot route an Addis prediction without independent EC. The separate CLI notebook evaluates an exploratory spectrum-only router; this heatmap is not that model.</Note></ExplainOnly>
     <FixedSetNote what="the frozen paired IMPROVE test filters of this benchmark" />
   </ChartFrame>
@@ -164,18 +165,4 @@ export function svgLegendItem(lg:SvgLegendState,label:string,hitWidth:number) {
 function Legend({width,y,items,lg}:{width:number;y:number;items:{label:string;color:string}[];lg:SvgLegendState}) {
   const step=Math.min(175,(width-50)/items.length)
   return <g transform={`translate(25,${y})`} fontFamily={FONT.family} fontSize={10}>{items.map((item,i)=>{const {hit,...p}=svgLegendItem(lg,item.label,step);return <g key={item.label} transform={`translate(${i*step},0)`} {...p}>{hit}<line x2={12} y1={-3} y2={-3} stroke={item.color} strokeWidth={3}/><text x={17} fill={INK.text}>{item.label}</text></g>})}</g>
-}
-
-/** The heatmap's key: VIBES-closer purple through zero to AIRSpec-closer orange, plus the gray n<5 swatch. */
-function ColorKey({x,y,bound,color}:{x:number;y:number;bound:number;color:(v:number)=>string}) {
-  const stops=d3.range(0,1.0001,.1).map(t=>-bound+2*bound*t)
-  const kw=280
-  return <g transform={`translate(${x},${y})`} fontFamily={FONT.family} fontSize={10} fill={INK.text}>
-    <defs><linearGradient id="site-band-key">{stops.map((v,i)=><stop key={i} offset={`${i*10}%`} stopColor={color(v)}/>)}</linearGradient></defs>
-    <text x={0} y={-4}>ΔMAE, µg/filter</text>
-    <rect x={0} y={0} width={kw} height={9} fill="url(#site-band-key)"/>
-    <text x={0} y={21} fill={INK.muted}>{`−${f(bound,2)} VIBES closer`}</text>
-    <text x={kw} y={21} textAnchor="end" fill={INK.muted}>{`AIRSpec closer +${f(bound,2)}`}</text>
-    <rect x={kw+24} y={0} width={14} height={9} fill={INK.grid}/><text x={kw+43} y={8} fill={INK.muted}>fewer than 5 filters</text>
-  </g>
 }

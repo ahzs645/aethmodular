@@ -19,6 +19,7 @@ import { dotFill } from '@/lib/highlight'
 import { coef, coefSigned, f2, pct, signed } from '@/lib/format'
 import { Crossplot } from '@/components/Crossplot'
 import { RangeRows, type RangeRow, type RangeSeries } from '@/components/RangeRows'
+import { BarRows, type BarRow } from '@/components/BarRows'
 import { AxisChoices } from '@/components/AxisChoices'
 import { Forest, Scatter, num, placeLabels, rowsOf, runLine, sourceOf, useCounted, useXp, type Cols, type XpBase } from './shared'
 import { ExcludedNote, FixedSetNote, useCountedFilter, useMarkReason } from '@/lib/markedRows'
@@ -584,30 +585,17 @@ function NetworkScatter({ d }: { d: TorData }) {
 }
 
 function NearestSites({ d }: { d: TorData }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const rows = [...d.neighbour_sites].sort((a, b) => b.Addis - a.Addis).slice(0, 18)
-  const labelW = 190, rowH = 20, pw = Math.max(260, width - labelW - 40)
-  const x = d3.scaleLinear().domain([0, d3.max(rows, (r) => Math.max(r.Addis, r.Adama, r['IMPROVE share of filters'])) ?? 0.1]).nice().range([0, pw])
+  const bars: BarRow[] = rows.map((r) => ({ key: r.site, label: r.name, title: `${r.name} (${r.site})`, valueLabel: null,
+    bars: [{ key: 'Addis', value: r.Addis, color: ADDIS_ALL }, { key: 'Adama', value: r.Adama, color: ADAMA }],
+    marks: [{ value: r['IMPROVE share of filters'], color: INK.text }],
+    tip: [`${r.name} (${r.site})`, `Addis ${pct(r.Addis)} · Adama ${pct(r.Adama)}`, `${pct(r['IMPROVE share of filters'])} of calibration filters`] }))
   return (
     <ChartFrame id="xd-nearest" source={source('NearestSites')} provenance={runLine(d)}
       title="Nearest TOR sites — which IMPROVE sites Addis and Adama borrow their calibration from"
       subtitle="Share of the 500 nearest IMPROVE spectra per filter that come from each site, for Addis (orange) and Adama (green), beside the site's share of all calibration filters (grey tick). A site far right of its tick is over-represented among the neighbours.">
-      <div ref={ref} style={{ position: 'relative' }}>
-        <svg width={labelW + pw + 30} height={rows.length * rowH + 44} fontFamily={FONT.family}>
-          {rows.map((r, i) => { const cy = i * rowH + rowH / 2
-            return <g key={r.site} onMouseEnter={(e) => tip.show(e, [`${r.name} (${r.site})`, `Addis ${pct(r.Addis)} · Adama ${pct(r.Adama)}`, `${pct(r['IMPROVE share of filters'])} of calibration filters`])} onMouseLeave={tip.hide}>
-              <rect x={0} y={cy - rowH / 2} width={labelW + pw} height={rowH} fill={i % 2 ? 'transparent' : INK.zebra} />
-              <text x={labelW - 8} y={cy} dy="0.32em" textAnchor="end" fontSize={10.5} fill={INK.text}>{r.name.length > 26 ? `${r.name.slice(0, 25)}…` : r.name}</text>
-              <rect x={labelW} y={cy - 6} width={x(r.Addis)} height={5} fill={ADDIS_ALL} />
-              <rect x={labelW} y={cy + 1} width={x(r.Adama)} height={5} fill={ADAMA} />
-              <line x1={labelW + x(r['IMPROVE share of filters'])} x2={labelW + x(r['IMPROVE share of filters'])} y1={cy - 8} y2={cy + 8} stroke={INK.text} strokeWidth={1.5} />
-            </g> })}
-          <g transform={`translate(${labelW},${rows.length * rowH + 4})`}><XAxis scale={x} y={0} label="share of nearest neighbours" tickCount={5} labelDy={28} format={(v) => pct(+v)} /></g>
-        </svg>
-        {tip.node}
-      </div>
+      <BarRows rows={bars} rowHeight={20} barHeight={11} labelSize={10.5} maxLabelWidth={190} zebra format={(v) => pct(v)}
+        axis={{ label: 'share of nearest neighbours', ticks: 5, format: (v) => pct(+v) }} />
       <Legend items={[{ label: 'Addis', color: ADDIS_ALL, shape: 'square' }, { label: 'Adama pilot', color: ADAMA, shape: 'square' }, { label: "site's share of calibration filters", color: INK.text, shape: 'line' }]} />
       <FixedSetNote what="the run's saved nearest-neighbour shares" />
     </ChartFrame>

@@ -27,6 +27,7 @@ import { collapsePanelAxes } from '@/lib/axes'
 import { SpectrumPlot } from '@/components/SpectrumPlot'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { Key } from '@/components/Key'
+import { BarRows, type BarRow } from '@/components/BarRows'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { BandCell, FitCell } from '@/components/TableCells'
 import { ANALOG_SELECTION_EXCLUDED, OCT1_ALSO_EXCLUDED } from '@/components/SpectralRegions'
@@ -206,48 +207,20 @@ const PART_COLOR: Record<string, string> = { get 'spline only'() { return BASE_C
 function Overlap({ data, mask }: { data: SatoshiData; mask: Mask }) {
   // the page's season and baseline (PageChoices, in the Filters sidebar)
   const { value: group } = usePageChoice('season', data.groups)
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   // a season this mask was not run for is left out rather than failing the chart
   const rows = data.groups.flatMap((g) => data.overlap.filter((o) => o.mask === mask && o.group === g).slice(0, 1))
   const changed = data.overlap.filter((o) => o.mask === 'presented_vs_oct1')
-  const m = { top: 8, right: 16, bottom: 30, left: 130 }
-  const rowH = 30
-  const iw = Math.max(240, width - m.left - m.right)
-  const x = d3.scaleLinear().domain([0, 1000]).range([0, iw])
+  const bars: BarRow[] = rows.map((o) => ({ key: o.group, label: o.group, labelColor: data.season_colors[o.group] ?? INK.text, labelWeight: 600,
+    segments: [{ part: 'spline only', n: o.spline_only }, { part: 'shared', n: o.shared }, { part: 'VIBES only', n: o.vibes_only }].map((s) => ({
+      key: s.part, value: s.n, color: PART_COLOR[s.part], opacity: s.part === 'shared' ? 0.95 : 0.8, label: String(s.n),
+      tip: [`${o.group} · ${s.part}`, `${s.n} filters`, `shared ${o.shared} of 500 (Jaccard ${f2(o.jaccard)})`, `sites in common between the two sets: ${o.site_overlap}`] })) }))
   const props = PARTS.map((p) => data.overlap_props.find((o) => o.mask === mask && o.group === group && o.part === p)).filter(Boolean) as Row[]
   return (
     <ChartFrame id="satoshi-overlap" source="gallery/app/src/pages/SatoshiFollowupPage.tsx › Overlap"
       title="Analog overlap — how many of the 500 analogs per set both baselines select"
       subtitle="Each bar is the union of the two 500-filter analog sets for one Addis group: left, filters only the spline baseline selects; middle, filters both select; right, filters only VIBES selects. A bar with a wide middle would mean the baselines agree on the training set."
       >
-      <div ref={ref} style={{ position: 'relative' }}>
-        <svg width={iw + m.left + m.right} height={m.top + rows.length * rowH + m.bottom} fontFamily={FONT.family}>
-          <g transform={`translate(${m.left},${m.top})`}>
-            {rows.map((o, i) => {
-              const segs = [{ part: 'spline only', n: o.spline_only }, { part: 'shared', n: o.shared }, { part: 'VIBES only', n: o.vibes_only }]
-              let acc = 0
-              return (
-                <g key={o.group} transform={`translate(0,${i * rowH})`}>
-                  <text x={-8} y={rowH / 2 - 4} dy="0.32em" textAnchor="end" fontSize={12} fontWeight={600} fill={data.season_colors[o.group] ?? INK.text}>{o.group}</text>
-                  {segs.map((s) => {
-                    const x0 = acc; acc += s.n
-                    return (
-                      <g key={s.part} onMouseEnter={(e) => tip.show(e, [`${o.group} · ${s.part}`, `${s.n} filters`, `shared ${o.shared} of 500 (Jaccard ${f2(o.jaccard)})`, `sites in common between the two sets: ${o.site_overlap}`])} onMouseLeave={tip.hide}>
-                        <rect x={x(x0)} y={2} width={Math.max(0, x(acc) - x(x0))} height={rowH - 12} fill={PART_COLOR[s.part]} fillOpacity={s.part === 'shared' ? 0.95 : 0.8} />
-                        {x(acc) - x(x0) > 26 && <text x={(x(x0) + x(acc)) / 2} y={rowH / 2 - 4} dy="0.32em" textAnchor="middle" fontSize={11} fill="white" fontWeight={600}>{s.n}</text>}
-                      </g>
-                    )
-                  })}
-                </g>
-              )
-            })}
-            <XAxis scale={x} y={rows.length * rowH - 6} tickCount={5} label="" />
-          </g>
-        </svg>
-        {tip.node}
-      </div>
+      <BarRows rows={bars} domain={[0, 1000]} rowHeight={30} barHeight={18} labelSize={12} valueLabels={false} axis={{ ticks: 5, format: (v) => String(v) }} />
       <Key items={[{ label: 'Spline baseline only', color: PART_COLOR['spline only'], kind: 'bar' }, { label: 'Both baselines', color: sharedColor(), kind: 'bar' }, { label: 'VIBES baseline only', color: PART_COLOR['VIBES only'], kind: 'bar' }]} />
       <table className="census-table" style={{ marginTop: 10 }}>
         <thead><tr><th>{group}</th><th>Filters</th><th>Sites</th><th>TOR EC median (90th) µg/m³</th><th>EC loading median, µg</th><th>TOR OC/EC median</th><th>Fabs / TOR EC median, m²/g</th><th>Lot 251</th><th>Most common sites</th></tr></thead>
