@@ -1,4 +1,4 @@
-import { ChartFrame, ExplainOnly, Note } from '@/components/ChartFrame'
+import { ChartFrame, ExplainOnly } from '@/components/ChartFrame'
 import { Legend } from '@/components/Legend'
 import { SweepPlot } from '@/components/SweepPlot'
 import { IntervalStrip } from '@/components/IntervalStrip'
@@ -7,6 +7,7 @@ import { INK, themed } from '@/lib/theme'
 import { f2, pct } from '@/lib/format'
 import { Forest, runLine, sourceOf, useXp, type Cols, type XpBase } from './shared'
 import { FixedSetNote } from '@/lib/markedRows'
+import { Findings as FindingsPanel } from '@/components/Findings'
 
 /** Test 5: pick the model with the smallest predicted error, or abstain (experiments_20261022.ipynb §5). */
 
@@ -42,14 +43,11 @@ function Findings({ d }: { d: SelectorData }) {
   const sel = S['error-predicting selector'], ab = S['selector, abstain on riskiest tenth'], win = S['winner classifier']
   return (
     <ExplainOnly>
-      <ChartFrame id="xs-findings" title="Error-predicting selector — short answers" exportable={false}>
-        <ol style={{ margin: '4px 0 0 18px', lineHeight: 1.55 }}>
-          <li><strong>Against the best single model</strong> ({singles[0].strategy}, RMSE {f2(singles[0].RMSE)} µg), the selector reaches {f2(sel.RMSE)} and the winner classifier {f2(win.RMSE)}; the oracle (knowing TOR) would reach {f2(S['oracle (best per filter)'].RMSE)}.</li>
-          <li><strong>Worst errors:</strong> largest |error| {f2(sel['max |error|'])} µg for the selector against {f2(win['max |error|'])} for the winner classifier and {f2(singles[0]['max |error|'])} for {singles[0].strategy}.</li>
-          <li><strong>Abstaining</strong> on the riskiest tenth (threshold set on the training folds) keeps {pct(ab['kept share'])} of filters at RMSE {f2(ab.RMSE)} µg; {pct(ab['share |error| > 10 µg'])} of kept filters are still off by more than 10 µg.</li>
-        </ol>
-        <Note>{runLine(d)}. 1,500 IMPROVE filters, nested by site fold: the error models and the abstention threshold never see the fold they score.</Note>
-      </ChartFrame>
+      <FindingsPanel id="xs-findings" title="Error-predicting selector — short answers" note={<>{runLine(d)}. 1,500 IMPROVE filters, nested by site fold: the error models and the abstention threshold never see the fold they score.</>}>
+        <li><strong>Against the best single model</strong> ({singles[0].strategy}, RMSE {f2(singles[0].RMSE)} µg), the selector reaches {f2(sel.RMSE)} and the winner classifier {f2(win.RMSE)}; the oracle (knowing TOR) would reach {f2(S['oracle (best per filter)'].RMSE)}.</li>
+        <li><strong>Worst errors:</strong> largest |error| {f2(sel['max |error|'])} µg for the selector against {f2(win['max |error|'])} for the winner classifier and {f2(singles[0]['max |error|'])} for {singles[0].strategy}.</li>
+        <li><strong>Abstaining</strong> on the riskiest tenth (threshold set on the training folds) keeps {pct(ab['kept share'])} of filters at RMSE {f2(ab.RMSE)} µg; {pct(ab['share |error| > 10 µg'])} of kept filters are still off by more than 10 µg.</li>
+      </FindingsPanel>
     </ExplainOnly>
   )
 }

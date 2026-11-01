@@ -20,6 +20,7 @@ import { f2, f3, pct, signed } from '@/lib/format'
 import { Forest, placeLabels, useCounted } from './shared'
 import { ExcludedNote, FixedSetNote, useMarkReason } from '@/lib/markedRows'
 import { crossPath, markTip } from '@/lib/exclusionMode'
+import { Findings as FindingsPanel } from '@/components/Findings'
 
 /**
  * Experimental · tests 1–2: what the decision workbook's "impacted" flag actually sees
@@ -135,16 +136,13 @@ function Findings({ d }: { d: FlagData }) {
   const distAdds = dist && load && dist['gain lo'] > 0
   return (
     <ExplainOnly>
-      <ChartFrame id="xflag-findings" title="What the flag sees — short answers" exportable={false}>
-        <ol style={{ margin: '4px 0 0 18px', lineHeight: 1.55 }}>
-          <li><strong>Measured loading alone</strong> (weighed PM2.5 µg per filter) separates impacted IMPROVE filters with AUC {f2(load?.AUC)}; the spectral distance alone (T² + Q) reaches {f2(dist?.AUC)}{dist ? ` (${signed(dist['gain over loading'])} vs loading, 95 % ${signed(dist['gain lo'])} to ${signed(dist['gain hi'])})` : ''}. {distAdds ? 'Distance carries information beyond a scale.' : 'Distance on its own is no better than a scale.'}</li>
-          <li><strong>Within one loading decile</strong> the distance's AUC has median {f2(median(withinDist))} (range {f2(d3.min(withinDist))}–{f2(d3.max(withinDist))}). {(median(withinDist) ?? 0.5) < 0.6 ? 'Among filters of similar loading it barely ranks errors.' : 'It still ranks errors among filters of similar loading.'}</li>
-          <li><strong>The best flag usable at SPARTAN</strong> is "{d.settings.BEST}": AUC {f2(best?.AUC)}, {signed(best?.['gain over loading'])} over loading (95 % {signed(best?.['gain lo'])} to {signed(best?.['gain hi'])}).{hips ? ` Adding HIPS lifts it to ${f2(hips.AUC)}, but HIPS is half of the FTIR–HIPS disagreement at SPARTAN, so that rung is circular there.` : ''}</li>
-          <li><strong>Flagging {pct(d.settings.FLAG_RATE)}</strong> of IMPROVE catches {pct(caughtShare)} of impacted filters and lets {d.counts.missed.toLocaleString()} through. The missed ones sit at median loading percentile {pct100(miss?.['loading percentile (median)'])} and distance percentile {pct100(miss?.['distance percentile (median)'])} (caught: {pct100(caught?.['loading percentile (median)'])} and {pct100(caught?.['distance percentile (median)'])}); {pct(miss?.['under-predicted share'])} of them are under-predicted.</li>
-          <li><strong>Addis on the same map:</strong> median loading percentile {pct100(median(addis.map((r) => r.load)))}, distance percentile {pct100(median(addis.map((r) => r.dist)))}; {pct(d3.mean(addis, (r) => +r.beyond))} are heavier than any IMPROVE filter and {pct(d3.mean(addis, (r) => +r.flagged))} would be flagged, rank {addisRank} of {siteFlag.length} SPARTAN sites (most flagged: {siteFlag.slice(0, 3).map((s) => `${s.k} ${pct(s.f)}`).join(', ')}). Whatever goes wrong at Addis, spectrum, loading and XRF do not make it look like IMPROVE's failures.</li>
-        </ol>
-        <Note>{runNote(d)}. These are statements about held-out IMPROVE sites against TOR; at SPARTAN there is no TOR, so the Addis rows say where Addis sits, not how wrong it is.{nOut > 0 ? ` The SPARTAN numbers leave out the ${nOut} filter${nOut === 1 ? '' : 's'} Filters → excluded takes out.` : ''}</Note>
-      </ChartFrame>
+      <FindingsPanel id="xflag-findings" title="What the flag sees — short answers" note={<>{runNote(d)}. These are statements about held-out IMPROVE sites against TOR; at SPARTAN there is no TOR, so the Addis rows say where Addis sits, not how wrong it is.{nOut > 0 ? ` The SPARTAN numbers leave out the ${nOut} filter${nOut === 1 ? '' : 's'} Filters → excluded takes out.` : ''}</>}>
+        <li><strong>Measured loading alone</strong> (weighed PM2.5 µg per filter) separates impacted IMPROVE filters with AUC {f2(load?.AUC)}; the spectral distance alone (T² + Q) reaches {f2(dist?.AUC)}{dist ? ` (${signed(dist['gain over loading'])} vs loading, 95 % ${signed(dist['gain lo'])} to ${signed(dist['gain hi'])})` : ''}. {distAdds ? 'Distance carries information beyond a scale.' : 'Distance on its own is no better than a scale.'}</li>
+        <li><strong>Within one loading decile</strong> the distance's AUC has median {f2(median(withinDist))} (range {f2(d3.min(withinDist))}–{f2(d3.max(withinDist))}). {(median(withinDist) ?? 0.5) < 0.6 ? 'Among filters of similar loading it barely ranks errors.' : 'It still ranks errors among filters of similar loading.'}</li>
+        <li><strong>The best flag usable at SPARTAN</strong> is "{d.settings.BEST}": AUC {f2(best?.AUC)}, {signed(best?.['gain over loading'])} over loading (95 % {signed(best?.['gain lo'])} to {signed(best?.['gain hi'])}).{hips ? ` Adding HIPS lifts it to ${f2(hips.AUC)}, but HIPS is half of the FTIR–HIPS disagreement at SPARTAN, so that rung is circular there.` : ''}</li>
+        <li><strong>Flagging {pct(d.settings.FLAG_RATE)}</strong> of IMPROVE catches {pct(caughtShare)} of impacted filters and lets {d.counts.missed.toLocaleString()} through. The missed ones sit at median loading percentile {pct100(miss?.['loading percentile (median)'])} and distance percentile {pct100(miss?.['distance percentile (median)'])} (caught: {pct100(caught?.['loading percentile (median)'])} and {pct100(caught?.['distance percentile (median)'])}); {pct(miss?.['under-predicted share'])} of them are under-predicted.</li>
+        <li><strong>Addis on the same map:</strong> median loading percentile {pct100(median(addis.map((r) => r.load)))}, distance percentile {pct100(median(addis.map((r) => r.dist)))}; {pct(d3.mean(addis, (r) => +r.beyond))} are heavier than any IMPROVE filter and {pct(d3.mean(addis, (r) => +r.flagged))} would be flagged, rank {addisRank} of {siteFlag.length} SPARTAN sites (most flagged: {siteFlag.slice(0, 3).map((s) => `${s.k} ${pct(s.f)}`).join(', ')}). Whatever goes wrong at Addis, spectrum, loading and XRF do not make it look like IMPROVE's failures.</li>
+      </FindingsPanel>
     </ExplainOnly>
   )
 }
