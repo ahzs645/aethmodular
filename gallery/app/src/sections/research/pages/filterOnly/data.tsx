@@ -13,6 +13,7 @@ import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import { MIN_TRAIN, POPULATIONS, evaluate, inPopulation, type Block, type FPoint, type Population, type Scheme } from '../../common/filterOnly'
+import { siteColor as metaSiteColor } from '@/lib/siteColours'
 
 export const COMMAND = 'uv run python gallery/data/export_research_filter_only.py'
 export const NB_DIAG = 'research/ftir_hips_chem/filter_only_diagnostics.ipynb'
@@ -78,7 +79,7 @@ export function FoExcludedNote({ s, site, any = false, drawn = false }: { s: Set
 
 export const useRelease = () => useExport<ReleaseFile>('research/filter_only/release.json', (d) => (d.blocks ? null : 'no blocks'))
 
-export const siteColor = (meta: MetaFile, site: string) => meta.sites.find((s) => s.name === site)?.color ?? FALLBACK[site] ?? INK.accent
+export const siteColor = (meta: MetaFile, site: string) => metaSiteColor(meta, site, FALLBACK[site] ?? INK.accent)
 
 export type Unit = 'fabs' | 'bc'
 export interface Settings {

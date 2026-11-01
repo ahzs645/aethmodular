@@ -15,6 +15,7 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
 import { useFitHeight } from '@/lib/chartFit'
 import { ExcludedNote, toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
+import { namedColor } from '@/lib/siteColours'
 
 const M = { top: 8, right: 20, bottom: 30, left: 68 }
 const PANEL = 92, GAP = 14
@@ -77,7 +78,7 @@ export function AeronetTimeline({ rows, meta, field, site, station, level = '15'
     aod: ext(daily?.aod500, 0), fmf: d3.scaleLinear().domain([0, 1]).range([panelH, 0]), aaod: ext(daily?.aaod675, 0), ssa: ext(daily?.ssa440, undefined, 1),
   }
   const yF = useMemo(() => d3.scaleLinear().domain([Math.min(0, d3.min(pts, (p) => p.v) ?? 0), (d3.max(pts, (p) => p.v) ?? 1) * 1.05]).range([panelH, 0]).nice(), [pts, panelH])
-  const seasonColor = (p: (typeof pts)[number]) => meta.seasons.find((s) => s.name === p.row.season)?.color ?? INK.text
+  const seasonColor = (p: (typeof pts)[number]) => namedColor(meta.seasons, p.row.season, INK.text)
   const xy = useMemo(() => pts.map((p) => [x(p.t), yF(p.v)] as const), [pts, x, yF])
   // Filters → excluded: Mark (lib/markedRows): this site's excluded filters as × on the measurement panel
   const markedAll = useMarkedRows()

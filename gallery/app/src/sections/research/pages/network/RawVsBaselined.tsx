@@ -22,6 +22,7 @@ import type { MetaFile } from '@/lib/types'
 import { logHistogram, members, neighbours, networkSummary, pairs, siteLabel, siteSummary, spaces, type Cells, type Neighbour, type Pair, type Spaces } from '../../common/rawBaselined'
 import { Grid } from '../../common/ui'
 import { provenance, type SpectralExport } from '../spectralCommon'
+import { siteCodeColor } from '@/lib/siteColours'
 
 const RAW = INK.muted
 const BASE = BASELINE_COLOR.AIRSpec
@@ -56,7 +57,7 @@ export function RawVsBaselined({ data, meta }: { data: SpectralExport; meta: Met
   }, [s])
   const colourOf = useMemo(() => (name: string) => {
     const code = CODE[name]
-    return code ? meta.sites.find((x) => x.code === code)?.color ?? (code === 'ETBI' ? '#8e44ad' : SPARTAN) : BASE
+    return code ? siteCodeColor(meta, code, code === 'ETBI' ? '#8e44ad' : SPARTAN) : BASE
   }, [meta.sites])
   const site = useChartOptions('network-raw-site', [
     { key: 'site', label: 'Site', style: 'select', default: '*Addis', choices },

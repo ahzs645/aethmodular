@@ -257,6 +257,89 @@ paintPair(OCT1_HATCH.fill, '#2a2720')
 paintPair(OCT1_HATCH.stroke, '#6b5d3d')
 
 /**
+ * One colour per preprocessing on the pages that compare them (Decision, Experimental, the calibration
+ * grid's SPECTRA_COLOR). Shared names agree with BASELINE_COLOR: the spline baseline is AIRSpec blue
+ * under every spelling (spline, airspec, AIRSpec). `vibes` here is the decision workbook's (and the
+ * experiments') VIBES, the completed rank-70 full-range run, so it takes that run's orange; the
+ * Baselines exports' `vibes` method code is the archived run and stays purple in BASELINE_COLOR.
+ * Raw spectra are dark grey (lifted on the dark page), the second derivative magenta.
+ */
+export const PREPROCESSING_COLOR: Record<string, string> = {
+  raw: themed('#525252', '#9aa3ad'),
+  spline: BASELINE_COLOR.AIRSpec,
+  airspec: BASELINE_COLOR.AIRSpec,
+  AIRSpec: BASELINE_COLOR.AIRSpec,
+  vibes: BASELINE_COLOR['VIBES-full-r70'],
+  /** SG second derivative (the Deming magenta's hue, by history) */
+  deriv2: '#c026d3',
+  /** neutral baseline (pspline-arPLS) */
+  neutral: INK_LIGHT.good,
+}
+/** a preprocessing's colour, falling back to the baseline map, then the axis grey */
+export const preprocessingColor = (key: string) => PREPROCESSING_COLOR[key] ?? BASELINE_COLOR[key] ?? INK.axis
+
+/**
+ * Filter lots (PTFE batches), one colour each wherever a lot is drawn: 248 and 251 as char_12 draws
+ * them, 253 blue, the SPARTAN lots 241 / 241a orange and purple. Keys are the lot as written ('241a').
+ */
+export const LOT_COLOR: Record<string, string> = {
+  '241': '#d94801',
+  '241a': '#6a51a3',
+  '248': '#eda100',
+  '250': '#8c564b',
+  '251': '#1baf7a',
+  '253': '#2a78d6',
+}
+/** a lot whose number is not known */
+export const LOT_UNKNOWN = '#999999'
+export const lotColor = (lot: string | number, fallback: string = LOT_UNKNOWN) => LOT_COLOR[String(lot)] ?? fallback
+
+/**
+ * The aethalometer's five channels, as the notebooks draw them (scripts/plotting wavelength_colors):
+ * violet to near-infrared slate, IR lifted on the dark page.
+ */
+export const AETH_CHANNEL_COLOR: Record<'UV' | 'Blue' | 'Green' | 'Red' | 'IR', string> = {
+  UV: '#9B59B6',
+  Blue: '#3498DB',
+  Green: '#2ECC71',
+  Red: '#E74C3C',
+  IR: themed('#34495E', '#a9bdd2'),
+}
+/** the aethalometer's two sampling spots (dual-spot loading compensation, spot flows) */
+export const AETH_SPOT_COLOR = { one: '#2c7fb8', two: '#d95f0e' }
+
+/**
+ * Measured variables drawn as their own series (weather and AERONET timelines, monthly climate, the
+ * humidity split): rain blue, temperature red, relative humidity and AOD steel blue, fine-mode
+ * fraction green. `station` is the weather-station record against the reanalysis (StationCheck).
+ */
+export const VARIABLE_COLOR = {
+  rain: '#4292c6',
+  temperature: '#c0392b',
+  humidity: '#2c7fb8',
+  aod: '#2c7fb8',
+  angstrom: '#d95f02',
+  fineModeFraction: '#41ab5d',
+  fineAod: '#7570b3',
+  station: '#2c7fb8',
+}
+
+/** The SPARTAN network as one population, beside IMPROVE_GREY. */
+export const SPARTAN_COLOR = '#c0392b'
+
+/**
+ * HIPS blank-line conventions (HipsYork, BlankLines): the deployed line, a per-line fit, and the
+ * lot-pooled fit, linear or quadratic. The lot-pooled quadratic is red, not the Deming / second-derivative magenta.
+ */
+export const BLANK_LINE_COLOR = {
+  deployed: INK_LIGHT.text,
+  line_lin: '#2c7fb8',
+  line_quad: '#2c7fb8',
+  lot_lin: '#2b6cb0',
+  lot_quad: INK_LIGHT.negative,
+}
+
+/**
  * Text colour for a label drawn on a coloured cell: white on dark fills, the
  * normal ink on light ones, from the fill's relative luminance (WCAG), so every
  * heat map stays readable whatever its ramp (no per-chart value thresholds).
@@ -289,6 +372,11 @@ export function inkOnFill(fill: string): string {
 
 /** Chart colour palettes (sequential, diverging and categorical) live in lib/palettes. */
 
+/** Short month names, January first: index with `month - 1`. */
+export const MONTHS: readonly string[] = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+/** One-letter month labels, for narrow month axes. */
+export const MONTH_LETTERS: readonly string[] = 'JFMAMJJASOND'.split('')
+
 export const FONT = {
   family: 'ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif',
   mono: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace',
@@ -299,6 +387,9 @@ export const FONT = {
 export function withUnit(field: string, units: Record<string, string> | undefined): string {
   const u = units?.[field]
   if (!u) return chemText(field)
-  const pretty = u.replace('ug/m3', 'µg/m³').replace('Mm-1', 'Mm⁻¹')
-  return chemText(`${field} (${pretty})`)
+  return chemText(`${field} (${prettyUnit(u)})`)
 }
+
+/** A unit as the exports write it, for display: "ug/m3" -> "µg/m³", "ng/m3" -> "ng/m³", "Mm-1" -> "Mm⁻¹" (missing -> ""). */
+export const prettyUnit = (u: string | null | undefined) =>
+  (u ?? '').replace(/\bug\//gi, 'µg/').replace(/\/m3\b/g, '/m³').replace(/\bMm-1\b/g, 'Mm⁻¹')

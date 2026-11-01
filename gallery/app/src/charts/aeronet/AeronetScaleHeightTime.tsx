@@ -17,6 +17,7 @@ import { seasonOnly } from '@/lib/seasons'
 import { AAOD675, HIPS_LOT_PERIODS, lotPeriodOf, scaleHeight, surfaceFabs } from '@/lib/aeronet'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
+import { seasonColor, siteColor } from '@/lib/siteColours'
 
 const BY = ['Lot period', 'Year', 'Season'] as const
 type By = (typeof BY)[number]
@@ -60,8 +61,8 @@ export function AeronetScaleHeightTime({ rows, meta }: { rows: FilterRow[]; meta
   // years are ordered: a sequential palette (Viridis by default), changed from the options when colouring by year
   const yearColours = useColourScheme('aeronet-scale-height-time', 'sequential', 'Viridis')
   const yearRamp = d3.scaleSequential(d3.interpolateRgbBasis(yearColours.stops)).domain([0, Math.max(1, groups.length - 1)])
-  const colorOf = (g: string) => by === 'Site' ? meta.sites.find((s) => s.name === g)?.color ?? INK.muted
-    : by === 'Season' ? meta.seasons.find((s) => s.name === g)?.color ?? INK.muted
+  const colorOf = (g: string) => by === 'Site' ? siteColor(meta, g)
+    : by === 'Season' ? seasonColor(meta, g)
       : by === 'Lot period' ? (g === 'No documented lot' ? INK.neutral : LOT_COLOURS[groups.indexOf(g) % LOT_COLOURS.length])
         : yearRamp(groups.indexOf(g))
   const label = (g: string) => (by === 'Season' ? seasonOnly(g) : g)

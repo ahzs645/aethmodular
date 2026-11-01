@@ -14,6 +14,7 @@ import { correlationP, influence, multiOls, ols, originFit, pearsonR, spearman, 
 import { Bars, DataTable, Grid, HIGH, LOW, SitePick, fitText, line, num, ofSite, pText, point, seasonsOf, shortSeason, useSite } from '../common/ui'
 import { defaultRh } from './RhSweep'
 import { useMarkedRows } from '@/lib/markedRows'
+import { namedColor } from '@/lib/siteColours'
 
 const RECURSIVE = 'notebooks/analysis/meteorology/hips_ftir_intercept_rh_recursive_diagnostics.ipynb'
 const INVESTIGATION = 'notebooks/analysis/meteorology/hips_intercept_investigation.ipynb'
@@ -39,7 +40,7 @@ export function OffsetDrivers({ rows: viewRows, meta: viewMeta }: SectionPagePro
   const xF = pick(xParam, meta.fields[0]), yF = pick(yParam, meta.fields[1] ?? meta.fields[0])
   const cov = meta.fields.includes(covParam) ? covParam : defaultRh(meta.fields, siteRows)
   const seasons = useMemo(() => seasonsOf(siteRows, meta), [siteRows, meta])
-  const colorOf = (r: FilterRow) => seasons.find((s) => s.name === r.season)?.color ?? INK.muted
+  const colorOf = (r: FilterRow) => namedColor(seasons, r.season)
 
   const pairs = useMemo(() => siteRows.flatMap((r) => { const x = num(r, xF), y = num(r, yF); return x !== null && y !== null ? [{ r, x, y }] : [] }), [siteRows, xF, yF])
   // Filters → excluded: Mark (lib/markedRows): the site's excluded filters, drawn as × on the crossplots, in no fit

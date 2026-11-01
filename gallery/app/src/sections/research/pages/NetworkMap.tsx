@@ -11,6 +11,7 @@ import type { SectionPageProps } from '../../types'
 import { SiteSimilarityMatrix } from './SiteSimilarityMatrix'
 import { RawVsBaselined } from './network/RawVsBaselined'
 import { PageIntro, provenance, rows, useSpectral, Waiting } from './spectralCommon'
+import { siteCodeColor } from '@/lib/siteColours'
 
 const tag = (list: string, rs: Row[]) => rs.map((r): Row => ({ list, ...r }))
 
@@ -149,7 +150,7 @@ function PairHistogram({ table, meta, provenance: prov }: { table: Table | undef
       for (const j of imp) { const v = r(i, j); if (v != null && v > best) { best = v; at = names[j] } }
       const code = TARGET_CODE[n] ?? ''
       return { name: n.slice(1), code, best, at, pct: (100 * pairs.filter((p) => p < best).length) / pairs.length,
-        color: meta.sites.find((s) => s.code === code)?.color ?? (code === 'ETBI' ? '#8e44ad' : INK.text) }
+        color: siteCodeColor(meta, code, code === 'ETBI' ? '#8e44ad' : INK.text) }
     })
     const lo = zoom ? ZOOM : Math.min(...pairs), hi = Math.max(...pairs)
     const edges = Array.from({ length: BINS + 1 }, (_, i) => lo + ((hi - lo) * i) / BINS)

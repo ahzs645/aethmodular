@@ -17,6 +17,7 @@ import { concentrationEdges, pollutionRose, type FilterWind } from '@/lib/windRo
 import type { WeatherSource } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { RosePanel, roseRadius, roseSize, useWindHours } from './roseParts'
+import { colourGroups } from '@/lib/siteColours'
 
 const SPLITS = ['Site', 'Season'] as const
 const STATS = ['Mean', 'Median', 'Percentile', 'Frequency'] as const
@@ -76,8 +77,8 @@ export function PollutionRose({ rows, meta, field, source, site, splits = SPLITS
     const usable = rows.filter((r) => typeof r[f] === 'number' && Number.isFinite(r[f] as number))
     const one = site ? usable.filter((r) => r.site === site.name) : usable
     const keyed: [string, string, FilterRow[]][] = split === 'Site'
-      ? d3.groups(usable, (r) => r.site).map(([k, rs]) => [k, meta.sites.find((s) => s.name === k)?.color ?? INK.muted, rs])
-      : d3.groups(one, (r) => r.season).map(([k, rs]) => [k, meta.seasons.find((s) => s.name === k)?.color ?? INK.muted, rs])
+      ? colourGroups(usable, 'site', meta)
+      : colourGroups(one, 'season', meta)
     return keyed.map(([name, color, rs]) => {
       const filters: FilterWind[] = rs.flatMap((r) => { const w = wind.of(r.id); return w ? [{ id: r.id, value: r[f] as number, ...w }] : [] })
       return { name, color, filters }

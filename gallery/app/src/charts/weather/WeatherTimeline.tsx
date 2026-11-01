@@ -26,6 +26,7 @@ import { wrapCategory } from '@/components/CategoryAxis'
 import { useSearchParam } from '@/lib/url'
 import { isPmfField, pickerName } from '@/lib/pmfGroups'
 import { toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
+import { namedColor } from '@/lib/siteColours'
 
 // each panel's title stands up beside its y axis, as on any plot: the unit on a line of its own
 // ("Precip." over "(mm/day)"), and a name too long for the panel's height wrapped onto more lines.
@@ -249,7 +250,7 @@ function FieldPoints({ pts, field, site, x, width, height, seasons, selected, ti
   selected: Set<string> | null; tip: ReturnType<typeof useTooltip>; tipOf: (p: FieldPt) => TipBody
 }) {
   const y = useMemo(() => fieldScale(pts, height), [pts, height])
-  const colorOf = (p: FieldPt) => seasons.find((s) => s.name === p.row.season)?.color ?? INK.text
+  const colorOf = (p: FieldPt) => namedColor(seasons, p.row.season, INK.text)
   const xy = useMemo(() => pts.map((p) => [x(p.t), y(p.v)] as const), [pts, x, y])
   const dots = useMemo(() => pts.map((p, i) => {
     const st = focusStyle(p.row.id, null, { r: 3, level: 'sparse' }, selected)

@@ -22,6 +22,7 @@ import { OPTICS_COMMAND, useOptics } from '../common/optics'
 import { quantile } from '../common/stats'
 import { BASIS_NOTE, DataTable, SERIES, num, point, useConcRows } from '../common/ui'
 import { presetName, rows as tableRows, useCalibRuns, useSpectral, type SpectralExport } from './spectralCommon'
+import { siteCodeColor } from '@/lib/siteColours'
 
 const FTIR46 = 'research/ftir_ec_phase3/ftir_46_paired_increment_and_mass.ipynb'
 /** ftir_46 used the locked lowest-OC/EC 800 + AIRSpec calibration (and a k = 8 440 run the export does not hold) */
@@ -80,7 +81,7 @@ export function MassLead({ rows: viewRows, meta }: SectionPageProps) {
     return TARGETS.map(([target, code]) => {
       const run = runs.runs.find((r) => r.preset === preset && r.target === target)
       const site = meta.sites.find((s) => s.code === code)?.name ?? runs.targets[target]?.site ?? code
-      const color = meta.sites.find((s) => s.code === code)?.color ?? runs.targets[target]?.color ?? INK.muted
+      const color = siteCodeColor(meta, code, runs.targets[target]?.color ?? INK.muted)
       const rowOf = (m: Map<string, FilterRow>) => (id: string) => { const r = m.get(id); return r ? { mass: num(r, 'PM2.5 mass'), date: r.date } : undefined }
       const { filters, nView, nMass } = evalFilters(run?.eval, rowOf(byId), (id) => opt.get(id))
       const marked = markedById.size ? evalFilters(run?.eval, rowOf(markedById), (id) => opt.get(id)).filters : []

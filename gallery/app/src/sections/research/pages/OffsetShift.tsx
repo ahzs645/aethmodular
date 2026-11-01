@@ -4,7 +4,7 @@ import { Crossplot } from '@/components/Crossplot'
 import { SweepPlot } from '@/components/SweepPlot'
 import { fmt } from '@/lib/format'
 import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
-import { INK } from '@/lib/theme'
+import { INK, MONTHS } from '@/lib/theme'
 import type { FilterRow } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
@@ -19,7 +19,6 @@ const CHARCOAL = 'Charcoal share (PMF)'
 const RATIOS = Array.from({ length: 80 }, (_, i) => 10 ** (-1 + (3.5 * i) / 79))   // σ_fAbs / σ_EC, 0.1 … ~316 (np.logspace(-1, 2.5, 80))
 /** the filters with both measurements */
 const pairsOf = (rs: FilterRow[]) => rs.flatMap((r) => { const x = num(r, EC), y = num(r, FABS); return x !== null && y !== null ? [{ r, x, y }] : [] })
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 /**
  * fAbs against FTIR EC and the shift in EC that would remove the intercept: how the fitted line moves with the

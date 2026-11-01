@@ -8,6 +8,8 @@ import { prettyUnit } from '@/components/FieldSelect'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { DrawerShell, DrawerScroll } from '@/components/DrawerShell'
 import { UndoIcon, XIcon } from '@/components/Icons'
+import { siteColor } from '@/lib/siteColours'
+import { INK } from '@/lib/theme'
 
 /**
  * The side panel for a bin of filters (a hex, a histogram bar): every filter in it,
@@ -42,7 +44,7 @@ export function GroupDrawer({ group, byId, meta, fields, onClose }: {
   const live = rows.filter((r) => !ed.dropped.has(r.id))
   const out = rows.filter((r) => ed.dropped.has(r.id))
   const sites = d3.rollups(rows, (v) => v.length, (r) => r.site).sort((a, b) => b[1] - a[1])
-  const colorOf = (site: string) => meta.sites.find((s) => s.name === site)?.color ?? '#9aa5b1'
+  const colorOf = (site: string) => siteColor(meta, site, INK.identity)
   const unit = (f: string) => (meta.field_units?.[f] ? prettyUnit(meta.field_units[f]) : '')
   const tick = (id: string) => setTicked((cur) => { const n = new Set(cur); if (n.has(id)) n.delete(id); else n.add(id); return n })
   const tickedLive = live.filter((r) => ticked.has(r.id)).map((r) => r.id)

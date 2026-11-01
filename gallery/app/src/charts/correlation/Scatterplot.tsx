@@ -33,6 +33,7 @@ import { ExcludedNote, toMarks, useMarkReason, useMarkedRows } from '@/lib/marke
 import { ScrubField } from '@/components/ScrubField'
 import { useDashboardDetails } from '@/lib/dashboardDetails'
 import { UndoIcon } from '@/components/Icons'
+import { namedColor, siteColor } from '@/lib/siteColours'
 
 type Point = { row: FilterRow; x: number; y: number; c: number | null; s: number | null }
 type Scale = d3.ScaleLinear<number, number> | d3.ScaleLogarithmic<number, number>
@@ -250,8 +251,8 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
       ...p,
       marks: marked.length ? (keep ? marked.filter(keep) : marked) : NO_ROWS,
       stats: regression(p.points.map((q) => q.x), p.points.map((q) => q.y), fitUncertainty(p.points.map(q => q.row), xField, yField, meta)),
-      fitGroups: groupedRegressions(p.points, grouping, { x: q => q.x, y: q => q.y, site: q => q.row.site, season: q => q.row.season, seasonColor: q => meta.seasons.find(se => se.name === q.row.season)?.color ?? INK.muted,
-        color: q => meta.sites.find(s => s.name === q.row.site)?.color ?? INK.muted,
+      fitGroups: groupedRegressions(p.points, grouping, { x: q => q.x, y: q => q.y, site: q => q.row.site, season: q => q.row.season, seasonColor: q => namedColor(meta.seasons, q.row.season),
+        color: q => siteColor(meta, q.row.site),
         options: members => fitUncertainty(members.map(q => q.row), xField, yField, meta) }),
     }))
   }, [layout, points, meta, xField, yField, grouping, grp, marked])

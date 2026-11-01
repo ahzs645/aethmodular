@@ -10,6 +10,7 @@ import { loadJson, useExport } from '@/lib/data'
 import type { MetaFile } from '@/lib/types'
 import { themed } from '@/lib/theme'
 import { loadAethDaily, type AethDaily } from '../lib'
+import { siteCodeColor } from '@/lib/siteColours'
 
 export const CHANNELS = ['UV', 'Blue', 'Green', 'Red', 'IR'] as const
 export type Channel = (typeof CHANNELS)[number]
@@ -64,7 +65,7 @@ export function instrumentName(code: string, meta: MetaFile) {
 }
 /** a site's colour from meta (config.SITES) */
 export function instrumentColor(code: string, meta: MetaFile): string {
-  return meta.sites.find((s) => s.code === (code === JACROS ? 'ETAD' : code))?.color ?? '#7b8794'
+  return siteCodeColor(meta, code === JACROS ? 'ETAD' : code)
 }
 
 /** one daily bin with everything the page draws */

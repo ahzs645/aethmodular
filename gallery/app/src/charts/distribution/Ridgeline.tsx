@@ -10,6 +10,7 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { ExcludedNote } from '@/lib/markedRows'
+import { seasonColor, siteColor } from '@/lib/siteColours'
 
 const ROWS = ['Season', 'Site', 'Year'] as const
 const OVERLAPS = ['None', 'Some', 'Ridge'] as const
@@ -54,9 +55,9 @@ export function Ridgeline({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
 
     const colorFor = (k: string) =>
       groupBy === 'Season'
-        ? meta.seasons.find((s) => s.name === k)?.color ?? INK.muted
+        ? seasonColor(meta, k)
         : groupBy === 'Site'
-          ? meta.sites.find((s) => s.name === k)?.color ?? INK.muted
+          ? siteColor(meta, k)
           : ramp(order.indexOf(k) / Math.max(1, order.length - 1))
 
     return order.filter((k) => m.get(k)!.length >= 8).map((k) => ({ name: k, values: m.get(k)!, color: colorFor(k) }))

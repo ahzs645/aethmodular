@@ -10,6 +10,7 @@
  * The export carries absorbance in mAbs (× 1000); these helpers do not care about the unit.
  */
 import { median, quantile } from '../../common/stats.ts'
+import { MONTHS } from '../../../../lib/theme.ts'
 
 // ---------------------------------------------------------------- Savitzky–Golay
 
@@ -98,7 +99,6 @@ export const rankDesc = (v: readonly number[]) => v.map((x) => 1 + v.filter((y) 
 /** a month split: group name → months (1–12); months in no group fall to OTHER, undated spectra to UNDATED */
 export interface MonthSplit { key: string; label: string; groups: [string, number[]][] }
 export const OTHER = 'other months', UNDATED = 'no sampling date'
-export const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 export const ALL = 'all 319 spectra'
 
 export const MONTH_SPLITS: MonthSplit[] = [
@@ -106,7 +106,7 @@ export const MONTH_SPLITS: MonthSplit[] = [
   { key: 'placeholder', label: "04's placeholder split (fig 2)", groups: [['high-biomass months (Oct–Feb)', [10, 11, 12, 1, 2]], ['diesel months (Jun–Aug)', [6, 7, 8]]] },
   { key: 'dry_feb', label: 'Dry · Belg · Kiremt (Feb in Dry)', groups: [['Dry (Oct–Feb)', [10, 11, 12, 1, 2]], ['Belg (Mar–May)', [3, 4, 5]], ['Kiremt (Jun–Sep)', [6, 7, 8, 9]]] },
   { key: 'belg_feb', label: 'Bega · Belg · Kiremt (Feb in Belg)', groups: [['Bega (Oct–Jan)', [10, 11, 12, 1]], ['Belg (Feb–May)', [2, 3, 4, 5]], ['Kiremt (Jun–Sep)', [6, 7, 8, 9]]] },
-  { key: 'month', label: 'Each month', groups: MONTH_NAMES.map((m, i): [string, number[]] => [m, [i + 1]]) },
+  { key: 'month', label: 'Each month', groups: MONTHS.map((m, i): [string, number[]] => [m, [i + 1]]) },
 ]
 
 /** the group a spectrum's month falls in under a split ('all' puts every spectrum in one group) */

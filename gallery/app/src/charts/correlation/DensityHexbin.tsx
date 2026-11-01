@@ -21,6 +21,7 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { useFitHeight } from '@/lib/chartFit'
 import { ExcludedNote } from '@/lib/markedRows'
+import { seasonColor, siteColor } from '@/lib/siteColours'
 
 type Pt = [number, number, string]
 
@@ -67,8 +68,8 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
     x: r => r[xField] as number, y: r => r[yField] as number, options: members => fitUncertainty(members, xField, yField, meta),
   }) : groupedRegressions(pairedRows, grouping, {
     x: r => r[xField] as number, y: r => r[yField] as number, site: r => r.site,
-    season: r => r.season, seasonColor: r => meta.seasons.find(se => se.name === r.season)?.color ?? INK.muted,
-    color: r => meta.sites.find(s => s.name === r.site)?.color ?? INK.muted,
+    season: r => r.season, seasonColor: r => seasonColor(meta, r.season),
+    color: r => siteColor(meta, r.site),
     options: members => fitUncertainty(members, xField, yField, meta),
   }), [pairedRows, grouping, xField, yField, meta, perBand, grp])
 

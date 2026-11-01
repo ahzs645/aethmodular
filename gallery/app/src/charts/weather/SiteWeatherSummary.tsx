@@ -9,6 +9,7 @@ import { WEATHER_VARS, spearman } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { ColorLegend } from '@/components/ColorLegend'
+import { siteColor } from '@/lib/siteColours'
 
 const MIN_N = 10
 
@@ -72,7 +73,7 @@ export function SiteWeatherSummary({ rows, meta, field, current, onSite }: {
               return (
                 <g key={t.site} transform={`translate(0,${y})`} style={{ cursor: 'pointer' }} onClick={() => onSite(t.code)}>
                   <rect width={w} height={rowH - 2} fill={on ? INK.tint : 'transparent'} />
-                  <circle cx={10} cy={rowH / 2 - 1} r={5} fill={meta.sites.find((s) => s.name === t.site)?.color ?? INK.muted} />
+                  <circle cx={10} cy={rowH / 2 - 1} r={5} fill={siteColor(meta, t.site)} />
                   <text x={22} y={rowH / 2} dy="0.1em" fontSize={12} fontWeight={on ? 650 : 400} fill={INK.text}>{t.site}</text>
                   <text x={labelW + 4} y={rowH / 2} dy="0.1em" fontSize={11} fontFamily={FONT.mono} fill={INK.muted}>{t.n}</text>
                   <text x={labelW + numW + 4} y={rowH / 2} dy="0.1em" fontSize={11} fontFamily={FONT.mono} fill={INK.muted}>{fmt(t.median, 2)}</text>

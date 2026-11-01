@@ -19,7 +19,7 @@ import { HitLayer } from '@/components/HitLayer'
 import { useFilterEdits } from '@/lib/filterEdits'
 import { RESTATES, isBookkeeping, sameProduct } from '@/fieldLineage'
 import { corrMatrix, fmt, regression } from '@/lib/stats'
-import { INK, FONT, inkOn } from '@/lib/theme'
+import { INK, FONT, inkOn, prettyUnit } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
@@ -30,6 +30,7 @@ import { XIcon } from '@/components/Icons'
 import { createPortal } from 'react-dom'
 import { chemText } from '@/lib/format'
 import { ExcludedNote } from '@/lib/markedRows'
+import { seasonColor, siteColor } from '@/lib/siteColours'
 
 const ENCODINGS = ['Colour', 'Circle size', 'Scatter matrix'] as const
 const MIN_N = 20
@@ -275,7 +276,7 @@ function PairFocus({ pair: [fx, fy], rows, meta, site, onClose }: {
     window.addEventListener('keydown', esc)
     return () => window.removeEventListener('keydown', esc)
   }, [onClose])
-  const unit = (f: string) => meta.field_units?.[f] ? ` (${meta.field_units[f].replace('ug/m3', 'µg/m³').replace('Mm-1', 'Mm⁻¹')})` : ''
+  const unit = (f: string) => meta.field_units?.[f] ? ` (${prettyUnit(meta.field_units[f])})` : ''
   return createPortal(
     <div className="export-backdrop pair-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className="export-dialog pair-focus" role="dialog" aria-label={`${chemText(fy)} vs ${chemText(fx)}`}>
@@ -339,7 +340,7 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, dimKey, meta,
   }), [rows, fields, scales])
   const W = labelW + n * cellS + (n - 1) * pad + 10
   const H = n * cellS + (n - 1) * pad + bottomH
-  const unitOf = (f: string) => (units[f] ? units[f].replace('ug/m3', 'µg/m³').replace('Mm-1', 'Mm⁻¹') : '')
+  const unitOf = (f: string) => prettyUnit(units[f])
   // the dots are drawn in one <svg>, and everything a hover changes (the dimming, each panel's focused dot, the
   // pointer layers) in a second <svg> over it, on its own compositing layer (will-change), with the fits and r.
   // In one <svg> a hover re-rasterised every dot in the matrix (138k at all sites, ~60–90 ms a move at 12 fields).
@@ -424,8 +425,8 @@ const SplomCell = memo(function SplomCell({ rows, fx, fy, sx, sy, cellS, ox, oy,
   // Deming (λ=1) rather than y-on-x least squares: both species are measured with error
   const { st, fitGroups } = useMemo(() => ({
     st: regression(pts.map((p) => p.x), pts.map((p) => p.y), fitUncertainty(pts.map(p => p.row), fx, fy, meta)),
-    fitGroups: grouping === 'pooled' ? [] : groupedRegressions(pts, grouping, { x: p => p.x, y: p => p.y, site: p => p.row.site, season: p => p.row.season, seasonColor: p => meta.seasons.find(se => se.name === p.row.season)?.color ?? INK.muted,
-      color: p => meta.sites.find(s => s.name === p.row.site)?.color ?? INK.muted,
+    fitGroups: grouping === 'pooled' ? [] : groupedRegressions(pts, grouping, { x: p => p.x, y: p => p.y, site: p => p.row.site, season: p => p.row.season, seasonColor: p => seasonColor(meta, p.row.season),
+      color: p => siteColor(meta, p.row.site),
       options: members => fitUncertainty(members.map(p => p.row), fx, fy, meta) }),
   }), [pts, grouping, fx, fy, meta])
   // each dot's place in the panel, clamped to it (the axes run 1–99 %, so a spike sits on the edge)

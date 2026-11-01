@@ -15,6 +15,7 @@ import { useAxisFields } from '@/components/AxisFieldPopover'
 import { RAIN_CLASSES, rainClass, spearman } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { ExcludedNote, toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
+import { seasonColor, siteColor } from '@/lib/siteColours'
 
 const MAX_SITES = 12
 // the site, ρ and n are the facet's title row, above the svg
@@ -39,7 +40,7 @@ export function RainWashout({ rows, meta, field, prcpField, id = 'weather-washou
   const panels = useMemo(() => {
     const ok = rows.filter((r) => typeof r[field] === 'number' && typeof r[prcpField] === 'number')
     return d3.groups(ok, (r) => r.site).map(([site, rs]) => ({
-      site, color: meta.sites.find((s) => s.name === site)?.color ?? INK.muted,
+      site, color: siteColor(meta, site),
       rho: spearman(rs.map((r) => r[prcpField] as number), rs.map((r) => r[field] as number)),
       classes: RAIN_CLASSES.map((c) => {
         const members = rs.filter((r) => rainClass(r[prcpField] as number) === c.key)
@@ -95,7 +96,7 @@ function WashoutPanel({ p, pw, h, meta, field, prcpField, selected, tip, axisPic
   // every filter in its class column, with a deterministic jitter so a re-render does not shuffle the dots
   const items = useMemo(() => p.classes.flatMap((c) => c.members.map((r, i) => ({ r, jx: ((i * 0.6180339) % 1 - 0.5) * bw * 0.8, key: c.key }))), [p, bw])
   const xy = useMemo(() => items.map(({ r, jx, key }) => [centre(key) + jx, y(Math.min(r[field] as number, y.domain()[1]))] as const), [items, y, field]) // eslint-disable-line react-hooks/exhaustive-deps
-  const colorOf = (r: FilterRow) => meta.seasons.find((s) => s.name === r.season)?.color ?? INK.muted
+  const colorOf = (r: FilterRow) => seasonColor(meta, r.season)
   // Filters → excluded: Mark (lib/markedRows): this site's excluded filters as × in their rain class, in no box or n
   const markedAll = useMarkedRows()
   const markReason = useMarkReason()

@@ -9,6 +9,7 @@ import * as d3 from 'd3'
 import { loadJson, useExport } from '@/lib/data'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { num } from './mac'
+import { seasonColor, siteColor } from '@/lib/siteColours'
 
 export const CHANNELS = ['UV', 'Blue', 'Green', 'Red', 'IR'] as const
 export type Channel = (typeof CHANNELS)[number]
@@ -105,7 +106,7 @@ export function buildPairs(rows: FilterRow[], meta: MetaFile, extra: Map<string,
     const soil = SOIL.map(([f, w]) => (conc(f) === null ? null : (conc(f) as number) * w))
     return [{
       row: r, id: r.id, site: r.site, code: r.code, date: r.date, season: r.season,
-      siteColor: meta.sites.find((s) => s.name === r.site)?.color ?? (r.color as string),
+      siteColor: siteColor(meta, r.site, r.color as string),
       bc, bcKind, batn: bc !== null && sigma ? bc * sigma[ch] : null, atn: num(x?.[atnField(ch)]),
       fabs, hipsBc: conc(HIPS_BC) ?? (fabs === null ? null : fabs / mac), ec: conc(FTIR_EC), iron: conc(IRON),
       fineSoil: soil.every((v) => v !== null) ? soil.reduce((a, b) => a! + b!, 0) : null,
@@ -138,7 +139,7 @@ export function dateTicks(dates: string[]): (v: unknown) => string {
 }
 
 /** the season's colour (the calendar in use), else muted */
-export const seasonColor = (meta: MetaFile, season: string, fallback: string) => meta.seasons.find((s) => s.name === season)?.color ?? fallback
+export { seasonColor }
 
 /** the seasons present in some pairs, in the calendar's order */
 export function seasonsIn(pairs: Pair[], meta: MetaFile): string[] {

@@ -10,8 +10,8 @@ import { FONT, INK } from '@/lib/theme'
 import { AERONET_SUMMARY, hasAod, scaleHeight, type AeronetStations } from '@/lib/aeronet'
 import { seasonOnly } from '@/lib/seasons'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { seasonColor, siteColor } from '@/lib/siteColours'
 
-const siteColour = (meta: MetaFile, name: string) => meta.sites.find((s) => s.name === name)?.color ?? INK.muted
 
 /**
  * One row per picked site: the AERONET station behind it, how many of its filters have a
@@ -62,7 +62,7 @@ export function AeronetSiteTable({ rows, meta, stations, current, onSite }: {
                     ...others.map((c) => `also within 50 km: ${c.station} (${fmt(c.km, 1)} km, ${c.window_days_with_aod} window days with AOD)`),
                     onSite ? 'click to look at this site alone' : ''].filter(Boolean))} onMouseLeave={tip.hide}>
                   <rect width={w} height={rowH - 2} fill={on ? INK.tint : 'transparent'} />
-                  <circle cx={10} cy={rowH / 2 - 1} r={5} fill={siteColour(meta, t.site)} />
+                  <circle cx={10} cy={rowH / 2 - 1} r={5} fill={siteColor(meta, t.site)} />
                   <text x={22} y={rowH / 2} dy="0.1em" fontSize={12} fontWeight={on ? 650 : 400} fill={INK.text}>{t.site}</text>
                   <text x={colX(0) + 4} y={rowH / 2} dy="0.1em" fontSize={11} fill={INK.text}>{t.st?.station.replace(/_/g, ' ') ?? '—'}</text>
                   {[fmt(t.st?.km ?? null, 1), String(t.n), String(t.nAod), String(t.nInv), ...t.cells.map((v, k) => fmt(v, AERONET_SUMMARY[k].digits)), fmt(t.h, 0)].map((v, k) => (
@@ -98,7 +98,7 @@ export function ScaleHeightStrip({ rows, meta, by = 'site', onSite }: {
     groups.sort((a, b) => (by === 'site' ? (d3.median(a.hs) ?? 0) - (d3.median(b.hs) ?? 0) : order.indexOf(a.name) - order.indexOf(b.name)))
     const out: IntervalRow[] = groups.map((g) => {
       const mid = d3.quantileSorted(g.hs, 0.5), lo = d3.quantileSorted(g.hs, 0.25), hi = d3.quantileSorted(g.hs, 0.75)
-      const color = by === 'site' ? siteColour(meta, g.name) : meta.seasons.find((x) => x.name === g.name)?.color ?? INK.muted
+      const color = by === 'site' ? siteColor(meta, g.name) : seasonColor(meta, g.name)
       return {
         key: g.name, label: by === 'site' ? g.name : seasonOnly(g.name), note: `n=${g.hs.length}`, onClick: by === 'site' && onSite ? () => onSite(g.code) : undefined,
         marks: [[{ mid, lo, hi, color }]],

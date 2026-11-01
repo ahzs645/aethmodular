@@ -32,6 +32,7 @@ import { EXCL_MODES, type ExclMode } from '@/lib/exclusionMode'
 import { CalendarNoteRef, CiteRef } from '@/components/CiteRef'
 import { ScrubField } from '@/components/ScrubField'
 import { SiteFocusControl, useFocusedSite, useSiteFocusOffered } from '@/lib/siteFocus'
+import { siteColor } from '@/lib/siteColours'
 
 export interface SubsetCaps {
   /** the tab's charts respond to the season filter */
@@ -542,7 +543,7 @@ export function SubsetBar({
                           const rule = cal?.rule
                           return <>
                             <span className="season-site">
-                              <span className="swatch" style={{ background: meta.sites.find((x) => x.name === g.site)?.color ?? 'var(--ink-muted)' }} />
+                              <span className="swatch" style={{ background: siteColor(meta, g.site, 'var(--ink-muted)') }} />
                               {a.onToggleSeasons ? (() => {
                                 const names = g.seasons.filter((se) => (s.seasonCounts[se.name] ?? 0) > 0).map((se) => se.name)
                                 const on = names.some((n) => s.activeSeasons.has(n))

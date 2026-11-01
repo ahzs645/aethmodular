@@ -12,6 +12,7 @@ import type { FilterRow, MetaFile, PmfFile, PmfRow } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import { HIDDEN_DUPLICATES } from '@/fieldLineage'
 import { ExcludedNote, useCountedFilter, useExclStatus } from '@/lib/markedRows'
+import { siteCodeColor } from '@/lib/siteColours'
 
 type Status = 'shown' | 'hidden' | 'none'
 const NO_PMF_COLOR = '#bbbbbb'
@@ -34,7 +35,7 @@ export function PmfCoverage({ pmf, rows, meta }: { pmf: PmfFile; rows: PmfRow[];
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const [lanes, setLanes] = useSearchParam<'0' | '1'>('pmfcov.fields', '1', ['0', '1'])
-  const color = meta.sites.find((s) => s.code === pmf.site)?.color ?? INK.accent
+  const color = siteCodeColor(meta, pmf.site, INK.accent)
   const isCounted = useCountedFilter()
   const exclStatus = useExclStatus()
 

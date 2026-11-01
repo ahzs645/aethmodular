@@ -19,6 +19,7 @@ import { ResidualCrossplots, ResidualSsa } from './hips/ResidualViews'
 import { RowLines } from './hips/RowLines'
 import { TauByLine, TauPm } from './hips/TauViews'
 import { useMarkedRows } from '@/lib/markedRows'
+import { namedColor } from '@/lib/siteColours'
 
 const ENVELOPE_NB = 'research/ftir_hips_chem/addis_06_hips_ptfe_operating_envelope.ipynb'
 const RT_NB = 'research/improve_hips_offset/improve_fed_rt_proxy_figure2.ipynb (SPARTAN R1/T1 analog)'
@@ -205,8 +206,8 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
             const v = b.map(residOf)
             return { x: quantile(b.map((e) => e.ecLoad!), 0.5), y: quantile(v, 0.5), lo: quantile(v, 0.25), hi: quantile(v, 0.75), tip: [`EC loading ${fmt(Math.min(...b.map((e) => e.ecLoad!)), 2)}–${fmt(Math.max(...b.map((e) => e.ecLoad!)), 2)} µg/cm²`, `median residual ${fmt(quantile(v, 0.5), 3)}`, `median tau ${fmt(quantile(b.map((e) => e.o.tau ?? NaN), 0.5), 3)}`, `n ${b.length}`] }
           }) }]} xLabel="Median EC loading (µg/cm²)" yLabel={resid === 'relative' ? 'Relative residual' : 'Residual (µg/m³)'} reference={0} include={[0]} />
-          <Crossplot points={siteEnv.map((e) => point(e.row, e.ec, e.hipsBc, seasons.find((s) => s.name === e.row.season)?.color ?? INK.muted, 'FTIR EC', 'HIPS BC', 'Research · HIPS envelope', [`EC loading ${fmt(e.ecLoad, 2)} µg/cm²`]))}
-            marked={markedEnv.map((e) => point(e.row, e.ec, e.hipsBc, seasons.find((s) => s.name === e.row.season)?.color ?? INK.muted, 'FTIR EC', 'HIPS BC', 'Research · HIPS envelope', [`EC loading ${fmt(e.ecLoad, 2)} µg/cm²`]))}
+          <Crossplot points={siteEnv.map((e) => point(e.row, e.ec, e.hipsBc, namedColor(seasons, e.row.season), 'FTIR EC', 'HIPS BC', 'Research · HIPS envelope', [`EC loading ${fmt(e.ecLoad, 2)} µg/cm²`]))}
+            marked={markedEnv.map((e) => point(e.row, e.ec, e.hipsBc, namedColor(seasons, e.row.season), 'FTIR EC', 'HIPS BC', 'Research · HIPS envelope', [`EC loading ${fmt(e.ecLoad, 2)} µg/cm²`]))}
             title="HIPS BC vs FTIR EC, binned medians" xLabel="FTIR EC (µg/m³)" yLabel="HIPS BC (µg/m³)" fit={false}
             background={(x, y) => <path d={bins.map((b, i) => `${i ? 'L' : 'M'}${x(quantile(b.map((e) => e.ec), 0.5))},${y(quantile(b.map((e) => e.hipsBc), 0.5))}`).join('')} fill="none" stroke={INK.fit} strokeWidth={2} />} />
         </Grid>}

@@ -6,10 +6,10 @@ import { Combobox } from '@/components/Combobox'
 import { DEFINE_RATIO, useRatios } from '@/components/RatioDialog'
 import { RATIO_GROUP } from '@/lib/viewFields'
 import { fieldHelp } from '@/lib/glossary'
+import { prettyUnit } from '@/lib/theme'
 
-/** "ug/m3" -> "µg/m³" for labels. */
-export const prettyUnit = (u: string | undefined) =>
-  u ? u.replace('ug/m3', 'µg/m³').replace('Mm-1', 'Mm⁻¹') : ''
+/** "ug/m3" -> "µg/m³" for labels (defined once in lib/theme; re-exported for the pickers' callers). */
+export { prettyUnit }
 
 /**
  * Measurement picker grouped by family (carbon / optical / FTIR groups /

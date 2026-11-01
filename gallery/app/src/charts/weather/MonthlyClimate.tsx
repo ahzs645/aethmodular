@@ -5,12 +5,11 @@ import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { FacetGrid } from '@/components/FacetGrid'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
-import { FONT, INK } from '@/lib/theme'
+import { FONT, INK, MONTH_LETTERS } from '@/lib/theme'
 import { loadDaily, type DailyWeather } from '@/lib/weather'
 import type { MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
 
-const MONTHS = 'JFMAMJJASOND'.split('')
 const MAX_SITES = 16
 // the site name is the facet's title row, above the svg
 const M = { top: 8, right: 30, bottom: 34, left: 34 }
@@ -97,7 +96,7 @@ export function MonthlyClimate({ meta, sites, id = 'weather-climate', title = 'M
                   const se = seasons.find((s) => s.months.includes(m.m))
                   return <g key={`s${m.m}`} pointerEvents="none">
                     <rect x={(x(m.m) ?? 0) - x.step() * x.paddingInner() / 2} width={x.step()} y={ih + 4} height={7} fill={se?.color ?? '#ddd'} />
-                    <text x={(x(m.m) ?? 0) + x.bandwidth() / 2} y={ih + 22} textAnchor="middle" fontSize={9.5} fill={INK.muted}>{MONTHS[m.m - 1]}</text>
+                    <text x={(x(m.m) ?? 0) + x.bandwidth() / 2} y={ih + 22} textAnchor="middle" fontSize={9.5} fill={INK.muted}>{MONTH_LETTERS[m.m - 1]}</text>
                   </g>
                 })}
               </g>

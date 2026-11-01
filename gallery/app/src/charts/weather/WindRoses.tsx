@@ -12,6 +12,7 @@ import { NO_PMF } from '@/lib/pmfGroups'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { Legend } from '@/components/Legend'
 import { RosePanel, roseRadius, roseSize } from './roseParts'
+import { colourGroups } from '@/lib/siteColours'
 
 const SPEED_COLORS = ['#c6dbef', '#6baed6', '#08519c']
 const SPLITS = ['Site', 'Season', 'PMF source'] as const
@@ -47,9 +48,9 @@ export function WindRoses({ rows, meta, roses, source, site, pmfLabelOfDate, spl
     if (!table) return []
     const one = site ? rows.filter((r) => r.site === site.name) : rows
     const keyed: [string, string, FilterRow[]][] = split === 'Site'
-      ? d3.groups(rows, (r) => r.site).map(([k, rs]) => [k, meta.sites.find((s) => s.name === k)?.color ?? INK.muted, rs])
+      ? colourGroups(rows, 'site', meta)
       : split === 'Season'
-        ? d3.groups(one, (r) => r.season).map(([k, rs]) => [k, meta.seasons.find((s) => s.name === k)?.color ?? INK.muted, rs])
+        ? colourGroups(one, 'season', meta)
         : d3.groups(one.filter((r) => { const l = pmfLabelOfDate(r.date); return !!l && l !== NO_PMF }), (r) => pmfLabelOfDate(r.date)!).map(([k, rs]) => [k, INK.muted, rs])
     return keyed.map(([name, color, rs]) => {
       const counts = new Array(25).fill(0)

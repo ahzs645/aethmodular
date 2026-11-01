@@ -4,13 +4,14 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import * as d3 from 'd3'
-import { themed } from '@/lib/theme'
+import { themed, MONTHS, MONTH_LETTERS } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
 import { loadJson, useExport } from '@/lib/data'
 import { loadAethDaily, useAethSites, type AethDaily, type AethSite } from '../lib'
 import type { EpisodeColumns, HourlyFile } from './hourly'
 import { CHANNELS, toDays, type Channel, type Day, type Screen, type ScreenCount } from './stats'
+import { siteColor } from '@/lib/siteColours'
 
 export { CHANNELS, type Channel, type Day, type Screen }
 
@@ -135,7 +136,7 @@ export const SCREEN_TEXT: Record<Screen, string> = {
 }
 
 /** a site's colour from meta, as on every tab */
-export const siteColor = (meta: MetaFile, site: string) => meta.sites.find((s) => s.name === site)?.color ?? '#7b8794'
+export { siteColor }
 /** an instrument's colour: its site's, a step darker for a site's second daily file (the longer Jacros record) */
 export const instColor = (meta: MetaFile, inst: Instrument) =>
   inst.code === inst.siteCode ? siteColor(meta, inst.site) : d3.color(siteColor(meta, inst.site))?.darker(0.9).formatHex() ?? siteColor(meta, inst.site)
@@ -147,8 +148,7 @@ export const logTick = (v: number) => {
 }
 
 export const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-export const MONTH_LETTER = 'JFMAMJJASOND'.split('')
-export const MONTH_NAME = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+export { MONTH_LETTERS as MONTH_LETTER, MONTHS as MONTH_NAME }
 
 /** overview/index.json (gallery/data/export_aeth_overview.py) */
 export interface OverviewSite {

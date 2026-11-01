@@ -13,7 +13,7 @@ import { SweepPlot, histogramSeries, type SweepMark, type SweepSeries } from '@/
 import { markTip } from '@/lib/exclusionMode'
 import { fmt, pct } from '@/lib/format'
 import { ExcludedNote, useMarkReason } from '@/lib/markedRows'
-import { INK } from '@/lib/theme'
+import { INK, MONTHS } from '@/lib/theme'
 import type { FilterRow } from '@/lib/types'
 import { num } from '@/lib/table'
 import type { ScoreSet, Scored } from '../../common/charcoal'
@@ -23,7 +23,6 @@ import { provenance, rows as rowsOfTable, type SpectralExport } from '../spectra
 import { NB, SET_LABEL, SET_TITLE, type Charcoal } from './data'
 
 const rChar = (s: Scored<FilterRow>) => s.rChar
-const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 export const R_CHAR = 'best r vs McCall char (r_char)', R_RAW = 'best r vs McCall raw feedstock (r_raw)', DELTA = 'delta = r_raw − r_char'
 
 /** the page's filter-set picker (one URL key, ch.set, for every chart) */
@@ -109,8 +108,8 @@ export function Recurrence({ c, data, setPick }: { c: Charcoal; data: SpectralEx
         <Bars label={`share of filters with delta > 0.05${c.set === 'notebook' ? ' (nb = char_06\'s saved rate)' : ''}`} max={1} format={(v) => pct(v)}
           bars={monthly.map((m) => {
             const nbRate = num(saved.find((r) => r.month === m.month)?.rate ?? null)
-            return { key: String(m.month), label: MONTH[m.month - 1], value: m.n ? m.rate : null, signed: dryMonths.has(m.month) ? -1 : 1,
-              note: `n=${m.n}${nbRate != null ? ` · nb ${pct(nbRate)}` : ''}`, tip: [MONTH[m.month - 1], `${pct(m.rate)} of ${m.n} filters`] }
+            return { key: String(m.month), label: MONTHS[m.month - 1], value: m.n ? m.rate : null, signed: dryMonths.has(m.month) ? -1 : 1,
+              note: `n=${m.n}${nbRate != null ? ` · nb ${pct(nbRate)}` : ''}`, tip: [MONTHS[m.month - 1], `${pct(m.rate)} of ${m.n} filters`] }
           })} />
         <Note>Red bars: months of the {c.dryName} season under the calendar in use; blue: the rest.</Note>
       </>}
