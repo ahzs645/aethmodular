@@ -57,6 +57,8 @@ export interface StackY {
   /** default 3 */
   tickCount?: number
   format?: (v: any) => string
+  /** wraps the drawn axis, e.g. in an AxisChoices offering this panel's own y options */
+  around?: (axis: ReactNode) => ReactNode
 }
 
 export interface PanelScope<S> {
@@ -80,6 +82,8 @@ export interface StackPanel<S> extends StackSize {
   title?: (s: { height: number; left: number }) => ReactNode
   /** a short value at the panel's top right */
   readout?: ReactNode
+  /** a line of text just above the panel, from its left edge (leave room: margin.top for the first, `gap` for the others) */
+  heading?: ReactNode
   /** under the axis grid and the data (a shaded period) */
   background?: (s: PanelScope<S>) => ReactNode
   /** the panel's marks */
@@ -93,7 +97,7 @@ export interface StackMarker { at: number | Date; label?: string; color?: string
 type Margin = { top?: number; right?: number; bottom?: number; left?: number | ((heights: readonly number[]) => number) }
 
 export function StackedPanels<X extends StackX>({ x: xSpec, panels, margin = {}, gap = 14, panelHeight = 92, minPanelHeight = 40,
-  xAxis = {}, seasons, seasonHover, xMarkers = [], readout, onLeave, overlay, ariaLabel }: {
+  xAxis = {}, seasons, seasonHover, xMarkers = [], readout, onLeave, overlay, ariaLabel, className }: {
   x: X
   /** the scales come from `x` (NoInfer: the panels' render props do not widen it) */
   panels: readonly StackPanel<StackScaleOf<NoInfer<X>>>[]
@@ -116,6 +120,8 @@ export function StackedPanels<X extends StackX>({ x: xSpec, panels, margin = {},
   /** marks over the whole stack, in plot coordinates (x from 0, y from the svg's top) */
   overlay?: (s: { x: StackScaleOf<NoInfer<X>>; width: number; tops: readonly number[]; heights: readonly number[] }) => ReactNode
   ariaLabel?: string
+  /** on the svg, e.g. 'animated' to ease marks between settings */
+  className?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
@@ -152,7 +158,7 @@ export function StackedPanels<X extends StackX>({ x: xSpec, panels, margin = {},
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      <svg width={innerW + left + right} height={geo.total} fontFamily={FONT.family} role={ariaLabel ? 'img' : undefined} aria-label={ariaLabel}
+      <svg width={innerW + left + right} height={geo.total} fontFamily={FONT.family} className={className} role={ariaLabel ? 'img' : undefined} aria-label={ariaLabel}
         onMouseLeave={() => { cursor.set(null); tip.hide(); onLeave?.() }}>
         <defs>{panels.map((p, i) => <clipPath key={p.key} id={`${uid}-${i}`}><rect width={innerW} height={geo.heights[i]} /></clipPath>)}</defs>
         <g transform={`translate(${left},0)`}>
@@ -163,8 +169,9 @@ export function StackedPanels<X extends StackX>({ x: xSpec, panels, margin = {},
               <g key={p.key} transform={`translate(0,${geo.tops[i]})`} data-stack-panel={p.key}>
                 {bands.length > 0 && <SeasonBands bands={bands} height={h} hover={seasonHover} />}
                 {p.background?.(s)}
-                <YAxis scale={ys[i]} x={0} gridWidth={innerW} tickCount={p.y.tickCount ?? 3} label={p.y.label} labelX={p.y.labelX}
-                  wrapLabel={p.y.wrapLabel} pick={p.y.pick} format={p.y.format} />
+                {wrapAxis(p.y, <YAxis scale={ys[i]} x={0} gridWidth={innerW} tickCount={p.y.tickCount ?? 3} label={p.y.label} labelX={p.y.labelX}
+                  wrapLabel={p.y.wrapLabel} pick={p.y.pick} format={p.y.format} />)}
+                {p.heading != null && <text x={0} y={-10} fontSize={12.5} fontWeight={600} fill={INK.text}>{p.heading}</text>}
                 {p.title?.({ height: h, left })}
                 {xMarkers.filter((m) => inView(m.at)).map((m, k) => <Marker key={k} orient="v" at={px(m.at)} from={0} to={h}
                   label={i === 0 ? m.label : undefined} color={m.color} labelSide={m.labelSide} />)}
@@ -184,6 +191,8 @@ export function StackedPanels<X extends StackX>({ x: xSpec, panels, margin = {},
     </div>
   )
 }
+
+const wrapAxis = (y: StackY, axis: ReactNode) => (y.around ? y.around(axis) : axis)
 
 const MONTH_YEAR = d3.utcFormat('%b %Y') as (v: any) => string
 

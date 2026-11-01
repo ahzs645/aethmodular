@@ -5,8 +5,7 @@ import { Marker } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
-import { XAxis, YAxis } from '@/components/Axes'
-import { useDimensions } from '@/hooks/useGalleryData'
+import { StackedPanels, type StackPanel } from '@/components/StackedPanels'
 import { useTooltip } from '@/hooks/useTooltip'
 import { INK, MARGIN, FONT } from '@/lib/theme'
 import type { CalibFile, CalibRow } from '@/lib/types'
@@ -71,7 +70,6 @@ function sweepSeries(rows: CalibRow[], metric: SweepMetric, allPairs: boolean, a
 
 export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; selected: Config; onSelect: (c: Config) => void }) {
   const wrapRef = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
 
   const rankedCohorts = Object.keys(calib.default_cutoff)
@@ -118,34 +116,40 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
   const testLabel = (m: Metric) => (target === 'addis' ? metricLabel(m) : metricLabel(m).replace('Addis', siteName))
   const shown = series.filter((s) => !hidden.has(s.label))
   const cvShown = cvSeries.filter((s) => !hidden.has(s.label))
-  const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const xAll = [...shown, ...cvShown].flatMap((s) => s.pts.map((p) => p.x))
   const [x0, x1] = d3.extent(xAll)
-  const x = d3.scaleLinear().domain(x0 === undefined || x1 === undefined ? [0, 1] : [x0, x1]).range([0, innerW]).nice()
+  const xDomain: [number, number] = x0 === undefined || x1 === undefined ? [0, 1] : [x0, x1]
   const defaultCut = calib.default_cutoff[cohort]
   const legendSeries = [...new Map([...series, ...cvSeries].map((s) => [s.key, s])).values()]
   const shortMode = label(CV_PROTOCOL_SHORT, mode)
 
-  const panel = (ss: SweepSeries[], m: SweepMetric, height: number, yLabel: string) => (
-    <SweepPanel
-      series={ss} metric={m} height={height} width={width} innerW={innerW} x={x} calib={calib} yLabel={yLabel}
-      defaultCut={defaultCut} axis={axis} selected={selected} dim={dim}
-      onEnter={(e, s, p) =>
-        tip.show(e, [
-          `${label(COHORT_SHORT, cohort)} ${p.r.cut} × ${label(PREPROCESSING, s.sp)}${s.sel !== 'raw' ? ` (${label(SELECTION_SPACE, s.sel)})` : ''}`,
-          `Selected cohort: ${fmtCount(fittingCounts(p.r).cohort)} · fitted: ${fmtCount(fittingCounts(p.r).fitted)} · held-out: ${fmtCount(fittingCounts(p.r).heldout)} filters`,
-          `${METRIC.k}: ${p.r.k ?? '—'} (rule)`,
-          `Test set (${siteName}): Deming ${fmtFit(allPairs ? p.r.adm : p.r.dm, allPairs ? p.r.adb : p.r.db)} · R² ${(allPairs ? p.r.ar2 : p.r.r2)?.toFixed(3) ?? '—'}`,
-          `Calibration set: IMPROVE cross-validation R² ${p.r.ho?.toFixed(3) ?? '—'}`,
-          `Calibration set: IMPROVE cross-validation RMSE ${calibrationReadout(p.r, 'cv_rmse')?.toFixed(3) ?? 'unavailable'} µg/filter`,
-          `Internal cross-validation RMSE: ${calibrationReadout(p.r, 'rmsecv')?.toFixed(3) ?? 'unavailable'} µg/filter`,
-          'click to load into the PLS-factor sweep',
-        ])
-      }
-      onLeave={tip.hide}
-      onSelect={onSelect}
-    />
-  )
+  const onEnter = (e: React.MouseEvent, s: SweepSeries, p: SweepPoint) =>
+    tip.show(e, [
+      `${label(COHORT_SHORT, cohort)} ${p.r.cut} × ${label(PREPROCESSING, s.sp)}${s.sel !== 'raw' ? ` (${label(SELECTION_SPACE, s.sel)})` : ''}`,
+      `Selected cohort: ${fmtCount(fittingCounts(p.r).cohort)} · fitted: ${fmtCount(fittingCounts(p.r).fitted)} · held-out: ${fmtCount(fittingCounts(p.r).heldout)} filters`,
+      `${METRIC.k}: ${p.r.k ?? '—'} (rule)`,
+      `Test set (${siteName}): Deming ${fmtFit(allPairs ? p.r.adm : p.r.dm, allPairs ? p.r.adb : p.r.db)} · R² ${(allPairs ? p.r.ar2 : p.r.r2)?.toFixed(3) ?? '—'}`,
+      `Calibration set: IMPROVE cross-validation R² ${p.r.ho?.toFixed(3) ?? '—'}`,
+      `Calibration set: IMPROVE cross-validation RMSE ${calibrationReadout(p.r, 'cv_rmse')?.toFixed(3) ?? 'unavailable'} µg/filter`,
+      `Internal cross-validation RMSE: ${calibrationReadout(p.r, 'rmsecv')?.toFixed(3) ?? 'unavailable'} µg/filter`,
+      'click to load into the PLS-factor sweep',
+    ])
+  // the two panels on one x axis (components/StackedPanels): the test set above, IMPROVE cross-validation below, each
+  // with its own heading and its own y readout choice; the x axis title switches fitted / requested counts for both
+  const testY = sweepY(shown, metric), cvY = sweepY(cvShown, cvMetric)
+  const stackPanel = (key: string, ss: SweepSeries[], m: SweepMetric, yr: ReturnType<typeof sweepY>, height: number, yLabel: string, yOption: 'metric' | 'cvMetric', heading: React.ReactNode): StackPanel<d3.ScaleLinear<number, number>> => ({
+    key, height, share: height, heading,
+    y: { domain: yr.domain, nice: true, label: yLabel, pick: 'y', tickCount: 6, around: (axis) => <AxisChoices {...o.axisChoices({ y: yOption })}>{axis}</AxisChoices> },
+    children: ({ x, y, width, height: h }) => <SweepMarks series={ss} metric={m} x={x} y={y} innerW={width} innerH={h} calib={calib} defaultCut={defaultCut} axis={axis}
+      selected={selected} dim={dim} onEnter={onEnter} onLeave={tip.hide} onSelect={onSelect} />,
+  })
+  const testHas = shown.some((s) => s.pts.length > 0), cvHas = cvShown.some((s) => s.pts.length > 0)
+  const stack = [
+    ...(testHas ? [stackPanel('test', shown, metric, testY, 340 - MARGIN.top - MARGIN.bottom, testLabel(metric), 'metric', `Test set: ${siteName}`)] : []),
+    ...(cvHas ? [stackPanel('cv', cvShown, cvMetric, cvY, 250 - MARGIN.top - MARGIN.bottom, CV_AXIS_LABELS[cvMetric], 'cvMetric',
+      <>Calibration set: IMPROVE cross-validation<tspan fontWeight={400} fill={INK.muted}> · scored on IMPROVE filters only, not on {siteName}</tspan></>)] : []),
+  ]
+  const nClamped = (testHas ? testY.nClamped : 0) + (cvHas ? cvY.nClamped : 0)
   const cvPanelTitle: React.CSSProperties = { margin: '14px 0 2px', fontSize: 12.5, fontWeight: 600, color: 'var(--ink-text)' }
   const countCut = selected.co === cohort && selected.cut !== null && rows.some((r) => r.cut === selected.cut) ? selected.cut : defaultCut
   const countRows = rows.filter((r) => r.cut === countCut).sort((a, b) => a.sp.localeCompare(b.sp) || (a.sel ?? '').localeCompare(b.sel ?? ''))
@@ -161,30 +165,27 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
       <div ref={wrapRef} className="chart-wrap">
         {!hasFitCounts && <ChartAside><p className="chart-note">Actual fitting counts are unavailable for these saved rows; the axis shows requested cutoffs. No test-set pair count or cutoff is substituted for a fit count.</p></ChartAside>}
         {axis === 'fitted' && missingFitCounts > 0 && <ChartAside><p className="chart-note">{missingFitCounts} saved rows have no fitting counts and are omitted on this axis. Choose requested cutoff to inspect their available scores.</p></ChartAside>}
-        <p style={{ ...cvPanelTitle, marginTop: 0 }}>Test set: {siteName}</p>
-        {shown.flatMap((s) => s.pts).length === 0 ? (
-          <Empty>No rows for {label(COHORT, cohort)} · {shortMode} · {siteName}.{mode !== 'site_heldout' ? ' Interleaved cross-validation covers spline-baselined spectra at every site (Colab batch, 2026-09-23); raw and 2nd-derivative spectra only at Addis and Bishoftu, on the 5-point cutoff ladder.' : ''}</Empty>
-        ) : (
-          <AxisChoices {...o.axisChoices({ x: 'axis', y: 'metric' })}>{panel(shown, metric, 340, testLabel(metric))}</AxisChoices>
-        )}
-        <p style={{ ...cvPanelTitle, marginTop: 18, paddingTop: 12, borderTop: '1px solid var(--ink-border)' }}>
-          Calibration set: IMPROVE cross-validation
-          <span style={{ fontWeight: 400, color: 'var(--ink-muted)' }}> · scored on IMPROVE filters only, not on {siteName}</span>
-        </p>
+        {!testHas && <><p style={{ ...cvPanelTitle, marginTop: 0 }}>Test set: {siteName}</p>
+          <Empty>No rows for {label(COHORT, cohort)} · {shortMode} · {siteName}.{mode !== 'site_heldout' ? ' Interleaved cross-validation covers spline-baselined spectra at every site (Colab batch, 2026-09-23); raw and 2nd-derivative spectra only at Addis and Bishoftu, on the 5-point cutoff ladder.' : ''}</Empty></>}
+        {stack.length > 0 && <AxisChoices {...o.axisChoices({ x: 'axis' })}>
+          <StackedPanels x={{ type: 'linear', domain: xDomain, nice: true }} panels={stack} className="animated" gap={MARGIN.top + 22}
+            margin={{ top: MARGIN.top, right: MARGIN.right, bottom: MARGIN.bottom, left: MARGIN.left }} xAxis={{ label: X_LABELS[axis], pick: 'x', tickCount: 6 }} />
+        </AxisChoices>}
+        {nClamped > 0 && <ChartAside><p className="chart-note">{nClamped} extreme readouts (tiny cohorts) are drawn hollow at the edge of the axis and left out of the line.</p></ChartAside>}
         <ChartAside><p className="chart-note">{cvMetric === 'rmsecv'
           ? 'Internal cross-validation: fold predictions within the fitted IMPROVE set, at the selected number of PLS factors. RMSECV scores TOR loading in µg/filter.'
           : 'Held-out-site cross-validation: predictions for IMPROVE sites excluded from the final fit. RMSE scores TOR loading in µg/filter; it is distinct from test-set concentration error.'}</p></ChartAside>
-        {cvShown.flatMap((s) => s.pts).length === 0 ? (
+        {!cvHas && <><p style={{ ...cvPanelTitle, marginTop: 18, paddingTop: 12, borderTop: '1px solid var(--ink-border)' }}>
+          Calibration set: IMPROVE cross-validation
+          <span style={{ fontWeight: 400, color: 'var(--ink-muted)' }}> · scored on IMPROVE filters only, not on {siteName}</span>
+        </p>
           <Empty>
             {mode !== 'site_heldout' && cvMetric !== 'rmsecv'
               // calibration_explorer/app.py only scores held-out IMPROVE sites under site-grouped CV;
               // interleaved CV fits on every site, so there is nothing left out to score against
               ? <>No {CV_LABELS[cvMetric]} is saved for these rows. Interleaved protocols keep every site in the final fit, so no whole-site holdout score exists. Select internal cross-validation RMSE to inspect any saved fold scores.</>
               : <>No {CV_LABELS[cvMetric]} is saved for {label(COHORT, cohort)} at these cutoffs. Missing RMSE is not replaced by the test-set RMSE.</>}
-          </Empty>
-        ) : (
-          <AxisChoices {...o.axisChoices({ x: 'axis', y: 'cvMetric' })}>{panel(cvShown, cvMetric, 250, CV_AXIS_LABELS[cvMetric])}</AxisChoices>
-        )}
+          </Empty></>}
         <Legend
           items={legendSeries.map((s) => ({ label: s.label, color: s.color, shape: s.dash ? ('dashed' as const) : ('line' as const) }))}
           {...legendProps}
@@ -212,15 +213,29 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
   )
 }
 
-function SweepPanel({ series, metric, height, width, innerW, x, calib, yLabel, defaultCut, axis, selected, dim, onEnter, onLeave, onSelect }: {
+/**
+ * A panel's y range. Tiny cohorts (cutoff ≈ 100) produce wild fits that would squash the readable range into a few
+ * pixels; the axis follows the 2–98 % bulk and the extremes are pinned to the edge, with a count below the chart.
+ */
+function sweepY(series: SweepSeries[], metric: SweepMetric) {
+  const all = series.flatMap((s) => s.pts)
+  const yExt = robustDomain(all.map((p) => p.y), 0.02, 0.98).domain
+  const slope = !isCvMetric(metric) && isSlopeMetric(metric)
+  const intercept = !isCvMetric(metric) && isInterceptMetric(metric)
+  const yLo = intercept ? Math.min(0, yExt[0]) : slope ? Math.min(0.5, yExt[0]) : Math.min(0, yExt[0])
+  const domain = d3.scaleLinear().domain([yLo, Math.max(slope ? 1.2 : 0, yExt[1])]).nice().domain() as [number, number]
+  return { domain, nClamped: all.filter((p) => p.y < domain[0] || p.y > domain[1]).length }
+}
+
+/** one panel's marks: the slope box or R² floor, the agreement line, the locked cutoff, a line and dots per preprocessing */
+function SweepMarks({ series, metric, x, y, innerW, innerH, calib, defaultCut, axis, selected, dim, onEnter, onLeave, onSelect }: {
   series: SweepSeries[]
   metric: SweepMetric
-  height: number
-  width: number
-  innerW: number
   x: d3.ScaleLinear<number, number>
+  y: d3.ScaleLinear<number, number>
+  innerW: number
+  innerH: number
   calib: CalibFile
-  yLabel: string
   defaultCut: number | undefined
   axis: CutoffAxis
   selected: Config
@@ -229,19 +244,10 @@ function SweepPanel({ series, metric, height, width, innerW, x, calib, yLabel, d
   onLeave: () => void
   onSelect: (c: Config) => void
 }) {
-  const innerH = height - MARGIN.top - MARGIN.bottom
-  const all = series.flatMap((s) => s.pts)
-  // Tiny cohorts (cutoff ≈ 100) produce wild fits that would squash the
-  // readable range into a few pixels; the axis follows the 2–98 % bulk and the
-  // extremes are pinned to the edge, with a count below the chart.
-  const yExt = robustDomain(all.map((p) => p.y), 0.02, 0.98).domain
   const slope = !isCvMetric(metric) && isSlopeMetric(metric)
   const intercept = !isCvMetric(metric) && isInterceptMetric(metric)
-  const yLo = intercept ? Math.min(0, yExt[0]) : slope ? Math.min(0.5, yExt[0]) : Math.min(0, yExt[0])
-  const y = d3.scaleLinear().domain([yLo, Math.max(slope ? 1.2 : 0, yExt[1])]).range([innerH, 0]).nice()
   const clampY = (v: number) => Math.max(y.domain()[0], Math.min(y.domain()[1], v))
   const isClamped = (v: number) => v < y.domain()[0] || v > y.domain()[1]
-  const nClamped = all.filter((p) => isClamped(p.y)).length
   // extremes are not joined into the line: a spike to the edge of the axis is
   // a lie about the neighbouring cutoffs; they are drawn as hollow edge markers
   const line = d3.line<{ x: number; y: number }>().defined((p) => !isClamped(p.y)).x((p) => x(p.x)).y((p) => y(p.y))
@@ -250,45 +256,38 @@ function SweepPanel({ series, metric, height, width, innerW, x, calib, yLabel, d
     : [...new Map(series.flatMap((s) => s.pts.filter((p) => p.r.cut === defaultCut).map((p) => [p.x, { x: p.x, label: `locked ${defaultCut}: ${p.x} fitted`, color: s.color }] as const))).values()]
   return (
     <>
-      <svg width={width} height={height} className="animated">
-        <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-          {slope && (
-            <rect x={0} y={Math.max(0, y(calib.slope_box[1]))} width={innerW} height={Math.max(0, Math.min(innerH, y(calib.slope_box[0])) - Math.max(0, y(calib.slope_box[1])))} fill={INK.accent} fillOpacity={0.06} />
-          )}
-          {(metric === CV_METRIC || metric === 'ho') && <Marker orient="h" at={y(calib.heldout_floor)} from={0} to={innerW} />}
-          <YAxis scale={y} x={0} label={yLabel} gridWidth={innerW} pick="y" />
-          <XAxis scale={x} y={innerH} label={X_LABELS[axis]} pick="x" />
-          {(intercept || slope) && (
-            <line x1={0} x2={innerW} y1={y(slope ? 1 : 0)} y2={y(slope ? 1 : 0)} stroke={INK.axis} strokeWidth={1} strokeOpacity={0.7} />
-          )}
-          {locked.filter((l) => x(l.x) >= 0 && x(l.x) <= innerW).map((l, i) => (
-            <g key={l.x}>
-              <Marker orient="v" at={x(l.x)} from={0} to={innerH} color={l.color} />
-              <text x={Math.min(innerW - 5, x(l.x) + 4)} y={12 + i * 12} textAnchor={x(l.x) > innerW * 0.7 ? 'end' : 'start'} fontSize={10} fill={l.color} fontFamily={FONT.mono}>{l.label}</text>
-            </g>
-          ))}
-          {series.map((s) => (
-            <g key={s.key} opacity={dim(s.label)}>
-              <path d={line(s.pts) ?? ''} fill="none" stroke={s.color} strokeWidth={1.8} strokeDasharray={s.dash} strokeOpacity={0.85} pointerEvents="none" />
-              {s.pts.map((p) => {
-                const isSel = sameConfig(cutoffConfig(p.r), selected)
-                return (
-                  <circle
-                    key={p.r.cut}
-                    cx={x(p.x)} cy={y(clampY(p.y))} r={isSel ? 6 : isClamped(p.y) ? 2.5 : 3}
-                    fill={isSel || isClamped(p.y) ? INK.panel : s.color} stroke={isSel ? INK.text : s.color} strokeWidth={isSel ? 2 : 1}
-                    style={{ cursor: 'pointer' }}
-                    onMouseEnter={(e) => onEnter(e, s, p)}
-                    onMouseLeave={onLeave}
-                    onClick={() => onSelect(cutoffConfig(p.r))}
-                  />
-                )
-              })}
-            </g>
-          ))}
+      {slope && (
+        <rect x={0} y={Math.max(0, y(calib.slope_box[1]))} width={innerW} height={Math.max(0, Math.min(innerH, y(calib.slope_box[0])) - Math.max(0, y(calib.slope_box[1])))} fill={INK.accent} fillOpacity={0.06} />
+      )}
+      {(metric === CV_METRIC || metric === 'ho') && <Marker orient="h" at={y(calib.heldout_floor)} from={0} to={innerW} />}
+      {(intercept || slope) && (
+        <line x1={0} x2={innerW} y1={y(slope ? 1 : 0)} y2={y(slope ? 1 : 0)} stroke={INK.axis} strokeWidth={1} strokeOpacity={0.7} />
+      )}
+      {locked.filter((l) => x(l.x) >= 0 && x(l.x) <= innerW).map((l, i) => (
+        <g key={l.x}>
+          <Marker orient="v" at={x(l.x)} from={0} to={innerH} color={l.color} />
+          <text x={Math.min(innerW - 5, x(l.x) + 4)} y={12 + i * 12} textAnchor={x(l.x) > innerW * 0.7 ? 'end' : 'start'} fontSize={10} fill={l.color} fontFamily={FONT.mono}>{l.label}</text>
         </g>
-      </svg>
-      {nClamped > 0 && <ChartAside><p className="chart-note">{nClamped} extreme readouts (tiny cohorts) are drawn hollow at the edge of the axis and left out of the line.</p></ChartAside>}
+      ))}
+      {series.map((s) => (
+        <g key={s.key} opacity={dim(s.label)}>
+          <path d={line(s.pts) ?? ''} fill="none" stroke={s.color} strokeWidth={1.8} strokeDasharray={s.dash} strokeOpacity={0.85} pointerEvents="none" />
+          {s.pts.map((p) => {
+            const isSel = sameConfig(cutoffConfig(p.r), selected)
+            return (
+              <circle
+                key={p.r.cut}
+                cx={x(p.x)} cy={y(clampY(p.y))} r={isSel ? 6 : isClamped(p.y) ? 2.5 : 3}
+                fill={isSel || isClamped(p.y) ? INK.panel : s.color} stroke={isSel ? INK.text : s.color} strokeWidth={isSel ? 2 : 1}
+                style={{ cursor: 'pointer' }}
+                onMouseEnter={(e) => onEnter(e, s, p)}
+                onMouseLeave={onLeave}
+                onClick={() => onSelect(cutoffConfig(p.r))}
+              />
+            )
+          })}
+        </g>
+      ))}
     </>
   )
 }
