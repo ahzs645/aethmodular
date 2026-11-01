@@ -17,6 +17,7 @@ import { PMF_GROUP } from '@/lib/pmfGroups'
 import { RATIO_GROUP } from '@/lib/viewFields'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { ExcludedNote } from '@/lib/markedRows'
+import { textWidth } from '@/lib/fitLabel'
 
 const VIEWS = ['Network', 'Tree'] as const
 const THRESHOLDS = ['0.5', '0.6', '0.7', '0.8', '0.9']
@@ -45,8 +46,8 @@ interface SimLink extends d3.SimulationLinkDatum<SimNode> {
   r: number
 }
 
-/** Rough pixel width of a label at 10.5 px sans: sizes gutters and keeps labels off each other. */
-const labelW = (s: string) => s.length * 6.2
+/** A label's width as drawn at 10.5 px: sizes gutters and keeps labels off each other. */
+const labelW = (s: string) => textWidth(s, 10.5)
 
 /**
  * Which measurements move together, as groups. The correlogram shows every pair as a cell;
@@ -343,8 +344,7 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
                   strokeWidth={widthOf(Math.abs(e.r))}
                   strokeOpacity={edgeLit(e) ? (inside ? 0.6 : 0.35) : 0.06}
                   style={{ transition: 'stroke-opacity 0.2s' }}
-                  onMouseEnter={(ev) => tip.show(ev, edgeTip(e))}
-                  onMouseLeave={tip.hide}
+                  {...tip.bind(() => edgeTip(e))}
                 />
               )
             })}

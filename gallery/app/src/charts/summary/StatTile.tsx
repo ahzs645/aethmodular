@@ -58,8 +58,7 @@ export function StatTile({ rows, meta, field }: { rows: FilterRow[]; meta: MetaF
           <div className="stat-sub">IQR {fmt(q1, 2)}–{fmt(q3, 2)} · n = {values.length}{sites.length > 1 ? ` · ${sites.length} sites` : ''} · {months} months</div>
           {all.length > 1 && <svg width={width} height={sparkH} className="stat-spark" role="img" aria-label={`Monthly medians of ${field}`}>
             {lines.map((l) => <path key={l.name} d={path(l.pts) ?? ''} fill="none" stroke={l.color} strokeWidth={1.5} strokeOpacity={0.9}
-              onMouseMove={(e) => tip.show(e, <><strong>{l.name}</strong><br />{l.pts.length} months · latest {fmt(l.pts[l.pts.length - 1]?.v, 3)} {unit}</>)}
-              onMouseLeave={tip.hide} />)}
+              {...tip.bind(<><strong>{l.name}</strong><br />{l.pts.length} months · latest {fmt(l.pts[l.pts.length - 1]?.v, 3)} {unit}</>)} />)}
           </svg>}
         </>}
         {tip.node}

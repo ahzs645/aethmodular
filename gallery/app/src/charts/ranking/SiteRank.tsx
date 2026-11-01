@@ -7,6 +7,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { useChartOptions } from '@/lib/chartOptions'
 import { useFitHeight } from '@/lib/chartFit'
 import { fmt } from '@/lib/format'
+import { labelGutter } from '@/lib/fitLabel'
 import { INK, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { ExcludedNote } from '@/lib/markedRows'
@@ -42,7 +43,8 @@ export function SiteRank({ rows, meta, field, onOpenSite }: { rows: FilterRow[];
     : order === 'Lowest first' ? (a, b) => a.med - b.med : (a, b) => b.med - a.med)
 
   const log = o.values.scale === 'Log' && sorted.every((s) => s.q1 > 0)
-  const labelW = Math.min(180, 12 + 6.2 * Math.max(6, ...sorted.map((s) => s.site.length)))
+  // the names as drawn at the largest row font (12 px)
+  const labelW = labelGutter(sorted.map((s) => s.site), { size: 12, pad: 12, min: 49, max: 180 })
   const margin = { top: 6, right: 54, bottom: 42, left: labelW }
   const innerW = Math.max(120, width - margin.left - margin.right)
   const rowH = fit === null ? 20 : Math.max(11, Math.min(24, (fit - margin.top - margin.bottom) / Math.max(1, sorted.length)))
@@ -59,13 +61,12 @@ export function SiteRank({ rows, meta, field, onOpenSite }: { rows: FilterRow[];
         {sorted.length === 0 ? <Empty>No site has {MIN_N} or more values of {field} in this subset.</Empty> : (
           <svg width={width} height={innerH + margin.top + margin.bottom}>
             <g transform={`translate(${margin.left},${margin.top})`} fontFamily={FONT.family}>
-              {x.ticks(5).map((t) => <line key={t} x1={x(t)} x2={x(t)} y1={0} y2={innerH} stroke={INK.grid} />)}
+              <XAxis scale={x as d3.ScaleLinear<number, number>} y={innerH} label={withUnit(field, meta.field_units)} tickCount={Math.max(2, Math.floor(innerW / 80))} format={(v: number) => fmt(v, v >= 10 ? 0 : 1)} gridHeight={innerH} />
               {sorted.map((s, i) => {
                 const y = i * rowH + rowH / 2
                 return (
                   <g key={s.site} style={onOpenSite ? { cursor: 'pointer' } : undefined} onClick={onOpenSite ? () => onOpenSite(s.code) : undefined}
-                    onMouseEnter={(e) => tip.show(e, [`${s.site} (${s.code})`, `median ${fmt(s.med, 3)} · IQR ${fmt(s.q1, 2)}–${fmt(s.q3, 2)}`, `n = ${s.n}${onOpenSite ? ' · click to open the site' : ''}`])}
-                    onMouseLeave={tip.hide}>
+                    {...tip.bind([`${s.site} (${s.code})`, `median ${fmt(s.med, 3)} · IQR ${fmt(s.q1, 2)}–${fmt(s.q3, 2)}`, `n = ${s.n}${onOpenSite ? ' · click to open the site' : ''}`])}>
                     <rect x={-margin.left} y={i * rowH} width={width} height={rowH} fill={i % 2 ? INK.zebra : 'transparent'} />
                     <text x={-8} y={y} dy="0.35em" textAnchor="end" fontSize={font} fill={INK.text}>{s.site}</text>
                     <line x1={x(Math.max(x.domain()[0], s.q1))} x2={x(s.q3)} y1={y} y2={y} stroke={s.color} strokeWidth={Math.max(2, rowH * 0.3)} strokeOpacity={0.4} strokeLinecap="round" />
@@ -74,7 +75,6 @@ export function SiteRank({ rows, meta, field, onOpenSite }: { rows: FilterRow[];
                   </g>
                 )
               })}
-              <XAxis scale={x as d3.ScaleLinear<number, number>} y={innerH} label={withUnit(field, meta.field_units)} tickCount={Math.max(2, Math.floor(innerW / 80))} format={(v: number) => fmt(v, v >= 10 ? 0 : 1)} />
             </g>
           </svg>
         )}

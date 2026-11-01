@@ -14,6 +14,7 @@ import { useSearchParam, useTileSetting } from '@/lib/url'
 import { GroupingPicker, useGroupings } from '@/components/GroupingDialog'
 import { applyGrouping } from '@/lib/groupings'
 import { ExcludedNote } from '@/lib/markedRows'
+import { labelGutter } from '@/lib/fitLabel'
 
 const STATS = ['Median', 'Mean'] as const
 /** what splits a site's bars: its seasons, nothing (one bar per site) or a grouping's bands */
@@ -79,10 +80,11 @@ export function Barplot({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFi
   const shown = data.filter((d) => lg.show(d.season))
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   // site names tilt when they would run into each other, and the plot gives up the height they need
-  const longest = d3.max(sites, (s) => s.length) ?? 0
-  const tilt = sites.length > 0 && (innerW / sites.length) * 0.9 < longest * 6.6
-  // the drop of a name tilted 40° (about 5.8 px a character at 11 px), less what the axis margin already holds
-  const below = tilt ? Math.min(150, Math.max(0, longest * 5.8 * Math.sin((40 * Math.PI) / 180) - 18)) : 0
+  // the widest name as drawn at the axis's 11 px
+  const longest = labelGutter(sites, { size: 11 })
+  const tilt = sites.length > 0 && (innerW / sites.length) * 0.9 < longest
+  // the drop of a name tilted 40°, less what the axis margin already holds
+  const below = tilt ? Math.min(150, Math.max(0, longest * Math.sin((40 * Math.PI) / 180) - 18)) : 0
   // unfitted, the chart grows by the tilted labels instead of giving up plot height to them
   const height = fitted ?? 430 + below
   const innerH = height - MARGIN.top - MARGIN.bottom - below
@@ -126,8 +128,7 @@ export function Barplot({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFi
                     key={i}
                     data-export-season={d.season} data-export-color={d.color}
                     opacity={lg.dim(d.season)}
-                    onMouseEnter={(e) => tip.show(e, [split === 'None' ? d.site : `${d.site} · ${split === 'Season' ? seasonOnly(d.season) : d.season}`, `${stat.toLowerCase()} = ${fmt(d.value)}`, `${stat === 'Mean' ? '95 % CI of the mean' : 'IQR'} ${fmt(d.q1)} – ${fmt(d.q3)}`, `n = ${d.n}`])}
-                    onMouseLeave={tip.hide}
+                    {...tip.bind([split === 'None' ? d.site : `${d.site} · ${split === 'Season' ? seasonOnly(d.season) : d.season}`, `${stat.toLowerCase()} = ${fmt(d.value)}`, `${stat === 'Mean' ? '95 % CI of the mean' : 'IQR'} ${fmt(d.q1)} – ${fmt(d.q3)}`, `n = ${d.n}`])}
                   >
                     <rect x={bx} y={Math.min(y(d.value), y(0))} width={bw} height={Math.abs(y(d.value) - y(0))} fill={d.color} fillOpacity={0.78} rx={2} />
                     <line x1={bx + bw / 2} x2={bx + bw / 2} y1={y(d.q1)} y2={y(d.q3)} stroke={INK.text} strokeWidth={1.3} />

@@ -196,7 +196,7 @@ export function SpartanCompositionMap() {
             landColor={INK.panel} landStroke={INK.axis} panelColor={INK.panel} textColor={INK.text} leaderColor={ACTIVE} mutedColor={RETIRED}
             fontFamily={FONT.family} label={`SPARTAN PM2.5 composition at ${sites.length} sites`}
             empty={<Empty>Too many sites to ring this map at this width.</Empty>}
-            itemProps={(it) => { const s = bySite.get(it.id)!; return { 'data-export-site': s.name, onMouseLeave: tip.hide, onMouseEnter: (e) => tip.show(e, tipLines(s)) } as SVGProps<SVGGElement> }} />
+            itemProps={(it) => { const s = bySite.get(it.id)!; return { 'data-export-site': s.name, ...tip.bind(() => tipLines(s)) } as SVGProps<SVGGElement> }} />
           <Legend items={[
             ...(data?.slices ?? []).map((sl) => ({ label: sl.label, color: sliceColour(sl.key), shape: 'square' as const })),
             { label: 'Public sample in the last 2 years', color: ACTIVE, shape: 'dot' as const },

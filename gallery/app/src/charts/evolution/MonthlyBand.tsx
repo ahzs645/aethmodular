@@ -117,16 +117,13 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
                         cx={x(p.month) ?? 0} cy={y(p.median!)} r={emphasizeFebruary && p.month === 2 ? 5.5 : 3.6}
                         fill={emphasizeFebruary && p.month === 2 ? INK.panel : s.color}
                         stroke={p.month === 2 ? INK.text : s.color} strokeWidth={p.month === 2 ? 2 : 1}
-                        onMouseEnter={(e) =>
-                          tip.show(e, [
-                            `${s.name} · ${MONTHS[p.month - 1]}`,
-                            `median = ${fmt(p.median)}`,
-                            p.q1 !== null ? `IQR ${fmt(p.q1)} – ${fmt(p.q3)}` : 'IQR n/a (n<4)',
-                            `n = ${p.n}`,
-                            `season: ${seasonOnly(seasonOf(p.month, s.name)?.name ?? '—')}`,
-                          ])
-                        }
-                        onMouseLeave={tip.hide}
+                        {...tip.bind([
+                          `${s.name} · ${MONTHS[p.month - 1]}`,
+                          `median = ${fmt(p.median)}`,
+                          p.q1 !== null ? `IQR ${fmt(p.q1)} – ${fmt(p.q3)}` : 'IQR n/a (n<4)',
+                          `n = ${p.n}`,
+                          `season: ${seasonOnly(seasonOf(p.month, s.name)?.name ?? '—')}`,
+                        ])}
                       />
                     ))}
                   </g>

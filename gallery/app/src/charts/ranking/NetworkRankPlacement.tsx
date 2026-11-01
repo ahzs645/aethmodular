@@ -15,6 +15,7 @@ import { groupQuantiles, placeAmong, rankedReference, referenceQuantity, type Po
 import { FONT, IMPROVE_GREY, INK, MARGIN, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { ExcludedNote } from '@/lib/markedRows'
+import { textWidth } from '@/lib/fitLabel'
 
 const FILE = 'improve_site_quantiles.json'
 const REF = 'IMPROVE sites'
@@ -100,11 +101,11 @@ export function NetworkRankPlacement({ rows, meta, field }: { rows: FilterRow[];
   // past the highest IMPROVE median the rank is N + 1, which reads better said
   const rankText = (rank: number) => (rank > N ? `above all ${N}` : `rank ${rank} of ${N}`)
   const star = d3.symbol(d3.symbolStar, 210)() ?? ''
-  // the stars' names, lifted clear of each other where neighbouring ranks crowd them (left to right, ~6 px a character)
+  // the stars' names, lifted clear of each other where neighbouring ranks crowd them (left to right, measured at 10.5 px)
   const labels = new Map<string, { x: number; y: number; end: boolean }>()
   const boxes: { x0: number; x1: number; y: number }[] = []
   for (const p of [...shown].sort((a, b) => a.rank - b.rank)) {
-    const w = p.site.length * 6 + 4, end = x(p.rank) + 9 + w > innerW
+    const w = textWidth(p.site, 10.5) + 4, end = x(p.rank) + 9 + w > innerW
     const x0 = end ? x(p.rank) - 9 - w : x(p.rank) + 9, x1 = x0 + w
     let ly = y(p.p50) - 7
     while (boxes.some((b) => x0 < b.x1 && b.x0 < x1 && Math.abs(b.y - ly) < 12)) ly -= 12

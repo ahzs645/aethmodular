@@ -269,8 +269,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
                           key={c.month}
                           d={arc({ r0: ringInner(i), r1: ringInner(i) + stub, a0, a1 }) ?? ''}
                           fill="none" stroke={s.color} strokeWidth={1.2} strokeDasharray="2 2"
-                          onMouseEnter={(e) => tip.show(e, [`${s.name} · ${MONTHS[c.month - 1]}`, `only ${c.n} filter${c.n === 1 ? '' : 's'} — no ${stat.toLowerCase()} drawn (needs ${MIN_N})`, seasonLine])}
-                          onMouseLeave={tip.hide}
+                          {...tip.bind([`${s.name} · ${MONTHS[c.month - 1]}`, `only ${c.n} filter${c.n === 1 ? '' : 's'} — no ${stat.toLowerCase()} drawn (needs ${MIN_N})`, seasonLine])}
                         />
                       )
                     }
@@ -283,16 +282,13 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
                         d={arc({ r0: Math.min(base, tipR), r1: Math.max(base, tipR), a0, a1 }) ?? ''}
                         fill={s.color} fillOpacity={0.88} stroke={INK.panel} strokeWidth={0.6}
                         style={{ cursor: 'default' }}
-                        onMouseEnter={(e) =>
-                          tip.show(e, [
-                            `${s.name} · ${MONTHS[c.month - 1]}`,
-                            `${stat.toLowerCase()} ${unit} = ${fmt(v, 2)}`,
-                            `n = ${c.n} filters`,
-                            c.q1 !== null ? `IQR ${fmt(c.q1, 2)} – ${fmt(c.q3, 2)}` : `IQR n/a (n<${IQR_MIN_N})`,
-                            seasonLine,
-                          ])
-                        }
-                        onMouseLeave={tip.hide}
+                        {...tip.bind([
+                          `${s.name} · ${MONTHS[c.month - 1]}`,
+                          `${stat.toLowerCase()} ${unit} = ${fmt(v, 2)}`,
+                          `n = ${c.n} filters`,
+                          c.q1 !== null ? `IQR ${fmt(c.q1, 2)} – ${fmt(c.q3, 2)}` : `IQR n/a (n<${IQR_MIN_N})`,
+                          seasonLine,
+                        ])}
                       />
                     )
                   })}

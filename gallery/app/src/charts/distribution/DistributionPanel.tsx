@@ -173,7 +173,7 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
                   const wScale = d3.scaleLinear().domain([0, maxD]).range([0, bw / 2])
                   const area = d3.area<number>().x0((_, i) => cx - wScale(dens[i])).x1((_, i) => cx + wScale(dens[i])).y((d) => y(d)).curve(d3.curveCatmullRom)
                   return (
-                    <g key={g.name} data-export-site={g.site} data-export-series={g.name} data-export-color={g.color} onMouseEnter={(e) => tip.show(e, [g.name, `n = ${g.box.n}`, `median = ${fmt(g.box.median)}`])} onMouseLeave={tip.hide}>
+                    <g key={g.name} data-export-site={g.site} data-export-series={g.name} data-export-color={g.color} {...tip.bind([g.name, `n = ${g.box.n}`, `median = ${fmt(g.box.median)}`])}>
                       <path d={area(grid) ?? ''} fill={g.color} fillOpacity={0.55} stroke={g.color} strokeWidth={1.2} />
                       <line x1={cx} x2={cx} y1={y(g.box.q1)} y2={y(g.box.q3)} stroke={INK.text} strokeWidth={5} strokeLinecap="round" />
                       <circle cx={cx} cy={y(g.box.median)} r={3} fill={INK.panel} stroke={INK.text} strokeWidth={1.4} />

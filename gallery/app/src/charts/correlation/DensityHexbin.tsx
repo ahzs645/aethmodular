@@ -173,10 +173,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
                     strokeWidth={openTitle === title ? 2 : 0.4}
                     style={{ cursor: 'pointer' }}
                     {...fidsProps(ids, title)}
-                    onMouseEnter={(e) =>
-                      tip.show(e, [`${b.length} filters`, `${xField} ≈ ${fmt(x.invert(b.x), 2)}`, `${yField} ≈ ${fmt(y.invert(b.y), 2)}`, 'click to list them · right-click to exclude'])
-                    }
-                    onMouseLeave={tip.hide}
+                    {...tip.bind(() => [`${b.length} filters`, `${xField} ≈ ${fmt(x.invert(b.x), 2)}`, `${yField} ≈ ${fmt(y.invert(b.y), 2)}`, 'click to list them · right-click to exclude'])}
                     onClick={(e) => { e.stopPropagation(); tip.hide(); edits.openGroup({ title, ids, fields: [xField, yField] }) }}
                   />
                 )
@@ -199,8 +196,8 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
               {stats && opts.mode === 'Show intercept' && (
                 <g pointerEvents="none" fontFamily={FONT.mono} fontSize={10.5}>
                   {fitGroups.flatMap(group => fitsFor(group.stats, methods).map(fit => <g key={group.name + fit.method}>
-                    <circle cx={x(0)} cy={y(fit.intercept)} r={4.5} fill={INK.panel} stroke={group.color ?? fit.color} strokeWidth={2} />
-                    <title>{fit.label} b = {fmt(fit.intercept, 3)}</title>
+                    <circle cx={x(0)} cy={y(fit.intercept)} r={4.5} fill={INK.panel} stroke={group.color ?? fit.color} strokeWidth={2}
+                      pointerEvents="visiblePainted" {...tip.bind([`${fit.label}${fitGroups.length > 1 ? ` · ${group.name}` : ''}`, `intercept b = ${fmt(fit.intercept, 3)}`])} />
                   </g>))}
                 </g>
               )}
