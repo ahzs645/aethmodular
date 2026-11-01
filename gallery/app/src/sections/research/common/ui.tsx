@@ -17,6 +17,7 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { VOLUME } from '@/lib/viewFields'
 import type { Fit } from './stats'
 import { RESEARCH_SERIES } from '@/lib/palettes'
+import { namedColor } from '@/lib/siteColours'
 
 export const num = (r: Record<string, unknown> | undefined, f: string): number | null => {
   const v = r?.[f]
@@ -84,7 +85,7 @@ export function seasonsOf(rows: FilterRow[], meta: MetaFile): { name: string; co
   }
   const all = [...meta.seasons, ...Object.values(meta.season_conventions ?? {}).flat()]
   return [...firstMonth.keys()].sort((a, b) => firstMonth.get(a)! - firstMonth.get(b)!)
-    .map((name, i) => ({ name, color: all.find((s) => s.name === name)?.color ?? SERIES[i % SERIES.length] }))
+    .map((name, i) => ({ name, color: namedColor(all, name, SERIES[i % SERIES.length]) }))
 }
 
 export const shortSeason = (s: string) => seasonOnly(s).replace(/\s*\(.*\)\s*$/, '')

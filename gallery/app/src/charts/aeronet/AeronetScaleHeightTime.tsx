@@ -11,7 +11,7 @@ import { focusStyle, useHighlightActions } from '@/lib/highlight'
 import { ScatterLayer } from '@/components/ScatterLayer'
 import { fidProps } from '@/lib/filterEdits'
 import { fmt } from '@/lib/stats'
-import { FONT, INK } from '@/lib/theme'
+import { FONT, INK, lotColor } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import { seasonOnly } from '@/lib/seasons'
 import { AAOD675, HIPS_LOT_PERIODS, lotPeriodOf, scaleHeight, surfaceFabs } from '@/lib/aeronet'
@@ -21,7 +21,8 @@ import { seasonColor, siteColor } from '@/lib/siteColours'
 
 const BY = ['Lot period', 'Year', 'Season'] as const
 type By = (typeof BY)[number]
-const LOT_COLOURS = ['#1b9e77', '#bdbdbd', '#d95f02', '#7570b3', '#e7298a']
+// a documented lot period ('Lot 251') takes its lot's colour (lib/theme LOT_COLOR); a changeover month is grey
+const lotPeriodColor = (label: string) => { const m = /^Lot (\w+)$/.exec(label); return m ? lotColor(m[1]) : '#bdbdbd' }
 const M = { top: 10, right: 18, bottom: 40, left: 62 }
 
 /**
@@ -63,7 +64,7 @@ export function AeronetScaleHeightTime({ rows, meta }: { rows: FilterRow[]; meta
   const yearRamp = d3.scaleSequential(d3.interpolateRgbBasis(yearColours.stops)).domain([0, Math.max(1, groups.length - 1)])
   const colorOf = (g: string) => by === 'Site' ? siteColor(meta, g)
     : by === 'Season' ? seasonColor(meta, g)
-      : by === 'Lot period' ? (g === 'No documented lot' ? INK.neutral : LOT_COLOURS[groups.indexOf(g) % LOT_COLOURS.length])
+      : by === 'Lot period' ? (g === 'No documented lot' ? INK.neutral : lotPeriodColor(g))
         : yearRamp(groups.indexOf(g))
   const label = (g: string) => (by === 'Season' ? seasonOnly(g) : g)
 
