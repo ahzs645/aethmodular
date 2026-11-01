@@ -5,7 +5,7 @@ import { IntervalStrip, type IntervalBlock, type IntervalRow } from '@/component
 import { fmt } from '@/lib/stats'
 import { INK } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
-import { spearman } from '@/lib/weather'
+import { spearman } from '@/lib/stats'
 import { useSearchParam } from '@/lib/url'
 import { useNarrowScreen } from '@/hooks/useMediaQuery'
 import { eta, maiaLine, useAeronetSites } from '@/lib/aeronetSites'
@@ -42,7 +42,7 @@ export function EtaBySite({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
     }
     const toRow = (g: Group): IntervalRow => {
       const mid = d3.quantileSorted(g.etas, 0.5) ?? null, lo = d3.quantileSorted(g.etas, 0.25) ?? null, hi = d3.quantileSorted(g.etas, 0.75) ?? null
-      const rho = spearman(g.pm, g.aod)
+      const rho = spearman(g.pm, g.aod, { minN: 5 })
       const maia = maiaLine(summary?.maia[g.code])
       return {
         key: g.key, label: g.label, strong: g.strong, note: `n=${g.etas.length}`,

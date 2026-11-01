@@ -7,7 +7,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { FONT, INK } from '@/lib/theme'
 import { SSA_BY_WAVELENGTH } from '@/lib/aeronet'
-import { meanSe } from '@/lib/aeronetMath'
+import { meanSe } from '@/lib/stats'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { colouring, num } from './shared'
 

@@ -7,6 +7,7 @@ import { baseFilterId } from '@/lib/filterId'
 import { ExcludedNote, useCountedFilter, useExclusionSplit } from '@/lib/markedRows'
 import { f2, f3 } from '@/lib/format'
 import { useMac } from '@/lib/mac'
+import { median } from '@/lib/stats'
 import { num, type Row } from '@/lib/table'
 import { INK } from '@/lib/theme'
 import type { CalibRunsFile } from '@/lib/types'
@@ -82,7 +83,6 @@ export function HipsTransfer({ filters, shown, runs, provenance }: { filters: Ro
   })
   const worst = Math.max(...fullCheck)
   const imp = panelsOut.find((p) => p.m.col === 'improve')?.metrics, add = panelsOut.find((p) => p.m.col === 'addis')?.metrics
-  const median = (v: number[]) => { const s = [...v].sort((a, b) => a - b); return s.length ? (s[(s.length - 1) >> 1] + s[s.length >> 1]) / 2 : NaN }
   const medObs = median(kept.map((r) => (num(r.Fabs) ?? NaN) * scale).filter(Number.isFinite))
   const medImp = median(kept.map((r) => (num(r.improve) ?? NaN) * scale).filter(Number.isFinite))
   const axis = (what: string) => units === 'Fabs' ? `${what} HIPS Fabs (Mm⁻¹)` : `${what} HIPS BC = Fabs / MAC (µg/m³, ${mac.label})`

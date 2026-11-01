@@ -5,10 +5,10 @@
  * charts share. Bins are 24 h, labelled at their (local) start; times are kept as UTC dates of the local clock.
  */
 import { useEffect, useMemo, useState } from 'react'
-import * as d3 from 'd3'
 import { loadJson, useExport } from '@/lib/data'
 import type { MetaFile } from '@/lib/types'
 import { themed } from '@/lib/theme'
+import { isFiniteNumber as finite, orNull, quantile as statsQuantile } from '@/lib/stats'
 import { loadAethDaily, type AethDaily } from '../lib'
 
 export const CHANNELS = ['UV', 'Blue', 'Green', 'Red', 'IR'] as const
@@ -128,10 +128,7 @@ export const BROWN = () => themed('#8c2d04', '#e08a55')
 export const PERIOD_COLOR: Record<Period, string> = { before: '#E74C3C', gap: '#95A5A6', after: '#2ECC71', no_fix: '#3498DB' }
 export const PERIOD_LABEL: Record<Period, string> = { before: 'Before the fix', gap: 'Between (gap)', after: 'After the fix', no_fix: 'No fix defined' }
 
-/** the q-th quantile of finite values (linear, as numpy's default) */
-export function quantile(values: number[], q: number): number | null {
-  const v = values.filter(Number.isFinite).sort((a, b) => a - b)
-  return v.length ? d3.quantileSorted(v, q) ?? null : null
-}
-export const finite = (v: number | null | undefined): v is number => v != null && Number.isFinite(v)
+/** the q-th quantile of finite values (lib/stats quantile, numpy's linear default); null when there are none */
+export const quantile = (values: number[], q: number): number | null => orNull(statsQuantile(values, q))
+export { finite }
 export const ratio = (a: number | null | undefined, b: number | null | undefined) => (finite(a) && finite(b) && b !== 0 ? a / b : null)

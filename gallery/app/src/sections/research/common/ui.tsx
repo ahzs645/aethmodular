@@ -16,11 +16,10 @@ import { useSearchParam } from '@/lib/url'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { VOLUME } from '@/lib/viewFields'
 import type { OlsFit as Fit } from '@/lib/stats'
+import { num as cell } from '@/lib/table'
 
-export const num = (r: Record<string, unknown> | undefined, f: string): number | null => {
-  const v = r?.[f]
-  return typeof v === 'number' && Number.isFinite(v) ? v : null
-}
+/** a row's field as a finite number, or null (lib/table num on r[f]) */
+export const num = (r: Record<string, unknown> | undefined, f: string): number | null => cell(r?.[f])
 export const has = (r: Record<string, unknown>, ...fs: string[]) => fs.every((f) => num(r, f) !== null)
 
 /**

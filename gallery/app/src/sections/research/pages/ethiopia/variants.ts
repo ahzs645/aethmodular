@@ -7,14 +7,14 @@
  *  - 10 [12] panel B: lot-251-only against both lots at k = 30, and 10's lot-248 effect (ratio of the medians).
  */
 import { median } from '../../../../lib/stats.ts'
+import { num } from '../../../../lib/table.ts'
 
 type Value = string | number | boolean | null
 type Row = Record<string, Value>
-const num = (v: Value | undefined): number => (typeof v === 'number' && Number.isFinite(v) ? v : NaN)
 
 /** calibration label → its per-spectrum EC (NaN where missing), in spectrum order */
 export function ecByCalibration(perFilter: readonly Row[], index: readonly Row[]): Map<string, number[]> {
-  return new Map(index.map((c) => [String(c.calibration), perFilter.map((f) => num(f[String(c.column)]))]))
+  return new Map(index.map((c) => [String(c.calibration), perFilter.map((f) => num(f[String(c.column)]) ?? NaN)]))
 }
 
 const finite = (v: number[]) => v.filter(Number.isFinite)

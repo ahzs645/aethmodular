@@ -9,7 +9,7 @@
  * Fabs side is Fabs·V/(A·MAC), so its coefficient on mass per area carries the same 1/MAC. The raw slope (no f(X)
  * in the design) mixes f(X)'s own mass slope with Fabs's and does not scale; the page recomputes it at the MAC.
  */
-import { quantile } from '../../../lib/stats.ts'
+import { pearson, quantile } from '../../../lib/stats.ts'
 
 /** one filter of an explorer evaluation set, joined to the gallery row and the HIPS optics export */
 export interface MassFilter {
@@ -171,12 +171,7 @@ export function dummies(levels: readonly string[]): number[][] {
 }
 
 const iqr = (v: readonly number[]) => quantile(v, 0.75) - quantile(v, 0.25)
-const corr = (a: readonly number[], b: readonly number[]) => {
-  const n = a.length, ma = a.reduce((s, v) => s + v, 0) / n, mb = b.reduce((s, v) => s + v, 0) / n
-  let sab = 0, saa = 0, sbb = 0
-  for (let i = 0; i < n; i++) { sab += (a[i] - ma) * (b[i] - mb); saa += (a[i] - ma) ** 2; sbb += (b[i] - mb) ** 2 }
-  return saa && sbb ? sab / Math.sqrt(saa * sbb) : NaN
-}
+const corr = (a: readonly number[], b: readonly number[]) => pearson(a, b, { minN: 2 }) ?? NaN
 
 /** ftir_46 §5's conditionings for the Addis residual's mass slope */
 export type Conditioning = 'season' | 'full' | 'none'

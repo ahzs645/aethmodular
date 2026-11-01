@@ -1,7 +1,8 @@
 // node --test src/sections/instruments/diurnal/*.test.mjs   (from gallery/app)
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { bccAae, blockSummary, dailyCv, deltaC, derive, hourMedians, median, normalisedProfile, overIr, pearson, quantileSorted, representativeDays, wavelengthCv } from './spectral.ts'
+import { bccAae, blockSummary, dailyCv, deltaC, derive, hourMedians, median, normalisedProfile, overIr, representativeDays, wavelengthCv } from './spectral.ts'
+import { pearson, quantileSorted } from '../../../lib/stats.ts'
 
 const near = (a, b, tol = 1e-9) => assert.ok(Math.abs(a - b) < tol, `${a} != ${b}`)
 

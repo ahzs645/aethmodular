@@ -8,7 +8,8 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { chemText } from '@/lib/format'
 import { FONT, INK, inkOn } from '@/lib/theme'
-import { WEATHER_VARS, spearman, weatherField, type WeatherSource } from '@/lib/weather'
+import { WEATHER_MIN_PAIRS, WEATHER_VARS, weatherField, type WeatherSource } from '@/lib/weather'
+import { spearman } from '@/lib/stats'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { ColorLegend } from '@/components/ColorLegend'
@@ -47,7 +48,7 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
       name: String(name).replace(`${site?.name} · `, ''), color: meta.seasons.find((s) => s.name === name)?.color ?? INK.text,
       cells: vars.map((v) => species.map((f) => {
         const ok = rs.filter((r) => typeof r[v.field] === 'number' && typeof r[f] === 'number')
-        return { v, f, n: ok.length, rho: ok.length >= MIN_N ? spearman(ok.map((r) => r[v.field] as number), ok.map((r) => r[f] as number)) : null }
+        return { v, f, n: ok.length, rho: ok.length >= MIN_N ? spearman(ok.map((r) => r[v.field] as number), ok.map((r) => r[f] as number), WEATHER_MIN_PAIRS) : null }
       })),
       n: rs.length,
     }))

@@ -20,6 +20,7 @@ import { focusStyle, useHighlight } from '@/lib/highlight'
 import { ScatterLayer } from '@/components/ScatterLayer'
 import { axesForUnits, inDomain, pairDomain, panelAxesKey, type AxesOpts, type PairDomain, robustDomain } from '@/lib/axes'
 import { regression, fmt, type RegressionStats } from '@/lib/stats'
+import { num } from '@/lib/table'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -172,7 +173,6 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
   // colour by PMF source is categorical: its legend groups (and hides) by source
   const pmfColouring = colorBy === 'Value' && colorField === PMF_COLOUR
   const groupOf = (r: FilterRow) => (colorBy === 'Season' ? r.season : colorBy === 'Group' ? grp?.labelOf(r) ?? noBand : pmfColouring ? pmfOf(r) : r.site)
-  const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
   // the grouping on the filters this chart can draw (both axes measured): its quantiles do not move when a band is
   // hidden in the legend
   const drawable = useMemo(() => rows.filter((r) => num(r[xField]) !== null && num(r[yField]) !== null), [rows, xField, yField]) // eslint-disable-line react-hooks/exhaustive-deps

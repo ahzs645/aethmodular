@@ -6,7 +6,7 @@
  * pools a lot's blanks into one quadratic (the 8561843 construction it retires), and recomputes every sample's Fabs
  * under each construction. Polynomials here are lowest power first (numpy's are highest first).
  */
-import { quadratic, quantile } from '../../../lib/stats.ts'
+import { quadratic, quantile, sd } from '../../../lib/stats.ts'
 
 /** lines with fewer blanks get no refit (hips_lab.blank_lines, ftir_47 MIN_BLANKS) */
 export const MIN_BLANKS = 5
@@ -25,11 +25,7 @@ export type Poly = number[]
 export const polyval = (c: Poly, x: number) => c.reduce((s, v, i) => s + v * x ** i, 0)
 
 /** population standard deviation (np.std), the notebook's rms */
-const std = (v: readonly number[]) => {
-  if (!v.length) return NaN
-  const m = v.reduce((a, b) => a + b, 0) / v.length
-  return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / v.length)
-}
+const std = (v: readonly number[]) => sd(v, 0)
 
 /** np.polyfit(x, y, 1), lowest power first */
 export function linFit(xs: readonly number[], ys: readonly number[]): Poly | null {

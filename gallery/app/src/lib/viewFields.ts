@@ -85,7 +85,7 @@ export function viewUnits(o: ViewOptions): Record<string, string> {
 }
 
 type Row = Record<string, unknown>
-const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+import { isFiniteNumber as num } from './stats.ts'
 
 /** one row under the view; the same object when nothing changes */
 export function viewRow<R extends Row>(r: R, o: ViewOptions, concFields: string[]): R {

@@ -17,6 +17,7 @@
 import type { DailyWeather } from '@/lib/weather'
 import type { SeasonMeta } from '@/lib/types'
 import { DEFAULT_RAIN_RULE, rainRuleCalendar, type RainRule } from './rainSeasons.ts'
+import { quantile } from './stats.ts'
 
 export type DynVar = 'p' | 't' | 'tmin' | 'tmax' | 'rh' | 'ws' | 'blh'
 export const DYN_VARS: { key: DynVar; label: string; unit: string }[] = [
@@ -86,12 +87,6 @@ function rolling(x: (number | null)[], w: number): (number | null)[] {
   }
   return out
 }
-const quantile = (xs: number[], q: number) => {
-  if (!xs.length) return NaN
-  const s = [...xs].sort((a, b) => a - b), i = Math.min(s.length - 1, Math.max(0, (q / 100) * (s.length - 1)))
-  const lo = Math.floor(i), hi = Math.ceil(i)
-  return s[lo] + (s[hi] - s[lo]) * (i - lo)
-}
 
 /** one site's seasons under a rule, each with its dated `spans` */
 export function dynamicCalendar(daily: DailyWeather, rule: DynRule): SeasonMeta[] {
@@ -104,7 +99,7 @@ export function dynamicCalendar(daily: DailyWeather, rule: DynRule): SeasonMeta[
     if (!s) {
       const m = rolling(daily[c.v] ?? [], Math.max(1, Math.round(c.w)))
       const vals = m.filter((v): v is number => v != null)
-      s = { m, cut: (cc) => (cc.pct ? quantile(vals, cc.x) : cc.x) }
+      s = { m, cut: (cc) => (cc.pct ? quantile(vals, Math.min(100, Math.max(0, cc.x)) / 100) : cc.x) }
       series.set(key, s)
     }
     return s

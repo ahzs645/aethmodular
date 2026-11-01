@@ -2,6 +2,7 @@
  * The pure half of lib/mac.tsx (node-tested in mac.test.mjs): how a statistic exported at one MAC
  * reads at another. See lib/mac.tsx for why slopes, λ and HIPS BC are the only things that move.
  */
+import { median } from './stats.ts'
 
 /** the MAC the exports use (config.MAC_VALUE) */
 export const EXPORT_MAC = 10
@@ -82,10 +83,6 @@ const ok = (v: number | null | undefined): v is number => v != null && Number.is
 const rmseFromR2 = (b: number, a: number, r2: number, mean: number, variance: number) =>
   Math.sqrt(Math.max(variance * (b * b / r2 - 2 * b + 1) + (a + (b - 1) * mean) ** 2, 0))
 
-const median = (v: number[]) => {
-  const s = [...v].sort((p, q) => p - q), h = s.length >> 1
-  return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2
-}
 
 /** solve a small dense linear system (Gaussian elimination, partial pivoting); null when singular */
 function solveLinear(A: number[][], y: number[]): number[] | null {

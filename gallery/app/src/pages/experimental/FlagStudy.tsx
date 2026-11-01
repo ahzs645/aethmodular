@@ -17,6 +17,7 @@ import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, inkOn, themed } from '@/lib/theme'
 import { dotFill, dotRim } from '@/lib/highlight'
 import { useTheme } from '@/lib/colorTheme'
 import { f2, f3, pct, signed } from '@/lib/format'
+import { orNull, quantile } from '@/lib/stats'
 import { Forest, placeLabels, useCounted } from './shared'
 import { ExcludedNote, FixedSetNote, useMarkReason } from '@/lib/markedRows'
 import { crossPath, markTip } from '@/lib/exclusionMode'
@@ -91,7 +92,7 @@ const useRungColours = () => {
 }
 const col = <T,>(c: Cols, k: string) => c[k] as T[]
 const pct100 = (v: unknown) => v == null || !Number.isFinite(+v) ? '—' : String(Math.round(+v))
-const median = (v: (number | null)[]) => d3.median(v.filter((x): x is number => x != null && Number.isFinite(x)))
+const median = (v: (number | null)[]) => orNull(quantile(v, 0.5))
 const source = (fn: string) => `gallery/app/src/pages/experimental/FlagStudy.tsx › ${fn}`
 const runNote = (d: FlagData) => `Workbook run ${d.source.split('/').pop()} · impacted = |FTIR − TOR| > ${d.settings.ABS_TOL} µg and > ${Math.round(d.settings.REL_TOL * 100)} % of TOR · ${d.settings.MAIN} PLS, k ${d.settings.k_selected?.[d.settings.MAIN]} · ${d.counts.improve.toLocaleString()} IMPROVE filters, held-out sites (${d.settings.N_FOLDS} folds)`
 

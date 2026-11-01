@@ -8,6 +8,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useHighlight } from '@/lib/highlight'
 import { fmt } from '@/lib/stats'
+import { num } from '@/lib/table'
 import { INK, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
@@ -39,7 +40,6 @@ type Axis = {
 type Line = { row: FilterRow; values: (number | null)[]; ys: (number | null)[]; d: string }
 type PixelRange = [number, number]
 
-const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 const without = (b: Record<string, PixelRange>, field: string) => Object.fromEntries(Object.entries(b).filter(([k]) => k !== field))
 
 /**

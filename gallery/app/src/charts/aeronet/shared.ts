@@ -39,4 +39,4 @@ export function colouring(rows: FilterRow[], meta: MetaFile): Colouring {
 export const recordOf = (r: FilterRow, source: string, fields: [string, number | string | null | undefined][]): FilterRecord =>
   ({ id: r.id, source, site: r.site, date: r.date, fields })
 
-export const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+export { isFiniteNumber as num } from '@/lib/stats'

@@ -5,7 +5,7 @@
  * moves exactly: prediction − Fabs/MAC = residual + Fabs/10 − Fabs/MAC, and the summary ftir_39 draws from those
  * residuals (RMSE inside and outside the source 95 %, Spearman ρ of the domain percentile against |error|) follows.
  */
-import type { Row } from '../../../lib/table.ts'
+import { num, type Row } from '../../../lib/table.ts'
 import { correlationP, spearman } from '../../../lib/stats.ts'
 
 /** holdout_fabs.json: each holdout filter's Fabs (Mm⁻¹), keyed by ftir_39's ExternalFilterId (a MediaId) */
@@ -15,7 +15,6 @@ export interface HoldoutFabs {
   rows: Record<string, { filter: string; site: string; date: string; lot: string; line: string; fabs: number }>
 }
 
-const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 
 /** a per-filter row's Fabs, or null when the export lacks it */
 export const holdoutFabs = (r: Row, fabs: HoldoutFabs | null | undefined): number | null => {

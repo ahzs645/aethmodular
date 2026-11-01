@@ -1,4 +1,5 @@
 /** Physical-filter reference populations. Each field uses its own finite coverage. */
+import { isFiniteNumber, quantileSorted } from './stats.ts'
 export interface ReferenceRow {
   id: string; site: string; code: string; date: string; excluded: boolean
   [field: string]: unknown
@@ -8,15 +9,11 @@ export interface SpartanReference {
   fields: string[]; field_units: Record<string, string>; field_sources: Record<string, string>
   rows: ReferenceRow[]
 }
-export const isFiniteNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+export { isFiniteNumber }
 /** the reference filters at `site` that count; `counts` is the gallery's Filters → excluded rule (default: the export's exclusions out) */
 export const cleanReference = (rows: ReferenceRow[], site?: string, counts: (r: ReferenceRow) => boolean = r => !r.excluded) =>
   rows.filter(r => counts(r) && (!site || r.site === site))
 export interface Placement { v: number; pct: number; min: number; q1: number; med: number; q3: number; max: number; n: number }
-const quantile = (sorted: number[], p: number) => {
-  const i = (sorted.length - 1) * p, lo = Math.floor(i), hi = Math.ceil(i)
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo)
-}
 export function placements(row: ReferenceRow, fields: string[], reference: ReferenceRow[]): Record<string, Placement> {
   const out: Record<string, Placement> = {}
   for (const field of fields) {
@@ -25,7 +22,7 @@ export function placements(row: ReferenceRow, fields: string[], reference: Refer
     const values = reference.map(r => r[field]).filter(isFiniteNumber).sort((a, b) => a - b)
     if (values.length < 4) continue
     out[field] = { v, pct: values.filter(x => x < v).length / values.length * 100,
-      min: values[0], q1: quantile(values, .25), med: quantile(values, .5), q3: quantile(values, .75), max: values[values.length - 1], n: values.length }
+      min: values[0], q1: quantileSorted(values, .25), med: quantileSorted(values, .5), q3: quantileSorted(values, .75), max: values[values.length - 1], n: values.length }
   }
   return out
 }
@@ -80,12 +77,12 @@ export function ratioPlacement(value: number, reference: ReferenceRow[], numerat
     ? [(r[numerator] as number) / (r[denominator] as number)] : []).filter(isFiniteNumber).sort((a, b) => a - b)
   if (!isFiniteNumber(value) || values.length < 4) return null
   return { v: value, pct: values.filter(x => x < value).length / values.length * 100,
-    min: values[0], q1: quantile(values, .25), med: quantile(values, .5), q3: quantile(values, .75), max: values[values.length - 1], n: values.length }
+    min: values[0], q1: quantileSorted(values, .25), med: quantileSorted(values, .5), q3: quantileSorted(values, .75), max: values[values.length - 1], n: values.length }
 }
 export function ratioReference(reference: ReferenceRow[], numerator: string, denominator: string) {
   const values = reference.flatMap(r => isFiniteNumber(r[numerator]) && isFiniteNumber(r[denominator]) && r[denominator] !== 0
     ? [(r[numerator] as number) / (r[denominator] as number)] : []).filter(isFiniteNumber).sort((a, b) => a - b)
-  return { n: values.length, median: values.length ? quantile(values, .5) : null }
+  return { n: values.length, median: values.length ? quantileSorted(values, .5) : null }
 }
 
 /** Match by physical filter ID, keeping known precision, joined fields and exclusions. */

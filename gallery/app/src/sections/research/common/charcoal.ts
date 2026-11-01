@@ -125,54 +125,5 @@ export function monthlyRate(scored: readonly Pick<Scored, 'month' | 'delta'>[], 
   })
 }
 
-/**
- * Mann–Whitney U of a against b, two-sided, as scipy.stats.mannwhitneyu computes it for samples this size: U of the
- * first sample, the normal approximation with the tie correction and a continuity correction of 0.5.
- */
-export function mannWhitney(a: readonly number[], b: readonly number[]): { u: number; p: number } | null {
-  const n1 = a.length, n2 = b.length
-  if (n1 < 1 || n2 < 1) return null
-  const all = [...a.map((v) => ({ v, g: 0 })), ...b.map((v) => ({ v, g: 1 }))].sort((x, y) => x.v - y.v)
-  const rank = new Array<number>(all.length)
-  let tie = 0
-  for (let i = 0; i < all.length;) {
-    let j = i
-    while (j + 1 < all.length && all[j + 1].v === all[i].v) j++
-    const t = j - i + 1
-    for (let k = i; k <= j; k++) rank[k] = (i + j) / 2 + 1
-    tie += t ** 3 - t
-    i = j + 1
-  }
-  const r1 = all.reduce((s, x, i) => s + (x.g === 0 ? rank[i] : 0), 0)
-  const u = r1 - (n1 * (n1 + 1)) / 2
-  const n = n1 + n2, mu = (n1 * n2) / 2
-  const sd = Math.sqrt((n1 * n2 / 12) * ((n + 1) - tie / (n * (n - 1))))
-  if (!(sd > 0)) return { u, p: 1 }
-  const z = (Math.abs(u - mu) - 0.5) / sd
-  return { u, p: Math.min(1, 2 * normalSf(Math.max(0, z))) }
-}
-
-/** upper tail of the standard normal, accurate in the far tail (erfc by its continued fraction) */
-function normalSf(z: number): number {
-  const x = z / Math.SQRT2
-  if (x < 3) {
-    // erfc via the series for erf
-    let sum = x, term = x
-    for (let k = 1; k < 200; k++) { term *= (-x * x) / k; const add = term / (2 * k + 1); sum += add; if (Math.abs(add) < 1e-17) break }
-    return 0.5 * (1 - (2 / Math.sqrt(Math.PI)) * sum)
-  }
-  // Lentz continued fraction for erfc(x)
-  let f = x, c = x, d = 0
-  for (let k = 1; k < 300; k++) {
-    const a = k / 2
-    d = x + a * d; d = 1 / d
-    c = x + a / c
-    const delta = c * d
-    f *= delta
-    if (Math.abs(delta - 1) < 1e-15) break
-  }
-  return 0.5 * (Math.exp(-x * x) / Math.sqrt(Math.PI)) / f
-}
-
 /** median and quartiles of a list, for a strip row */
 export const spread = (v: readonly number[]) => ({ n: v.length, mid: v.length ? median(v) : NaN, lo: v.length ? quantile(v, 0.25) : NaN, hi: v.length ? quantile(v, 0.75) : NaN })

@@ -110,27 +110,8 @@ export const RAIN_CLASSES = [
 ] as const
 export const rainClass = (mmPerDay: number) => RAIN_CLASSES.find((c) => mmPerDay < c.max)!.key
 
-/** Spearman rank correlation (average ranks for ties); null below 5 pairs. */
-export function spearman(xs: number[], ys: number[]): number | null {
-  const pairs = xs.map((x, i) => [x, ys[i]]).filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b))
-  if (pairs.length < 5) return null
-  const rank = (v: number[]) => {
-    const idx = v.map((x, i) => [x, i]).sort((a, b) => a[0] - b[0])
-    const r = new Array<number>(v.length)
-    for (let i = 0; i < idx.length;) {
-      let j = i
-      while (j + 1 < idx.length && idx[j + 1][0] === idx[i][0]) j++
-      for (let k = i; k <= j; k++) r[idx[k][1]] = (i + j) / 2 + 1
-      i = j + 1
-    }
-    return r
-  }
-  const rx = rank(pairs.map((p) => p[0])), ry = rank(pairs.map((p) => p[1]))
-  const n = rx.length, mx = (n + 1) / 2
-  let sxy = 0, sxx = 0, syy = 0
-  for (let i = 0; i < n; i++) { const a = rx[i] - mx, b = ry[i] - mx; sxy += a * b; sxx += a * a; syy += b * b }
-  return sxx && syy ? sxy / Math.sqrt(sxx * syy) : null
-}
+/** the weather tab's floor for a rank correlation: lib/stats spearman(…, WEATHER_MIN_PAIRS) is null below 5 pairs */
+export const WEATHER_MIN_PAIRS = { minN: 5 } as const
 
 /** Unit-vector mean of directions in degrees (0 = N, clockwise). */
 export function meanDirection(degrees: number[], weights?: number[]): number | null {

@@ -4,6 +4,7 @@ import { Legend, useLegend } from '@/components/Legend'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { f2, pct } from '@/lib/format'
 import { densities } from '@/lib/table'
+import { isFiniteNumber as num } from '@/lib/stats'
 import { useSearchParam } from '@/lib/url'
 import { ExcludedNote } from '@/lib/markedRows'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -16,7 +17,6 @@ export interface SiteValues { code: string; name: string; color: string; values:
 
 /** each site's AAE values on the chosen basis */
 export function siteValues(basis: Basis, from: AaeFrom, pair: AaePair, rows: readonly FilterRow[], daily: readonly DailySite[], meta: MetaFile): SiteValues[] {
-  const num = (v: number | null): v is number => v !== null && Number.isFinite(v)
   if (basis === 'Daily bins') return daily.map((d) => ({ code: d.code, name: d.name, color: d.color, values: dailyAae(d.daily, pair, from).filter(num) }))
   return meta.sites.map((s) => ({ code: s.code, name: s.name, color: s.color, values: rows.filter((r) => r.code === s.code).map((r) => rowAae(r, pair, from)).filter(num) }))
     .filter((s) => s.values.length)

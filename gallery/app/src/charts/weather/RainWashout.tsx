@@ -12,7 +12,8 @@ import { FONT, INK, withUnit } from '@/lib/theme'
 import { AxisTitle } from '@/components/Axes'
 import { Legend } from '@/components/Legend'
 import { useAxisFields } from '@/components/AxisFieldPopover'
-import { RAIN_CLASSES, rainClass, spearman } from '@/lib/weather'
+import { RAIN_CLASSES, WEATHER_MIN_PAIRS, rainClass } from '@/lib/weather'
+import { spearman } from '@/lib/stats'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { ExcludedNote, toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 
@@ -40,7 +41,7 @@ export function RainWashout({ rows, meta, field, prcpField, id = 'weather-washou
     const ok = rows.filter((r) => typeof r[field] === 'number' && typeof r[prcpField] === 'number')
     return d3.groups(ok, (r) => r.site).map(([site, rs]) => ({
       site, color: meta.sites.find((s) => s.name === site)?.color ?? INK.muted,
-      rho: spearman(rs.map((r) => r[prcpField] as number), rs.map((r) => r[field] as number)),
+      rho: spearman(rs.map((r) => r[prcpField] as number), rs.map((r) => r[field] as number), WEATHER_MIN_PAIRS),
       classes: RAIN_CLASSES.map((c) => {
         const members = rs.filter((r) => rainClass(r[prcpField] as number) === c.key)
         return { ...c, members, box: boxStats(members.map((r) => r[field] as number)) }

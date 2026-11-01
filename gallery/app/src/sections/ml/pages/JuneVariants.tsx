@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Figure } from '@/components/Figure'
 import { f2 } from '@/lib/format'
 import { useMac } from '@/lib/mac'
+import { median } from '@/lib/stats'
 import { num, type Row } from '@/lib/table'
 import { INK } from '@/lib/theme'
 import type { SectionPageProps } from '../../types'
@@ -12,7 +13,6 @@ const TARGET = 'target: slope 1, intercept 0'
 const s = (v: unknown) => String(v ?? '')
 const pct0 = (v: unknown) => (typeof v === 'number' ? `${v.toFixed(0)} %` : '—')
 const last = <T,>(a: T[]): T | undefined => a[a.length - 1]
-const median = (v: number[]) => { const a = [...v].sort((p, q) => p - q), n = a.length; return n ? (n % 2 ? a[(n - 1) / 2] : (a[n / 2 - 1] + a[n / 2]) / 2) : NaN }
 
 /**
  * The June 2026 calibration notebooks' model-fitting results that Research → Ethiopia calibrations

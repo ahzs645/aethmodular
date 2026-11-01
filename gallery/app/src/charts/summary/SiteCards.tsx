@@ -6,6 +6,7 @@ import { useChartOptions } from '@/lib/chartOptions'
 import { useFitHeight } from '@/lib/chartFit'
 import { fmt } from '@/lib/format'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { num } from '@/lib/table'
 import { resolveField, whyMissing, type Equivalent } from '@/lib/fieldEquivalents'
 
 const SORTS = ['Name', 'First field ↓', 'Filters ↓'] as const
@@ -38,10 +39,9 @@ export function SiteCards({ rows, meta, fields, onOpenSite }: { rows: FilterRow[
       site, code: rs[0].code, color: rs[0].color, n: rs.length,
       from: d3.min(rs, (r) => r.date) ?? '', to: d3.max(rs, (r) => r.date) ?? '',
       stats: fields.map((asked) => {
-        const num = (r: FilterRow, f: string) => typeof r[f] === 'number' && Number.isFinite(r[f] as number)
         // a site that never measured the field shows SPARTAN's documented stand-in (reflectometer BC for HIPS BC)
-        const { field: f, equivalent } = resolveField(asked, (x) => rs.some((r) => num(r, x)))
-        const ok = rs.filter((r) => num(r, f))
+        const { field: f, equivalent } = resolveField(asked, (x) => rs.some((r) => num(r[x]) !== null))
+        const ok = rs.filter((r) => num(r[f]) !== null)
         const spark = d3.rollups(ok, (g) => d3.median(g, (r) => r[f] as number) ?? 0, (r) => r.date.slice(0, 7))
           .map(([m, v]) => ({ t: new Date(`${m}-15`), v })).sort((a, b) => +a.t - +b.t)
         return { field: asked, median: d3.median(ok, (r) => r[f] as number) ?? null, n: ok.length, spark, standIn: equivalent }

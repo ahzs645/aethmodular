@@ -24,7 +24,8 @@ import { FONT, INK } from '@/lib/theme'
 import type { FilterRow, MetaFile, PmfFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import { BASIS_NOTE, DataTable, useConcRows } from '../../common/ui'
-import { archivedMatch, baseId, disagrees, pearson, qcCell, scores, type Scores } from '../../common/pythonPmf'
+import { archivedMatch, baseId, disagrees, qcCell, scores, type Scores } from '../../common/pythonPmf'
+import { pearson } from '@/lib/stats'
 import {
   CasePick, FACTOR_COLOR, FACTORS, REPORT, archivedFor, caseFilters, caseLabel, closest, factorName, tableRows,
   type PmfCase, type PythonPmfExport,

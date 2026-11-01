@@ -1,7 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-import { referenceQuantity, rankedReference, groupQuantiles, placeAmong, quantileSorted, filterValue, partsOf } from './referenceRank.ts'
+import { referenceQuantity, rankedReference, groupQuantiles, placeAmong, filterValue, partsOf } from './referenceRank.ts'
+import { quantileSorted } from './stats.ts'
 
 const data = (p) => new URL(`../../public/data/${p}`, import.meta.url)
 const ref = JSON.parse(fs.readFileSync(data('improve_site_quantiles.json'), 'utf8'))

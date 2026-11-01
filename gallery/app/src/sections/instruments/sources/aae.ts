@@ -8,7 +8,7 @@
  * (research/ftir_hips_chem/scripts/optics.py, aae_from_columns): the source notebooks computed that one.
  */
 import { colorsFor } from '../../../lib/groupings.ts'
-import { regression, type RegressionStats } from '../../../lib/stats.ts'
+import { mean, median, orNull, regression, type RegressionStats } from '../../../lib/stats.ts'
 
 /** MA350 attenuation cross-sections, m²/g (src/external/calibration.py; the exporter's SIGMA) */
 export const MA350_SIGMA = { UV: 24.069, Blue: 19.070, Green: 17.028, Red: 14.091, IR: 10.120 } as const
@@ -52,9 +52,7 @@ export function classShares(values: readonly unknown[], r: AaeRegions = DEFAULT_
   const shares = { 'Fossil fuel': 0, Mixed: 0, Biomass: 0 } as Record<AaeClass, number>
   for (const x of v) shares[classify(x, r)!] += 1
   if (v.length) for (const c of CLASSES) shares[c] /= v.length
-  const s = [...v].sort((a, b) => a - b)
-  const median = !s.length ? null : s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2
-  return { n: v.length, shares, median, mean: v.length ? v.reduce((a, b) => a + b, 0) / v.length : null }
+  return { n: v.length, shares, median: orNull(median(v)), mean: orNull(mean(v)) }
 }
 
 /** optics.aae: −ln(b_short/b_long)/ln(λ_short/λ_long); null for a non-positive or missing channel */

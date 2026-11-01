@@ -2,7 +2,8 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { byGroup, dryOf, galleryId, headline, joinScores, mannWhitney, markedScores, monthlyRate } from './charcoal.ts'
+import { byGroup, dryOf, galleryId, headline, joinScores, markedScores, monthlyRate } from './charcoal.ts'
+import { mannWhitney } from '../../../lib/stats.ts'
 
 const path = new URL('../../../../public/data/research/charcoal/scores.json', import.meta.url)
 const data = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, 'utf8')) : null
