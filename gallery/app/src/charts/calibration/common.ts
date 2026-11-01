@@ -1,6 +1,6 @@
 import type { CalibFile, CalibRow, CalibRun, FilterRow, MetaFile, MetricRow, RunEval, SweepRow } from '@/lib/types'
 import { baseFilterId } from '@/lib/highlight'
-import { useEffect, useState } from 'react'
+import { codesOf, keyOf, useLoaded } from '@/lib/data'
 import { loadSpartanFilters } from '@/lib/spartan'
 import { COHORT_SHORT, METRIC, PREPROCESSING, PREPROCESSING_SHORT, SELECTION_SPACE, label } from '@/lib/labels'
 import { rmseAtMac, rmseFromReadouts, slopeAt, solveHipsMoments, type HipsMoments } from '@/lib/macMath'
@@ -230,13 +230,6 @@ export const deployedEC = (run: CalibRun, i: number, byId: ReadonlyMap<string, F
 
 /** The public SPARTAN release's rows for these site codes, by filter id (null until loaded). */
 export function useNetworkRows(codes: readonly string[]): ReadonlyMap<string, FilterRow> | null {
-  const key = [...new Set(codes)].sort().join(',')
-  const [rows, setRows] = useState<{ key: string; map: Map<string, FilterRow> } | null>(null)
-  useEffect(() => {
-    if (!key) return
-    let live = true
-    loadSpartanFilters(key.split(',')).then((r) => { if (live) setRows({ key, map: new Map(r.rows.map((x) => [x.id, x])) }) }).catch(() => {})
-    return () => { live = false }
-  }, [key])
-  return rows && rows.key === key ? rows.map : null
+  const key = keyOf(codes)
+  return useLoaded(key || null, () => loadSpartanFilters(codesOf(key)).then((r) => new Map(r.rows.map((x) => [x.id, x])))).data
 }

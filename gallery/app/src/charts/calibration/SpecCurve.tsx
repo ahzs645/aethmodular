@@ -1,8 +1,9 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
-import { loadJson } from '@/lib/data'
+import { loadJson, useLoaded } from '@/lib/data'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
 import { AxisChoices } from '@/components/AxisChoices'
+import { LoadState } from '@/components/ExportState'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { PencilIcon } from '@/components/Icons'
 import { useChartOptions, type OptionChoice } from '@/lib/chartOptions'
@@ -53,6 +54,7 @@ export interface SpecCurveFile {
 type FilterKey = 'co' | 'sp' | 'sel' | 'mo' | 'lot' | 'cut' | 'k'
 const ALL = '*'
 const NO_CUTOFF = 'complete'
+const NO_PARTS: { file: SpecCurveFile; name: string }[] = []
 const initialFilters = (): Record<FilterKey, string> => ({ co: ALL, sp: ALL, sel: ALL, mo: ALL, lot: ALL, cut: ALL, k: ALL })
 /** what the curve sorts and plots: the test set's Deming intercept (default), its slope, or IMPROVE cross-validation R² */
 export type SpecMetric = 'intercept' | 'slope' | 'heldout'
@@ -112,9 +114,13 @@ export function SpecCurve({
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef, { large: true })
-  const [data, setData] = useState<SpecCurveFile | null | 'missing'>(null)
+  const srcKey = typeof src === 'string' ? src : src.map(p => p.src).join('|')
+  const files = useLoaded(srcKey, () => Promise.all((typeof src === 'string' ? [{ src, name: src }] : src)
+    .map(p => loadJson<SpecCurveFile>(p.src).then(file => ({ file, name: p.name }))))
+    .then((parts) => ({ parts, spec: mergeSpecFiles(parts) })))
   // the searches as loaded, before merging: RMSE moves with the MAC per search (each has its own evaluation set)
-  const [parts, setParts] = useState<{ file: SpecCurveFile; name: string }[]>([])
+  const parts = files.data?.parts ?? NO_PARTS
+  const data: SpecCurveFile | null | 'missing' = files.error ? 'missing' : files.data?.spec ?? null
   const [required, setRequired] = useState<Set<number>>(new Set())
   const [filters, setFilters] = useState(initialFilters)
   // the reader's own guardrail, written in the editor; kept in the URL so a link reopens it
@@ -170,19 +176,11 @@ export function SpecCurve({
       : current)
   }, [excludedKey])
 
-  const srcKey = typeof src === 'string' ? src : src.map(p => p.src).join('|')
+  // a new source starts with nothing required and every filter open
   useEffect(() => {
-    let cancelled = false
-    setData(null)
-    setParts([])
     setRequired(new Set())
     setFilters(initialFilters())
-    const parts = typeof src === 'string' ? [{ src, name: src }] : src
-    Promise.all(parts.map(p => loadJson<SpecCurveFile>(p.src).then(file => ({ file, name: p.name }))))
-      .then((files) => { if (!cancelled) { setParts(files); setData(mergeSpecFiles(files)) } })
-      .catch(() => !cancelled && setData('missing'))
-    return () => { cancelled = true }
-  }, [srcKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [srcKey])
 
   // the search at the MAC set under Filters (lib/mac): the export's slopes are against Fabs/10, so each is
   // re-expressed (× MAC/10; intercepts, R² and held-out R² do not move), and the saved pass bit, which
@@ -371,7 +369,7 @@ export function SpecCurve({
     >
       <div ref={wrapRef} className="chart-wrap">
         {data === null ? (
-          <Empty>Loading the specification curve…</Empty>
+          <LoadState what="the specification curve" />
         ) : !file ? (
           <Empty>{method === 'ols' && data && data !== 'missing' ? 'OLS coefficients are not available in this saved specification export.' : 'No specification export available.'}</Empty>
         ) : m === 0 ? (

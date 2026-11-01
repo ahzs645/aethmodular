@@ -1,5 +1,5 @@
-import { useJsonLoader } from '@/lib/data'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useJsonLoader, useLoaded } from '@/lib/data'
+import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { FacetGrid } from '@/components/FacetGrid'
@@ -12,6 +12,7 @@ import { seasonsForSite } from '@/siteSeasons'
 
 const MONTHS = 'JFMAMJJASOND'.split('')
 const MAX_SITES = 16
+const NONE: Record<string, DailyWeather | null> = {}
 // the site name is the facet's title row, above the svg
 const M = { top: 8, right: 30, bottom: 34, left: 34 }
 const TITLE_IN_SVG = 14
@@ -31,17 +32,11 @@ export function MonthlyClimate({ meta, sites, id = 'weather-climate', title = 'M
   const wrapRef = useRef<HTMLDivElement>(null)
   const W = large ? 620 : 250, H = large ? 240 : 150
   const tip = useTooltip(wrapRef)
-  const [data, setData] = useState<Record<string, DailyWeather | null>>({})
   const shown = sites.slice(0, MAX_SITES)
   const key = shown.map((s) => s.code).join(',')
-
-  useEffect(() => {
-    let live = true
-    Promise.all(shown.map((s) => loadDaily(s.code, jsonLoader).then((d) => [s.code, d] as const).catch(() => [s.code, null] as const)))
-      .then((pairs) => { if (live) setData(Object.fromEntries(pairs)) })
-    return () => { live = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, jsonLoader])
+  // the last sites' climate stays up while the next ones load
+  const data = useLoaded(key, () => Promise.all(shown.map((s) => loadDaily(s.code, jsonLoader).then((d) => [s.code, d] as const).catch(() => [s.code, null] as const)))
+    .then((pairs): Record<string, DailyWeather | null> => Object.fromEntries(pairs)), { keep: true, deps: [jsonLoader] }).data ?? NONE
 
   const climate = useMemo(() => shown.map((s) => {
     const d = data[s.code]
