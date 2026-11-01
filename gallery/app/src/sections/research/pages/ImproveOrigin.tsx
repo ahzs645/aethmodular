@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
+import { ChartFrame, Note } from '@/components/ChartFrame'
+import { LoadState } from '@/components/ExportState'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { SweepPlot } from '@/components/SweepPlot'
@@ -42,7 +43,7 @@ export function ImproveOrigin({ rows: viewRows, meta }: SectionPageProps) {
   const rows = useConcRows(viewRows, meta)
   if (error || !data) return (
     <ChartFrame id="io-missing" title="IMPROVE HIPS at EC = 0, and its curvature" provenance={FTIR26}>
-      <Empty>{error ? <>Not exported here ({error}). It needs the Davis data folder (FTIR/local_db tables, the SPARTAN HIPS batch); where it is available run <code>{COMMAND}</code>.</> : 'Loading…'}</Empty>
+      <LoadState error={error} failed={<>Not exported here ({error}). It needs the Davis data folder (FTIR/local_db tables, the SPARTAN HIPS batch); where it is available run <code>{COMMAND}</code>.</>} />
     </ChartFrame>
   )
   const c = data.scale.addis_c
@@ -144,7 +145,7 @@ function FabsSurvival({ origin, rows }: { origin: Origin; rows: FilterRow[] }) {
   const q = ref?.quantiles['HIPS Fabs']?.q
   if (!q) return (
     <ChartFrame id="io-survival" title="How rare is the Addis intercept's Fabs in IMPROVE?" provenance={`${FTIR26} (Figure 2B)`}>
-      <Empty>{error ? <>The IMPROVE quantiles (improve_reference.json) are not here: {error}.</> : 'Loading the IMPROVE quantiles…'}</Empty>
+      <LoadState what="the IMPROVE quantiles" error={error} failed={<>The IMPROVE quantiles (improve_reference.json) are not here: {error}.</>} />
     </ChartFrame>
   )
   const c = origin.scale.addis_c, sc = origin.scale

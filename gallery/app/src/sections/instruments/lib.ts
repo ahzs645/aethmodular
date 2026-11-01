@@ -3,8 +3,7 @@
  * as fields ("IR BCc (aethalometer)" …), the daily bins per site, and the site list. Loaded only by the
  * Instruments section, so a public build that leaves the section out never fetches it.
  */
-import { useEffect, useState } from 'react'
-import { loadJson, useExport } from '@/lib/data'
+import { codesOf, keyOf, loadJson, useExport, useLoaded } from '@/lib/data'
 import type { SectionFields } from '../types'
 
 export const AETH_GROUP = 'Aethalometer (sampling window)'
@@ -42,20 +41,9 @@ export const useAethSites = () => useExport<AethSites>('aethalometer/sites.json'
 /** the per-filter fields for the sites in view (the useWeather / useAeronet pattern) */
 export function useAethFields(codes: readonly string[]): (SectionFields & { counts: AethFilters['counts'] }) | null {
   const index = useExport<AethIndex>('aethalometer/index.json').data
-  const key = index ? [...new Set(codes)].filter((c) => index.sites[c]).sort().join(',') : ''
-  const [state, setState] = useState<{ key: string; data: SectionFields & { counts: AethFilters['counts'] } } | null>(null)
-  useEffect(() => {
-    if (!index) return
-    let live = true
-    const want = key ? key.split(',') : []
-    Promise.all(want.map((c) => loadJson<AethFilters>(`aethalometer/filters/${c}.json`)))
-      .then((parts) => {
-        if (!live) return
-        setState({ key, data: { group: AETH_GROUP, fields: index.fields, field_units: index.field_units,
-          rows: Object.assign({}, ...parts.map((p) => p.rows)), counts: Object.assign({}, ...parts.map((p) => p.counts)) } })
-      })
-      .catch(() => { /* optional, like the weather */ })
-    return () => { live = false }
-  }, [index, key])
-  return state?.data ?? null
+  const key = index ? keyOf(codes.filter((c) => index.sites[c])) : null
+  // optional, like the weather: while newly picked sites load, the previous fields stay
+  return useLoaded(key, () => Promise.all(codesOf(key!).map((c) => loadJson<AethFilters>(`aethalometer/filters/${c}.json`)))
+    .then((parts) => ({ group: AETH_GROUP, fields: index!.fields, field_units: index!.field_units,
+      rows: Object.assign({}, ...parts.map((p) => p.rows)), counts: Object.assign({}, ...parts.map((p) => p.counts)) })), { keep: true }).data
 }

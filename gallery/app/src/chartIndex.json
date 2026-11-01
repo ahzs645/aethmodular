@@ -1362,12 +1362,6 @@
    "file": "pages/SatoshiFollowupPage.tsx"
   },
   {
-   "title": "Spectral similarity",
-   "component": "SimilarityPage",
-   "tab": "similarity",
-   "file": "pages/SimilarityPage.tsx"
-  },
-  {
    "title": "Spectral similarity finder",
    "component": "SimilarityView",
    "tab": "similarity",

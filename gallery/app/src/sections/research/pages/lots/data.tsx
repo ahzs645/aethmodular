@@ -3,8 +3,8 @@
  * gallery/data/export_research_lot_spectra.py), its per-view spectra decoded once per session, and the filters the
  * charts use, joined to the gallery rows in view (common/lotSpectra.ts) with the season names and lot colours.
  */
-import { useEffect, useMemo, useState } from 'react'
-import { loadBinary, loadDerived, loadJson, useExport } from '@/lib/data'
+import { useMemo } from 'react'
+import { loadBinary, loadJson, useDerived, useExport } from '@/lib/data'
 import { ExcludedNote, useCountedFilter, useExclStatus, useMarkedRows } from '@/lib/markedRows'
 import { seasonOfDate } from '@/lib/seasons'
 import type { FilterRow, FiltersFile, MetaFile } from '@/lib/types'
@@ -30,30 +30,15 @@ export function useLotExport() {
 
 /** one view's spectra, decoded (null while loading) */
 export function useView(exp: LotExport | null, key: ViewKey): { values: Float32Array | null; error: string } {
-  const [state, setState] = useState<{ key: string; values: Float32Array | null; error: string }>({ key: '', values: null, error: '' })
   const file = exp ? `${FOLDER}/${exp.views[key].file}` : null
-  useEffect(() => {
-    if (!exp || !file) return
-    let live = true
-    const n = exp.filters.id.length, p = exp.views[key].points
-    loadDerived(`lot-spectra:${file}`, async () => decodeView(await loadBinary(file), n, p))
-      .then((values) => { if (live) setState({ key: file, values, error: '' }) })
-      .catch((e) => { if (live) setState({ key: file, values: null, error: String(e instanceof Error ? e.message : e) }) })
-    return () => { live = false }
-  }, [exp, file, key])
-  return state.key === file ? state : { values: null, error: '' }
+  const { data, error } = useDerived(file && `lot-spectra:${file}`, async () => decodeView(await loadBinary(file!), exp!.filters.id.length, exp!.views[key].points))
+  return { values: data, error }
 }
 
 /** every gallery row id (filters.json, already loaded by the app): a spectrum outside it has no gallery row at all */
 function useKnownIds(): Set<string> | null {
-  const [ids, setIds] = useState<Set<string> | null>(null)
-  useEffect(() => {
-    let live = true
-    loadDerived('lot-spectra:known', async () => new Set((await loadJson<FiltersFile>('filters.json')).rows.map((r) => r.id)))
-      .then((s) => { if (live) setIds(s) }).catch(() => { if (live) setIds(new Set()) })
-    return () => { live = false }
-  }, [])
-  return ids
+  const { data, error } = useDerived('lot-spectra:known', async () => new Set((await loadJson<FiltersFile>('filters.json')).rows.map((r) => r.id)))
+  return useMemo(() => data ?? (error ? new Set<string>() : null), [data, error])
 }
 
 export interface Lots {

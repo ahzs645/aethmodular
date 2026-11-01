@@ -1,4 +1,5 @@
-import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
+import { ChartFrame, Note } from '@/components/ChartFrame'
+import { LoadState } from '@/components/ExportState'
 import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { useExport } from '@/lib/data'
@@ -24,7 +25,7 @@ const color = (net: unknown) => (net === 'SPARTAN' ? SPARTAN : IMPROVE_GREY)
  */
 export function SpartanImprove(_props: SectionPageProps) {
   const { data, error } = useExport<Tables>('research/spartan_improve/tables.json')
-  if (error || !data) return <ChartFrame id="si-missing" title="SPARTAN against IMPROVE" provenance={NB}><Empty>{error ? <>Not exported ({error}). Run <code>{COMMAND}</code>.</> : 'Loading…'}</Empty></ChartFrame>
+  if (error || !data) return <ChartFrame id="si-missing" title="SPARTAN against IMPROVE" provenance={NB}><LoadState error={error} failed={<>Not exported ({error}). Run <code>{COMMAND}</code>.</>} /></ChartFrame>
   const t = data.tables
   const quantities = [...new Set(t.distribution.map((r) => String(r.quantity)))]
   const nets = ['IMPROVE', 'SPARTAN']

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
+import { LoadState } from '@/components/ExportState'
 import { Crossplot } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
@@ -89,7 +90,7 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
 
   if (error || !optics) return (
     <ChartFrame id="he-missing" title="HIPS operating envelope" provenance={ENVELOPE_NB}>
-      <Empty>{error ? <>The raw HIPS optics export is missing ({error}). Run <code>{OPTICS_COMMAND}</code> from the repo root; it reads research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl.</> : 'Loading the HIPS optics…'}</Empty>
+      <LoadState what="the HIPS optics" error={error} failed={<>The raw HIPS optics export is missing ({error}). Run <code>{OPTICS_COMMAND}</code> from the repo root; it reads research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl.</>} />
     </ChartFrame>
   )
 

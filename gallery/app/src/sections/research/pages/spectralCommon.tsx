@@ -6,7 +6,8 @@
  * where every table was read from, and what a Drive re-run would add.
  */
 import { type ReactNode } from 'react'
-import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { ChartFrame } from '@/components/ChartFrame'
+import { ExportState } from '@/components/ExportState'
 import { useCalibrationRuns } from '@/lib/calibrationFiles'
 import { useExport } from '@/lib/data'
 import { Markdown } from '@/lib/markdown'
@@ -55,9 +56,9 @@ export function provenance(data: SpectralExport | null, tables: string[], extra?
   </>
 }
 
-/** Loading and error states for a page that needs its export (and optionally the explorer readouts). */
+/** Loading and error states for a page that needs its export (and optionally the explorer readouts): components/ExportState with the exporter's command. */
 export function Waiting({ error, what = 'the page data', exporter = EXPORTER }: { error?: string; what?: string; exporter?: string }) {
-  return <section className="panel"><Empty>{error ? <>Could not load {what}: {error}. Run <code>uv run --locked --no-sync python {exporter}</code>.</> : `Loading ${what}…`}</Empty></section>
+  return <ExportState what={what} error={error} command={`uv run --locked --no-sync python ${exporter}`} />
 }
 
 /**

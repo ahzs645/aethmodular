@@ -4,7 +4,8 @@
  * compared. The charts above follow the reader's settings; this panel does not.
  */
 import { useMemo } from 'react'
-import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
+import { ChartFrame, Note } from '@/components/ChartFrame'
+import { LoadState } from '@/components/ExportState'
 import { fmt } from '@/lib/format'
 import { FixedSetNote } from '@/lib/markedRows'
 import { MIN_TRAIN, POPULATIONS, denominatorSensitivity, evaluate, fitTraining, id11Sensitivity, inPopulation, pairedInfluence, summarize, type Block, type FPoint, type Population, type Scheme } from '../../common/filterOnly'
@@ -101,7 +102,7 @@ export function Agreement({ all }: { all: FPoint[] }) {
     <ChartFrame id="fo-agreement" title="Against the release — the browser's refit compared with the release's own result tables" exportable={false}
       subtitle="At the release's settings: all 545 diagnostic filters, minimum training n 10, nothing excluded · largest absolute difference in each table's own units"
       provenance={<>{NB_STAB}, {NB_PROP}, {NB_DIAG}; deliverables/filter_only_scientific_release_2026-09-11/data</>} source={`${SOURCE}/Agreement.tsx`}>
-      {error ? <Empty>Could not load the release tables: {error}</Empty> : !release ? <Empty>Loading the release tables…</Empty> : <>
+      {error || !release ? <LoadState what="the release tables" error={error} /> : <>
         <DataTable rows={checks} rowKey={(c) => c.table} highlight={(c) => c.mismatched > 0}
           columns={[
             { key: 't', label: 'Release table', value: (c) => c.table },
