@@ -32,7 +32,7 @@ function BarPanel({ bars, width, height = 220, title, yLabel }: { bars: Bar[]; w
         <g transform={`translate(${M.left},${M.top})`}>
           <YAxis scale={y} x={0} gridWidth={iw} tickCount={4} label={yLabel} labelX={-38} />
           {bars.map((b) => <rect key={b.key} x={band(b.key) ?? 0} width={band.bandwidth()} y={y(Math.max(0, b.value))} height={Math.abs(y(b.value) - y(0))} fill={b.color} fillOpacity={0.8}
-            onMouseEnter={(e) => tip.show(e, b.tip)} onMouseLeave={tip.hide} />)}
+            {...tip.bind(b.tip)} />)}
           <line x1={0} x2={iw} y1={y(0)} y2={y(0)} stroke={INK.axis} />
           <XAxis scale={band} y={ih} format={(k: string) => labelOf.get(k) ?? k} />
         </g>

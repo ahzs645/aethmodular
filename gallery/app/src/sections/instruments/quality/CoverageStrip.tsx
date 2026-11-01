@@ -95,7 +95,7 @@ export function CoverageStrip({ all, meta, index }: { all: Record<string, Day[]>
           </g>
         </svg>
         <Key items={[{ label: 'IR BCc, availability not recorded', color: INK.muted, kind: 'square' }, { label: 'bin kept, IR BCc missing', color: MISSING, kind: 'square' }]}>
-          <ColorLegend scale={ramp} label="Input availability (%)" width={150} scheme={colours.scheme} format={(v) => v.toFixed(0)} />
+          <ColorLegend scale={ramp} label="Input availability (%)" width={150} scheme={colours.scheme} format={(v) => fmt(v, 0)} />
         </Key>
         <div style={{ overflowX: 'auto' }}><table className="census-table">
           <thead><tr><th>Instrument</th><th>Bins</th><th>With IR BCc</th><th>Calendar span (d)</th><th>Longest run without IR (d)</th></tr></thead>

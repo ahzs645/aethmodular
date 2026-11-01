@@ -6,6 +6,7 @@ import { Key } from '@/components/Key'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { f2, pct } from '@/lib/format'
+import { clipText, labelGutter } from '@/lib/fitLabel'
 import { seasonOfDate } from '@/lib/seasons'
 import { FONT, INK, inkOn } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
@@ -55,8 +56,9 @@ export function ClassShares({ rows, meta, daily, pair, basis, regions }: {
   // on a narrow screen the labels give way (cut short, full name in the tooltip) and the n column goes
   const narrow = width < 560
   const rowH = 22, noteW = narrow ? 0 : 120
-  const labelW = Math.min(narrow ? 120 : 240, 16 + 6.4 * Math.max(10, ...bars.map((b) => b.label.length + (b.strong ? 0 : 2))))
-  const fitLabel = (t: string) => (t.length * 6.4 + 16 > labelW ? `${t.slice(0, Math.max(4, Math.floor((labelW - 22) / 6.4)))}…` : t)
+  const gutter = { size: 11, pad: 16, min: 80, max: narrow ? 120 : 240 }
+  const labelW = Math.max(labelGutter(bars.filter((b) => b.strong).map((b) => b.label), { ...gutter, weight: 600 }), labelGutter(bars.filter((b) => !b.strong).map((b) => b.label), gutter))
+  const fitLabel = (t: string, strong?: boolean) => clipText(t, labelW - 16, { size: 11, weight: strong ? 600 : 400, minChars: 4 })
   const iw = Math.max(120, width - labelW - noteW - 12)
   const x = d3.scaleLinear().domain([0, 1]).range([0, iw])
   // a gap before each site's block
@@ -76,11 +78,11 @@ export function ClassShares({ rows, meta, daily, pair, basis, regions }: {
               {placed.map((b) => {
                 let at = 0
                 return <g key={b.key} transform={`translate(0,${b.y})`}>
-                  <text x={-8} y={rowH / 2} dy="0.35em" textAnchor="end" fontSize={11} fontWeight={b.strong ? 600 : 400} fill={b.strong ? b.color : INK.text}>{fitLabel(b.label)}</text>
+                  <text x={-8} y={rowH / 2} dy="0.35em" textAnchor="end" fontSize={11} fontWeight={b.strong ? 600 : 400} fill={b.strong ? b.color : INK.text}>{fitLabel(b.label, b.strong)}</text>
                   {CLASSES.map((c) => {
                     const w = x(b.s.shares[c]), x0 = at
                     at += w
-                    return <g key={c} onMouseMove={(e) => tip.show(e, [`${b.site}${b.strong ? '' : ` · ${b.label}`}`, `${c}: ${pct(b.s.shares[c])} of ${b.s.n}`, `median AAE ${f2(b.s.median)}`])} onMouseLeave={tip.hide}>
+                    return <g key={c} {...tip.bind([`${b.site}${b.strong ? '' : ` · ${b.label}`}`, `${c}: ${pct(b.s.shares[c])} of ${b.s.n}`, `median AAE ${f2(b.s.median)}`])}>
                       <rect x={x0} y={3} width={Math.max(0, w)} height={rowH - 6} fill={CLASS_COLOR[c]} fillOpacity={b.strong ? 0.95 : 0.8} />
                       {w > 34 && <text x={x0 + w / 2} y={rowH / 2} dy="0.35em" textAnchor="middle" fontSize={10} fill={inkOn(CLASS_COLOR[c])} pointerEvents="none">{pct(b.s.shares[c])}</text>}
                     </g>

@@ -85,9 +85,9 @@ export function FlowSummary({ all, meta }: { all: Record<string, Day[]>; meta: M
       provenance="FlowFix_BeforeAfter_Analysis §11 (UV/IR before vs after) and its flow-ratio notes · flow_qc_analysis (R, T) · processed_sites/*.pkl">
       <IntervalStrip blocks={blocks} labelWidth={150} noteWidth={48} minPanelWidth={200}
         panels={[
-          { label: 'Flow1 / Flow2', reference: 1, marker: { value: 2, label: 'degraded 2.0' }, format: (v) => v.toFixed(1) },
-          { label: 'Total flow / setpoint', reference: 1, format: (v) => v.toFixed(3) },
-          { label: 'UV / IR BCc', reference: 1, format: (v) => v.toFixed(2) },
+          { label: 'Flow1 / Flow2', reference: 1, marker: { value: 2, label: 'degraded 2.0' }, format: (v) => fmt(v, 1) },
+          { label: 'Total flow / setpoint', reference: 1, format: (v) => fmt(v, 3) },
+          { label: 'UV / IR BCc', reference: 1, format: (v) => fmt(v, 2) },
         ]} />
     </ChartFrame>
   )

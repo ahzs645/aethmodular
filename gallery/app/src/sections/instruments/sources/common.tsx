@@ -10,6 +10,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { HeatCell } from '@/components/HeatCell'
 import { FONT, INK } from '@/lib/theme'
+import { fitsWidth, labelGutter, textWidth } from '@/lib/fitLabel'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { CLASS_COLOR, type AaeRegions } from './aae'
 
@@ -54,7 +55,7 @@ export function RegionBands({ scale, length, depth, regions, orient = 'x' }: {
       if (w < 1) return null
       return orient === 'x'
         ? <g key={s.cls}><rect x={a} y={0} width={w} height={depth} fill={CLASS_COLOR[s.cls]} fillOpacity={0.1} />
-          {w > 6.2 * s.name.length && <text x={a + w / 2} y={11} textAnchor="middle" fontSize={10} fill={INK.muted} fontFamily={FONT.family}>{s.name}</text>}</g>
+          {fitsWidth(s.name, w, 10) && <text x={a + w / 2} y={11} textAnchor="middle" fontSize={10} fill={INK.muted} fontFamily={FONT.family}>{s.name}</text>}</g>
         : <g key={s.cls}><rect x={0} y={a} width={depth} height={w} fill={CLASS_COLOR[s.cls]} fillOpacity={0.1} />
           {w > 14 && <text x={depth - 4} y={a + 11} textAnchor="end" fontSize={10} fill={INK.muted} fontFamily={FONT.family}>{s.name}</text>}</g>
     })}
@@ -77,9 +78,9 @@ export function CountMatrix({ id, rows, cols, count, rowLabel, colLabel, rowColo
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
-  const left = Math.min(220, 14 + 6.6 * Math.max(...rows.map((r) => r.length), rowLabel.length * 0.8))
+  const left = Math.min(220, Math.max(labelGutter(rows, { size: 11, pad: 14 }), 14 + 0.8 * textWidth(rowLabel, 11)))
   const cw = Math.max(52, Math.min(cellWidth, (width - left - 64) / Math.max(1, cols.length)))
-  const ch = 28, top = cols.some((c) => c.length * 6.4 > cw - 6) ? 52 : 40
+  const ch = 28, top = cols.some((c) => !fitsWidth(c, cw - 6, 11, 600)) ? 52 : 40
   const totals = new Map(rows.map((r) => [r, cols.reduce((a, c) => a + count(r, c), 0)]))
   const w = left + cols.length * cw + 60
   const colours = useColourScheme(id, 'sequential')
@@ -93,7 +94,7 @@ export function CountMatrix({ id, rows, cols, count, rowLabel, colLabel, rowColo
       <text x={left - 8} y={top - 8} textAnchor="end" fontSize={11} fill={INK.muted}>{rowLabel}</text>
       {cols.map((c, j) => <text key={c} x={left + j * cw + cw / 2} y={top - 8} textAnchor="middle" fontSize={11} fontWeight={600} fill={colColor?.(c) ?? INK.text}>
         {/* a heading wider than its cell takes two lines */}
-        {(c.length * 6.4 > cw - 6 ? twoLines(c) : [c]).map((t, k, all) => <tspan key={k} x={left + j * cw + cw / 2} dy={k ? 13 : -(all.length - 1) * 13}>{t}</tspan>)}
+        {(!fitsWidth(c, cw - 6, 11, 600) ? twoLines(c) : [c]).map((t, k, all) => <tspan key={k} x={left + j * cw + cw / 2} dy={k ? 13 : -(all.length - 1) * 13}>{t}</tspan>)}
       </text>)}
       <text x={left + cols.length * cw + 8} y={top - 8} fontSize={11} fill={INK.muted}>n</text>
       {rows.map((r, i) => {

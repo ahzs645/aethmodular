@@ -74,8 +74,8 @@ export function Heat2d({ h, width, xLabel, yLabel, lines = [], identity = false,
           <defs><clipPath id={`aq-h2-${xLabel.length}-${yLabel.length}`}><rect width={side} height={side} /></clipPath></defs>
           <rect width={side} height={side} fill={INK.empty} />
           {h.counts.map((row, j) => row.map((c, i) => c > 0 && <rect key={`${i}-${j}`} x={i * cw} y={side - (j + 1) * ch} width={cw + 0.3} height={ch + 0.3} fill={color(c)}
-            onMouseMove={(e) => tip.show(e, [`${xLabel}: ${fmt(h.x[0] + (i * (h.x[1] - h.x[0])) / nx, 2)}–${fmt(h.x[0] + ((i + 1) * (h.x[1] - h.x[0])) / nx, 2)}`,
-              `${yLabel}: ${fmt(h.y[0] + (j * (h.y[1] - h.y[0])) / ny, 2)}–${fmt(h.y[0] + ((j + 1) * (h.y[1] - h.y[0])) / ny, 2)}`, `${c} minutes`])} onMouseLeave={tip.hide} />))}
+            {...tip.bind(() => [`${xLabel}: ${fmt(h.x[0] + (i * (h.x[1] - h.x[0])) / nx, 2)}–${fmt(h.x[0] + ((i + 1) * (h.x[1] - h.x[0])) / nx, 2)}`,
+              `${yLabel}: ${fmt(h.y[0] + (j * (h.y[1] - h.y[0])) / ny, 2)}–${fmt(h.y[0] + ((j + 1) * (h.y[1] - h.y[0])) / ny, 2)}`, `${c} minutes`])} />))}
           <g clipPath={`url(#aq-h2-${xLabel.length}-${yLabel.length})`} pointerEvents="none">
             {identity && <IdentityLine x1={x(h.x[0])} y1={y(h.x[0])} x2={x(h.x[1])} y2={y(h.x[1])} />}
             {lines.map((l, k) => <line key={k} x1={x(h.x[0])} y1={y(l.slope * h.x[0])} x2={x(h.x[1])} y2={y(l.slope * h.x[1])} stroke={l.color} strokeWidth={1.5} strokeDasharray={l.dash} />)}
@@ -254,7 +254,7 @@ export function MinuteClean({ site, name }: { site: MinuteSite | null; name: str
       controls={c ? <Segmented label="Binned by" value={pick} options={keys} onChange={setEnv} /> : undefined}>
       {!c ? <NoMinute name={name} /> : <>
         <FacetGrid items={['parts', 'env'] as const} minCell={360} maxCols={2} render={(k, cell) => k === 'parts'
-          ? <div style={{ width: cell }}><IntervalStrip blocks={blocks} labelWidth={170} noteWidth={44} minPanelWidth={140} panels={[{ label: 'Minutes passing (%)', domain: [0, 100], stems: true, format: (v) => v.toFixed(0) }]} /></div>
+          ? <div style={{ width: cell }}><IntervalStrip blocks={blocks} labelWidth={170} noteWidth={44} minPanelWidth={140} panels={[{ label: 'Minutes passing (%)', domain: [0, 100], stems: true, format: (v) => fmt(v, 0) }]} /></div>
           : <SweepPlot width={cell} height={250} xScale="point" xLabel={pick} yLabel="AAE (ratio of bin sums)" reference={1}
             series={[{ id: 'red', label: 'AAE(625, 880)', color: CHANNEL_COLOR.Red }, { id: 'blue', label: 'AAE(470, 880)', color: CHANNEL_COLOR.Blue }].map((sr) => ({ ...sr, marks: true,
               points: c.env[pick].map((b) => ({ x: b.bin, y: sr.id === 'red' ? b.aae_red : b.aae_blue, tip: [`${pick} ${b.bin}`, `${b.n.toLocaleString()} minutes`, `AAE(625,880) ${fmt(b.aae_red, 3)} · AAE(470,880) ${fmt(b.aae_blue, 3)}`, `Red/IR BCc ${fmt(b.red_ir, 3)} · mean IR ${fmt(b.ir_mean, 2)} µg/m³`] })) }))} />} />
@@ -319,7 +319,7 @@ export function MinuteMissing({ sites, names }: { sites: Record<string, MinuteSi
       controls={codes.length > 1 ? <Segmented label="Instrument" value={c} options={codes} onChange={setCode} optionLabel={(k) => names[k]} /> : undefined}>
       {!m ? <Empty>No minute record found.</Empty> : <>
         <IntervalStrip blocks={blocks} labelWidth={150} noteWidth={56} minPanelWidth={240}
-          panels={[{ label: 'IR: masked − true daily mean (%)', reference: 0, format: (v) => v.toFixed(0) }, { label: 'Red: masked − true daily mean (%)', reference: 0, format: (v) => v.toFixed(0) }]} />
+          panels={[{ label: 'IR: masked − true daily mean (%)', reference: 0, format: (v) => fmt(v, 0) }, { label: 'Red: masked − true daily mean (%)', reference: 0, format: (v) => fmt(v, 0) }]} />
         <Key items={[10, 20, 40].map((l) => ({ label: `${l} % lost`, color: LOSS_COLOR[l], kind: 'line' as const }))} />
       </>}
     </ChartFrame>
@@ -368,7 +368,7 @@ export function MinuteWindows({ sites, names, meta, rows }: { sites: Record<stri
         <Segmented label="Channel" value={ch} options={['IR', 'Red']} onChange={setCh} />
         <Segmented label="Against the 9am day" value={alt} options={[...WINDOW_ALTS]} onChange={setAlt} optionLabel={(a) => ALT_LABEL[a]} />
       </>}>
-      <IntervalStrip blocks={blocks} labelWidth={190} noteWidth={56} minPanelWidth={260} panels={[{ label: 'alternative − 9am day (% of the 9am day)', reference: 0, format: (v) => v.toFixed(0) }]} />
+      <IntervalStrip blocks={blocks} labelWidth={190} noteWidth={56} minPanelWidth={260} panels={[{ label: 'alternative − 9am day (% of the 9am day)', reference: 0, format: (v) => fmt(v, 0) }]} />
       {points.length ? <Crossplot points={points} marked={marked} title={`${points.length} filters`} xLabel={`${ch} BCc, 9am day (µg/m³)`} yLabel={`${ch} BCc, ${ALT_LABEL[alt]} (µg/m³)`} maxSide={340} fit={false} />
         : <Empty>No filter in the current subset falls inside a minute record (pick Addis Ababa or JPL in the Filters panel).</Empty>}
       <ExcludedNote count={marked.length} drawn={points.length > 0} />

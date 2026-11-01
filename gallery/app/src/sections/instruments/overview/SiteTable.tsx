@@ -45,10 +45,9 @@ export function SiteTable({ series, meta, screen, onSite }: { series: Series[]; 
             {COLS.map((c, j) => <text key={c} x={colX[j] + 4} y={head - 10} fontSize={10.5} fill={INK.muted}>{c}</text>)}
             {table.map((t, i) => (
               <g key={t.s.inst.code} transform={`translate(0,${head + i * rowH})`} style={{ cursor: onSite ? 'pointer' : undefined }} onClick={() => onSite?.(t.s.inst.siteCode)}
-                onMouseEnter={(e) => tip.show(e, [t.s.inst.label, `${t.s.inst.info.file}: ${t.s.bins} bins, ${t.s.inst.info.first} to ${t.s.inst.info.last}`,
+                {...tip.bind([t.s.inst.label, `${t.s.inst.info.file}: ${t.s.bins} bins, ${t.s.inst.info.first} to ${t.s.inst.info.last}`,
                   `bin start hours: ${Object.entries(t.s.inst.info.bin_start_hours).map(([hh, n]) => `${hh}:00 ×${n}`).join(', ')}`,
-                  ...(t.ir ? [`IR BCc 10–90 %: ${fmt(t.ir.q10, 2)}–${fmt(t.ir.q90, 2)} µg/m³`] : []), onSite ? 'click to look at this site alone' : ''].filter(Boolean))}
-                onMouseLeave={tip.hide}>
+                  ...(t.ir ? [`IR BCc 10–90 %: ${fmt(t.ir.q10, 2)}–${fmt(t.ir.q90, 2)} µg/m³`] : []), onSite ? 'click to look at this site alone' : ''].filter(Boolean))}>
                 <rect width={w} height={rowH - 2} fill={i % 2 ? INK.zebra : 'transparent'} />
                 <circle cx={10} cy={rowH / 2 - 1} r={5} fill={instColor(meta, t.s.inst)} />
                 <text x={22} y={rowH / 2} dy="0.1em" fontSize={12} fill={INK.text}>{t.s.inst.code === t.s.inst.siteCode ? t.s.inst.site : `${t.s.inst.site} (${t.s.inst.info.site} file)`}</text>

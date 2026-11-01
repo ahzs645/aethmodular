@@ -3,7 +3,7 @@ import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { Crossplot, sharedCrossDomains, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
-import { coef } from '@/lib/format'
+import { coef, f2, fmt } from '@/lib/format'
 import { regression } from '@/lib/stats'
 import { useEstimator, type Estimator } from '@/lib/regressionPrefs'
 import { withUnit } from '@/lib/theme'
@@ -25,7 +25,7 @@ export function crossPoint(r: FilterRow, x: string, y: string, color: string, so
   const xv = r[x] as number, yv = r[y] as number
   return {
     x: xv, y: yv, color, hollow, id: r.id,
-    tip: [r.id, r.date, `${x}: ${xv.toFixed(2)}`, `${y}: ${yv.toFixed(2)}`],
+    tip: [r.id, r.date, `${x}: ${f2(xv)}`, `${y}: ${f2(yv)}`],
     rec: { id: r.id, source, site: r.site, date: r.date, fields: [[withUnit(x, meta.field_units), xv], [withUnit(y, meta.field_units), yv]] },
   }
 }
@@ -98,7 +98,7 @@ export function FlowFixCompare({ rows, meta, index }: { rows: FilterRow[]; meta:
       subtitle={`The fit of ${REF_LABEL[ref]} on IR BCc per site and flow period (Deming slope with error ratio 1, r² of the pairs), the notebook's R² and slope bars on one strip. Click a row to draw that site above. A slope nearer 1 is not by itself agreement: the intercept, the MAC and the sampling overlap matter too.`}
       provenance="FlowFix_BeforeAfter_Analysis §8–9 (summary bars and table) · plotting/comparisons.summary_bars">
       {blocks.length ? <IntervalStrip blocks={blocks} labelWidth={150} noteWidth={48} minPanelWidth={220}
-        panels={[{ label: 'Deming slope', reference: 1, format: (v) => v.toFixed(2) }, { label: 'r²', domain: [0, 1], format: (v) => v.toFixed(1) }]} />
+        panels={[{ label: 'Deming slope', reference: 1, format: (v) => fmt(v, 2) }, { label: 'r²', domain: [0, 1], format: (v) => fmt(v, 1) }]} />
         : <Empty>No paired filters in the current subset.</Empty>}
       {blocks.length > 0 && <ExcludedNote count={markedPaired.filter((r) => atStrip.has(r.code)).length} />}
     </ChartFrame>

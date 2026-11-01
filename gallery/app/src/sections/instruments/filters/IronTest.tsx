@@ -6,7 +6,7 @@ import { FacetGrid } from '@/components/FacetGrid'
 import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { SweepPlot } from '@/components/SweepPlot'
-import { fitLine, fmt } from '@/lib/format'
+import { fitLine, fitSummary, fmt, type FitSummaryOptions } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { ExcludedNote } from '@/lib/markedRows'
 import { spearman } from '@/lib/weather'
@@ -16,6 +16,9 @@ import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { bcTag, seasonColor, seasonsIn, type Channel, type Pair, type PairSite } from './data'
 import { closestTo, ironSweep, linspace, ols, ols2 } from './mac'
+
+/** the tooltips' fit wording: slope 2 dp, intercept 1 dp (Mm⁻¹) */
+const IRON_FIT: FitSummaryOptions = { digits: 2, interceptDigits: 1, sep: ', ' }
 
 const ABS = ['HIPS', 'aeth'] as const
 const MIN_N = 10, MIN_SEASON = 5
@@ -122,14 +125,14 @@ export function IronTest({ pairs, marked = [], meta, sites, ch, sigma }: {
   const seasonBlock: IntervalBlock[] = [{ key: 'seasons', rows: [
     { key: 'all', label: 'All seasons', strong: true, note: `n=${rows.length}`,
       marks: [[{ mid: base.slope, color: INK.text, shape: 'hollow' as const }, { mid: fixed?.slope, color: INK.text }], [{ mid: base.intercept, color: INK.text, shape: 'hollow' as const }, { mid: fixed?.intercept, color: INK.text }], []],
-      tip: ['All seasons', `uncorrected: slope ${fmt(base.slope, 2)}, intercept ${fmt(base.intercept, 1)}`, `after − MAC_Fe × Iron: slope ${fmt(fixed?.slope, 2)}, intercept ${fmt(fixed?.intercept, 1)}`] },
+      tip: ['All seasons', `uncorrected: ${fitSummary({ slope: base.slope, intercept: base.intercept }, IRON_FIT)}`, `after − MAC_Fe × Iron: ${fitSummary({ slope: fixed?.slope, intercept: fixed?.intercept }, IRON_FIT)}`] },
     ...seasons.map((s) => ({
       key: s.season, label: shortSeason(seasonOnly(s.season)), labelColor: s.color, note: `n=${s.n}`,
       marks: [[{ mid: s.raw?.slope, color: s.color, shape: 'hollow' as const }, { mid: s.fixed?.slope, color: s.color }],
         [{ mid: s.raw?.intercept, color: s.color, shape: 'hollow' as const }, { mid: s.fixed?.intercept, color: s.color }],
         s.resid ? [{ ...s.resid, color: s.color }] : []],
-      tip: [seasonOnly(s.season), s.raw ? `uncorrected: slope ${fmt(s.raw.slope, 2)}, intercept ${fmt(s.raw.intercept, 1)}, R² ${fmt(s.raw.r2, 3)}` : `fewer than ${MIN_SEASON} filters`,
-        s.fixed ? `after − MAC_Fe × Iron: slope ${fmt(s.fixed.slope, 2)}, intercept ${fmt(s.fixed.intercept, 1)}, R² ${fmt(s.fixed.r2, 3)}` : '',
+      tip: [seasonOnly(s.season), s.raw ? `uncorrected: ${fitSummary({ slope: s.raw.slope, intercept: s.raw.intercept, r2: s.raw.r2 }, IRON_FIT)}` : `fewer than ${MIN_SEASON} filters`,
+        s.fixed ? `after − MAC_Fe × Iron: ${fitSummary({ slope: s.fixed.slope, intercept: s.fixed.intercept, r2: s.fixed.r2 }, IRON_FIT)}` : '',
         s.resid ? `two-predictor residual: median ${fmt(s.resid.mid, 1)} (IQR ${fmt(s.resid.lo, 1)} to ${fmt(s.resid.hi, 1)}) Mm⁻¹` : ''].filter(Boolean),
     })),
   ] }]

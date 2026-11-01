@@ -38,7 +38,7 @@ function Triangle({ code, atn, bcc, width, meta, color }: { code: string; atn: M
           {CHANNELS.map((ci, i) => CHANNELS.map((cj, j) => {
             if (i === j) return <HeatCell key={`${i}${j}`} x={j * cell} y={i * cell} width={cell - 1} height={cell - 1} fill={INK.zebra} label={ci} fontSize={9} />
             const below = j < i, v = (below ? atn : bcc)[i][j]
-            return <HeatCell key={`${i}${j}`} x={j * cell} y={i * cell} width={cell - 1} height={cell - 1} fill={finite(v) ? color(v) : null} label={finite(v) ? v.toFixed(2).replace(/^0/, '').replace(/^-0/, '−') : '—'} fontSize={cell > 34 ? 10 : 8.5}
+            return <HeatCell key={`${i}${j}`} x={j * cell} y={i * cell} width={cell - 1} height={cell - 1} fill={finite(v) ? color(v) : null} label={finite(v) ? fmt(v, 2).replace(/^0/, '').replace(/^-0/, '−') : '—'} fontSize={cell > 34 ? 10 : 8.5}
               onEnter={(e) => tip.show(e, [`${instrumentName(code, meta)} · ${ci} with ${cj}`, `${below ? 'raw attenuation' : 'BCc'}: r = ${fmt(v, 3)}`, below ? `BCc: r = ${fmt(bcc[i][j], 3)}` : `raw attenuation: r = ${fmt(atn[i][j], 3)}`])} onLeave={tip.hide} />
           }))}
           {CHANNELS.map((c, i) => <text key={c} x={-6} y={i * cell + cell / 2} dy="0.32em" textAnchor="end" fontSize={10} fill={INK.muted}>{c}</text>)}
@@ -75,7 +75,7 @@ export function AtnCorrelation({ all, meta }: { all: Record<string, Day[]>; meta
       controls={<Segmented label="Spot" value={spot} options={['ATN1', 'ATN2']} onChange={setSpot} optionLabel={(s) => (s === 'ATN1' ? 'Spot 1' : 'Spot 2')} />}>
       {mats.length ? <FacetGrid items={mats} minCell={240} maxCols={5} render={(m, cell) => <Triangle {...m} width={cell} meta={meta} color={color} />} />
         : <Empty>No attenuation columns loaded.</Empty>}
-      <div className="legend"><ColorLegend scale={color} label="Pearson r" width={150} scheme={colours.scheme} format={(v) => v.toFixed(1)} /></div>
+      <div className="legend"><ColorLegend scale={color} label="Pearson r" width={150} scheme={colours.scheme} format={(v) => fmt(v, 1)} /></div>
     </ChartFrame>
   )
 }

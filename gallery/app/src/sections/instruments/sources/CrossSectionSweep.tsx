@@ -45,7 +45,7 @@ export function CrossSectionSweep({ daily, pair, regions }: { daily: DailySite[]
   return (
     <ChartFrame id="aeth-sources-cross-section"
       title={`What the cross-section does to the classes — share of daily bins per class against the ${p.short}/${p.long} cross-section ratio`}
-      subtitle={`Each daily bin's AAE from BCc, turned back into absorption with an assumed σ ${p.short}/σ ${p.long}, then classed. At 1 it is the notebooks' BCc AAE; at ${f2(own)} (the MA350's ${p.short} ${MA350_SIGMA[p.short].toFixed(2)} and ${p.long} ${MA350_SIGMA[p.long].toFixed(2)} m²/g) it is the absorption AAE the gallery uses.${macs.length ? ' Rings: the six UV/IR MAC pairs addis_01 tried, all of which sit below the instrument\'s own ratio.' : ''}`}
+      subtitle={`Each daily bin's AAE from BCc, turned back into absorption with an assumed σ ${p.short}/σ ${p.long}, then classed. At 1 it is the notebooks' BCc AAE; at ${f2(own)} (the MA350's ${p.short} ${f2(MA350_SIGMA[p.short])} and ${p.long} ${f2(MA350_SIGMA[p.long])} m²/g) it is the absorption AAE the gallery uses.${macs.length ? ' Rings: the six UV/IR MAC pairs addis_01 tried, all of which sit below the instrument\'s own ratio.' : ''}`}
       provenance={provenance([NOTEBOOK.addis01, NOTEBOOK.addis01daily, NOTEBOOK.optics], 'Exact: AAE(ratio) = AAE_BCc + ln(ratio) / ln(λ_long/λ_short) for every bin (optics.aae_from_columns).')}
       controls={codes.length > 1 ? <Select label="Site" value={site?.code ?? ''} options={codes} onChange={setCode} optionLabel={(c) => daily.find((d) => d.code === c)?.name ?? c} /> : undefined}>
       {!site ? <Empty>No site in view has aethalometer daily bins.</Empty> : <>
