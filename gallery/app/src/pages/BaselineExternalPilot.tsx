@@ -1,25 +1,21 @@
-import { monthBlocks } from '@/lib/regressionCI'
-import { IdentityLine } from '@/components/RefLines'
 import { dataUrl, useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
-import { RegressionLines, RegressionReadout } from '@/components/RegressionOverlay'
 import { useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, ExplainOnly, Note, Segmented } from '@/components/ChartFrame'
 import { BaselinePicker } from '@/components/Pickers'
 import { Crossplot } from '@/components/Crossplot'
+import { ScatterPlot, type ScatterPoint } from '@/components/ScatterPlot'
 import type { FitGrouping } from '@/lib/siteRegression'
 import { Key } from '@/components/Key'
 import { useBaselineStyle } from '@/lib/baselineRank'
 import { INK, baselineColor } from '@/lib/theme'
 import { fixed as fmt } from '@/lib/format'
-import { regression } from '@/lib/stats'
-import { dotFill, dotRim, type FilterRecord, useHighlightActions } from '@/lib/highlight'
+import { type FilterRecord, useHighlightActions } from '@/lib/highlight'
 import { useSearchParam } from '@/lib/url'
 import { useRegressions } from '@/lib/regressionPrefs'
 import { Combobox } from '@/components/Combobox'
-import { ExcludedNote, FixedSetNote, useCountedFilter, useExclMode, useMarkReason } from '@/lib/markedRows'
-import { crossPath, markTip } from '@/lib/exclusionMode'
+import { ExcludedNote, FixedSetNote, useCountedFilter, useExclMode } from '@/lib/markedRows'
 
 type Method = 'AIRSpec' | 'VIBES'
 type Reference = 'ECTR' | 'ECTT'
@@ -95,14 +91,20 @@ export function BaselineExternalPilot({ mac, demingLambda, completed = false }: 
   const [opticalSite, setOpticalSite] = useState('Both sites')
   const [spectralSite, setSpectralSite] = useState('Both sites')
   if (!data) return <ExportState title="External Ethiopia pilot" what="the Adama and Bishoftu pilot" error={error} command="uv run --no-sync python gallery/data/export_baseline_external_pilot.py" />
-  const y = d3.scaleLinear().domain([0, 2]).range([190, 20])
-  const x = (i: number) => 105 + i * 130
   const unflagged = data.adama.filter(r => !r.flag)
   const ratio = (r: AdamaRow, m: Method) => r[`${m}_over_${reference}`]
   const range = (m: Method) => data.mapping_ranges.find(r => r.method === m && r.reference === reference && r.scope === 'three_sampling_unflagged')!
   const med = (m: Method) => d3.median(unflagged, r => ratio(r, m)) ?? NaN
   const max = d3.max(data.matched.flatMap(r => [r[`addis_${method}_EC_ugm3`], r[`bishoftu_${method}_EC_ugm3`]])) ?? 1
-  const sx = d3.scaleLinear().domain([0, max * 1.16]).range([188, 700])
+  // the two corrections side by side in each date's band; a click opens the pair's record
+  const adamaPoints: ScatterPoint[] = data.adama.flatMap((r, i) => METHODS.map((m, j) => ({ x: i + 0.5, dx: j ? 9 : -9, y: ratio(r, m), key: `${r.date}${m}`, r: 5.5, color: COLORS[m], opacity: 1,
+    stroke: r.flag ? INK.text : INK.panel, strokeWidth: r.flag ? 2 : 1,
+    tip: [`${r.date} ${m}: ${fmt(ratio(r, m), 3)}× ${reference}`, `PTFE ${r.FilterId_ptfe}, quartz ${r.FilterId_quartz}`, ...(r.flag ? [r.flag] : [])], open: () => hl.openRecord(adamaRecord(r)) })))
+  // each matched pair a row: Addis and Bishoftu on the prediction axis, each opening its own filter's record
+  const pairPoints: ScatterPoint[] = data.matched.flatMap((r, i) => (['addis', 'bishoftu'] as const).map((side) => ({ x: r[`${side}_${method}_EC_ugm3`], y: i + 0.5, key: `${r.bishoftu_filter_id}${side}`, r: 5, opacity: 1,
+    color: side === 'addis' ? '#2C6E9E' : '#C49442', stroke: INK.panel, strokeWidth: 0.8,
+    tip: side === 'addis' ? [`Addis ${fmt(r[`addis_${method}_EC_ugm3`], 3)} µg/m³; ${r.addis_date}`] : [`Bishoftu ${fmt(r[`bishoftu_${method}_EC_ugm3`], 3)} µg/m³; ${r.bishoftu_date}; Fabs ratio ${fmt(r.Fabs_ratio, 3)}`],
+    open: () => hl.openRecord(pairSide(r, side)) })))
   const delta = d3.median(data.matched, r => r[`bishoftu_${method}_EC_ugm3`] - r[`addis_${method}_EC_ugm3`]) ?? NaN
   const siteRows = [
     ...data.addis.map(r => ({ ...r, site: 'Addis', id: r.filter_id })),
@@ -118,12 +120,12 @@ export function BaselineExternalPilot({ mac, demingLambda, completed = false }: 
     </ChartFrame></ExplainOnly>
 
     <ChartFrame title="Adama against quartz thermal EC" subtitle="Five date-candidate PTFE/quartz pairs. Ringed points have a sampler flag." controls={<Segmented label="Thermal convention" value={reference} options={['ECTR', 'ECTT']} optionLabel={(v) => (v === 'ECTR' ? 'TOR EC' : 'TOT EC')} onChange={(v) => setReference(v as Reference)} />}>
-      <div className="chart-wrap" style={{ overflowX: 'auto' }}><svg viewBox="0 0 760 260" width="100%" style={{ minWidth: 620, maxWidth: 760, margin: '0 auto' }} role="img" aria-label={`Adama frozen prediction divided by quartz ${reference} for five candidate dates`}>
-        {[0, .5, 1, 1.5, 2].map(v => <g key={v}><line x1={75} x2={720} y1={y(v)} y2={y(v)} stroke={v === 1 ? INK.axis : INK.grid} strokeDasharray={v === 1 ? '4 3' : undefined}/><text x={68} y={y(v) + 4} textAnchor="end" fontSize={11} fill={INK.axis}>{v.toFixed(1)}</text></g>)}
-        {data.adama.map((r, i) => <g key={r.date}><text x={x(i)} y={215} textAnchor="middle" fontSize={11} fill={INK.text}>{r.date.slice(5)}</text>{r.flag && <text x={x(i)} y={232} textAnchor="middle" fontSize={10} fill={INK.negative}>{r.flag}</text>}{METHODS.map((m, j) => <circle key={m} cx={x(i) + (j ? 9 : -9)} cy={y(ratio(r, m))} r={5.5} fill={COLORS[m]} stroke={r.flag ? INK.text : INK.panel} strokeWidth={r.flag ? 2 : 1} style={{ cursor: 'pointer' }} onClick={() => hl.openRecord(adamaRecord(r))}><title>{`${r.date} ${m}: ${fmt(ratio(r, m), 3)}× ${reference}; PTFE ${r.FilterId_ptfe}, quartz ${r.FilterId_quartz}${r.flag ? `; ${r.flag}` : ''}`}</title></circle>)}</g>)}
-        <text x={400} y={252} textAnchor="middle" fontSize={11} fill={INK.axis}>2024 sampling date · prediction / measured quartz {reference}</text>
-        <circle cx={570} cy={20} r={4} fill={COLORS.AIRSpec}/><text x={580} y={24} fontSize={11}>AIRSpec</text><circle cx={645} cy={20} r={4} fill={COLORS.VIBES}/><text x={655} y={24} fontSize={11}>VIBES</text>
-      </svg></div>
+      <div className="chart-wrap" role="img" aria-label={`Adama frozen prediction divided by quartz ${reference} for five candidate dates`}>
+        <ScatterPlot points={adamaPoints} xBands={data.adama.map(r => ({ key: r.date, label: r.flag ? `${r.date.slice(5)} · ${r.flag}` : r.date.slice(5) }))} yDomain={[0, 2]} nice={false} refY={[1]}
+          height={170} margin={{ top: 14, right: 40, bottom: 46, left: 75 }} yFormat={(v) => (+v).toFixed(1)} density="sparse" note={false}
+          xLabel={`2024 sampling date${data.adama.some(r => r.flag) ? ' · sampler flag' : ''}`} yLabel={`Prediction / quartz ${reference}`} />
+        <Key items={METHODS.map(m => ({ label: m, color: COLORS[m] }))} />
+      </div>
       <Note>Three sampling-unflagged pairs: provisional median AIRSpec {fmt(med('AIRSpec'), 3)}× and VIBES {fmt(med('VIBES'), 3)}× {reference}. Across all 120 possible spectrum-to-filter assignments, the medians range {fmt(range('AIRSpec').min, 3)}–{fmt(range('AIRSpec').max, 3)}× and {fmt(range('VIBES').min, 3)}–{fmt(range('VIBES').max, 3)}×. These are mapping sensitivities, not confidence intervals. The unflagged pairs are still unconfirmed co-samples.</Note>
       <FixedSetNote what="the five frozen Adama PTFE/quartz pairs" />
     </ChartFrame>
@@ -132,11 +134,13 @@ export function BaselineExternalPilot({ mac, demingLambda, completed = false }: 
     <AllFilterScatter rows={siteRows} mode="spectral" method={spectralMethod} onMethod={setSpectralMethod} site={spectralSite} onSite={setSpectralSite} mac={mac} demingLambda={demingLambda} />
 
     <ChartFrame title="Bishoftu versus Addis at near-equal HIPS Fabs" subtitle="Five unique lot-251, October–December pairs within 20% optical-loading caliper; dates differ by year." controls={<BaselinePicker as="select" label="Frozen correction" value={method} options={METHODS} backgroundRank={completed ? 70 : null} onChange={(v) => setMethod(v as Method)} />}>
-      <div className="chart-wrap" style={{ overflowX: 'auto' }}><svg viewBox="0 0 760 270" width="100%" style={{ minWidth: 620, maxWidth: 760, margin: '0 auto' }} role="img" aria-label={`${method} predicted EC for five Addis and Bishoftu optical-loading-matched pairs`}>
-        {data.matched.map((r, i) => { const a = r[`addis_${method}_EC_ugm3`], b = r[`bishoftu_${method}_EC_ugm3`], py = 35 + i * 39; return <g key={r.bishoftu_filter_id}><text x={180} y={py + 4} textAnchor="end" fontSize={11} fill={INK.text}>{r.bishoftu_filter_id} / {r.addis_filter_id}</text><line x1={sx(a)} x2={sx(b)} y1={py} y2={py} stroke="#A7B1BA" strokeWidth={2}/><circle cx={sx(a)} cy={py} r={5} fill="#2C6E9E" style={{ cursor: 'pointer' }} onClick={() => hl.openRecord(pairSide(r, 'addis'))}><title>{`Addis ${fmt(a, 3)} µg/m³; ${r.addis_date}`}</title></circle><circle cx={sx(b)} cy={py} r={5} fill="#C49442" style={{ cursor: 'pointer' }} onClick={() => hl.openRecord(pairSide(r, 'bishoftu'))}><title>{`Bishoftu ${fmt(b, 3)} µg/m³; ${r.bishoftu_date}; Fabs ratio ${fmt(r.Fabs_ratio, 3)}`}</title></circle></g> })}
-        <line x1={188} x2={700} y1={230} y2={230} stroke={INK.axis}/>{sx.ticks(5).map(t => <g key={t}><line x1={sx(t)} x2={sx(t)} y1={230} y2={234} stroke={INK.axis}/><text x={sx(t)} y={248} textAnchor="middle" fontSize={10} fill={INK.axis}>{fmt(t, 1)}</text></g>)}<text x={450} y={267} textAnchor="middle" fontSize={11} fill={INK.axis}>Frozen FTIR EC prediction (µg/m³)</text>
-        <circle cx={550} cy={15} r={4} fill="#2C6E9E"/><text x={560} y={19} fontSize={11}>Addis</text><circle cx={625} cy={15} r={4} fill="#C49442"/><text x={635} y={19} fontSize={11}>Bishoftu</text>
-      </svg></div>
+      <div className="chart-wrap" role="img" aria-label={`${method} predicted EC for five Addis and Bishoftu optical-loading-matched pairs`}>
+        <ScatterPlot points={pairPoints} yBands={data.matched.map(r => ({ key: r.bishoftu_filter_id, label: `${r.bishoftu_filter_id} / ${r.addis_filter_id}` }))} xDomain={[0, max * 1.16]} nice={false}
+          height={data.matched.length * 39} margin={{ top: 14, right: 40, bottom: 46, left: 188 }} xTicks={5} xFormat={(v) => fmt(+v, 1)} density="sparse" note={false}
+          xLabel="Frozen FTIR EC prediction (µg/m³)"
+          under={({ x, y }) => <g pointerEvents="none">{data.matched.map((r, i) => <line key={r.bishoftu_filter_id} x1={x(r[`addis_${method}_EC_ugm3`])} x2={x(r[`bishoftu_${method}_EC_ugm3`])} y1={y(i + 0.5)} y2={y(i + 0.5)} stroke="#A7B1BA" strokeWidth={2} />)}</g>} />
+        <Key items={[{ label: 'Addis', color: '#2C6E9E' }, { label: 'Bishoftu', color: '#C49442' }]} />
+      </div>
       <Note>Median paired Bishoftu − Addis prediction: +{fmt(delta, 3)} µg/m³ ({method}); all five differences are positive. Matching uses HIPS Fabs to compare spectra at similar optical loading. It cannot determine which site has accurate EC. Across all 26 Bishoftu filters, median {method} prediction is {fmt(d3.median(data.bishoftu, r => r[`${method}_EC_ugm3`]) ?? NaN, 3)} µg/m³.</Note>
       <FixedSetNote what="the five frozen loading-matched Bishoftu/Addis pairs" />
     </ChartFrame>
@@ -214,9 +218,8 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
   demingLambda: number
 }) {
   const { rank } = useBaselineStyle()
-  const hl = useHighlightActions()
   const optical = mode === 'optical'
-  const { methods, showCI, grouping } = useRegressions()
+  const { grouping } = useRegressions()
   const [fitPreference, setFitPreference] = useSearchParam<string>(optical ? 'bopticalfits' : 'bspectralfits', 'default', ['default', 'none', 'pooled', 'site'])
   const chosenFit = fitPreference === 'default' ? (optical || grouping === 'site' ? grouping : 'none') : fitPreference
   // with one site shown, a fit per site is the pooled fit
@@ -235,38 +238,20 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
   const isCounted = useCountedFilter()
   const inSite = allPoints.filter(r => site === 'Both sites' || r.site === site)
   const points = inSite.filter(r => isCounted(String(r.id)))
-  // Filters → excluded: Mark draws them as × (never in a fit or count); otherwise a note says they are hidden
+  // Filters → excluded: Mark draws them as × (never in a fit or count); otherwise they are hidden (the Crossplot and
+  // the ScatterPlot each say how many)
   const markMode = useExclMode() === 'mark'
-  const reasonOf = useMarkReason()
   const out = markMode ? inSite.filter(r => !isCounted(String(r.id))) : []
-  const nHidden = markMode ? 0 : inSite.length - points.length
-  const handNote = nHidden > 0 ? `${nHidden} excluded filter${nHidden === 1 ? ' is' : 's are'} (Filters → excluded) hidden here and left out of the live fits.` : null
   const counts = Object.fromEntries(['Addis', 'Bishoftu'].map(s => [s, points.filter(r => r.site === s).length]))
   const title = optical ? 'Every filter with HIPS and frozen FTIR EC' : 'Every corrected spectrum: two local bands'
   // Keep axis scales fixed while the site selector changes, so a filtered
   // cloud can still be compared against the complete-cohort view.
   const xext = d3.extent(allPoints, r => r.xv)
   const yext = d3.extent(allPoints, r => r.yv)
-  // the optical panel is square with one shared domain; the band panel keeps its own axes
-  // both panels are square plot areas with the key to the right, like every crossplot in the gallery
-  const W = 800
-  const plot = optical ? { l: 80, r: 480, t: 30, b: 430 } : { l: 95, r: 495, t: 30, b: 430 }
+  // the optical panel is the square 1:1 crossplot with one shared domain; the band panel a square ScatterPlot with its own axes
   const shared: [number, number] = [Math.min(0, xext[0] ?? 0, yext[0] ?? 0), Math.max(xext[1] ?? 1, yext[1] ?? 1) * 1.06]
-  const x = d3.scaleLinear().domain(optical ? shared : [Math.min(0, xext[0] ?? 0), (xext[1] ?? 1) * 1.06]).nice().range([plot.l, plot.r])
-  const y = d3.scaleLinear().domain(optical ? shared : [Math.min(0, yext[0] ?? 0), (yext[1] ?? 1) * 1.08]).nice().range([plot.b, plot.t])
-  if (optical) y.domain(x.domain())
-  const fitGroups = fitGrouping === 'none' ? [] : (fitGrouping === 'site' ? ['Addis', 'Bishoftu'] : ['All selected sites']).flatMap(name => {
-    const members = fitGrouping === 'site' ? points.filter(r => r.site === name) : points
-    const stats = regression(members.map(r => r.xv), members.map(r => r.yv), {
-      errorsInVariables: true, lambda: optical ? demingLambda : 1, bootstrapGroups: monthBlocks(members),
-    })
-    if (!stats) return []
-    return [{ name, stats, color: fitGrouping === 'site' ? name === 'Addis' ? '#2C6E9E' : '#C49442' : undefined,
-      domain: fitGrouping === 'site' ? d3.extent(members, r => r.xv) as [number, number] : x.domain() }]
-  })
-  const readoutGap = 70 + methods.length * (showCI ? 45 : 15)
-  const H = Math.max(500, 94 + fitGroups.length * readoutGap)
-  const [d0, d1] = x.domain()
+  const xDomain = d3.scaleLinear().domain(optical ? shared : [Math.min(0, xext[0] ?? 0), (xext[1] ?? 1) * 1.06]).nice().domain() as [number, number]
+  const yDomain = d3.scaleLinear().domain([Math.min(0, yext[0] ?? 0), (yext[1] ?? 1) * 1.08]).nice().domain() as [number, number]
   const note = optical
     ? <><p>{points.length} physical filters shown: {counts.Addis} Addis and {counts.Bishoftu} Bishoftu. The full frozen Addis target set has 253 spectra; 20 have no paired HIPS Fabs and cannot appear on this optical plot. No thermal EC is measured at either site in this plot.</p>
         <p>x is HIPS Fabs ÷ MAC {mac}, an optical BC equivalent, so the 1:1 line shows optical–FTIR agreement, not EC accuracy. Deming uses λ = {fmt(demingLambda, 2)} (HIPS uncertainty ÷ MAC against the AIRSpec IMPROVE cross-validation error, AGENTS.md), because both axes carry measurement error.</p></>
@@ -287,39 +272,23 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
   // across the site selector so a filtered cloud still compares with the full one
   if (optical) return <ChartFrame id="baseline-optical-sites" title={title} tip={tipContent} controls={controls}>
     <div className="chart-wrap centered">
-      <Crossplot title="" maxSide={460} domain={x.domain() as [number, number]} errorRatio={demingLambda} grouping={fitGrouping as FitGrouping | 'none'}
+      <Crossplot title="" maxSide={460} domain={xDomain} errorRatio={demingLambda} grouping={fitGrouping as FitGrouping | 'none'}
         xLabel={`HIPS Fabs ÷ MAC ${mac} (µg/m³)`} yLabel="Frozen FTIR EC prediction (µg/m³)"
         points={points.map(crossPoint)} marked={out.map(crossPoint)} />
       <Key items={[{ label: `Addis (n ${counts.Addis})`, color: siteColor('Addis') }, { label: `Bishoftu (n ${counts.Bishoftu})`, color: siteColor('Bishoftu') }]} />
     </div>
     <ExcludedNote count={out.length} drawn />
   </ChartFrame>
-  const legendX = plot.r + 30
-  const legendY = plot.t + 4
+  // every filter of the chosen sites: Filters → excluded acts in the plot (hidden, or × under Mark) and the live fits
+  // (pooled or per site, λ = 1) refit the counted points, their summary above the axes
+  const bandPoints: ScatterPoint[] = inSite.map(r => ({ x: r.xv, y: r.yv, key: r.site + r.id, id: String(r.id), rec: siteRecord(r, title, mac), site: r.site,
+    color: siteColor(r.site), r: r.site === 'Bishoftu' ? 5 : 3.4, level: r.site === 'Bishoftu' ? 'sparse' : 'dense', tip: [pointTip(r)] }))
   return <ChartFrame id="baseline-spectral-sites" title={title} tip={tipContent} controls={controls}>
-    <div className="chart-wrap" style={{ overflowX: 'auto' }}><svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ minWidth: 620, maxWidth: W, margin: '0 auto' }} role="img" aria-label={`${title}: ${counts.Addis} Addis and ${counts.Bishoftu} Bishoftu points`}>
-      {y.ticks(5).map(v => <g key={'y' + v}><line x1={plot.l} x2={plot.r} y1={y(v)} y2={y(v)} stroke={INK.grid}/><text x={plot.l - 8} y={y(v) + 4} textAnchor="end" fontSize={10} fill={INK.axis}>{optical ? fmt(v, 1) : fmt(v, 3)}</text></g>)}
-      {x.ticks(optical ? 5 : 6).map(v => <g key={'x' + v}>{optical && <line x1={x(v)} x2={x(v)} y1={plot.t} y2={plot.b} stroke={INK.grid}/>}<line x1={x(v)} x2={x(v)} y1={plot.b} y2={plot.b + 4} stroke={INK.axis}/><text x={x(v)} y={plot.b + 21} textAnchor="middle" fontSize={10} fill={INK.axis}>{optical ? fmt(v, 1) : fmt(v, 3)}</text></g>)}
-      <line x1={plot.l} x2={plot.r} y1={plot.b} y2={plot.b} stroke={INK.axis}/>
-      {optical && <line x1={plot.l} x2={plot.l} y1={plot.t} y2={plot.b} stroke={INK.axis}/>}
-      {optical && <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />}
-      {/* Filters → excluded: Mark — the filters excluded by hand as muted ×, drawn only (lib/exclusionMode) */}
-      {out.length > 0 && <path d={out.map(r => crossPath(x(r.xv), y(r.yv))).join('')} fill="none" stroke={INK.muted} strokeWidth={1.3} strokeOpacity={0.85} strokeLinecap="round" />}
-      {out.map(r => <rect key={'x' + r.site + r.id} x={x(r.xv) - 5} y={y(r.yv) - 5} width={10} height={10} fill="transparent" style={{ cursor: 'pointer' }} onClick={() => hl.openRecord(siteRecord(r, title, mac))}>
-        <title>{markTip({ id: String(r.id), site: r.site, date: r.date }, reasonOf(String(r.id)) ?? 'by hand').join('\n')}</title></rect>)}
-      {points.map(r => <circle key={r.site + r.id} cx={x(r.xv)} cy={y(r.yv)} r={r.site === 'Bishoftu' ? 5 : 3.4} fill={r.site === 'Bishoftu' ? '#C49442' : '#2C6E9E'} {...dotFill(r.site === 'Bishoftu' ? 'sparse' : 'dense')} {...dotRim()} style={{ cursor: 'pointer' }} onClick={() => hl.openRecord(siteRecord(r, title, mac))}><title>{pointTip(r)}</title></circle>)}
-      <g transform={`translate(${plot.l},${plot.t})`}>{fitGroups.map(group => <g key={group.name} data-fit-site={group.name}>
-        <RegressionLines stats={group.stats} color={group.color} x={v => x(v) - plot.l} y={v => y(v) - plot.t} domain={group.domain} width={plot.r - plot.l} height={plot.b - plot.t}/>
-      </g>)}</g>
-      <text x={(plot.l + plot.r) / 2} y={plot.b + 49} textAnchor="middle" fontSize={12} fill={INK.axis}>{optical ? `HIPS Fabs ÷ MAC ${mac} (µg/m³)` : '2920 cm⁻¹ local height (corrected absorbance)'}</text>
-      <text transform={`translate(19 ${(plot.t + plot.b) / 2}) rotate(-90)`} textAnchor="middle" fontSize={12} fill={INK.axis}>{optical ? 'Frozen FTIR EC prediction (µg/m³)' : '1617 cm⁻¹ local height (corrected absorbance)'}</text>
-      <g fontSize={11} fill={INK.text}>
-        <circle cx={legendX} cy={legendY} r={4} fill="#2C6E9E"/><text x={legendX + 10} y={legendY + 4}>Addis</text>
-        <circle cx={legendX} cy={legendY + 20} r={4} fill="#C49442"/><text x={legendX + 10} y={legendY + 24}>Bishoftu</text>
-      </g>
-      {methods.length > 0 && fitGroups.map((group, i) => <RegressionReadout key={group.name} stats={group.stats} title={group.name} color={group.color} x={legendX} y={legendY + 50 + i * readoutGap} width={250} />)}
-    </svg></div>
-    {handNote && <Note>{handNote}</Note>}
-    <ExcludedNote count={out.length} drawn />
+    <div className="chart-wrap centered" role="img" aria-label={`${title}: ${counts.Addis} Addis and ${counts.Bishoftu} Bishoftu points`}>
+      <ScatterPlot points={bandPoints} xDomain={xDomain} yDomain={yDomain} maxSide={400} margin={{ top: 14, right: 18, bottom: 46, left: 72 }} labelX={-60}
+        xFormat={(v) => fmt(+v, 3)} yFormat={(v) => fmt(+v, 3)} fit={fitGrouping as FitGrouping | 'none'} errorRatio={1}
+        xLabel="2920 cm⁻¹ local height (corrected absorbance)" yLabel="1617 cm⁻¹ local height (corrected absorbance)" />
+      <Key items={[{ label: `Addis (n ${counts.Addis})`, color: siteColor('Addis') }, { label: `Bishoftu (n ${counts.Bishoftu})`, color: siteColor('Bishoftu') }]} />
+    </div>
   </ChartFrame>
 }
