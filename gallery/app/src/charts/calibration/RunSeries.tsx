@@ -18,6 +18,8 @@ import type { CalibRun, CalibRunsFile, MetaFile } from '@/lib/types'
 import { groupColorFn, presetName } from './common'
 import { ExcludedNote, useCountedFilter, useExclusionSplit, useMarkReason, type MarkPoint } from '@/lib/markedRows'
 import { markTip } from '@/lib/exclusionMode'
+import { useSearchParam } from '@/lib/url'
+import { useFitHeight } from '@/lib/chartFit'
 
 const DEPLOYED_LABEL = 'deployed SPARTAN EC (hollow)'
 
@@ -39,11 +41,12 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
   const tip = useTooltip(wrapRef)
   // opens records only: the dots read the hover themselves (components/ScatterLayer)
   const hl = useHighlightActions()
-  const height = 400
+  const height = useFitHeight() ?? 400
 
-  // the rolling line and the deployed EC are switched from the legend, like the seasons
-  const [showDeployed, setShowDeployed] = useState(true)
-  const [showRoll, setShowRoll] = useState(true)
+  // the rolling line and the deployed EC are switched from the legend, like the seasons (kept in the link)
+  const [deployedParam, setDeployedParam] = useSearchParam<'1' | '0'>('run-series.deployed', '1', ['1', '0'])
+  const [rollParam, setRollParam] = useSearchParam<'1' | '0'>('run-series.roll', '1', ['1', '0'])
+  const showDeployed = deployedParam === '1', showRoll = rollParam === '1'
   const rolling = useRolling('run-series')
   const ROLL_LABEL = rolling.label
   const [hidden, setHidden] = useState<Set<string>>(new Set())
@@ -173,8 +176,8 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
           onHover={setHover}
           highlighted={hot}
           onToggle={(l) => {
-            if (l === ROLL_LABEL) setShowRoll((v) => !v)
-            else if (l === DEPLOYED_LABEL) setShowDeployed((v) => !v)
+            if (l === ROLL_LABEL) setRollParam(showRoll ? '0' : '1')
+            else if (l === DEPLOYED_LABEL) setDeployedParam(showDeployed ? '0' : '1')
             else if (run.eval.group.includes(l)) setHidden((h) => toggleIn(h, l))
           }}
           note="red line = 0 · dotted = 8 µg/m³"

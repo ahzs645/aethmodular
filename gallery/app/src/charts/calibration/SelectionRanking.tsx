@@ -1,8 +1,10 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import { robustDomain } from '@/lib/axes'
 import { Marker } from '@/components/RefLines'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { cohortOption, useChartOptions } from '@/lib/chartOptions'
+import { useFitHeight } from '@/lib/chartFit'
 import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -28,11 +30,16 @@ export function SelectionRanking({ runs, calib }: { runs: CalibRunsFile; calib: 
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const lg = useLegend()
-  const height = 340
+  const height = useFitHeight() ?? 340
 
   const cohorts = useMemo(() => [...new Set(runs.rankings.map((r) => r.cohort))], [runs.rankings])
-  const [cohort, setCohort] = useState(cohorts.includes('ocec') ? 'ocec' : cohorts[0] ?? '')
-  const [view, setView] = useState<(typeof VIEWS)[number]>('metric vs rank')
+  const o = useChartOptions('selection-ranking', [
+    cohortOption({ cohorts }),
+    { key: 'view', choices: VIEWS, default: 'metric vs rank' },
+    { key: 'count', node: () => <span className="control">{primary ? `${primary.n_total.toLocaleString()} candidates · cutoff ${cutoff}` : ''}</span> },
+  ])
+  const cohort = o.values.cohort as string
+  const view = o.values.view as (typeof VIEWS)[number]
   const series = runs.rankings.filter((r) => r.cohort === cohort)
   const labelOf = (sel: string) => label(SELECTION_SPACE, sel)
   const shown = series.filter((s) => lg.show(labelOf(s.selection_space)))
@@ -59,13 +66,7 @@ export function SelectionRanking({ runs, calib }: { runs: CalibRunsFile; calib: 
       title="Selection ranking — where the cutoff sits on the metric"
       subtitle={`${primary?.label ?? 'metric'} against rank for every TOR-eligible IMPROVE filter, lowest (most Addis-like) first. The dashed line is the locked cutoff. 'Distribution' shows the same metric as a histogram of the whole pool with the cutoff value marked.`}
       provenance="calibration_explorer /api/ranking · Selection tab"
-      controls={
-        <>
-          <Select label="Cohort" value={cohort} options={cohorts} onChange={setCohort} optionLabel={(c) => label(COHORT, c)} />
-          <Segmented value={view} options={VIEWS} onChange={setView} />
-          <span className="control">{primary ? `${primary.n_total.toLocaleString()} candidates · cutoff ${cutoff}` : ''}</span>
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap">
         {!primary ? (

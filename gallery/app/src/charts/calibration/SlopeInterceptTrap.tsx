@@ -6,7 +6,9 @@ import { RefLine } from '@/components/RefLines'
 import { EstimatorName } from '@/lib/regressionPrefs'
 import * as d3 from 'd3'
 import { hexbin as d3Hexbin } from 'd3-hexbin'
-import { ChartFrame, Empty, Segmented, Select, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
+import { testSetOption, useChartOptions } from '@/lib/chartOptions'
+import { fitInner, useFitHeight } from '@/lib/chartFit'
 import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -64,12 +66,8 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
   const tip = useTooltip(wrapRef)
   const ax = useSearchParam<string>('trapx', 'Slope · fixed set', METRIC_KEYS)
   const ay = useSearchParam<string>('trapy', 'Intercept · fixed set', METRIC_KEYS)
-  const [view, setView] = useState<(typeof VIEWS)[number]>('Points')
   const mx = METRICS[ax[0]], my = METRICS[ay[0]]
 
-  const [target, setTarget] = useState('addis')
-  const [mode, setMode] = useState('site_heldout')
-  const [onlyPassing, setOnlyPassing] = useState(false)
   const { hidden, dim, props: legendProps } = useLegend()
   // the legend names cohorts in words; hiding and dimming go by the same name
   const cohortName = (c: string) => COHORT[c] ?? calib.cohorts[c] ?? c
@@ -97,6 +95,21 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
 
   const targets = useMemo(() => [...new Set(calib.grid.map((r) => r.tg))].sort(), [calib.grid])
   const modes = useMemo(() => Object.keys(calib.modes).filter((m) => calib.grid.some((r) => r.mo === m)), [calib])
+  const o = useChartOptions('slope-trap', [
+    testSetOption({ targets, names: calib.targets }),
+    { key: 'mode', label: 'Cross-validation protocol', style: 'select', default: 'site_heldout', choices: modes.map((m) => ({ value: m, label: label(CV_PROTOCOL, m) })) },
+    { key: 'view', choices: VIEWS, default: 'Points' },
+    { key: 'guardrails', node: () => <>
+      <Select label="Guardrails" value={dots} options={['guardrails', 'intercept', 'cv-slope', 'custom', 'rule', 'none']} optionLabel={key => key === 'guardrails' ? 'Saved slope + cross-validation' : key === 'rule' ? 'Custom rule…' : key === 'none' ? 'None' : TEMPLATES.find(t => t.key === key)?.label ?? key} onChange={key => { if (key === 'rule') setEditing(true); else setDots(key) }} />
+      <button type="button" className="btn" onClick={() => setEditing(true)}>Edit guardrails…</button>
+    </> },
+    { key: 'onlyPassing', label: 'Only configurations that pass the guardrails', toggle: true, default: false },
+    { key: 'count', node: () => <span className="control">{rows.length} configurations</span> },
+  ])
+  const target = o.values.target as string
+  const mode = o.values.mode as string
+  const view = o.values.view as (typeof VIEWS)[number]
+  const onlyPassing = o.values.onlyPassing as boolean
 
   const rows = useMemo(
     () =>
@@ -108,7 +121,9 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
   const cohorts = useMemo(() => [...new Set(calib.grid.filter((r) => r.tg === target && r.mo === mode).map((r) => r.co))], [calib.grid, target, mode])
 
   // a crossplot is square: slope and intercept read against each other, not against the page width
-  const innerW = Math.min(MAX_SQUARE, Math.max(240, width - MARGIN.left - MARGIN.right))
+  // in a tile or the one-chart view the square fits the height it is given
+  const fit = useFitHeight()
+  const innerW = Math.min(fitInner(fit, MARGIN.top + MARGIN.bottom, 240) ?? MAX_SQUARE, Math.max(240, width - MARGIN.left - MARGIN.right))
   const innerH = innerW
   // centred in the frame: the square leaves the rest of a wide frame as even margins either side
   const left = MARGIN.left + Math.max(0, (width - MARGIN.left - MARGIN.right - innerW) / 2)
@@ -148,17 +163,7 @@ export function SlopeInterceptTrap({ calib, selected, onSelect }: { calib: Calib
       title="Slope vs intercept — the full-scale slope trap"
       subtitle={`Every fitted configuration at its rule number of PLS factors, test-set Deming at MAC ${calib.mac_value}; by default slope against intercept (click an axis title for another metric). A flat line always has a small intercept, so ranking by intercept alone rewards slope-0.4 fits; the shaded column is the slope box the explorer enforces first, and dimmed points fail it or the IMPROVE cross-validation R² floor. Click a point to load it into the PLS-factor sweep. Density hex bins the same points to show where the grid is crowded. The selected guardrail templates and custom rules are shared with Specification curve and evaluated on the displayed fixed-set fit. The shaded slope range remains a reference to the saved explorer settings.`}
       provenance="FIVE_SITE_GRID_2026-08-23.md “scoring lesson first” · ftir_17"
-      controls={
-        <>
-          <Select label="Test set" value={target} options={targets} onChange={setTarget} optionLabel={(t) => calib.targets[t]?.label ?? t} />
-          <Select label="Cross-validation protocol" value={mode} options={modes} onChange={setMode} optionLabel={(m) => label(CV_PROTOCOL, m)} />
-          <Segmented value={view} options={VIEWS} onChange={setView} />
-          <Select label="Guardrails" value={dots} options={['guardrails', 'intercept', 'cv-slope', 'custom', 'rule', 'none']} optionLabel={key => key === 'guardrails' ? 'Saved slope + cross-validation' : key === 'rule' ? 'Custom rule…' : key === 'none' ? 'None' : TEMPLATES.find(t => t.key === key)?.label ?? key} onChange={key => { if (key === 'rule') setEditing(true); else setDots(key) }} />
-          <button type="button" className="btn" onClick={() => setEditing(true)}>Edit guardrails…</button>
-          <Toggle label="Only configurations that pass the guardrails" checked={onlyPassing} onChange={setOnlyPassing} />
-          <span className="control">{rows.length} configurations</span>
-        </>
-      }
+      controls={o.controls()}
     >
       <ChartAside><p className="chart-note">Guardrails shared with Specification curve: {ruleDescription}. The shaded band is the saved slope range.</p></ChartAside>
       {evaluated.error && <p role="alert">{evaluated.error}</p>}

@@ -5,7 +5,7 @@ import { regression } from '@/lib/stats'
 import { demingLambda, useMac } from '@/lib/mac'
 import { EstimatorName, FIT_STYLE, useEstimator, useRegressions, fitsFor, type Estimator } from '@/lib/regressionPrefs'
 import { useChartOptions } from '@/lib/chartOptions'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { AxisTitle, XAxis, YAxis } from '@/components/Axes'
@@ -464,7 +464,7 @@ function OrderingAcrossCalibrations({ runs, sites, presetKey, mac, at, onPick }:
   const tip = useTooltip(wrapRef)
   const { showCI } = useRegressions()
   const estimator = useEstimator()
-  const [metric, setMetric] = useState<(typeof DOT_METRICS)[number]>('intercept')
+  const [metric, setMetric] = useSearchParam<(typeof DOT_METRICS)[number]>('cross-site-ordering.metric', 'intercept', DOT_METRICS)
   const keepOf = useRunKeep()
   const siteRuns = runs.runs.filter((r) => sites.includes(r.target) && r.preset === presetKey)
   const nMarked = useExclusionCount(siteRuns)

@@ -3,6 +3,7 @@ import { Combobox } from '@/components/Combobox'
 import { Segmented, Toggle } from '@/components/ChartFrame'
 import { useParamScope, useSearchParam } from '@/lib/url'
 import type { AxisOption } from '@/components/AxisChoices'
+import { COHORT, label } from '@/lib/labels'
 
 /**
  * A chart's options, declared once with the rules for when each applies, instead of
@@ -116,4 +117,53 @@ export function fitGroupingOption({ bind, when, offerSite = () => true, pooledLa
       { value: 'season', label: 'Separate fit per season' },
     ],
   }
+}
+
+/**
+ * Options several charts repeat, defined once so each reads the same, names its choices the same way
+ * and defaults the same. A chart passes what its data has and may override any field (`when`, `title`,
+ * a different `key` so an old URL key keeps working).
+ */
+type Override = Partial<Omit<OptionDef, 'choices'>>
+
+/** a calibration's test set (the batches' evaluation targets), named from the export, Addis by default */
+export function testSetOption({ targets, names, offer, ...rest }: {
+  targets: readonly string[]
+  /** the export's `targets` (their labels) */
+  names?: Record<string, { label?: string } | undefined>
+  /** offered only where it holds rows (e.g. for the chosen cohort) */
+  offer?: (target: string, ctx: OptionContext) => boolean
+} & Override): OptionDef {
+  return {
+    key: 'target', label: 'Test set', style: 'select', default: 'addis', ...rest,
+    choices: targets.map((t) => ({ value: t, label: names?.[t]?.label ?? t, when: offer && ((c: OptionContext) => offer(t, c)) })),
+  }
+}
+
+/** a calibration cohort, named as everywhere (lib/labels COHORT), the OC/EC cohort by default where there is one */
+export function cohortOption({ cohorts, nameOf = (c) => label(COHORT, c), offer, ...rest }: {
+  cohorts: readonly string[]
+  nameOf?: (cohort: string) => string
+  offer?: (cohort: string, ctx: OptionContext) => boolean
+} & Override): OptionDef {
+  return {
+    key: 'cohort', label: 'Cohort', style: 'select', default: cohorts.includes('ocec') ? 'ocec' : cohorts[0] ?? '', ...rest,
+    choices: cohorts.map((c) => ({ value: c, label: nameOf(c), when: offer && ((ctx: OptionContext) => offer(c, ctx)) })),
+  }
+}
+
+/** the filter BC measurements an AERONET comparison can read, in order of preference */
+export const BC_CHOICES = ['EC (FTIR)', 'HIPS BC', 'BC (public HIPS)'] as const
+
+/** which filter BC a chart reads: those the rows have (all of them while none is present) */
+export function bcOption({ present, ...rest }: { present: readonly string[] } & Override): OptionDef {
+  return {
+    key: 'bc', label: 'BC', style: 'select', default: BC_CHOICES[0], ...rest,
+    choices: BC_CHOICES.map((f) => ({ value: f, when: present.length ? () => present.includes(f) : undefined })),
+  }
+}
+
+/** a family of species from the export's field groups (radar, parallel axes), the ions by default */
+export function speciesFamilyOption({ groups, ...rest }: { groups: readonly string[] } & Override): OptionDef {
+  return { key: 'group', label: 'Species family', style: 'select', default: groups.includes('Ions') ? 'Ions' : groups[0] ?? '', ...rest, choices: groups }
 }

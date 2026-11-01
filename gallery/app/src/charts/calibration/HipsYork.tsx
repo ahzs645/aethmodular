@@ -1,5 +1,6 @@
 import { useRegressions } from '@/lib/regressionPrefs'
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
+import { useChartOptions } from '@/lib/chartOptions'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { AxisChoices } from '@/components/AxisChoices'
@@ -33,7 +34,10 @@ export function HipsYork({ runs }: { runs: CalibRunsFile }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const [what, setWhat] = useState<'intercept' | 'slope'>('intercept')
+  // the x readout (intercept or slope), picked from the axis title: kept in the link like every chart option
+  const o = useChartOptions('hips-york', [{ key: 'what', axis: 'x', label: 'York fit', default: 'intercept',
+    choices: [{ value: 'intercept', label: 'York intercept (µg/m³)' }, { value: 'slope', label: 'York slope' }] }])
+  const what = o.values.what as 'intercept' | 'slope'
   const lg = useLegend()
   const shown = VARIANTS.filter((v) => lg.show(VARIANT_LABEL[v]))
 
@@ -62,8 +66,7 @@ export function HipsYork({ runs }: { runs: CalibRunsFile }) {
           <Empty>No HIPS York rows exported.</Empty>
         ) : (
           // the x readout (intercept or slope) is picked from the axis title, as on the other charts
-          <AxisChoices noun="readouts" x={[what, (v) => setWhat(v as 'intercept' | 'slope')]}
-            options={[{ key: 'intercept', label: 'York intercept (µg/m³)', group: 'York fit', roles: ['x'] }, { key: 'slope', label: 'York slope', group: 'York fit', roles: ['x'] }]}>
+          <AxisChoices {...o.axisChoices()} noun="readouts">
           <IntervalStrip labelWidth={LEFT} rowHeight={rowH} minPanelWidth={240}
             panels={[{ label: what === 'intercept' ? 'York intercept (µg/m³)' : 'York slope', reference: what === 'slope' ? 1 : 0, domain: x.domain() as [number, number], pick: true }]}
             blocks={[{ key: 'sites', rows: rows.map((r) => {

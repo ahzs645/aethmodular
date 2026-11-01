@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { ChartFrame, Empty, Segmented, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { useChartOptions } from '@/lib/chartOptions'
+import { useFitHeight } from '@/lib/chartFit'
 import { Legend, useLegend } from '@/components/Legend'
 import { SpectrumPlot } from '@/components/SpectrumPlot'
 import { INK } from '@/lib/theme'
@@ -40,8 +41,14 @@ export function SpectraOverlay({
   fixedSet?: string
 }) {
   const spaces = Object.keys(bySpace)
-  const [space, setSpace] = useState(spaces.includes(defaultSpace) ? defaultSpace : spaces[0] ?? '')
-  const [bands, setBands] = useState(true)
+  // one preprocessing is not a choice: the engine draws the control only with two or more
+  const o = useChartOptions(id, [
+    { key: 'space', label: 'Preprocessing', default: spaces.includes(defaultSpace) ? defaultSpace : spaces[0] ?? '', choices: spaces.map((s) => ({ value: s, label: label(PREPROCESSING, s) })) },
+    { key: 'bands', label: 'IQR bands', toggle: true, default: true },
+  ])
+  const space = o.values.space as string
+  const bands = o.values.bands as boolean
+  const height = useFitHeight() ?? 380
   const { hidden, dim, props: legendProps } = useLegend()
   const series = (bySpace[space] ?? []).filter((s) => !hidden.has(s.label))
 
@@ -51,18 +58,13 @@ export function SpectraOverlay({
       title={title}
       subtitle={subtitle}
       provenance={provenance}
-      controls={
-        <>
-          {spaces.length > 1 && <Segmented label="Preprocessing" value={label(PREPROCESSING, space)} options={spaces.map((s) => label(PREPROCESSING, s))} onChange={(v) => setSpace(spaces.find((s) => label(PREPROCESSING, s) === v) ?? space)} />}
-          <Toggle label="IQR bands" checked={bands} onChange={setBands} />
-        </>
-      }
+      controls={o.controls()}
     >
       <div className="chart-wrap">
         {series.length === 0 ? (
           <Empty>No spectra exported for this space.</Empty>
         ) : (
-          <SpectrumPlot height={380} hover="readout" dim={dim} xLabel="wavenumber (cm⁻¹)" yLabel={space === 'raw' ? 'absorbance' : 'baselined absorbance'}
+          <SpectrumPlot height={height} hover="readout" dim={dim} xLabel="wavenumber (cm⁻¹)" yLabel={space === 'raw' ? 'absorbance' : 'baselined absorbance'}
             series={series.map((s) => ({ id: s.label, label: s.label, group: s.label, wn: s.wn, y: s.median, color: s.color, dash: s.dash, width: 1.8 }))}
             bands={bands ? series.map((s) => ({ id: s.label, group: s.label, wn: s.wn, lo: s.q25, hi: s.q75, color: s.color, opacity: 0.12 })) : []}
             markers={MARKS.map((m) => ({ at: m.wn, label: m.label, color: INK.muted }))} />

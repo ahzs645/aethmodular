@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { useChartOptions } from '@/lib/chartOptions'
 import { ColorLegend } from '@/components/ColorLegend'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -38,7 +39,8 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const [view, setView] = useState<(typeof VIEWS)[number]>('Matrix')
+  const o = useChartOptions('overlap', [{ key: 'view', label: 'View', choices: VIEWS, default: 'Matrix' }])
+  const view = o.values.view as (typeof VIEWS)[number]
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const lg = useLegend()
 
@@ -101,7 +103,7 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
       title="Cohort overlap — are the selection methods picking the same filters?"
       subtitle="Shared members between every pair of cohorts at their locked cutoffs. Matrix: shaded as a fraction of the smaller cohort, the diagonal is each cohort's size. Chord: every cohort is an arc sized by its member count, ribbons are the filters two cohorts share, and the unribboned part of an arc is what that cohort alone selects."
       provenance="calibration_explorer /api/overlap · meeting item · react-graph-gallery.com/chord-diagram"
-      controls={<Segmented label="View" value={view} options={VIEWS} onChange={setView} />}
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap centered">
         {names.length < 2 ? (
