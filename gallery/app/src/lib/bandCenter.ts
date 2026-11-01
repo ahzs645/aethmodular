@@ -9,12 +9,13 @@
  * of the window is a neighbouring band leaking in (the carbonyl shoulder at the
  * high edge), not a resolved peak, and is flagged `edge`.
  */
+import { mean } from './stats.ts'
+
 export interface BandCenter { center: number; height: number; edge: boolean }
 
 export const BAND_1600 = { peak: [1550, 1680], left: [1750, 1800], right: [1500, 1530] } as const
 
 const inside = (w: number, [lo, hi]: readonly [number, number]) => w >= lo && w <= hi
-const mean = (v: number[]) => v.reduce((a, b) => a + b, 0) / v.length
 
 export function bandCenter(wn: ArrayLike<number>, y: ArrayLike<number>, win: { peak: readonly [number, number]; left: readonly [number, number]; right: readonly [number, number] } = BAND_1600): BandCenter | null {
   const idx = (range: readonly [number, number]) => Array.from(wn, (w, i) => (inside(w, range) && Number.isFinite(y[i]) ? i : -1)).filter((i) => i >= 0)

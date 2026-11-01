@@ -11,7 +11,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/format'
 import { FONT, INK } from '@/lib/theme'
-import { seasonOnly } from '@/lib/seasons'
+import { shortSeason } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { VOLUME } from '@/lib/viewFields'
@@ -84,7 +84,8 @@ export function seasonsOf(rows: FilterRow[], meta: MetaFile): { name: string; co
     .map((name, i) => ({ name, color: all.find((s) => s.name === name)?.color ?? SERIES[i % SERIES.length] }))
 }
 
-export const shortSeason = (s: string) => seasonOnly(s).replace(/\s*\(.*\)\s*$/, '')
+/** the season's name without its site or month range (lib/seasons), as the research pages label seasons */
+export { shortSeason }
 
 /** a crossplot point for a filter row, with the usual tip and record */
 export function point(r: FilterRow, x: number, y: number, color: string, xLabel: string, yLabel: string, source: string, extra: string[] = [], hollow = false): CrossPoint {

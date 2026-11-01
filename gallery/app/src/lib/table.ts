@@ -11,14 +11,15 @@ export type Value = string | number | boolean | null
 export type Row = Record<string, Value>
 export type Table = Row[] | Record<string, Value[]>
 
-export function rowsOf(t: Table | null | undefined): Row[] {
+/** row objects from a table in either form (columns are as long as the first); `R` types the rows a caller knows the shape of */
+export function rowsOf<R = Row>(t: Table | null | undefined): R[] {
   if (!t) return []
-  if (Array.isArray(t)) return t
+  if (Array.isArray(t)) return t as R[]
   const cols = Object.keys(t)
   const n = cols.length ? t[cols[0]].length : 0
   const out: Row[] = new Array(n)
   for (let i = 0; i < n; i++) { const r: Row = {}; for (const c of cols) r[c] = t[c][i]; out[i] = r }
-  return out
+  return out as R[]
 }
 
 /** Keep rows whose columns equal the given value (or one of the values in a list). */

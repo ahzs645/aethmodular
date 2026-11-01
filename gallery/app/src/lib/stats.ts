@@ -118,11 +118,11 @@ export interface MonthStats { month: number; n: number; median: number | null; m
  * Per calendar month (1–12, all twelve returned): the count, median and mean of the finite values, and the
  * quartiles once a month has `iqrMinN` values (default IQR_MIN_N).
  */
-export function monthlyStats<R>(rows: readonly R[], monthOf: (r: R) => number, valueOf: (r: R) => unknown, { iqrMinN = IQR_MIN_N }: { iqrMinN?: number } = {}): MonthStats[] {
+export function monthlyStats<R>(rows: readonly R[], monthOf: (r: R) => number | null | undefined, valueOf: (r: R) => unknown, { iqrMinN = IQR_MIN_N }: { iqrMinN?: number } = {}): MonthStats[] {
   const by: number[][] = Array.from({ length: 12 }, () => [])
   for (const r of rows) {
     const m = monthOf(r), v = valueOf(r)
-    if (m >= 1 && m <= 12 && isFiniteNumber(v)) by[m - 1].push(v)
+    if (m != null && Number.isInteger(m) && m >= 1 && m <= 12 && isFiniteNumber(v)) by[m - 1].push(v)
   }
   return by.map((vals, i) => {
     vals.sort((a, b) => a - b)

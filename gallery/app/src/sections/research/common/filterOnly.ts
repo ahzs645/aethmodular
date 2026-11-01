@@ -14,7 +14,7 @@
  * Fabs is in Mm⁻¹ and EC in µg/m³; every model is linear in Fabs, so dividing Fabs by a MAC divides every
  * prediction and error by it and leaves the percentages alone.
  */
-import { median, quantile } from '../../../lib/stats.ts'
+import { mean, median, quantile } from '../../../lib/stats.ts'
 
 /** one diagnostic filter (gallery/data/export_research_filter_only.py) */
 export interface FPoint {
@@ -59,8 +59,6 @@ export const MODELS = ['median', 'proportional', 'ols'] as const
 export type Model = (typeof MODELS)[number]
 
 export interface TrainFit { status: Exclude<Status, 'empty_test_block'>; slope: number; intercept: number; median: number; k: number }
-
-const mean = (v: readonly number[]) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : NaN)
 
 /** fit_training + proportional_fit: OLS (scipy linregress), the training median of Fabs, Σxy / Σx² */
 export function fitTraining(train: readonly FPoint[], minTrain = MIN_TRAIN): TrainFit {

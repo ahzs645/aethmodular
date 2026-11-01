@@ -7,6 +7,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
+import { boxStats, meanSe } from '@/lib/stats'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
@@ -60,13 +61,14 @@ export function Barplot({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFi
           .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
           .sort(d3.ascending)
         if (vals.length < 3) continue
+        const box = boxStats(vals, { minN: 1 })!, m = meanSe(vals), mean = m.mean!, ci = 1.96 * (m.se ?? 0)
         out.push({
           site: s.name,
           season,
-          value: stat === 'Mean' ? (d3.mean(vals) ?? 0) : (d3.quantile(vals, 0.5) ?? 0),
+          value: stat === 'Mean' ? mean : box.median,
           // whiskers that belong to the statistic: the IQR around a median, a 95 % interval around a mean
-          q1: stat === 'Mean' ? (d3.mean(vals) ?? 0) - 1.96 * (d3.deviation(vals) ?? 0) / Math.sqrt(vals.length) : d3.quantile(vals, 0.25) ?? 0,
-          q3: stat === 'Mean' ? (d3.mean(vals) ?? 0) + 1.96 * (d3.deviation(vals) ?? 0) / Math.sqrt(vals.length) : d3.quantile(vals, 0.75) ?? 0,
+          q1: stat === 'Mean' ? mean - ci : box.q1,
+          q3: stat === 'Mean' ? mean + ci : box.q3,
           n: vals.length,
           color: parts.find((x) => x.name === season)?.color ?? s.color,
         })

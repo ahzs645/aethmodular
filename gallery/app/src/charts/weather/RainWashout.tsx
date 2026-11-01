@@ -13,7 +13,7 @@ import { AxisTitle } from '@/components/Axes'
 import { Legend } from '@/components/Legend'
 import { useAxisFields } from '@/components/AxisFieldPopover'
 import { RAIN_CLASSES, WEATHER_MIN_PAIRS, rainClass } from '@/lib/weather'
-import { spearman } from '@/lib/stats'
+import { goldenJitter, spearman } from '@/lib/stats'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { ExcludedNote, toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 
@@ -94,7 +94,7 @@ function WashoutPanel({ p, pw, h, meta, field, prcpField, selected, tip, axisPic
   const bw = x.bandwidth()
   const centre = (key: string) => (x(key) ?? 0) + bw / 2
   // every filter in its class column, with a deterministic jitter so a re-render does not shuffle the dots
-  const items = useMemo(() => p.classes.flatMap((c) => c.members.map((r, i) => ({ r, jx: ((i * 0.6180339) % 1 - 0.5) * bw * 0.8, key: c.key }))), [p, bw])
+  const items = useMemo(() => p.classes.flatMap((c) => c.members.map((r, i) => ({ r, jx: goldenJitter(i, bw * 0.8), key: c.key }))), [p, bw])
   const xy = useMemo(() => items.map(({ r, jx, key }) => [centre(key) + jx, y(Math.min(r[field] as number, y.domain()[1]))] as const), [items, y, field]) // eslint-disable-line react-hooks/exhaustive-deps
   const colorOf = (r: FilterRow) => meta.seasons.find((s) => s.name === r.season)?.color ?? INK.muted
   // Filters → excluded: Mark (lib/markedRows): this site's excluded filters as × in their rain class, in no box or n
@@ -103,7 +103,7 @@ function WashoutPanel({ p, pw, h, meta, field, prcpField, selected, tip, axisPic
   const marks = useMemo(() => toMarks(markedAll.filter((r) => r.site === p.site), (r) => {
     const v = r[field], rain = r[prcpField]
     if (typeof v !== 'number' || typeof rain !== 'number' || v < y.domain()[0] || v > y.domain()[1]) return null
-    return [centre(rainClass(rain)) + (((r.id.length * 0.6180339 + v) % 1) - 0.5) * bw * 0.8, y(v)]
+    return [centre(rainClass(rain)) + goldenJitter(r.id.length, bw * 0.8, v), y(v)]
   }, markReason, (r) => [`${field}: ${fmt(r[field])}`, `rain ${fmt(r[prcpField], 2)} mm/day`]), [markedAll, p.site, field, prcpField, y, bw, markReason]) // eslint-disable-line react-hooks/exhaustive-deps
   const dots = useMemo(() => items.map(({ r }, i) => {
     const st = focusStyle(r.id, null, { r: 2.2 }, selected)
@@ -129,7 +129,7 @@ function WashoutPanel({ p, pw, h, meta, field, prcpField, selected, tip, axisPic
           return (
             <g key={c.key}>
               {c.box && <g {...fidsProps(c.members.map((r) => r.id), `${p.site} · ${seasonOnly(c.key)}`)}>
-                <line x1={cx} x2={cx} y1={y(Math.min(c.box.max, c.box.q3 + 1.5 * (c.box.q3 - c.box.q1), y.domain()[1]))} y2={y(Math.max(c.box.min, c.box.q1 - 1.5 * (c.box.q3 - c.box.q1)))} stroke={INK.axis} />
+                <line x1={cx} x2={cx} y1={y(Math.min(c.box.max, y.domain()[1]))} y2={y(c.box.min)} stroke={INK.axis} />
                 <rect x={cx - bw / 2} width={bw} y={y(c.box.q3)} height={Math.max(1, y(c.box.q1) - y(c.box.q3))} fill={c.color} fillOpacity={0.35} stroke={c.color} />
                 <line x1={cx - bw / 2} x2={cx + bw / 2} y1={y(c.box.median)} y2={y(c.box.median)} stroke={INK.text} strokeWidth={2} />
               </g>}

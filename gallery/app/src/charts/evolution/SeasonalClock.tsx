@@ -1,5 +1,5 @@
 import { useId, useMemo, useRef, useState } from 'react'
-import { seasonOnly } from '@/lib/seasons'
+import { seasonOnly, shortSeason } from '@/lib/seasons'
 import { seasonShade } from '@/components/SeasonBands'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
@@ -7,6 +7,7 @@ import { Legend, toggleIn } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
+import { IQR_MIN_N, monthlyStats, type MonthStats } from '@/lib/stats'
 import { INK, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile, SeasonMeta } from '@/lib/types'
 import { useChartOptions } from '@/lib/chartOptions'
@@ -21,11 +22,9 @@ const LAYOUTS = ['Grouped', 'Rings'] as const
 const MAX_RINGS = 8
 /** A site-month with fewer filters than this is a stub, not a value: a median of two is a coin toss. */
 const MIN_N = 3
-/** an IQR needs four filters, the same rule as the monthly band chart */
-const IQR_MIN_N = 4
 const TAU = 2 * Math.PI
 
-type Cell = { month: number; n: number; median: number | null; mean: number | null; q1: number | null; q3: number | null }
+type Cell = MonthStats
 type Series = { name: string; color: string; cells: Cell[] }
 
 /** Angle (radians, clockwise from 12 o'clock — d3.arc's convention) at which month m (1–12) starts. */
@@ -89,21 +88,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
     () =>
       meta.sites
         .map((s) => {
-          const cells: Cell[] = d3.range(1, 13).map((m) => {
-            const vals = rows
-              .filter((r) => r.site === s.name && r.month === m)
-              .map((r) => r[field])
-              .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
-              .sort(d3.ascending)
-            return {
-              month: m,
-              n: vals.length,
-              median: vals.length ? (d3.quantile(vals, 0.5) ?? null) : null,
-              mean: vals.length ? (d3.mean(vals) ?? null) : null,
-              q1: vals.length >= IQR_MIN_N ? (d3.quantile(vals, 0.25) ?? null) : null,
-              q3: vals.length >= IQR_MIN_N ? (d3.quantile(vals, 0.75) ?? null) : null,
-            }
-          })
+          const cells: Cell[] = monthlyStats(rows.filter((r) => r.site === s.name), (r) => r.month, (r) => r[field])
           return { name: s.name, color: s.color, cells }
         })
         .filter((s) => s.cells.some((c) => c.n > 0)),
@@ -346,8 +331,3 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
   )
 }
 
-/** Short names stay within their arc; the legend retains the full month ranges. */
-const shortSeason = (name: string) => {
-  const bare = name.includes(' · ') ? name.slice(name.indexOf(' · ') + 3) : name
-  return bare.replace(/\s*\(.*\)$/, '')
-}

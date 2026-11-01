@@ -7,6 +7,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { useChartOptions } from '@/lib/chartOptions'
 import { useFitHeight } from '@/lib/chartFit'
 import { fmt } from '@/lib/format'
+import { boxStats } from '@/lib/stats'
 import { INK, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { ExcludedNote } from '@/lib/markedRows'
@@ -32,8 +33,8 @@ export function SiteRank({ rows, meta, field, onOpenSite }: { rows: FilterRow[];
   const sites = useMemo(() => {
     const out = [...d3.group(rows, (r) => r.site)].map(([site, rs]) => {
       const v = rs.map((r) => r[field]).filter((x): x is number => typeof x === 'number' && Number.isFinite(x)).sort(d3.ascending)
-      return { site, code: rs[0].code, color: rs[0].color, n: v.length,
-        q1: d3.quantileSorted(v, 0.25) ?? 0, med: d3.quantileSorted(v, 0.5) ?? 0, q3: d3.quantileSorted(v, 0.75) ?? 0 }
+      const box = boxStats(v, { minN: 1 })
+      return { site, code: rs[0].code, color: rs[0].color, n: v.length, q1: box?.q1 ?? 0, med: box?.median ?? 0, q3: box?.q3 ?? 0 }
     }).filter((s) => s.n >= MIN_N)
     return out
   }, [rows, field])

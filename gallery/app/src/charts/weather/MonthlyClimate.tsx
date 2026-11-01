@@ -5,6 +5,7 @@ import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { FacetGrid } from '@/components/FacetGrid'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
+import { monthlyMeans } from '@/lib/stats'
 import { FONT, INK } from '@/lib/theme'
 import { loadDaily, type DailyWeather } from '@/lib/weather'
 import type { MetaFile } from '@/lib/types'
@@ -46,13 +47,12 @@ export function MonthlyClimate({ meta, sites, id = 'weather-climate', title = 'M
   const climate = useMemo(() => shown.map((s) => {
     const d = data[s.code]
     if (!d) return { site: s, months: null }
+    // lib/stats monthlyMeans, as the AERONET climatology: each month's mean over the days that have a value
+    const p = monthlyMeans(d.date, d.p), t = monthlyMeans(d.date, d.t), rh = monthlyMeans(d.date, d.rh)
     const months = d3.range(1, 13).map((m) => {
-      const idx = d.date.map((x, i) => [Number(x.slice(5, 7)), i] as const).filter(([mm]) => mm === m).map(([, i]) => i)
-      const p = idx.map((i) => d.p[i]).filter((v): v is number => v !== null)
-      const t = idx.map((i) => d.t[i]).filter((v): v is number => v !== null)
-      const rh = idx.map((i) => d.rh[i]).filter((v): v is number => v !== null)
+      const i = m - 1, mp = p[i].mean
       // mean daily rate x days in the month: a monthly total comparable across sites
-      return { m, n: idx.length, p: p.length ? d3.mean(p)! * new Date(2023, m, 0).getDate() : null, t: d3.mean(t) ?? null, rh: d3.mean(rh) ?? null }
+      return { m, n: d.date.filter((x) => Number(x.slice(5, 7)) === m).length, p: mp !== null ? mp * new Date(2023, m, 0).getDate() : null, t: t[i].mean, rh: rh[i].mean }
     })
     return { site: s, months }
   }), [data, key]) // eslint-disable-line react-hooks/exhaustive-deps

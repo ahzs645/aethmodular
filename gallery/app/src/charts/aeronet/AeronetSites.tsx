@@ -6,6 +6,7 @@ import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
+import { boxStats } from '@/lib/stats'
 import { FONT, INK } from '@/lib/theme'
 import { AERONET_SUMMARY, hasAod, scaleHeight, type AeronetStations } from '@/lib/aeronet'
 import { seasonOnly } from '@/lib/seasons'
@@ -92,12 +93,12 @@ export function ScaleHeightStrip({ rows, meta, by = 'site', onSite }: {
     const key = (r: FilterRow) => (by === 'site' ? r.site : String(r.season ?? ''))
     const groups = d3.groups(rows, key).map(([name, rs]) => ({
       name, code: rs[0]?.code ?? '', hs: rs.map(scaleHeight).filter((v): v is number => v !== null).sort(d3.ascending),
-    })).filter((g) => g.name && g.hs.length >= 5)
+    })).filter((g) => g.name && g.hs.length >= 5).map((g) => ({ ...g, box: boxStats(g.hs, { minN: 1 })! }))
     // sites by their median; seasons in the calendar's order
     const order = meta.seasons.map((x) => x.name)
-    groups.sort((a, b) => (by === 'site' ? (d3.median(a.hs) ?? 0) - (d3.median(b.hs) ?? 0) : order.indexOf(a.name) - order.indexOf(b.name)))
+    groups.sort((a, b) => (by === 'site' ? a.box.median - b.box.median : order.indexOf(a.name) - order.indexOf(b.name)))
     const out: IntervalRow[] = groups.map((g) => {
-      const mid = d3.quantileSorted(g.hs, 0.5), lo = d3.quantileSorted(g.hs, 0.25), hi = d3.quantileSorted(g.hs, 0.75)
+      const { median: mid, q1: lo, q3: hi } = g.box
       const color = by === 'site' ? siteColour(meta, g.name) : meta.seasons.find((x) => x.name === g.name)?.color ?? INK.muted
       return {
         key: g.name, label: by === 'site' ? g.name : seasonOnly(g.name), note: `n=${g.hs.length}`, onClick: by === 'site' && onSite ? () => onSite(g.code) : undefined,

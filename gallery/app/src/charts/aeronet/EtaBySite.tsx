@@ -5,7 +5,7 @@ import { IntervalStrip, type IntervalBlock, type IntervalRow } from '@/component
 import { fmt } from '@/lib/stats'
 import { INK } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
-import { spearman } from '@/lib/stats'
+import { boxStats, quantileSorted, spearman } from '@/lib/stats'
 import { useSearchParam } from '@/lib/url'
 import { useNarrowScreen } from '@/hooks/useMediaQuery'
 import { eta, maiaLine, useAeronetSites } from '@/lib/aeronetSites'
@@ -41,7 +41,7 @@ export function EtaBySite({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
         pm: pairs.map((p) => p.r['PM2.5 mass'] as number), aod: pairs.map((p) => p.r['AOD 500 nm (AERONET)'] as number) }
     }
     const toRow = (g: Group): IntervalRow => {
-      const mid = d3.quantileSorted(g.etas, 0.5) ?? null, lo = d3.quantileSorted(g.etas, 0.25) ?? null, hi = d3.quantileSorted(g.etas, 0.75) ?? null
+      const box = boxStats(g.etas, { minN: 1 }), mid = box?.median ?? null, lo = box?.q1 ?? null, hi = box?.q3 ?? null
       const rho = spearman(g.pm, g.aod, { minN: 5 })
       const maia = maiaLine(summary?.maia[g.code])
       return {
@@ -57,7 +57,7 @@ export function EtaBySite({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
     const mark = (site: string, code: string) => (summary?.maia[code] ? `${site} ◎` : site)
     if (view === 'Site') {
       const groups = bySite.map(([site, rs]) => group(site, mark(site, rs[0].code), rs, siteColour(meta, site))).filter((g): g is Group => g !== null)
-      groups.sort((a, b) => (d3.quantileSorted(a.etas, 0.5) ?? 0) - (d3.quantileSorted(b.etas, 0.5) ?? 0))
+      groups.sort((a, b) => (quantileSorted(a.etas, 0.5) || 0) - (quantileSorted(b.etas, 0.5) || 0))
       return [{ key: 'sites', rows: groups.map(toRow) }]
     }
     return bySite.map(([site, rs]) => {

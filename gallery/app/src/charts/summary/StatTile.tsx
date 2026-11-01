@@ -6,6 +6,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useFitHeight } from '@/lib/chartFit'
 import { chemText, fmt } from '@/lib/format'
+import { boxStats } from '@/lib/stats'
 import { useDashboardDetails } from '@/lib/dashboardDetails'
 import { measuredRows } from '@/lib/metricDefinition'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -41,9 +42,8 @@ export function StatTile({ rows, meta, field }: { rows: FilterRow[]; meta: MetaF
   }, [rows, field])
 
   const unit = prettyUnit(meta.field_units?.[field])
-  const med = d3.quantileSorted(values, 0.5)
-  const q1 = d3.quantileSorted(values, 0.25)
-  const q3 = d3.quantileSorted(values, 0.75)
+  const box = boxStats(values, { minN: 1 })
+  const med = box?.median, q1 = box?.q1, q3 = box?.q3
   const all = lines.flatMap((l) => l.pts)
   const x = d3.scaleTime().domain(d3.extent(all, (p) => p.t) as [Date, Date]).range([2, Math.max(10, width - 2)])
   const y = d3.scaleLinear().domain([0, d3.max(all, (p) => p.v) ?? 1]).nice().range([sparkH - 2, 2])

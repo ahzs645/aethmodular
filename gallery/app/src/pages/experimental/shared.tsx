@@ -12,6 +12,7 @@ import { fidProps } from '@/lib/filterEdits'
 import { baseFilterId, dotFill, dotRim, useHighlightActions, type FilterRecord } from '@/lib/highlight'
 import { ScatterLayer } from '@/components/ScatterLayer'
 import { useCountedFilter, useExclMode, useExclusionSplit, useMarkReason, type MarkPoint } from '@/lib/markedRows'
+import { rowsOf as tableRows } from '@/lib/table'
 
 /** Helpers shared by the Experimental subpages (gallery/data/export_experiments.py exports). */
 
@@ -39,11 +40,8 @@ export function useCounted<T>(items: readonly T[], idOf: (t: T) => string | null
   }, [items, split, isCounted]) // eslint-disable-line react-hooks/exhaustive-deps
 }
 
-/** columns → row objects */
-export function rowsOf<R = Record<string, any>>(c: Cols): R[] {
-  const keys = Object.keys(c), n = keys.length ? c[keys[0]].length : 0
-  return d3.range(n).map((i) => Object.fromEntries(keys.map((k) => [k, c[k][i]])) as R)
-}
+/** columns → row objects (lib/table rowsOf), loosely typed as the experiment pages read them */
+export const rowsOf = <R = Record<string, any>>(c: Cols): R[] => tableRows<R>(c)
 
 export const runLine = (d: XpBase) => `experiments_20261022.ipynb run ${d.source.split('/').pop()} · bundle ${d.settings?.bundle ?? ''} · k ${JSON.stringify(d.settings?.k_selected ?? {}).replace(/[{}"]/g, '').replace(/,/g, ', ')}`
 export const sourceOf = (file: string) => (fn: string) => `gallery/app/src/pages/experimental/${file}.tsx › ${fn}`

@@ -27,6 +27,9 @@ test('season helpers agree on names, the all-Addis group and month bins', () => 
   assert.equal(normalizeSeasonName('Dry (Oct-Feb)'), 'Dry (Oct-Feb)')
   assert.equal(shortSeason('Kiremt (Jun-Sep)'), 'Kiremt')
   assert.equal(shortSeason(ALL_ADDIS), ALL_ADDIS)
+  // one shortSeason for the whole gallery: the site prefix and the month range go, a multi-word name stays whole
+  assert.equal(shortSeason('Addis Ababa · Belg Rainy Season (Feb-May)'), 'Belg Rainy Season')
+  assert.equal(shortSeason('Second Dry'), 'Second Dry')
   assert.equal(seasonPhrase(ALL_ADDIS), 'all seasons')
   assert.ok(isAllAddis('all') && isAllAddis(ALL_ADDIS) && !isAllAddis('Dry (Oct-Feb)'))
   assert.ok(inSeasonGroup('Belg (Mar-May)', ALL_ADDIS))
