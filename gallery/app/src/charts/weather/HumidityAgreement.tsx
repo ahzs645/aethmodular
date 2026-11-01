@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useSearchParam } from '@/lib/url'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
@@ -33,7 +34,10 @@ const BEST_N = 15
  */
 export function HumidityAgreement({ rows, meta, xField, yField, rhField }: { rows: FilterRow[]; meta: MetaFile; xField: string; yField: string; rhField: string }) {
   const hl = useHighlightActions()
-  const [thr, setThr] = useState(50)
+  // the split, kept in the link (30–82.5 %, as the field and the sweep offer)
+  const [thrParam, setThrParam] = useSearchParam<string>('weather-humidity.thr', '50')
+  const thr = Math.min(82.5, Math.max(30, Number(thrParam) || 50))
+  const setThr = (v: number) => setThrParam(String(v))
   // the sweep's slopes come from the estimators ticked in the sidebar, as the crossplot's fits do; with every
   // fit switched off it still needs one, so it falls back to Deming (the gallery's default)
   const { methods } = useRegressions()

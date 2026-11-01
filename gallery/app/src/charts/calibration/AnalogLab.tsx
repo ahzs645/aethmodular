@@ -16,6 +16,7 @@ import { cohortColor } from './common'
 import { AxisChoices } from '@/components/AxisChoices'
 import { ChartAside } from '@/lib/singleView'
 import { FixedSetNote } from '@/lib/markedRows'
+import { useFitHeight } from '@/lib/chartFit'
 
 /**
  * The analog lab: does the committed spectral-analog ranking agree with
@@ -53,7 +54,10 @@ export function AnalogLab({ bySpace, cutoff }: { bySpace: Record<string, AnalogL
 
   const cols = width > 760 ? 2 : 1
   const panelW = Math.floor((width - (cols - 1) * 12) / cols)
-  const S = Math.max(220, Math.min(440, panelW - MARGIN.left - MARGIN.right))
+  // in a tile or the one-chart view the squares fit the height (side by side, or one above the other)
+  const fit = useFitHeight()
+  const fitSide = fit === null ? null : (cols === 2 ? fit : fit / 2) - MARGIN.top - MARGIN.bottom
+  const S = Math.max(220, Math.min(fitSide ?? 440, panelW - MARGIN.left - MARGIN.right))
 
   const pca = useMemo(() => {
     if (!lab) return null

@@ -30,12 +30,6 @@ export const listToParam = (s: Set<string> | null): string | null =>
   s ? [...s].join('|') : null
 
 /**
- * One control held in the query string rather than the hash, for tabs whose
- * state is independent of the filter-row subset above. The value survives a
- * copied URL and the back button; the fallback is never written, so a
- * default view keeps a clean URL.
- */
-/**
  * Query keys are shared by every page, so two controls that mean different things
  * must not use the same key (one would silently overwrite the other). In
  * development, a key registered with two different option lists is reported.
@@ -60,35 +54,14 @@ export const ParamScope = ({ prefix, children }: { prefix: string; children: Rea
 export const useParamScope = () => useContext(ScopeCtx)
 
 /**
- * A chart's own setting kept in plain state (a statistic, a bin count, a colour field): inside a
- * Dashboard tile it lives in the URL under the tile's prefix, so a saved or shared dashboard
- * reopens each tile as it was; everywhere else it is ordinary component state, as before.
+ * A chart's own single setting (a statistic, a bin count, a colour field). It used to live in the URL
+ * only inside a Dashboard tile and in plain state elsewhere, so a shared link lost it; it is now the
+ * same as `useSearchParam` (kept in the URL everywhere, under a tile's prefix inside a tile, with the
+ * duplicate-key check and the change event). Kept as an alias for old callers: use `useSearchParam`
+ * for one setting, or `useChartOptions` (lib/chartOptions) for a chart's options row.
  */
-export function useTileSetting<T extends string>(key: string, fallback: T, allowed?: readonly string[]): [T, (v: T) => void] {
-  const prefix = useParamScope()
-  const name = prefix + key
-  const read = (): T => {
-    if (!prefix) return fallback
-    const v = new URL(window.location.href).searchParams.get(name)
-    return v !== null && (!allowed || allowed.length === 0 || allowed.includes(v)) ? (v as T) : fallback
-  }
-  const [value, setValue] = useState<T>(read)
-  useEffect(() => {
-    if (!prefix) return
-    const sync = () => setValue(read())
-    window.addEventListener('popstate', sync)
-    return () => window.removeEventListener('popstate', sync)
-  }, [name]) // eslint-disable-line react-hooks/exhaustive-deps
-  const update = (v: T) => {
-    setValue(v)
-    if (!prefix) return
-    const url = new URL(window.location.href)
-    if (v === fallback) url.searchParams.delete(name)
-    else url.searchParams.set(name, v)
-    window.history.replaceState(null, '', url)
-  }
-  return [value, update]
-}
+export const useTileSetting = <T extends string>(key: string, fallback: T, allowed?: readonly string[], opts?: SearchParamOptions): [T, (v: T) => void] =>
+  useSearchParam<T>(key, fallback, allowed, opts)
 
 /** forget every query key under a prefix (a removed Dashboard tile's controls) */
 export function clearScopedParams(prefix: string) {
@@ -104,25 +77,50 @@ export function copyScopedParams(from: string, to: string) {
   window.history.replaceState(null, '', url)
 }
 
-export function useSearchParam<T extends string>(key: string, fallback: T, allowed?: readonly string[]): [T, (v: T) => void] {
-  const name = useParamScope() + key
+export interface SearchParamOptions {
+  /** older keys for the same setting (read when the key itself is absent, removed on the next change), so old links still open the same view */
+  legacy?: readonly string[]
+}
+
+/**
+ * The raw value of a query key, falling back to its legacy keys in order (all under the same
+ * prefix), or null. Plain function so it can be tested without a window.
+ */
+export function readQueryValue(q: URLSearchParams, name: string, legacy: readonly string[] = [], prefix = ''): string | null {
+  const v = q.get(name)
+  if (v) return v
+  for (const k of legacy) { const l = q.get(prefix + k); if (l) return l }
+  return null
+}
+
+/**
+ * One setting kept in the URL query (`?key=value`), under a Dashboard tile's prefix inside a tile.
+ * The fallback is never written, so a default view keeps a clean URL; every control reading the same
+ * key follows a change (the `gallery:querychange` event) and the back button.
+ */
+export function useSearchParam<T extends string>(key: string, fallback: T, allowed?: readonly string[], opts?: SearchParamOptions): [T, (v: T) => void] {
+  const prefix = useParamScope()
+  const name = prefix + key
+  const legacy = opts?.legacy ?? []
   registerKey(name, allowed)
   // an empty list means the options are still loading: keep a link's value until they arrive
   const known = (v: string) => !allowed || allowed.length === 0 || allowed.includes(v)
   // the raw value: checked against the options at render (below), not here. The sync listener outlives
   // the render that made it, so a list that grew since (a palette the reader just saved) would turn
   // their new pick back into the fallback
-  const read = () => (new URL(window.location.href).searchParams.get(name) || fallback) as T
+  const read = () => (readQueryValue(new URL(window.location.href).searchParams, name, legacy, prefix) || fallback) as T
   const [value, setValue] = useState<T>(read)
   useEffect(() => {
     const sync = () => setValue(read())
     window.addEventListener('popstate', sync)
     window.addEventListener('gallery:querychange', sync)
     return () => { window.removeEventListener('popstate', sync); window.removeEventListener('gallery:querychange', sync) }
-  }, [name, fallback])
+  }, [name, fallback]) // eslint-disable-line react-hooks/exhaustive-deps
   const update = (v: T) => {
     setValue(v)
     const url = new URL(window.location.href)
+    // the key itself now holds the setting: an old key left behind would come back as the value
+    for (const k of legacy) url.searchParams.delete(prefix + k)
     if (v === fallback) url.searchParams.delete(name)
     else url.searchParams.set(name, v)
     window.history.replaceState(null, '', url)

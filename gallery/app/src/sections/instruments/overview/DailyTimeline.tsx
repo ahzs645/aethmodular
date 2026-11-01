@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Note, Segmented, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
+import { useChartOptions } from '@/lib/chartOptions'
 import { robustDomain } from '@/lib/axes'
 import { XAxis, YAxis } from '@/components/Axes'
 import { Legend, useLegend } from '@/components/Legend'
@@ -14,7 +15,6 @@ import { fidProps } from '@/lib/filterEdits'
 import { fmt } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
-import { useSearchParam } from '@/lib/url'
 import type { MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
 import { CHANNELS, FILTER_METHODS, SCREEN_TEXT, channelColor, channelName, logTick, type Channel, type Exclusion, type Screen, type Series } from './data'
@@ -40,9 +40,15 @@ export function DailyTimeline({ s, meta, screen, excluded = [] }: { s: Series; m
   const tip = useTooltip(wrapRef)
   // the brush only: the filter points read the hover themselves (components/ScatterLayer)
   const hl = useHighlightActions()
-  const [avg, setAvg] = useSearchParam<Avg>('aeot', 'both', ['daily', 'both', '30d'])
-  const [log, setLog] = useState(false)
-  const [full, setFull] = useState(false)
+  // in the link (old links' aeot still open the same average)
+  const o = useChartOptions('aeth-overview-timeline', [
+    { key: 'avg', label: 'Show', choices: (['daily', 'both', '30d'] as Avg[]).map((v) => ({ value: v, label: AVG_LABEL[v] })), default: 'both', legacy: ['aeot'] },
+    { key: 'log', label: 'Log scale', toggle: true, default: false },
+    { key: 'full', label: 'Full range', toggle: true, default: false, title: 'Scale to every value, spikes included (otherwise the top 0.5 % of values run off the top)' },
+  ])
+  const avg = o.values.avg as Avg
+  const log = o.values.log as boolean
+  const full = o.values.full as boolean
   const [cursor, setCursor] = useState<number | null>(null)
   const leg = useLegend()
   const days = s.days
@@ -119,11 +125,7 @@ export function DailyTimeline({ s, meta, screen, excluded = [] }: { s: Series; m
     <ChartFrame id="aeth-overview-timeline" title={`${s.inst.site} · daily black carbon at five wavelengths — and the filters on the same dates`}
       subtitle={`Each 24 h bin of ${s.inst.label}'s daily file (${s.inst.info.file}), labelled at its start: BCc at 375, 470, 528, 625 and 880 nm (thin lines, broken where days are missing), with a centred 30-day mean (thick; at least 7 days with data). Below, the site's filters in view measured three ways: the aethalometer's IR BCc averaged over each filter's sampling window, FTIR EC, and HIPS Fabs / MAC (${meta.mac_value} m²/g); click a filter for its record. ${hasCov ? 'Bottom: the minutes with data, % of each day. ' : ''}Shaded: the site's seasons. Screen: ${SCREEN_TEXT[screen]}.`}
       provenance="Multi_Site_Analysis.ipynb §1, §2 and §4; Multi_Site_Analysis_Fixed.ipynb §3 and §13; Multi_Site_Analysis_FollowUp.ipynb §7; addis_02_temporal_patterns_daily.ipynb Task 3; addis_02.5_temporal_patterns_filter.ipynb Task 4 · gallery/data/export_aethalometer.py"
-      controls={<>
-        <Segmented label="Show" value={avg} options={['daily', 'both', '30d'] as Avg[]} onChange={setAvg} optionLabel={(o) => AVG_LABEL[o]} />
-        <Toggle label="Log scale" checked={log} onChange={setLog} />
-        <Toggle label="Full range" checked={full} onChange={setFull} title="Scale to every value, spikes included (otherwise the top 0.5 % of values run off the top)" />
-      </>}>
+      controls={o.controls()}>
       <div ref={wrapRef} className="chart-wrap">
         {!domain ? <Empty>No daily bins for {s.inst.label} in this span.</Empty> : (
           <svg width={width} height={height} onMouseLeave={() => { setCursor(null); tip.hide() }}>

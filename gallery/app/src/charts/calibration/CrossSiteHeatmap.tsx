@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { useChartOptions } from '@/lib/chartOptions'
 import { ColorLegend } from '@/components/ColorLegend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -29,9 +30,14 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
 
-  const [cell, setCell] = useState<Cell>('Deming intercept')
-  const [topN, setTopN] = useState('15')
-  const [mode] = useState('site_heldout')
+  const o = useChartOptions('cross-site', [
+    { key: 'cell', label: 'Cell', choices: CELLS, default: 'Deming intercept' },
+    { key: 'topN', label: 'Top N at Addis', choices: ['5', '10', '15', '25', '40'], default: '15' },
+  ])
+  const cell = o.values.cell as Cell
+  const topN = o.values.topN as string
+  // the rows are site-grouped cross-validation (the only protocol every evaluation site has)
+  const mode = 'site_heldout'
 
   const targets = useMemo(() => {
     const present = [...new Set(calib.grid.filter((r) => r.mo === mode).map((r) => r.tg))]
@@ -82,12 +88,7 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
       title="Cross-site heatmap — does the calibration travel?"
       subtitle="The best Addis configurations (by the explorer's score, inside the slope box and above the IMPROVE cross-validation R² floor) read out at every SPARTAN site with FTIR spectra and HIPS Fabs; each site is a test set the model never saw. A row that is blue at Addis and Delhi but white at Beijing and JPL is the compositional-offset signature. The first row is whatever is selected above."
       provenance={`CROSS_SITE_EVALUATION_2026-08-22.md · FIVE_SITE_GRID_2026-08-23.md · site-grouped CV · MAC ${calib.mac_value} · fixed set`}
-      controls={
-        <>
-          <Segmented label="Cell" value={cell} options={CELLS} onChange={setCell} />
-          <Segmented label="Top N at Addis" value={topN} options={['5', '10', '15', '25', '40']} onChange={setTopN} />
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap centered">
         {rows.length === 0 || targets.length === 0 ? (

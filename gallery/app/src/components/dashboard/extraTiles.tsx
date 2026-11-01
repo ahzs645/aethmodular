@@ -4,7 +4,7 @@ import * as d3 from 'd3'
 import { Combobox } from '@/components/Combobox'
 import { Empty, FrameExtrasContext, Segmented } from '@/components/ChartFrame'
 import { useExport } from '@/lib/data'
-import { useTileSetting } from '@/lib/url'
+import { useSearchParam } from '@/lib/url'
 import { weatherField, type RoseFile, type WeatherSource } from '@/lib/weather'
 import type { CalibRunsFile, FilterRow, MetaFile } from '@/lib/types'
 
@@ -45,7 +45,7 @@ function useWeather(rows: FilterRow[], meta: MetaFile) {
   }, [wxRows, meta.sites])
   const one = sites.length === 1 ? sites[0] : null
   // the Bole airport station is an alternative only at Addis
-  const [src, setSrc] = useTileSetting<string>('wsrc', 'ERA5', ['ERA5', 'station'])
+  const [src, setSrc] = useSearchParam<string>('wsrc', 'ERA5', ['ERA5', 'station'])
   const source: WeatherSource = src === 'station' && one?.code === ADDIS ? 'station' : 'ERA5'
   const wx = (k: Parameters<typeof weatherField>[0]) => weatherField(k, source) ?? weatherField(k, 'ERA5')!
   const sourcePicker = one?.code === ADDIS
@@ -135,10 +135,10 @@ export interface CalibrationData {
 /** a preset and a target, picked in the tile's ⋯ menu (Addis and the Calibration tab's default preset to start) */
 function useRun(cal: CalibrationData) {
   const presets = cal.runs.presets
-  const [presetKey, setPreset] = useTileSetting<string>('preset', 'ocec800_airspec', presets.map((p) => p.key))
+  const [presetKey, setPreset] = useSearchParam<string>('preset', 'ocec800_airspec', presets.map((p) => p.key))
   const preset = presets.find((p) => p.key === presetKey) ?? presets[0]
   const targets = [...new Set(cal.runs.runs.filter((r) => r.preset === preset?.key).map((r) => r.target))]
-  const [targetId, setTarget] = useTileSetting<string>('target', 'addis', targets)
+  const [targetId, setTarget] = useSearchParam<string>('target', 'addis', targets)
   const target = targets.includes(targetId) ? targetId : targets[0]
   const run = cal.runs.runs.find((r) => r.preset === preset?.key && r.target === target) ?? null
   const picker = <>

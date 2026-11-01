@@ -16,7 +16,7 @@ import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { useFitHeight } from '@/lib/chartFit'
 
 import { MeasurementControl } from '@/components/AxisFieldPopover'
-import { useTileSetting } from '@/lib/url'
+import { useSearchParam } from '@/lib/url'
 import { ExcludedNote } from '@/lib/markedRows'
 
 const STATS = ['Median', 'Mean', 'Count'] as const
@@ -61,11 +61,11 @@ export function MonthlyHeatmap({ rows, meta, field }: { rows: FilterRow[]; meta:
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
 
-  const [stat, setStat] = useTileSetting<Stat>('monthly-heatmap.stat', 'Median')
-  const [stripSetting, setStripSetting] = useTileSetting<string>('monthly-heatmap.seasons', '1')
+  const [stat, setStat] = useSearchParam<Stat>('monthly-heatmap.stat', 'Median')
+  const [stripSetting, setStripSetting] = useSearchParam<string>('monthly-heatmap.seasons', '1')
   const seasonStrip = stripSetting === '1'
   const setSeasonStrip = (value: boolean) => setStripSetting(value ? '1' : '0')
-  const [periodMode, setPeriodMode] = useTileSetting<'All time' | 'Month'>('monthly-heatmap.period', 'All time')
+  const [periodMode, setPeriodMode] = useSearchParam<'All time' | 'Month'>('monthly-heatmap.period', 'All time')
   const pooled = periodMode === 'Month'
   const periodOf = (date: string) => pooled ? date.slice(5, 7) : date.slice(0, 7)
 

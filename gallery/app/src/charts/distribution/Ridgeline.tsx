@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import { robustDomain } from '@/lib/axes'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Note, Segmented, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
+import { useChartOptions } from '@/lib/chartOptions'
 import { XAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { kde } from '@/lib/stats'
@@ -31,11 +32,17 @@ export function Ridgeline({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
 
-  const [groupBy, setGroupBy] = useState<(typeof ROWS)[number]>('Season')
-  const [clip, setClip] = useState(true)
-  const [overlapMode, setOverlapMode] = useState<(typeof OVERLAPS)[number]>('Some')
   // ordered rows (years) take their colours from a palette (lib/colourSchemes); seasons and sites keep theirs
   const colours = useColourScheme('ridgeline', 'sequential', 'Viridis')
+  const o = useChartOptions('ridgeline', [
+    { key: 'groupBy', label: 'Rows', choices: ROWS, default: 'Season' },
+    { key: 'overlap', label: 'Overlap', choices: OVERLAPS, default: 'Some', title: 'How far each density may rise into the row above' },
+    { key: 'clip', label: 'Clip to 1–99 %', toggle: true, default: true },
+    { key: 'palette', when: (c) => c.groupBy !== 'Season' && c.groupBy !== 'Site', node: () => colours.picker },
+  ])
+  const groupBy = o.values.groupBy as (typeof ROWS)[number]
+  const clip = o.values.clip as boolean
+  const overlapMode = o.values.overlap as (typeof OVERLAPS)[number]
   const ramp = useMemo(() => d3.interpolateRgbBasis(colours.stops), [colours.stops.join()]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const groups = useMemo(() => {
@@ -95,14 +102,7 @@ export function Ridgeline({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
       title="Ridgeline — distribution shift across groups"
       subtitle="One density per group, stacked, each scaled to the same peak height. Reading down the stack shows whether a season or a year moves the whole distribution or only its tail — a question the estate's separate histogram panels make you hold in your head. Use the site chips above to restrict it to one site."
       provenance="no matplotlib equivalent in the repo — a gallery chart the notebooks don't have · react-graph-gallery.com/ridgeline-plot"
-      controls={
-        <>
-          <Segmented label="Rows" value={groupBy} options={ROWS} onChange={setGroupBy} />
-          <Segmented label="Overlap" value={overlapMode} options={OVERLAPS} onChange={setOverlapMode} title="How far each density may rise into the row above" />
-          <Toggle label="Clip to 1–99 %" checked={clip} onChange={setClip} />
-          {groupBy !== 'Season' && groupBy !== 'Site' && colours.picker}
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap">
         {groups.length === 0 ? (

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { useChartOptions } from '@/lib/chartOptions'
 import { Crossplot, sharedCrossDomains, type CrossLine, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { RefLine } from '@/components/RefLines'
@@ -11,7 +12,6 @@ import { biomassPct, BIOMASS_SOURCES } from '@/lib/pmfCoverage'
 import { regression } from '@/lib/stats'
 import { INK } from '@/lib/theme'
 import type { MetaFile, PmfFile, PmfRow } from '@/lib/types'
-import { useSearchParam } from '@/lib/url'
 import instruments from '@/sections/instruments'
 import { ExcludedNote, useCountedFilter, useExclusionSplit } from '@/lib/markedRows'
 import { namedColor } from '@/lib/siteColours'
@@ -45,12 +45,17 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
   const { data } = useGalleryData()
   const mac = useMac()
   const aeth = instruments.useFields([pmf.site])
-  const [pairParam, setPair] = useSearchParam<Pair>('pmfbm.pair', PAIR_KEYS[0], PAIR_KEYS)
-  const [form, setForm] = useSearchParam<(typeof FORMS)[number]>('pmfbm.form', 'Absolute', FORMS)
-  const [layout, setLayout] = useSearchParam<(typeof LAYOUTS)[number]>('pmfbm.layout', 'One plot', LAYOUTS)
   const hasAeth = !!aeth?.fields.includes(AETH)
-  const pairs = PAIR_KEYS.filter((k) => hasAeth || !Object.values(PAIRS[k]).includes(AETH))
-  const pair = pairs.includes(pairParam) ? pairParam : pairs[0]
+  // the options (lib/chartOptions; URL keys pmfbm.pair / .form / .layout as before): the aethalometer pairs only
+  // where the build has its per-filter export; the layout (below) only with two or more seasons in view
+  const o = useChartOptions('pmfbm', [
+    { key: 'pair', label: 'Pair', default: PAIR_KEYS[0], title: 'The two measurements whose difference is plotted (first minus second)',
+      choices: PAIR_KEYS.map((k) => ({ value: k, when: Object.values(PAIRS[k]).includes(AETH) ? () => hasAeth : undefined })) },
+    { key: 'form', label: 'Difference', choices: FORMS.map((f) => ({ value: f, label: f === 'Percent' ? (c: Record<string, unknown>) => `% of ${PAIRS[c.pair as Pair].a.replace(' (aethalometer)', '')}` : 'µg/m³' })),
+      default: 'Absolute', title: "The difference in µg/m³, or as a % of the first measurement (c37's right panel)" },
+  ])
+  const pair = o.values.pair as Pair
+  const form = o.values.form as (typeof FORMS)[number]
   const { a, b } = PAIRS[pair]
   const pct = form === 'Percent'
 
@@ -85,6 +90,9 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
     return (ix < 0 ? 99 : ix) - (iy < 0 ? 99 : iy) || x.localeCompare(y)
   }), [days, meta.seasons])
   const colorOf = new Map(seasons.map((s, i) => [s, seasonColor(s, i)]))
+  const lay = useChartOptions('pmfbm', [{ key: 'layout', label: 'Layout', choices: LAYOUTS, default: 'One plot', hidden: 'One plot', when: (c) => (c.seasons as number) > 1,
+    title: 'One plot with a fit per season, or a panel per season' }], { seasons: seasons.length })
+  const layout = lay.values.layout as (typeof LAYOUTS)[number]
   const yLabel = pct ? `(${a} − ${b}) / ${a} (%)` : `${a} − ${b} (µg/m³)`
   const point = (d: Day): CrossPoint => ({
     x: d.bm, y: d.res, color: colorOf.get(d.season) ?? INK.neutral, id: d.p.id, site: pmf.site_name, season: d.season, seasonColor: colorOf.get(d.season),
@@ -113,11 +121,7 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
       title={`Method difference against the biomass share, by season — ${pair}${pct ? ` as % of ${a}` : ''}, per ${pmf.site_name} PMF day`}
       subtitle={`Biomass is ${BIOMASS_SOURCES.join(' + ')} as a % of the explained sources (the normalised fractions); each point is one PMF day in view with both measurements (${days.length} of ${rows.length}${nOut ? `; ${nOut} excluded under Filters → excluded` : ''}). ${layout === 'One plot' ? 'One plot with a fit per season, as the notebook drew it' : 'One panel per season, on shared axes'}; lines and table are OLS of the difference on the share, as the notebook fitted them (a trend against a share, so the sidebar's errors-in-variables fits do not apply). Seasons follow the sidebar's Seasons choice (the notebook used the Belg-owns-February calendar). ${hasAeth ? 'IR BCc is the aethalometer averaged over each filter\'s sampling window.' : 'The aethalometer pairs need the Instruments section\'s per-filter export, which this build does not have.'} HIPS BC = HIPS Fabs ÷ MAC ${mac.mac}.`}
       provenance={`research/ftir_hips_chem/ETAD_Factor_Analysis.ipynb c37 (absolute and % residual vs biomass %), c38 (by Ethiopian season) · from pmf.json + filters.json${hasAeth ? ' + aethalometer/filters' : ''}`}
-      controls={<>
-        <Segmented label="Pair" value={pair} options={pairs} onChange={setPair} title="The two measurements whose difference is plotted (first minus second)" />
-        <Segmented label="Difference" value={form} options={FORMS} onChange={setForm} optionLabel={(o) => (o === 'Percent' ? `% of ${a.replace(' (aethalometer)', '')}` : 'µg/m³')} title="The difference in µg/m³, or as a % of the first measurement (c37's right panel)" />
-        {seasons.length > 1 && <Segmented label="Layout" value={layout} options={LAYOUTS} onChange={setLayout} title="One plot with a fit per season, or a panel per season" />}
-      </>}>
+      controls={<>{o.controls()}{lay.controls()}</>}>
       {days.length < 3 ? <Empty>{data ? `Too few PMF days in view with ${a} and ${b} (${days.length}).` : 'Loading the filters…'}</Empty> : <>
         {layout === 'One plot' || seasons.length < 2
           ? <Crossplot points={all} marked={markedAll} title={`${pair} against biomass %`} xLabel="Biomass (% of explained sources)" yLabel={yLabel} sameScale={false}

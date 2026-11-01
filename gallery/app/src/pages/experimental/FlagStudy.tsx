@@ -13,6 +13,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { useSearchParam } from '@/lib/url'
+import { SitePicker, usePageSite } from '@/lib/siteFocus'
 import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, inkOn, themed } from '@/lib/theme'
 import { clipText } from '@/lib/fitLabel'
 import { dotFill, dotRim } from '@/lib/highlight'
@@ -164,7 +165,10 @@ function BlindSpotMap({ d }: { d: FlagData }) {
   const { all: spartanAll, counted: spartan, marked, nOut, nOutAddis } = useSpartan(d)
   const reasonOf = useMarkReason()
   const codes = useMemo(() => [...new Set(spartanAll.filter((r) => r.population === 'network').map((r) => r.code))].sort(), [spartanAll])
-  const [site, setSite] = useSearchParam<string>('xflag-map.site', codes[0] ?? '', codes)
+  // the gallery's page site (lib/siteFocus `psite`; `xflag-map.site` from older links), the first code by default
+  const pageSites = useMemo(() => codes.map((c) => ({ code: c, name: `${spartanAll.find((r) => r.code === c)?.site ?? c} (${c})` })), [codes, spartanAll])
+  const sitePick = usePageSite(pageSites, { legacy: ['xflag-map.site'] })
+  const site = sitePick.code
   const [countsParam, setCounts] = useSearchParam<'on' | 'off'>('xflag-map.counts', 'on', ['on', 'off'])
   const counts = countsParam === 'on'
   const colours = useColourScheme('xflag-map', 'sequential')
@@ -231,7 +235,7 @@ function BlindSpotMap({ d }: { d: FlagData }) {
         <Segmented label="Cells" value={cellMetric} options={['Failure rate', 'Catch rate'] as const} onChange={setCellMetric} />
         <Segmented label="IMPROVE dots" value={show} options={['Failures', 'Failures + alarms', 'All', 'None'] as const} onChange={setShow} />
         <Select label="SPARTAN" value={overlay} options={['Addis filters', 'SPARTAN sites', 'One SPARTAN site', 'None']} onChange={(v) => setOverlay(v as Overlay)} />
-        {overlay === 'One SPARTAN site' && <Select label="Site" value={site} options={codes} onChange={setSite} optionLabel={(c) => `${spartan.find((r) => r.code === c)?.site ?? c} (${c})`} />}
+        {overlay === 'One SPARTAN site' && <SitePicker as="select" {...sitePick.picker} />}
         {overlay === 'Addis filters' && <Toggle label="Count Addis filters per cell" checked={counts} onChange={(v) => setCounts(v ? 'on' : 'off')}
           title={`Print in each cell how many of the ${d.counts.addis} Addis filters fall there`} />}
       </>}>

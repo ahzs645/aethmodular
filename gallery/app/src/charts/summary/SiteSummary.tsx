@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { useFitHeight } from '@/lib/chartFit'
-import { useTileSetting } from '@/lib/url'
+import { useSearchParam } from '@/lib/url'
 import { chemText, f2, pct } from '@/lib/format'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { RATIO_GROUP } from '@/lib/viewFields'
@@ -24,7 +24,7 @@ const shortLabel = (label: string) => chemText(label.replace(/\s*\([^)]*\)$/, ''
  */
 export function SiteSummary({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }) {
   const fit = useFitHeight()
-  const [view, setView] = useTileSetting<View>('sitesummary.view', 'Full', VIEWS)
+  const [view, setView] = useSearchParam<View>('sitesummary.view', 'Full', VIEWS)
   const sites = useMemo(() => [...d3.group(rows, (r) => r.site)].map(([site, rs]) => {
     const m = meta.sites.find((s) => s.name === site)
     const has = (f: string) => rs.filter((r) => typeof r[f] === 'number' && Number.isFinite(r[f])).length

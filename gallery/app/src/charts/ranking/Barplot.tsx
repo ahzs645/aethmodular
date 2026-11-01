@@ -11,7 +11,7 @@ import { boxStats, meanSe } from '@/lib/stats'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
-import { useSearchParam, useTileSetting } from '@/lib/url'
+import { useSearchParam } from '@/lib/url'
 import { GroupingPicker, useGroupings } from '@/components/GroupingDialog'
 import { applyGrouping } from '@/lib/groupings'
 import { ExcludedNote } from '@/lib/markedRows'
@@ -34,8 +34,8 @@ export function Barplot({ rows, meta, field }: { rows: FilterRow[]; meta: MetaFi
   const tip = useTooltip(wrapRef)
   const fitted = useFitHeight()
 
-  const [stat, setStat] = useTileSetting<(typeof STATS)[number]>('barplot.stat', 'Median', STATS)
-  const [splitParam, setSplit] = useTileSetting<Split>('barplot.split', 'Season', SPLITS)
+  const [stat, setStat] = useSearchParam<(typeof STATS)[number]>('barplot.stat', 'Median', STATS)
+  const [splitParam, setSplit] = useSearchParam<Split>('barplot.split', 'Season', SPLITS)
   const [groupId, setGroupId] = useSearchParam<string>('barplot.group', '')
   const groupings = useGroupings()
   const groupingDef = groupings.find(groupId)

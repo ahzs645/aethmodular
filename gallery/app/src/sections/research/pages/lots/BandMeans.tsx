@@ -7,6 +7,7 @@ import { useMemo } from 'react'
 import { ChartFrame, Empty, Note, Select } from '@/components/ChartFrame'
 import { fmt } from '@/lib/format'
 import { useSearchParam } from '@/lib/url'
+import { ALL_SITES, SitePicker, usePageSite } from '@/lib/siteFocus'
 import { defaultSeason, lotContrast, lotsOf, type LotExport } from '../../common/lotSpectra'
 import { DataTable, pText, shortSeason } from '../../common/ui'
 import { EXPORTER, FOLDER, LotNote, lotColor, NB, type Lots } from './data'
@@ -16,8 +17,9 @@ export function BandMeans({ exp, lots, setPick }: { exp: LotExport; lots: Lots; 
   const [seasonPick, setSeason] = useSearchParam<string>('ls.b.season', '', seasonNames)
   const season = seasonNames.includes(seasonPick) ? seasonPick : defaultSeason(seasonNames)
   const codes = useMemo(() => [...new Set(lots.members.map((m) => m.code))], [lots.members])
-  const [sitePick, setSite] = useSearchParam<string>('ls.b.site', 'all', ['all', ...codes])
-  const site = sitePick === 'all' || codes.includes(sitePick) ? sitePick : 'all'
+  // this chart's own site choice (lib/siteFocus usePageSite under `ls.b.site`): the lots' sites pooled by default
+  const pick = usePageSite(useMemo(() => codes.map((c) => ({ code: c, name: lots.siteName(c) })), [codes, lots]), { key: 'ls.b.site', all: 'Sites pooled', prefer: ALL_SITES })
+  const site = pick.code
   const ms = lots.members.filter((m) => m.lot !== null && m.season === season && (site === 'all' || m.code === site))
   const pair = lotsOf(ms).slice(0, 2).sort((a, b) => a - b)
   const saved = new Map((exp.check.saved.lot_bands ?? []).map((r) => [r.band, r]))
@@ -34,7 +36,7 @@ export function BandMeans({ exp, lots, setPick }: { exp: LotExport; lots: Lots; 
     <ChartFrame id="ls-bands" title={title}
       controls={<>{setPick}
         {seasonNames.length > 1 && <Select label="Season" value={season} options={seasonNames} onChange={setSeason} optionLabel={shortSeason} />}
-        {codes.length > 1 && <Select label="Site" value={site} options={['all', ...codes]} onChange={setSite} optionLabel={(o) => (o === 'all' ? 'Sites pooled' : lots.siteName(o))} />}
+        {codes.length > 1 && <SitePicker as="select" {...pick.picker} />}
       </>}
       subtitle="The AIRSpec-baselined, clipped, unit-area spectra (as 04b) reduced to each filter's mean value in char_10's bands (×10⁻⁴; charcoal_spectra.band_area on the unbinned spectrum), median per lot within one season, Mann–Whitney between the two largest lots. char_12 finds two bands separating mildly within the Addis dry season (lot 248 ~14 % higher in O–H/N–H, ~7 % lower in aliphatic C–H), an order of magnitude below the seasonal contrasts, and notes the two lots were not deployed over the same dates."
       provenance={<>{NB} §4b, lot_bands_within_dry.csv. Band means: <code>{EXPORTER}</code> → <code>{FOLDER}/lot_spectra.json</code> (band_means); medians and tests recomputed here.</>}>

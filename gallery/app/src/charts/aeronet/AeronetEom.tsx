@@ -1,17 +1,16 @@
 import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { FONT, INK, VARIABLE_COLOR } from '@/lib/theme'
-import { useSearchParam } from '@/lib/url'
 import { AE, AOD500, DAOD, DSSA, FINE_AOD, FMF } from '@/lib/aeronet'
 import { exclusionCurve, fineSoil } from '@/lib/aeronetMath'
 import type { FilterRow, MetaFile } from '@/lib/types'
-import { BC_CHOICES } from './AeronetNonAbsorbing'
+import { BC_CHOICES, bcOption, useChartOptions } from '@/lib/chartOptions'
 import { colouring, num, recordOf } from './shared'
 import { useMarkedPoints } from '@/lib/markedRows'
 import { Legend } from '@/components/Legend'
@@ -37,8 +36,9 @@ export function AeronetEom({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const present = BC_CHOICES.filter((f) => rows.some((r) => num(r[f])))
-  const [bcParam, setBc] = useSearchParam<string>('aeronet.eom.bc', BC_CHOICES[0], BC_CHOICES)
-  const bc = present.includes(bcParam as (typeof BC_CHOICES)[number]) ? bcParam : present[0] ?? BC_CHOICES[0]
+  // the filter BC (lib/chartOptions bcOption): kept in the link as aeronet.eom.bc
+  const o = useChartOptions('aeronet.eom', [bcOption({ present })])
+  const bc = o.values.bc as string
   const col = useMemo(() => colouring(rows, meta), [rows, meta])
 
   const diff = (yField: string, label: string, src: FilterRow[] = rows): CrossPoint[] => src.flatMap((r) => {
@@ -70,7 +70,7 @@ export function AeronetEom({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }
     <ChartFrame id="aeronet-eom" title="Surface against column — the Eom et al. (2025) tests"
       subtitle={`(a, b) dAOD = AOD 440 − AOD 870 and dSSA = SSA 440 − SSA 870 (per retrieval, then the window mean) against ${bc} minus fine soil (Malm 1994: 2.20 Al + 2.49 Si + 1.63 Ca + 2.42 Fe + 1.94 Ti, elemental Ca where measured). (c) Pearson r between ${bc} and each column quantity after dropping the filters whose ${bc} / AOD 500 is below the 0th, 20th … 80th percentile of the filters in view (pooled over the sites picked).`}
       provenance="notebooks/analysis/surface_columnar_linkage.ipynb sections 1, 3 and 8 (Eom et al. 2025: BC/AOD exclusion, dAOD and dSSA vs BC − fine soil); the notebook used aethalometer BC for the exclusion and FTIR EC for BC − FS"
-      controls={<Select label="BC" value={bc} options={present.length ? [...present] : [...BC_CHOICES]} onChange={setBc} />}>
+      controls={o.controls()}>
       <div ref={wrapRef} className="chart-wrap">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 }}>
           {dAod.length ? <Crossplot title={`(a) dAOD vs ${bc} − fine soil (n = ${dAod.length})`} points={dAod} marked={markedAod} xLabel={`${bc} − fine soil (µg/m³)`} yLabel="dAOD 440 − 870" sameScale={false} maxSide={320} />

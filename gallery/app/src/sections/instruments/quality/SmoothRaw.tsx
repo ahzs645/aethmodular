@@ -10,10 +10,11 @@ import { useEstimator } from '@/lib/regressionPrefs'
 import { regression } from '@/lib/stats'
 import { INK, withUnit } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
+import { usePageSite } from '@/lib/siteFocus'
 import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { DailyPanels, qLine, type PanelSpec } from './DailyPanels'
-import { CHANNELS, INSTRUMENTS, finite, instrumentColor, instrumentName, quantile, type Day, type QualityIndex } from './data'
+import { CHANNELS, finite, instrumentColor, instrumentName, quantile, type Day, type QualityIndex } from './data'
 import { AETH_IR, crossPoint, REFERENCES, slopeFor } from './FlowFixCompare'
 
 export const AETH_IR_SMOOTH = 'IR BCc smoothed (aethalometer)'
@@ -54,8 +55,9 @@ export function SmoothRaw({ rows, meta, index }: { rows: FilterRow[]; meta: Meta
   const [level, setLevel] = useSearchParam<string>('aq.srlevel', String(thresholds[0]), levels)
   const withPct = useMemo(() => rows.filter((r) => finite(rowPct(r))), [rows])
   const sites = useMemo(() => [...new Set(withPct.map((r) => r.code))].sort((a, b) => Object.keys(index.sites).indexOf(a) - Object.keys(index.sites).indexOf(b)), [withPct, index])
-  const [picked, setSite] = useSearchParam<string>('aq.srsite', 'USPA', [...INSTRUMENTS])
-  const site = sites.includes(picked) ? picked : sites[0] ?? picked
+  // the data-quality page's one site choice (`aq.site`, shared with its Instrument control; `aq.srsite` from older links)
+  const pick = usePageSite(sites.map((c) => ({ code: c, name: instrumentName(c, meta) })), { key: 'aq.site', legacy: ['aq.srsite'], prefer: 'USPA' })
+  const site = pick.code || 'USPA', setSite = pick.set
 
   const sweep = useMemo(() => {
     const r2: SweepSeries[] = [], slope: SweepSeries[] = []

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import * as d3 from 'd3'
 import { SidebarControls } from '@/lib/pageSidebar'
 import { Segmented } from '@/components/ChartFrame'
@@ -18,7 +18,8 @@ import { SiteWeatherSummary } from '@/charts/weather/SiteWeatherSummary'
 import { PwMoisture } from '@/charts/weather/PwMoisture'
 import { useExport } from '@/lib/data'
 import { useSearchParam } from '@/lib/url'
-import { useSiteFocus } from '@/lib/siteFocus'
+import { useSiteMode } from '@/lib/siteFocus'
+import { SiteModeHead } from '@/components/SiteModeHead'
 import { WEATHER_VARS, weatherField, type RoseFile, type StationCompare, type WeatherSource } from '@/lib/weather'
 import type { AxesOpts } from '@/lib/axes'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -59,30 +60,27 @@ export function WeatherPage({ rows, meta, field, xField, yField, axes, setField,
     return meta.sites.filter((s) => n.has(s.name)).map((s) => ({ name: s.name, code: s.code, n: n.get(s.name)! }))
   }, [wxRows, meta.sites])
   // several sites picked: the comparison, or one of them on its own (the page tab's analysis choice)
-  const focus = useSiteFocus(sites)
-  const one = focus.site ?? (sites.length === 1 ? sites[0] : null)
-  const oneRows = useMemo(() => (focus.site ? wxRows.filter((r) => r.site === focus.site!.name) : wxRows), [wxRows, focus.site])
+  const mode = useSiteMode(sites)
+  const one = mode.one
+  const oneRows = useMemo(() => mode.rowsOf(wxRows), [wxRows, one?.code, mode.focused]) // eslint-disable-line react-hooks/exhaustive-deps
   const isAddis = one?.code === ADDIS
 
   const [sourceParam, setSource] = useSearchParam<string>('wsrc', 'ERA5', ['ERA5', 'station'])
   const source: WeatherSource = sourceParam === 'station' && isAddis ? 'station' : 'ERA5'
   const wx = (k: Parameters<typeof weatherField>[0]) => weatherField(k, source) ?? weatherField(k, 'ERA5')!
 
-  // a site in the comparison table opens its one-site view; the pick stays, so going back is one click
-  const openSite = (code: string) => {
-    focus.set(code)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  // a site in the comparison table opens its one-site view (mode.open); the pick stays, so going back is one click
 
   // the scatter's x is a weather variable of its own; its y is the tab's measurement
-  const [wxX, setWxX] = useState(wx('range'))
-  // switching source keeps the same quantity on x (Temperature (ERA5) -> Temperature (station))
-  useEffect(() => setWxX((cur) => {
+  // (in the URL, so a link reopens it); switching source keeps the same quantity on x (Temperature (ERA5) -> Temperature (station))
+  const [wxParam, setWxX] = useSearchParam<string>('weather.x', '')
+  const wxX = useMemo(() => {
+    const cur = wxParam || wx('range')
     const v = WEATHER_VARS.find((x) => x.era5 === cur || x.station === cur)
     return v ? weatherField(v.key, source) ?? v.era5 : cur
-  }), [source])
+  }, [wxParam, source]) // eslint-disable-line react-hooks/exhaustive-deps
   const axisValue = useMemo(() => ({ x: wxX, y: field, field }), [wxX, field])
-  const setAxis = useCallback((role: AxisRole, f: string) => (role === 'x' ? setWxX(f) : setField(f)), [setField])
+  const setAxis = useCallback((role: AxisRole, f: string) => (role === 'x' ? setWxX(f) : setField(f)), [setField]) // eslint-disable-line react-hooks/exhaustive-deps
   // stable between renders: a new rows array or axes object would refit the scatter and bootstrap its bands again
   const scatterRows = useMemo(() => oneRows.filter((r) => typeof r[wxX] === 'number'), [oneRows, wxX])
   const scatterAxes = useMemo<AxesOpts>(() => ({ ...axes, identity: false, mode: 'Data' }), [axes])
@@ -105,19 +103,9 @@ export function WeatherPage({ rows, meta, field, xField, yField, axes, setField,
               optionLabel={(o) => (o === 'station' ? 'Airport station' : 'ERA5')}
               title="ERA5 reanalysis, or the Bole airport station (Dec 2022 – Sep 2024)" />
         </SidebarControls>}
-        <div className="panel weather-head">
-          <div>
-            <h2 style={{ margin: 0 }}>{one.name} · weather and the filters</h2>
-            <p className="subtitle" style={{ margin: '4px 0 0' }}>
-              {one.n} filters, {span}, each with the weather averaged over its own sampling window{isAddis ? ' (ERA5, or the Bole airport station the Addis notebooks used)' : ' (ERA5)'}.
-              {' '}{focus.site ? `One of the ${sites.length} picked sites: switch site or go back to the comparison under Page › analysis.` : 'Pick more sites in the Samples panel to compare them.'}
-            </p>
-          </div>
-          <div className="weather-head-controls">
-            {focus.site && <button type="button" className="btn" onClick={() => focus.set(null)}
-              title="Back to the picked sites side by side (Page › analysis)">← Back to comparing {sites.length} sites</button>}
-          </div>
-        </div>
+        <SiteModeHead mode={mode} title={`${one.name} · weather and the filters`}>
+          {one.n} filters, {span}, each with the weather averaged over its own sampling window{isAddis ? ' (ERA5, or the Bole airport station the Addis notebooks used)' : ' (ERA5)'}.
+        </SiteModeHead>
         <WeatherTimeline rows={oneRows} meta={meta} field={field} site={one} />
         <MonthlyClimate meta={meta} sites={[one]} large id="weather-site-climate" title={`${one.name} · monthly climate against its season calendar`} />
         <RainWashout rows={oneRows} meta={meta} field={field} prcpField={wx('prcp')} id="weather-site-washout" title={`${one.name} · rain washout`} />
@@ -140,16 +128,11 @@ export function WeatherPage({ rows, meta, field, xField, yField, axes, setField,
 
   return (
     <>
-      <div className="panel weather-head">
-        <div>
-          <h2 style={{ margin: 0 }}>Weather and the filters · {sites.length} sites compared</h2>
-          <p className="subtitle" style={{ margin: '4px 0 0' }}>
-            The sites picked in the Samples panel, on ERA5 averaged over each filter's sampling window. Click a site in the table
-            (or choose One site under Page › analysis) for its timeline, seasonal wind roses and correlations, and the Addis station check.
-          </p>
-        </div>
-      </div>
-      <SiteWeatherSummary rows={wxRows} meta={meta} field={field} current={null} onSite={openSite} />
+      <SiteModeHead mode={mode} title={`Weather and the filters · ${sites.length} sites compared`}>
+        The sites picked in the Samples panel, on ERA5 averaged over each filter's sampling window. Click a site in the table
+        (or choose One site under Page › analysis) for its timeline, seasonal wind roses and correlations, and the Addis station check.
+      </SiteModeHead>
+      <SiteWeatherSummary rows={wxRows} meta={meta} field={field} current={null} onSite={mode.open} />
       {scatter(`${field} against the weather — the picked sites`, 'weather-compare-scatter')}
       <MonthlyClimate meta={meta} sites={sites} id="weather-compare-climate" title="Monthly climate and the season calendar — the picked sites" />
       <RainWashout rows={wxRows} meta={meta} field={field} prcpField={weatherField('prcp', 'ERA5')!} id="weather-compare-washout" title="Rain washout — the picked sites" />

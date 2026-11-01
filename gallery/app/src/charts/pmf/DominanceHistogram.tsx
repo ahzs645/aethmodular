@@ -52,7 +52,7 @@ export function DominanceHistogram({ pmf, rows: inView }: { pmf: PmfFile; rows: 
       {rows.length < 3 ? <Empty>Too few PMF days in view ({rows.length}).</Empty> : <>
         <FacetGrid items={panels} minCell={300} maxCols={2} title={(p) => p.title}
           note={(p) => `n=${p.n} · mean ${percent(p.mean, 1)} · median ${percent(p.median, 1)}`}
-          render={(p, w) => <DominancePanel days={p.days} counts={p.counts} width={w} axis={p.axis} stacked={colour === 'By dominant source'} sources={labels} />} />
+          render={(p, w, _i, cell) => <DominancePanel days={p.days} counts={p.counts} width={w} height={cell.height} axis={p.axis} stacked={colour === 'By dominant source'} sources={labels} />} />
         <Key items={colour === 'By dominant source' ? labels.map((s) => ({ label: s.label, color: s.color, kind: 'square' as const })) : [{ label: 'PMF days', color: INK.accent, kind: 'square' }, { label: 'dominance thresholds', color: INK.negative, kind: 'dash' }]} />
       </>}
       <ExcludedNote count={nMarked} />
@@ -60,15 +60,17 @@ export function DominanceHistogram({ pmf, rows: inView }: { pmf: PmfFile; rows: 
   )
 }
 
-function DominancePanel({ days, counts, width, axis, stacked, sources }: {
+function DominancePanel({ days, counts, width, height = null, axis, stacked, sources }: {
   days: { r: PmfRow; pct: number; source: string }[]; counts: { threshold: number; below: number; above: number }[]
   width: number; axis: string; stacked: boolean; sources: { label: string; color: string }[]
+  /** the cell's share of a fitted height (FacetGrid), null elsewhere */
+  height?: number | null
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const tip = useTooltip(ref)
   useDimensions(ref)
   const m = { top: 12, right: 12, bottom: 46, left: 44 }
-  const iw = Math.max(160, width - m.left - m.right), ih = 220
+  const iw = Math.max(160, width - m.left - m.right), ih = height === null ? 220 : Math.max(120, height - m.top - m.bottom)
   const v = days.map((d) => d.pct)
   const [lo, hi] = [Math.min(...v, ...THRESHOLDS), Math.max(...v, ...THRESHOLDS)]
   const x = d3.scaleLinear().domain([Math.floor(lo / 5) * 5, Math.ceil(hi / 5) * 5]).range([0, iw])

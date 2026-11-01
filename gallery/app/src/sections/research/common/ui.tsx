@@ -5,7 +5,6 @@
  */
 import { useMemo, useRef, type ReactNode } from 'react'
 import * as d3 from 'd3'
-import { Segmented, Select } from '@/components/ChartFrame'
 import type { CrossLine, CrossPoint } from '@/components/Crossplot'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -13,7 +12,7 @@ import { fmt } from '@/lib/format'
 import { clipText } from '@/lib/fitLabel'
 import { FONT, INK } from '@/lib/theme'
 import { shortSeason } from '@/lib/seasons'
-import { useSearchParam } from '@/lib/url'
+import { ALL_SITES, SitePicker, usePageSite } from '@/lib/siteFocus'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { VOLUME } from '@/lib/viewFields'
 import type { OlsFit as Fit } from '@/lib/stats'
@@ -57,20 +56,26 @@ export function sitesOf(rows: FilterRow[]): string[] {
   return s.includes(ADDIS) ? [ADDIS, ...s.filter((x) => x !== ADDIS)] : s
 }
 
-/** the page's site, in the URL as `<prefix>.site`; Addis by default */
+/**
+ * The page's site (lib/siteFocus usePageSite: the gallery's `psite`, so the next single-site page opens
+ * on the same site; the page's old `<prefix>.site` key still opens). Addis by default, or every site
+ * with `allowAll`. Returns site names, as the pages filter rows by name.
+ */
 export function useSite(rows: FilterRow[], prefix: string, allowAll = false): [string, (s: string) => void, string[]] {
-  const sites = useMemo(() => sitesOf(rows), [rows])
-  const options = allowAll && sites.length > 1 ? ['All sites', ...sites] : sites
-  const [site, setSite] = useSearchParam<string>(`${prefix}.site`, '')
-  const chosen = options.includes(site) ? site : options[0] ?? ''
-  return [chosen, setSite, options]
+  const sites = useMemo(() => {
+    const code = new Map<string, string>()
+    for (const r of rows) if (!code.has(r.site)) code.set(r.site, r.code || r.site)
+    return sitesOf(rows).map((name) => ({ name, code: code.get(name)! }))
+  }, [rows])
+  const pick = usePageSite(sites, { legacy: [`${prefix}.site`], all: allowAll && sites.length > 1 ? 'All sites' : undefined, prefer: allowAll ? ALL_SITES : undefined })
+  const names = pick.options.map(pick.labelOf)
+  const set = (name: string) => pick.set(name === 'All sites' ? ALL_SITES : sites.find((s) => s.name === name)?.code ?? name)
+  return [pick.labelOf(pick.code), set, names]
 }
 
+/** the research pages' site control (lib/siteFocus SitePicker) over site names */
 export function SitePick({ value, options, onChange }: { value: string; options: string[]; onChange: (s: string) => void }) {
-  if (options.length <= 1) return null
-  return options.length <= 5
-    ? <Segmented label="Site" value={value} options={options} onChange={onChange} optionLabel={(o) => o} />
-    : <Select label="Site" value={value} options={options} onChange={onChange} />
+  return <SitePicker value={value} options={options} onChange={onChange} />
 }
 
 export const ofSite = (rows: FilterRow[], site: string) => (site === 'All sites' ? rows : rows.filter((r) => r.site === site))

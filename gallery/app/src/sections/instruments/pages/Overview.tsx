@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Note, Segmented, Select } from '@/components/ChartFrame'
 import { ExportState } from '@/components/ExportState'
 import { SidebarControls } from '@/lib/pageSidebar'
 import { useSearchParam } from '@/lib/url'
+import { useSiteMode } from '@/lib/siteFocus'
+import { SiteModeHead } from '@/components/SiteModeHead'
 import type { SectionPageProps } from '../../types'
 import { CHANNELS, SCREEN_LABEL, useInstruments, useSeries, type Channel, type Screen, type Span } from '../overview/data'
 import { DailyTimeline } from '../overview/DailyTimeline'
@@ -45,7 +47,7 @@ const SPANS: Span[] = ['filters', 'record']
  * labelled at their start: docs/matched-sample-audit-2026-09-10.md); the page's screen and span apply
  * to them, the span also to the hourly ones.
  */
-export function Overview({ rows, meta, picked, onPick }: SectionPageProps) {
+export function Overview({ rows: allRows, meta }: SectionPageProps) {
   const instruments = useInstruments(meta)
   const [screen, setScreen] = useSearchParam<Screen>('aeoscr', 'neg', SCREENS)
   const [span, setSpan] = useSearchParam<Span>('aeospan', 'filters', SPANS)
@@ -54,27 +56,24 @@ export function Overview({ rows, meta, picked, onPick }: SectionPageProps) {
 
   // the sites in view that have an instrument, in meta order
   const sites = useMemo(() => {
-    const inView = new Set(rows.map((r) => r.site))
+    const inView = new Set(allRows.map((r) => r.site))
     return meta.sites.filter((s) => inView.has(s.name) && instruments?.some((i) => i.site === s.name))
-  }, [rows, meta.sites, instruments])
-  const one = sites.length === 1 ? sites[0] : null
-  const atSite = useMemo(() => (instruments ?? []).filter((i) => sites.some((s) => s.name === i.site)), [instruments, sites])
+  }, [allRows, meta.sites, instruments])
+  // several sites in view: the comparison, or one of them on its own (Page › analysis, or a click in the
+  // table), drawn from that site's filters only, as a pick of it alone would
+  const mode = useSiteMode(sites)
+  const one = mode.one
+  const focusKey = mode.focused ? one?.code : ''
+  const rows = useMemo(() => mode.rowsOf(allRows), [allRows, focusKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  const shown = useMemo(() => (one ? [one] : sites), [one, sites])
+  const atSite = useMemo(() => (instruments ?? []).filter((i) => shown.some((s) => s.name === i.site)), [instruments, shown])
   const inst = one ? atSite.find((i) => i.code === instPick) ?? atSite.find((i) => i.code === one.code) ?? atSite[0] : null
   const { series, loading, failed } = useSeries(one ? (inst ? [inst] : []) : atSite, meta, rows, screen, span)
   // completeness at one site compares its daily files (Addis has two of one instrument)
   const { series: siteSeries } = useSeries(one ? atSite : [], meta, rows, screen, span)
   // the hourly records belong to the sites (at Addis, MA350-0238 whichever daily file is picked)
-  const hourly = useHourlySeries(sites.map((x) => x.code), meta, rows, span)
+  const hourly = useHourlySeries(shown.map((x) => x.code), meta, rows, span)
   const exclusions = hourly.index?.exclusions ?? {}
-
-  // narrowing the pick from the comparison table remembers the pick to go back to
-  const [previous, setPrevious] = useState<string[] | null>(null)
-  useEffect(() => { if (sites.length > 1) setPrevious(null) }, [sites.length])
-  const openSite = onPick ? (code: string) => {
-    setPrevious([...picked])
-    onPick([code])
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  } : undefined
 
   if (!instruments) return <ExportState what="the aethalometer instruments" />
   if (!sites.length) {
@@ -84,7 +83,7 @@ export function Overview({ rows, meta, picked, onPick }: SectionPageProps) {
 
   const s = series[0]
   const dropped = series.flatMap((x) => CHANNELS.map((c) => x.dropped[c].neg + x.dropped[c].high)).reduce((a, b) => a + b, 0)
-  const controls = <>
+  const controls = (
     <SidebarControls title="Daily record">
       {one && atSite.length > 1 && <Select label="Instrument" value={inst?.code ?? ''} options={atSite.map((i) => i.code)} onChange={setInstPick}
         optionLabel={(c) => atSite.find((i) => i.code === c)?.label ?? c} title="Addis has two daily files of the same MA350-0238: the filter-era file, or the longer Jacros record" />}
@@ -93,11 +92,7 @@ export function Overview({ rows, meta, picked, onPick }: SectionPageProps) {
       <Segmented label="Screen" value={screen} options={SCREENS} onChange={setScreen} optionLabel={(o) => SCREEN_LABEL[o]}
         title="Keep every daily value, drop negative BCc, or also drop values above the channel's mean + 3 SD as addis_02 did" />
     </SidebarControls>
-    <div className="weather-head-controls">
-      {previous && previous.length > 1 && onPick && <button type="button" className="btn" onClick={() => { onPick(previous); setPrevious(null) }}
-        title="Put the Filters panel's pick back to the sites you were comparing">← Back to comparing {previous.length} sites</button>}
-    </div>
-  </>
+  )
   const status = <>
     {loading && <Note>Loading the daily files…</Note>}
     {failed.length > 0 && <Note>No daily file could be read for {failed.join(', ')}.</Note>}
@@ -124,18 +119,11 @@ export function Overview({ rows, meta, picked, onPick }: SectionPageProps) {
     const hs = hourly.series[0]
     return (
       <>
-        <div className="panel weather-head">
-          <div>
-            <h2 style={{ margin: 0 }}>{one.name} · the aethalometer's daily record</h2>
-            <p className="subtitle" style={{ margin: '4px 0 0' }}>
-              {inst.label}: {inst.info.bins} daily bins from {inst.info.first} to {inst.info.last} ({inst.info.file}), each labelled at its start;
-              {s ? ` ${s.days.length} in the ${span === 'filters' ? "span of the site's filters in view" : 'whole record'}.` : ''} The legacy files are daily aggregates whose matching
-              to the filters was never verified (processed_sites/README.md); their bins start at {Object.keys(inst.info.bin_start_hours).map((h) => `${h}:00`).join(' / ')}.
-              {' '}Pick more sites in the Filters panel to compare them.
-            </p>
-          </div>
-          {controls}
-        </div>
+        <SiteModeHead mode={mode} panel="Filters" title={`${one.name} · the aethalometer's daily record`} controls={controls}>
+          {inst.label}: {inst.info.bins} daily bins from {inst.info.first} to {inst.info.last} ({inst.info.file}), each labelled at its start;
+          {s ? ` ${s.days.length} in the ${span === 'filters' ? "span of the site's filters in view" : 'whole record'}.` : ''} The legacy files are daily aggregates whose matching
+          to the filters was never verified (processed_sites/README.md); their bins start at {Object.keys(inst.info.bin_start_hours).map((h) => `${h}:00`).join(' / ')}.
+        </SiteModeHead>
         {status}
         {s && <>
           <DailyTimeline s={s} meta={meta} screen={screen} excluded={exclusions[inst.siteCode] ?? []} />
@@ -160,19 +148,13 @@ export function Overview({ rows, meta, picked, onPick }: SectionPageProps) {
 
   return (
     <>
-      <div className="panel weather-head">
-        <div>
-          <h2 style={{ margin: 0 }}>The aethalometers · {sites.length} sites compared</h2>
-          <p className="subtitle" style={{ margin: '4px 0 0' }}>
-            The MA350 daily records at the sites in view ({atSite.length} daily files: at Addis also the Jacros file, a longer record of the same MA350-0238), each on its own
-            season calendar. {openSite ? 'Click a site in the table (or pick just one in the Filters panel)' : 'Pick just one site in the Filters panel'} for its
-            wavelengths, months, weekdays, filters and hours. The analysis charts use each site's filter-era file.
-          </p>
-        </div>
-        {controls}
-      </div>
+      <SiteModeHead mode={mode} panel="Filters" title={`The aethalometers · ${sites.length} sites compared`} controls={controls}>
+        The MA350 daily records at the sites in view ({atSite.length} daily files: at Addis also the Jacros file, a longer record of the same MA350-0238), each on its own
+        season calendar. Click a site in the table (or choose One site under Page › analysis) for its
+        wavelengths, months, weekdays, filters and hours. The analysis charts use each site's filter-era file.
+      </SiteModeHead>
       {status}
-      <SiteTable series={series} meta={meta} screen={screen} onSite={openSite} />
+      <SiteTable series={series} meta={meta} screen={screen} onSite={mode.open} />
       <SitesTimeline series={series} meta={meta} screen={screen} channel={channel} setChannel={setChannel} />
       <Completeness series={series} meta={meta} />
       <MonthlyBySite series={primary} meta={meta} screen={screen} channel={channel} setChannel={setChannel} />

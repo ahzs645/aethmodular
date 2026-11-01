@@ -14,7 +14,7 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { ColorLegend } from '@/components/ColorLegend'
 import { useFitHeight } from '@/lib/chartFit'
-import { useTileSetting } from '@/lib/url'
+import { useSearchParam } from '@/lib/url'
 import { seasonColor } from '@/lib/siteColours'
 import { Legend } from '@/components/Legend'
 
@@ -35,7 +35,7 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
   const fit = useFitHeight()
   // a fitted tile shows one matrix, sized to it (its ⋯ menu picks which); the page shows every season,
   // and a click opens one larger
-  const [pick, setPick] = useTileSetting<string>('season', 'All filters')
+  const [pick, setPick] = useSearchParam<string>('weather-corr.season', 'All filters', undefined, { legacy: ['season'] })
   const [open, setOpen] = useState<string | null>(null)
 
   const at = useMemo(() => rows.filter((r) => r.site === site?.name), [rows, site])

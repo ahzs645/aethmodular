@@ -4,6 +4,7 @@ import { PageToc } from '@/components/PageToc'
 import { SidebarControls } from '@/lib/pageSidebar'
 import { usePrefs } from '@/lib/prefs'
 import { useSearchParam } from '@/lib/url'
+import { usePageSite } from '@/lib/siteFocus'
 import type { SectionPageProps } from '../../types'
 import { CoverageStrip } from '../quality/CoverageStrip'
 import { FlowSummary, FlowTimeline } from '../quality/FlowCharts'
@@ -42,7 +43,10 @@ export function Quality({ rows, meta, picked }: SectionPageProps) {
   const [topic, setTopic] = useSearchParam<string>('aq.topic', 'coverage', [...TOPICS])
   const available = INSTRUMENTS.filter((c) => !all || all[c])
   const firstPicked = available.find((c) => picked.has(c)) ?? 'USPA'
-  const [code, setCode] = useSearchParam<string>('aq.site', firstPicked, [...available])
+  // one site choice for the page (lib/siteFocus usePageSite, `aq.site`): the Instrument control here and the site
+  // pickers of the flow-fix and smoothing crossplots set the same value
+  const pick = usePageSite(available.map((c) => ({ code: c, name: instrumentName(c, meta) })), { key: 'aq.site', prefer: firstPicked })
+  const code = pick.code || firstPicked, setCode = pick.set
   const days = all?.[code] ?? []
   const minuteIndex = useMinuteIndex().data
   const minute = useMinuteSites(minuteIndex)

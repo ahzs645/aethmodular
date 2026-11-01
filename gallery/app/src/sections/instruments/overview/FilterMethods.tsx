@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react'
-import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { useChartOptions } from '@/lib/chartOptions'
 import { IntervalStrip, type IntervalBlock, type IntervalMark } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -7,7 +8,6 @@ import { fmt, signed } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
 import { ExcludedNote } from '@/lib/markedRows'
-import { useSearchParam } from '@/lib/url'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
 import { FILTER_METHODS, type Series } from './data'
@@ -30,8 +30,13 @@ const tipOf = (title: string, s: Summary) => [title, `n = ${s.n} filters`, `mean
 export function FilterMethods({ s, meta }: { s: Series; meta: MetaFile }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
-  const [view, setView] = useSearchParam<View>('aeof', 'month', ['month', 'season', 'week'])
-  const [stat, setStat] = useSearchParam<MonthStat>('aeom', 'mean', ['mean', 'median'])
+  // the statistic only for the monthly view (old links' aeof / aeom still read)
+  const o = useChartOptions('aeth-overview-filter-methods', [
+    { key: 'view', label: 'View', default: 'month', legacy: ['aeof'], choices: (['month', 'season', 'week'] as View[]).map((v) => ({ value: v, label: VIEW_LABEL[v] })) },
+    { key: 'stat', label: 'Statistic', default: 'mean', legacy: ['aeom'], when: (c) => c.view === 'month', choices: (['mean', 'median'] as MonthStat[]).map((v) => ({ value: v, label: MONTH_STAT_LABEL[v] })) },
+  ])
+  const view = o.values.view as View
+  const stat = o.values.stat as MonthStat
   const rows = s.rows
   const counts = FILTER_METHODS.map((m) => rows.filter((r) => val(r, m.field) !== null).length)
   const all3 = rows.filter((r) => FILTER_METHODS.every((m) => val(r, m.field) !== null)).length
@@ -64,10 +69,7 @@ export function FilterMethods({ s, meta }: { s: Series; meta: MetaFile }) {
     <ChartFrame id="aeth-overview-filter-methods" title={`${s.inst.site} · the filters three ways — aethalometer, FTIR EC and HIPS by month, season and weekday`}
       subtitle={`The site's filters in view (${rows.length}; ${counts.map((n, i) => `${FILTER_METHODS[i].label} ${n}`).join(', ')}; all three ${all3}). The aethalometer value is the mean of the daily bins over each filter's own sampling window, weighted by overlap and kept where they cover at least 12 h (the notebook matched one 9 AM day within ±1 day of the sample date); HIPS is Fabs / MAC with MAC = ${meta.mac_value} m²/g. ${view === 'month' ? `Per calendar month of the sample date: ${MONTH_STAT_LABEL[stat].toLowerCase()}.` : view === 'season' ? 'Per season: median and interquartile range, mean open.' : "Weekdays against weekends by sample date, and the weekend's mean as a % of the weekday mean (95 % interval from the Welch standard error)."} Each method keeps every filter it has, as the notebook did, so the sets differ a little.`}
       provenance="addis_02.5_temporal_patterns_filter.ipynb Tasks 1–3 (monthly, weekly and seasonal patterns for the three methods), for every site · per-filter values: gallery/data/export_aethalometer.py"
-      controls={<>
-        <Segmented label="View" value={view} options={['month', 'season', 'week'] as View[]} onChange={setView} optionLabel={(o) => VIEW_LABEL[o]} />
-        {view === 'month' && <Segmented label="Statistic" value={stat} options={['mean', 'median'] as MonthStat[]} onChange={setStat} optionLabel={(o) => MONTH_STAT_LABEL[o]} />}
-      </>}>
+      controls={o.controls()}>
       <div ref={wrapRef} className="chart-wrap">
         {!rows.length ? <Empty>No filters at this site in view.</Empty>
           : view === 'month' ? <MonthPanel series={monthSeries} seasons={seasons} stat={stat} width={Math.min(width, 900)} height={280} unit="µg/m³" />

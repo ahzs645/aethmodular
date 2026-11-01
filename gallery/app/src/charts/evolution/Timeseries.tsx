@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { seasonOnly } from '@/lib/seasons'
 import { SeasonBands, timeSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -15,7 +15,6 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
 import { useChartOptions } from '@/lib/chartOptions'
 import { useChartGrouping } from '@/components/GroupingDialog'
-import { useSearchParam } from '@/lib/url'
 import { useChartLabel, useFitHeight } from '@/lib/chartFit'
 import { ExcludedNote, toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 
@@ -58,10 +57,15 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
   const markedAll = useMarkedRows()
   const marked = useMemo(() => markedAll.filter((r) => typeof r[field] === 'number' && Number.isFinite(r[field] as number)), [markedAll, field])
   const markReason = useMarkReason()
-  const { grp, picker, missingNote } = useChartGrouping('timeseries', measured, () => setSeriesBy('Group'))
-  const [seriesChoice, setSeriesBy] = useSearchParam<'Site' | 'Group'>('timeseries.series', 'Site', SERIES_BY)
-  // Group is offered only once a grouping is picked
-  const seriesBy = grp ? seriesChoice : 'Site'
+  const { grp, picker, missingNote } = useChartGrouping('timeseries', measured, () => by.set('series', 'Group'))
+  // series by group only once a grouping is picked (URL key timeseries.series as before); resolved ahead of the
+  // other options, which depend on how many series it makes
+  const by = useChartOptions('timeseries', [
+    { key: 'series', label: 'Series', choices: SERIES_BY, default: 'Site', hidden: 'Site', when: (c) => !!c.hasGroup,
+      title: 'One series per site, or per band of a grouping (every site pooled in each band)' },
+    { key: 'grouping', node: () => picker },
+  ], { hasGroup: !!grp })
+  const seriesBy = by.values.series as 'Site' | 'Group'
   const byGroup = seriesBy === 'Group'
   const series = useMemo(
     () =>
@@ -82,11 +86,6 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
   // the options and when each applies (lib/chartOptions): with one site, overlay and per-site
   // panels are the same chart; an overlay of sites on their own calendars has nothing to shade
   const o = useChartOptions('timeseries', [
-    { key: 'series', node: () => <>
-      {grp && <Segmented label="Series" value={seriesBy} options={SERIES_BY} onChange={setSeriesBy}
-        title="One series per site, or per band of a grouping (every site pooled in each band)" />}
-      {picker}
-    </> },
     { key: 'layout', label: 'Layout', choices: LAYOUTS.map((v) => ({ value: v, label: v === 'Per site' && byGroup ? 'Per group' : v })), default: 'Per site', when: (c) => (c.nSeries as number) > 1, hidden: 'Per site' },
     { key: 'smooth', label: 'Rolling median', toggle: true, default: true },
     { key: 'shading', label: 'Season shading', toggle: true, default: true, hidden: false, when: (c) => !(c.mixed && c.layout === 'Overlay') },
@@ -150,7 +149,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
       title="Timeseries — filter measurements over time"
       subtitle={`Every filter as a point, with an optional 7-sample rolling median that breaks at sampling gaps over 45 days. Season bands use the ${calendarLabel(meta)} selected in the filters${mixedCalendars(meta) ? ', one per site panel (the overlay has no single calendar, so it is left unshaded)' : ''}. Move the pointer across any panel and a date cursor follows on every other panel. Drag on the timeline in the subset bar to zoom every tab to a date range.`}
       provenance="stands in for 73 timeseries + 59 area + 46 line figures · plotting/timeseries.py · react-graph-gallery.com/timeseries · /line-chart-synchronized-cursors"
-      controls={o.controls()}
+      controls={<>{by.controls()}{o.controls()}</>}
     >
       <div ref={wrapRef} className="chart-wrap">
         {series.length === 0 ? (

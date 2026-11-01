@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Note, Segmented, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { Crossplot, type CrossLine, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
@@ -12,6 +12,7 @@ import { ExcludedNote } from '@/lib/markedRows'
 import { ols, spearman } from '@/lib/stats'
 import { seasonOnly, shortSeason } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
+import { SitePicker, usePageSite } from '@/lib/siteFocus'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { bcTag, seasonColor, seasonsIn, type Channel, type Pair, type PairSite } from './data'
@@ -44,10 +45,10 @@ export function IronTest({ pairs, marked = [], meta, sites, ch, sigma }: {
   const target = abs === 'HIPS' ? mac : sigma ?? NaN
   const eligible = useMemo(() => sites.filter((s) => pairs.filter((p) => p.site === s.name && p.iron !== null && p.ec !== null && yOf(p) !== null).length >= MIN_N),
     [pairs, sites, abs]) // eslint-disable-line react-hooks/exhaustive-deps
-  const preferred = eligible.find((s) => s.code === 'ETAD') ?? eligible[0]
-  // no option list: the eligible sites change with the channel and the data loading; an absent site falls back below
-  const [siteParam, setSite] = useSearchParam<string>('af.fe.site', '')
-  const site = eligible.find((s) => s.code === siteParam) ?? preferred
+  // the gallery's page site (lib/siteFocus `psite`; `af.fe.site` from older links), Addis by default; the eligible
+  // sites change with the channel and the data loading, so an absent site falls back
+  const sitePick = usePageSite(eligible, { legacy: ['af.fe.site'], prefer: 'ETAD' })
+  const site = sitePick.site ?? undefined
 
   const t = useMemo(() => {
     if (!site) return null
@@ -90,7 +91,7 @@ export function IronTest({ pairs, marked = [], meta, sites, ch, sigma }: {
 
   const controls = <>
     <Segmented label="Absorption" value={abs} options={ABS} onChange={setAbs} optionLabel={(k) => (k === 'HIPS' ? 'HIPS Fabs' : `b_ATN ${ch}`)} />
-    {eligible.length > 1 && <Select label="Site" value={site?.code ?? ''} options={eligible.map((s) => s.code)} onChange={setSite} optionLabel={(c) => eligible.find((s) => s.code === c)?.name ?? c} />}
+    <SitePicker as="select" {...sitePick.picker} />
   </>
   const frame = (body: React.ReactNode) => (
     <ChartFrame id="aeth-filters-iron" title="Iron test — does subtracting iron absorption recover the expected MAC?"

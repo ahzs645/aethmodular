@@ -3,10 +3,10 @@ import * as d3 from 'd3'
 import type { Feature, FeatureCollection } from 'geojson'
 import { MapDonutMarker, useMap } from '@pgmaps/geo-toolkit/map'
 import { DonutRingMap, type DonutRingItem } from '@pgmaps/geo-toolkit/visualizations/react'
-import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { LoadState } from '@/components/ExportState'
+import { useChartOptions } from '@/lib/chartOptions'
 import { GeoMap, asReactMouse, type GeoMapHandle } from '@/components/GeoMap'
-import { useSearchParam } from '@/lib/url'
 import { Legend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -69,13 +69,19 @@ export function SpartanCompositionMap() {
   const { data, error } = useExport<CompositionFile>('spartan_composition.json')
   const world = useExport<FeatureCollection>('world.geojson').data
   const [hover, setHover] = useState<string | null>(null)
-  // Map: a pannable world (geo-toolkit) with each donut on its site; Figure: SPARTAN's network figure, donuts in a ring
-  const [view, setView] = useSearchParam<(typeof VIEWS)[number]>('spartanview', 'Map', VIEWS)
-  // Grouped: sites whose donuts would overlap at this zoom share one donut (their mean) until zoomed apart
-  const [nearby, setNearby] = useSearchParam<(typeof NEARBY)[number]>('spartannear', 'Grouped', NEARBY)
   const mapRef = useRef<GeoMapHandle>(null)
   const [zoom, setZoom] = useState<number | null>(null)
   const colours = useColourScheme('spartan-composition-map', 'categorical', 'SPARTAN composition')
+  // Map: a pannable world (geo-toolkit) with each donut on its site; Figure: SPARTAN's network figure, donuts in a ring.
+  // Grouped (Map only): sites whose donuts would overlap at this zoom share one donut (their mean) until zoomed apart.
+  // Old links' spartanview / spartannear still open the same view
+  const o = useChartOptions('spartan-composition-map', [
+    { key: 'view', label: 'View', choices: VIEWS, default: 'Map', legacy: ['spartanview'] },
+    { key: 'nearby', label: 'Nearby sites', choices: NEARBY, default: 'Grouped', when: (c) => c.view === 'Map', legacy: ['spartannear'] },
+    { key: 'palette', node: () => colours.picker },
+  ])
+  const view = o.values.view as (typeof VIEWS)[number]
+  const nearby = o.values.nearby as (typeof NEARBY)[number]
   const sliceColour = useMemo(() => categoricalScale(colours.name, data?.slices.map(s => s.key) ?? [], colours.reverse), [data, colours.name, colours.reverse])
 
   // per site: the mean of each slice over its filters (so the slices still sum to the mean PM2.5)
@@ -140,8 +146,7 @@ export function SpartanCompositionMap() {
       title="SPARTAN PM2.5 composition — every site's mean reconstructed mass, as in SPARTAN's network figure"
       subtitle="Each donut is one site: the centre is its mean PM2.5 (µg/m³ at 35% RH) over the filters with SPARTAN's mass balance, the slices are SPARTAN's reconstruction of that mass (counter-clockwise from the top in the legend's order). Map: each donut sits on its site and grows with PM2.5; sites that would overlap share one donut (their mean, with a count badge) until you zoom in or click it. Figure: the donuts ring the world as in SPARTAN's figure, a line running to each site. Hover a donut for the values; point at a legend entry to pick out that component everywhere."
       provenance={data ? `${data.source}. ${data.note} (spartan_composition.json, gallery/data/export_spartan_composition.py)` : undefined}
-      controls={<><Segmented label="View" value={view} options={VIEWS} onChange={setView} />
-        {view === 'Map' && <Segmented label="Nearby sites" value={nearby} options={NEARBY} onChange={setNearby} />}{colours.picker}</>}
+      controls={o.controls()}
       tip={<>Water is not published by SPARTAN: it is what remains of SPARTAN's &lsquo;Residual Matter with OC&rsquo; balance once the other slices are taken out (median 2% of PM2.5). Sodium and chloride split SPARTAN&rsquo;s sea salt (2.54 × sea-salt sodium). Older filters without FTIR OC keep that mass in the residual, as in SPARTAN&rsquo;s balance. Blue and grey dots mark data recency here, not SPARTAN&rsquo;s operating status.</>}>
       <div ref={wrapRef} className="chart-wrap" data-export-fixed-colours={sliceColour.range().join(' ')}>
         {error || !sites.length ? <LoadState what="SPARTAN composition" error={error}

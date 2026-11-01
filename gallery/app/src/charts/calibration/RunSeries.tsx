@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import { Marker } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
@@ -19,6 +19,8 @@ import type { CalibRun, CalibRunsFile, MetaFile } from '@/lib/types'
 import { groupColorFn, presetName } from './common'
 import { ExcludedNote, useCountedFilter, useExclusionSplit, useMarkReason, type MarkPoint } from '@/lib/markedRows'
 import { markTip } from '@/lib/exclusionMode'
+import { useSearchParam } from '@/lib/url'
+import { useFitHeight } from '@/lib/chartFit'
 
 const DEPLOYED_LABEL = 'deployed SPARTAN EC (hollow)'
 
@@ -40,17 +42,18 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
   const tip = useTooltip(wrapRef)
   // opens records only: the dots read the hover themselves (components/ScatterLayer)
   const hl = useHighlightActions()
-  const height = 400
+  const height = useFitHeight() ?? 400
 
-  // the rolling line and the deployed EC are switched from the legend, like the seasons
-  const [showDeployed, setShowDeployed] = useState(true)
-  const [showRoll, setShowRoll] = useState(true)
+  // the rolling line and the deployed EC are switched from the legend, like the seasons (kept in the link)
+  const [deployedParam, setDeployedParam] = useSearchParam<'1' | '0'>('run-series.deployed', '1', ['1', '0'])
+  const [rollParam, setRollParam] = useSearchParam<'1' | '0'>('run-series.roll', '1', ['1', '0'])
+  const showDeployed = deployedParam === '1', showRoll = rollParam === '1'
   const rolling = useRolling('run-series')
   const ROLL_LABEL = rolling.label
   // seasons hide their points; the two overlays are owned by the controls above, the legend flips them too
   const lg = useLegend(undefined, { external: {
-    [ROLL_LABEL]: { shown: showRoll, toggle: () => setShowRoll((v) => !v) },
-    [DEPLOYED_LABEL]: { shown: showDeployed, toggle: () => setShowDeployed((v) => !v) },
+    [ROLL_LABEL]: { shown: showRoll, toggle: () => setRollParam(showRoll ? '0' : '1') },
+    [DEPLOYED_LABEL]: { shown: showDeployed, toggle: () => setDeployedParam(showDeployed ? '0' : '1') },
   } })
   const hidden = lg.hidden
   const dim = lg.dim

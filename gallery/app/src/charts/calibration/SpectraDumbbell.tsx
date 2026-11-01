@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import { robustDomain } from '@/lib/axes'
 import { Marker, RefBand } from '@/components/RefLines'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { cohortOption, testSetOption, useChartOptions } from '@/lib/chartOptions'
 import { Legend, useLegend } from '@/components/Legend'
 import { XAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -38,11 +39,18 @@ export function SpectraDumbbell({ calib, selected, onSelect }: { calib: CalibFil
   const lg = useLegend()
 
   const cohorts = Object.keys(calib.default_cutoff)
-  const [rowset, setRowset] = useState<(typeof ROWSETS)[number]>('Locked cutoffs')
-  const [cohort, setCohort] = useState(cohorts.includes('ocec') ? 'ocec' : cohorts[0])
-  const [target, setTarget] = useState('addis')
-  const [metric, setMetric] = useState<Metric>('Deming intercept')
   const targets = useMemo(() => [...new Set(calib.grid.map((r) => r.tg))].sort(), [calib.grid])
+  // the readout is picked on the x axis title (components/AxisChoices); the cohort only matters for one cohort's rows
+  const o = useChartOptions('spectra-dumbbell', [
+    { key: 'rowset', label: 'Rows', choices: ROWSETS, default: 'Locked cutoffs' },
+    cohortOption({ cohorts, when: (c) => c.rowset !== 'Locked cutoffs' }),
+    testSetOption({ targets, names: calib.targets }),
+    { key: 'metric', axis: 'x', label: 'Readout', style: 'select', default: 'Deming intercept', choices: METRICS.map((m) => ({ value: m, label: metricLabel(m) })) },
+  ])
+  const rowset = o.values.rowset as (typeof ROWSETS)[number]
+  const cohort = o.values.cohort as string
+  const target = o.values.target as string
+  const metric = o.values.metric as Metric
 
   const rows = useMemo<DRow[]>(() => {
     const base = calib.grid.filter((r) => r.mo === 'site_heldout' && r.tg === target && r.lot === 'all' && r.el === 'all')
@@ -102,19 +110,13 @@ export function SpectraDumbbell({ calib, selected, onSelect }: { calib: CalibFil
       title="Preprocessing dumbbell — what baseline correction does to each configuration"
       subtitle={`One row per cohort × calibration cohort size × selection space; the dots are the same configuration calibrated on raw spectra, spline-baselined spectra and second-derivative spectra, joined so the change is the mark. ${CV_PROTOCOL.site_heldout}, fixed test set, rule number of PLS factors. Click a dot to load that configuration above.`}
       provenance="calibration_explorer batch results · react-graph-gallery.com/lollipop (dumbbell)"
-      controls={
-        <>
-          <Segmented label="Rows" value={rowset} options={ROWSETS} onChange={setRowset} />
-          {rowset !== 'Locked cutoffs' && <Select label="Cohort" value={cohort} options={cohorts} onChange={setCohort} optionLabel={(c) => nameOf(COHORT, c)} />}
-          <Select label="Test set" value={target} options={targets} onChange={setTarget} optionLabel={(t) => calib.targets[t]?.label ?? t} />
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap">
         {rows.length === 0 ? (
           <Empty>No configuration has two preprocessings at {siteName}.</Empty>
         ) : (
-          <AxisChoices noun="readouts" x={[metric, (v) => setMetric(v as Metric)]} options={METRICS.map((m) => ({ key: m, label: metricLabel(m), group: 'Readout', roles: ['x'] }))}>
+          <AxisChoices {...o.axisChoices()} noun="readouts">
           <svg width={width} height={innerH + MARGIN.top + MARGIN.bottom} className="animated">
             <g transform={`translate(${labelW},${MARGIN.top})`}>
               {isSlopeMetric(metric) && <RefBand orient="v" at={[x(calib.slope_box[0]), x(calib.slope_box[1])]} size={innerW} length={innerH} />}

@@ -13,6 +13,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { downloadCsv } from '@/lib/export'
 import { useLoaded } from '@/lib/data'
 import { useSearchParam } from '@/lib/url'
+import { usePageSite } from '@/lib/siteFocus'
 import { baseFilterId, type FilterRecord, useHighlightActions } from '@/lib/highlight'
 import { FONT, INK } from '@/lib/theme'
 import { f3, fmt } from '@/lib/format'
@@ -60,7 +61,10 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
   const siteCodes = useMemo(() => meta.sites.map((s) => s.site), [meta])
   const maskKeys = useMemo(() => meta.masks.map((m) => m.key), [meta])
 
-  const [site, setSite] = useSearchParam<string>('ssite', 'ETAD', siteCodes)
+  // the target site is the gallery's page site (lib/siteFocus `psite`; `ssite` from older links)
+  const pageSites = useMemo(() => meta.sites.map((s) => ({ code: s.site, name: siteName(s) })), [meta])
+  const sitePick = usePageSite(pageSites, { legacy: ['ssite'], prefer: 'ETAD' })
+  const site = sitePick.code, setSite = sitePick.set
   const [season, setSeason] = useSearchParam<string>('sseason', 'all')
   const [archiveMode, setArchiveMode] = useSearchParam<string>('sarchive', 'hide', ['hide', 'show'])
   const showArchived = archiveMode === 'show'

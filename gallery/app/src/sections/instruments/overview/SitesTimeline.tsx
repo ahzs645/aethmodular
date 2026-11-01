@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { useChartOptions } from '@/lib/chartOptions'
 import { Legend, useLegend } from '@/components/Legend'
 import { SweepPlot, type SweepPoint, type SweepSeries } from '@/components/SweepPlot'
 import { fmt } from '@/lib/format'
-import { useSearchParam } from '@/lib/url'
 import type { MetaFile } from '@/lib/types'
 import { CHANNELS, SCREEN_TEXT, channelName, instColor, logTick, type Channel, type Screen, type Series } from './data'
 import { movingMean, splitRuns } from './stats'
@@ -20,8 +20,14 @@ const DAY = 864e5
 export function SitesTimeline({ series, meta, screen, channel, setChannel }: {
   series: Series[]; meta: MetaFile; screen: Screen; channel: Channel; setChannel: (c: Channel) => void
 }) {
-  const [avg, setAvg] = useSearchParam<Avg>('aeost', '30d', ['daily', '30d'])
-  const [log, setLog] = useState(true)
+  // the wavelength is the page's (bound); the rest in the link (old links' aeost still open the same average)
+  const o = useChartOptions('aeth-overview-sites-timeline', [
+    { key: 'channel', label: 'Wavelength', choices: CHANNELS, default: 'IR', bind: [channel, setChannel as (v: never) => void] },
+    { key: 'avg', label: 'Show', choices: [{ value: 'daily', label: 'Daily' }, { value: '30d', label: '30-day mean' }], default: '30d', legacy: ['aeost'] },
+    { key: 'log', label: 'Log scale', toggle: true, default: true },
+  ])
+  const avg = o.values.avg as Avg
+  const log = o.values.log as boolean
   const leg = useLegend()
   const label = (s: Series) => (s.inst.code === s.inst.siteCode ? s.inst.site : s.inst.label)
   const lines = useMemo(() => series.filter((s) => s.days.length).map((s) => {
@@ -46,11 +52,7 @@ export function SitesTimeline({ series, meta, screen, channel, setChannel }: {
     <ChartFrame id="aeth-overview-sites-timeline" title={`Black carbon at every instrument — daily ${channel} BCc on one time axis`}
       subtitle={`${avg === '30d' ? 'A centred 30-day mean (at least 7 days with data) of each instrument\'s' : 'Each instrument\'s'} daily ${channelName(channel, meta)} BCc, broken where days are missing${log ? ', on a log axis' : ''}. Bins are labelled at their start (Beijing, Delhi, JPL 15:00; Addis 09:00). Dashed: a site's longer daily file of the same instrument (Addis: the Jacros file). Screen: ${SCREEN_TEXT[screen]}.`}
       provenance="Multi_Site_Analysis.ipynb §1 (combined IR time series); Multi_Site_Analysis_Fixed.ipynb §3 · gallery/data/export_aethalometer.py"
-      controls={<>
-        <Segmented label="Wavelength" value={channel} options={CHANNELS} onChange={setChannel} />
-        <Segmented label="Show" value={avg} options={['daily', '30d'] as Avg[]} onChange={setAvg} optionLabel={(o) => (o === 'daily' ? 'Daily' : '30-day mean')} />
-        <Toggle label="Log scale" checked={log} onChange={setLog} />
-      </>}>
+      controls={o.controls()}>
       <div className="chart-wrap">
         {!shown.length ? <Empty>No daily bins in this span.</Empty> : (
           <SweepPlot series={sweep} xScale="time" yScale={log ? 'log' : 'linear'} yDomain={yDomain} yLabel={`${channel} BCc (µg/m³)`}

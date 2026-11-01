@@ -1,20 +1,20 @@
 import { useMemo, useRef, useState } from 'react'
 import { robustDomain } from '@/lib/axes'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Note, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { Legend, toggleIn, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { kde, fmt, twoSample } from '@/lib/stats'
 import { pct } from '@/lib/format'
-import { useChartOptions } from '@/lib/chartOptions'
+import { useChartOptions, type OptionContext } from '@/lib/chartOptions'
 import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useChartLabel, useFitHeight } from '@/lib/chartFit'
 import { MeasurementControl } from '@/components/AxisFieldPopover'
-import { useTileSetting } from '@/lib/url'
+import { useSearchParam } from '@/lib/url'
 import { ChartAside } from '@/lib/singleView'
 import { ScrubField } from '@/components/ScrubField'
 import { ecdfAt, ecdfSteps } from '@/lib/ecdf'
@@ -58,15 +58,13 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const tip = useTooltip(wrapRef)
   const edits = useFilterEdits()
 
-  const [binsParam, setBinsParam] = useTileSetting<string>('histogram.bins', '30')
+  const [binsParam, setBinsParam] = useSearchParam<string>('histogram.bins', '30')
   const bins = Math.min(80, Math.max(8, Number(binsParam) || 30))
   const setBins = (n: number) => setBinsParam(String(n))
   const { hidden, setHidden, dim, hover, setHover } = useLegend()
   const mirror = useLegend()
-  const [mirrorA, setMirrorA] = useState<string>('')
-  const [mirrorB, setMirrorB] = useState<string>('')
   // values marked on the axis (the cutoffs a notebook weighed: Fe/EC 50, 100, 200), as typed
-  const [marksParam, setMarksParam] = useTileSetting<string>('histogram.marks', '')
+  const [marksParam, setMarksParam] = useSearchParam<string>('histogram.marks', '')
   // the marks being typed (null: show the ones in use)
   const [marksDraft, setMarksDraft] = useState<string | null>(null)
   const marks = useMemo(() => parseCuts(marksParam), [marksParam])
@@ -103,10 +101,10 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
       { value: 'Mirror', when: (c) => (c.nGroups as number) >= 2 },
       { value: 'ECDF' },
     ], title: 'ECDF: the cumulative share of each site\'s filters at or below a value, with no bins' },
-    { key: 'mirror', when: (c) => c.layout === 'Mirror', node: () => <>
-      <Select label="Top" value={aName} options={groupNames} onChange={setMirrorA} />
-      <Select label="Bottom" value={bName} options={groupNames.filter((n) => n !== aName)} onChange={setMirrorB} />
-    </> },
+    // the two halves of the mirror: any site or season against any other
+    { key: 'mirrorA', label: 'Top', style: 'select', when: (c) => c.layout === 'Mirror', default: groupNames[0] ?? '', choices: groupNames },
+    { key: 'mirrorB', label: 'Bottom', style: 'select', when: (c) => c.layout === 'Mirror', default: groupNames[1] ?? '',
+      choices: groupNames.map((n) => ({ value: n, when: (c: OptionContext) => c.mirrorA !== n })) },
     { key: 'bins', when: (c) => c.layout !== 'Density' && c.layout !== 'ECDF', node: () => <span className="control" title="Number of bins across the displayed range">
       Bins
       <ScrubField label="Number of bins" value={bins} onChange={setBins} min={8} max={80} step={1} width={90} />
@@ -123,8 +121,8 @@ export function Histogram({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   const layout = o.values.layout as Layout
   const normalise = o.values.normalise as boolean
   const overlayDensity = o.values.density as boolean
-  const aName = groupNames.includes(mirrorA) ? mirrorA : groupNames[0] ?? ''
-  const bName = groupNames.includes(mirrorB) && mirrorB !== aName ? mirrorB : groupNames.find((n) => n !== aName) ?? ''
+  const aName = o.values.mirrorA as string
+  const bName = o.values.mirrorB as string
 
   const mirrorPair = mirrorGroups.filter((g) => g.name === aName || g.name === bName).sort((g) => (g.name === aName ? -1 : 1))
   const series: Series[] = layout === 'Mirror' ? mirrorPair.filter((g) => mirror.show(g.name)) : allSeries.filter((s) => !hidden.has(s.name))

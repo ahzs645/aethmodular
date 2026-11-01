@@ -9,6 +9,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { INK, MARGIN, FONT } from '@/lib/theme'
 import type { CohortInfo } from '@/lib/types'
+import { useFitHeight } from '@/lib/chartFit'
 
 /**
  * The cohort's OC/EC composition against the whole IMPROVE pool — the
@@ -23,7 +24,7 @@ export function CohortComposition({ info, label }: { info: CohortInfo | undefine
   const tip = useTooltip(wrapRef)
   const lg = useLegend()
   const POOL = 'IMPROVE pool', COHORT = 'this cohort'
-  const height = 280
+  const height = useFitHeight() ?? 280
 
   const c = info?.composition
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)

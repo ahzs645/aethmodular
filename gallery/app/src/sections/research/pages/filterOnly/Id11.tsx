@@ -12,22 +12,26 @@ import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { fmt, signed } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
-import { useSearchParam } from '@/lib/url'
+import { usePageSite } from '@/lib/siteFocus'
 import { id11Sensitivity, type Id11Row } from '../../common/filterOnly'
 import { Grid, SitePick } from '../../common/ui'
 import { FoExcludedNote, NB_PROP, SITES, SOURCE, barLayer, popLabel, shortQ, siteColor, type Settings, type SiteRun } from './data'
 
 const GREY = '#8a8a8a'
 
-function useId11(runs: SiteRun[], s: Settings): [string, (v: string) => void, Id11Row[]] {
-  const [site, setSite] = useSearchParam<string>('fo.id11.site', SITES[0], SITES)
+function useId11(runs: SiteRun[], s: Settings, meta: MetaFile): [string, (v: string) => void, Id11Row[]] {
+  // the gallery's page site (lib/siteFocus; `fo.id11.site` from older links), among the four release sites
+  const sites = useMemo(() => SITES.map((name) => ({ name, code: meta.sites.find((x) => x.name === name)?.code ?? name })), [meta.sites])
+  const pick = usePageSite(sites, { legacy: ['fo.id11.site'] })
+  const site = pick.site?.name ?? SITES[0]
+  const setSite = (name: string) => pick.set(sites.find((x) => x.name === name)?.code ?? name)
   const rows = useMemo(() => { const r = runs.find((x) => x.site === site)!; return id11Sensitivity(r.later, r.cohort, s.minTrain) }, [runs, site, s.minTrain])
   return [site, setSite, rows]
 }
 
 /** proportionality 06: OLS MAE and signed error on the common later ID-11 filters under both training choices */
 export function Id11Errors({ runs, s, meta }: { runs: SiteRun[]; s: Settings; meta: MetaFile }) {
-  const [site, setSite, rows] = useId11(runs, s)
+  const [site, setSite, rows] = useId11(runs, s, meta)
   const color = siteColor(meta, site)
   const common = rows.filter((r) => r.common)
   // the pooled comparison over every common filter (filter-weighted), as the notebook's note quotes it
@@ -59,7 +63,7 @@ export function Id11Errors({ runs, s, meta }: { runs: SiteRun[]; s: Settings; me
 
 /** proportionality 07: training filters under each choice, and which ID-11 test quarters both can fit */
 export function Id11Support({ runs, s, meta }: { runs: SiteRun[]; s: Settings; meta: MetaFile }) {
-  const [site, setSite, rows] = useId11(runs, s)
+  const [site, setSite, rows] = useId11(runs, s, meta)
   const color = siteColor(meta, site)
   const first = rows.find((r) => r.common)
   const train: SweepSeries[] = [
