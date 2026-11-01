@@ -12,8 +12,9 @@ import { INK, withUnit, VARIABLE_COLOR } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { ScrubField } from '@/components/ScrubField'
 import { useMarkedPoints } from '@/lib/markedRows'
+import { RESEARCH_SERIES } from '@/lib/palettes'
 
-const DRY = '#d08c2c', HUMID = VARIABLE_COLOR.humidity
+const DRY = RESEARCH_SERIES[1], HUMID = VARIABLE_COLOR.humidity
 const SWEEP = d3.range(30, 85, 2.5)
 const MIN_N = 8
 const BEST_N = 15

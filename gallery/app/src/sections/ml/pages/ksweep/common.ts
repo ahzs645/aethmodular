@@ -7,6 +7,7 @@ import { num, type Row } from '@/lib/table'
 import type { SpectralExport } from '../../../research/pages/spectralCommon'
 import { rows } from '../../common'
 import { ANALYSIS_SEASON_COLOR } from '@/lib/seasons'
+import { TABLEAU } from '@/lib/palettes'
 
 export type Data = SpectralExport
 
@@ -16,7 +17,7 @@ export const SEASON_COLOR: Readonly<Record<string, string>> = ANALYSIS_SEASON_CO
 
 /** the IMPROVE-only subsets (fixed before any Addis readout), in the workflow's order */
 export const SUBSET_COLOR: Record<string, string> = {
-  all: '#76b7b2', nsK_top10: '#e15759', nsK_bottom50: '#9c755f', ocec_top10: '#b07aa1', smoke_cohort: '#f28e2b',
+  all: TABLEAU.teal, nsK_top10: TABLEAU.red, nsK_bottom50: TABLEAU.brown, ocec_top10: TABLEAU.purple, smoke_cohort: TABLEAU.orange,
 }
 export const SUBSET_SHORT: Record<string, string> = {
   all: 'all held-out IMPROVE', nsK_top10: 'non-soil K ≥ p90', nsK_bottom50: 'non-soil K ≤ median', ocec_top10: 'OC/EC ≥ p90', smoke_cohort: 'phase-2 smoke cohort',

@@ -22,15 +22,16 @@ import { num, type Row } from '@/lib/table'
 import type { SpectralExport } from '../../../research/pages/spectralCommon'
 import { provenance, rows } from '../../common'
 import { crossCheck, flagTable, type FlagFilter, type FlagGroup } from './stats'
+import { TABLEAU } from '@/lib/palettes'
 
 const NO_FILTERS: FlagFilter[] = []
 const ADDIS = '#e8772e'
-const OTHER = '#4e79a7'
+const OTHER = TABLEAU.blue
 const FLAGGED = '#d1495b'
-const NOT_FLAGGED = '#4e79a7'
+const NOT_FLAGGED = TABLEAU.blue
 const FLAG_HIPS = 'spectrum + HIPS', FLAG_SPECTRUM = 'spectrum only'
-const FLAG_COLORS = { [FLAG_HIPS]: '#d1495b', [FLAG_SPECTRUM]: '#4e79a7' }
-const PANEL_COLORS = { 'published FTIR EC': '#4e79a7', 'this workbook (spline)': '#f28e2b' }
+const FLAG_COLORS = { [FLAG_HIPS]: '#d1495b', [FLAG_SPECTRUM]: TABLEAU.blue }
+const PANEL_COLORS = { 'published FTIR EC': TABLEAU.blue, 'this workbook (spline)': TABLEAU.orange }
 
 /** the export's per-filter table, or null when it was written without the Drive */
 export function useFlagFilters(data: SpectralExport): FlagFilter[] | null {

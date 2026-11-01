@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { loadDerived, loadJson } from '@/lib/data'
 import type { Row } from '@/lib/table'
 import type { CalibFile, CalibRunsFile } from '@/lib/types'
+import { TABLEAU } from '@/lib/palettes'
 
 /** calibration.json through the gallery's cache key and relabelling (hooks/useGalleryData), so a download is shared */
 export function useCalib() {
@@ -31,7 +32,7 @@ export const PROTOCOL: Record<string, string> = {
 export const PROTOCOL_ORDER = ['site_heldout', 'app', 'app_fmm']
 /** ftir_21's colours: blue site-held-out, red Calibration app; B2 between them */
 export const PROTOCOL_COLOR: Record<string, string> = {
-  [PROTOCOL.site_heldout]: '#4e79a7', [PROTOCOL.app]: '#e15759', [PROTOCOL.app_fmm]: '#f28e2b',
+  [PROTOCOL.site_heldout]: TABLEAU.blue, [PROTOCOL.app]: TABLEAU.red, [PROTOCOL.app_fmm]: TABLEAU.orange,
 }
 /** the notebooks' `mode` values (ftir_21/22/23) to the same labels and colours */
 export const protocolOf = (mode: unknown) => PROTOCOL[String(mode)] ?? String(mode)

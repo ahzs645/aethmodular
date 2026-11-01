@@ -7,6 +7,7 @@ import { INK } from '@/lib/theme'
 import type { SectionPageProps } from '../../types'
 import { MlWaiting, PageIntro, provenance, rows, useMl } from '../common'
 import { FixedSetNote } from '@/lib/markedRows'
+import { TABLEAU } from '@/lib/palettes'
 
 const TARGET = 'target: slope 1, intercept 0'
 const s = (v: unknown) => String(v ?? '')
@@ -135,7 +136,7 @@ export function JuneVariants(_props: SectionPageProps) {
 
     <Figure kind="intervals" id="june-variant-k" data={d.kLong} row="label" block="block" series="rule"
       panels={[{ value: 'k', label: 'Components picked' }]} aggregate={{ stat: 'median', interval: 'none' }} labelWidth={240}
-      colors={{ '06 · first major minimum (5-fold, 2 %)': '#4e79a7', "06 · Wold's R": '#bab0ac', '09/10 · k* (10-fold interleaved, 5 %)': '#f28e2b' }}
+      colors={{ '06 · first major minimum (5-fold, 2 %)': TABLEAU.blue, "06 · Wold's R": TABLEAU.grey, '09/10 · k* (10-fold interleaved, 5 %)': TABLEAU.orange }}
       title="Each variant's component count moves with the CV scheme (CAL-4 from 6 to 1, CAL-5 from 15 to 13), and Wold's R gives 1 almost everywhere"
       subtitle="The rules side by side, per variant (06's component table and 09/10's corrected k*). The trimmed and inverse sets pick k = 1: their curves never fall below the one-component error, which says the extra components fit noise for them."
       provenance={provenance(data, ['variants'])} />
@@ -167,14 +168,14 @@ export function JuneVariants(_props: SectionPageProps) {
 
     <Figure kind="intervals" id="june-offset" data={rows(data, 'offset_check').map((r): Row => ({ ...r, slope: m.slope(num(r.slope), 10) }))} row="calibration" series="spectra"
       panels={[{ value: 'slope', label: slopeLabel, reference: 1 }, { value: 'intercept', label: 'Intercept (µg/m³)', reference: 0 }]} aggregate={{ stat: 'median', interval: 'none' }} labelWidth={150}
-      colors={{ raw: '#4e79a7', 'offset-corrected (3900–4000 cm⁻¹)': '#f28e2b' }}
+      colors={{ raw: TABLEAU.blue, 'offset-corrected (3900–4000 cm⁻¹)': TABLEAU.orange }}
       title="Subtracting the 3900–4000 cm⁻¹ baseline moves the intercept toward 0 only by flattening the slope as well"
       subtitle={`Notebook 11's exploratory check: the mean absorbance of the non-absorbing 3900–4000 cm⁻¹ window removed from every training and ETAD spectrum, then refitted. If the offset were a baseline mismatch the intercept would close at the same slope; it does not. ${m.changed ? `Slopes at MAC ${m.mac}.` : 'MAC 10.'}`}
       provenance={provenance(data, ['offset_check'])} />
 
     <Figure kind="crossplot" id="june-frontier" data={[...d.lot, { ...d.target }]} x="slope" y="intercept" color="family" idColumn="label" tipColumns={['family', 'r2', 'n']}
       xLabel={slopeLabel} yLabel="Intercept (µg/m³)" fit={false} sameScale={false} maxSide={460}
-      colors={{ [TARGET]: INK.text, 'raw spectra, full set (the reference)': '#59a14f', '13 · spectral correction': '#4e79a7', '13 · organic-profile (biomass-like) subset': '#e15759', '14 · designed subset': '#f28e2b', '14 · provenance filter': '#b07aa1' }}
+      colors={{ [TARGET]: INK.text, 'raw spectra, full set (the reference)': TABLEAU.green, '13 · spectral correction': TABLEAU.blue, '13 · organic-profile (biomass-like) subset': TABLEAU.red, '14 · designed subset': TABLEAU.orange, '14 · provenance filter': TABLEAU.purple }}
       title={`On the lot-248+251 calibration nothing reaches (1, 0): spectral corrections trade slope for intercept, and training-subset choices barely move the raw point or push it further away. Closest at ${m.label}: ${best?.label}, ${f2(best?.distance)} away`}
       subtitle={`Notebooks 13 and 14, all at k = 10 on the 13,012-filter lot-248+251 mirror, ETAD predictions regressed (OLS) on HIPS. 13's seven spectral corrections are its frontier (tables/hips_origin_frontier.csv); its organic-profile subsets and 14's designed subsets and provenance filter are printed fits. Dropping the Teflon CF band (1100–1300 cm⁻¹) holds the slope; SNV gets the intercept to ${f2(rows(data, 'frontier').find((r) => r.correction === 'SNV')?.intercept)} but under-reads. ${macNote}`}
       provenance={provenance(data, ['frontier', 'subsets', 'selection'])} />
@@ -219,7 +220,7 @@ export function JuneVariants(_props: SectionPageProps) {
 
     <Figure kind="crossplot" id="june-adama" data={rows(data, 'adama')} x="TOR EC" y="EC" color="calibration" idColumn="FilterId" tipColumns={['calibration', 'char/soot']}
       xLabel="Adama quartz TOR EC (µg/m³)" yLabel="FTIR EC (µg/m³)" fit={false} maxSide={420}
-      colors={{ 'general (lot 241a)': '#4e79a7', 'biomass, before cleaning (05)': '#e15759', 'biomass, cleaned, K re-picked (05)': '#f28e2b', 'biomass, cleaned, K 15–25 ensemble (07)': '#59a14f' }}
+      colors={{ 'general (lot 241a)': TABLEAU.blue, 'biomass, before cleaning (05)': TABLEAU.red, 'biomass, cleaned, K re-picked (05)': TABLEAU.orange, 'biomass, cleaned, K 15–25 ensemble (07)': TABLEAU.green }}
       title={`At Adama the general calibration reads below TOR on ${general ? general.n - general.above : '?'} of ${general?.n ?? 5} filters and every biomass calibration above it on ${biomass.length && biomass.every((c) => c.above === c.n) ? 'all' : 'most of'} ${biomass[0]?.n ?? 5}; cleaning and ensembling shrink the overshoot from ${f2(biomass[0]?.ratio)}× to ${f2(last(biomass)?.ratio)}× TOR`}
       subtitle="spartan_ec 05 and 07's tracked tables: the five Adama filters under the general SPARTAN calibration and the 906-filter IMPROVE (biomass, lot 251) calibration at each stage of 05's and 07's optimisation. Hover a filter for its Han char/soot ratio. Five filters, a lot mismatch (calibration lot 251, Adama lot 245): read them, do not fit them. TOR EC; no MAC."
       provenance={provenance(data, ['adama'])} />

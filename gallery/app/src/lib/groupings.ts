@@ -10,6 +10,8 @@
  * splits each site at its own median instead (FTIR_Group_Talk_Apr2026_Draft's iron split), so every site has a low
  * and a high half however far apart the sites' levels are.
  */
+import { TABLEAU } from './palettes.ts'
+
 export type SplitKind = 'cutoffs' | 'median' | 'site-median' | 'tertiles' | 'quartiles' | 'quintiles' | 'deciles'
 
 export interface GroupingDef {
@@ -107,8 +109,8 @@ export function labelsFor(def: GroupingDef, cuts: number[]): string[] {
 /** Ordered bands get an ordered palette: blue (low) to red (high), through amber for three or more. */
 export function colorsFor(n: number): string[] {
   const ramps: Record<number, string[]> = {
-    1: ['#4e79a7'], 2: ['#4e79a7', '#e15759'], 3: ['#4e79a7', '#edc948', '#e15759'],
-    4: ['#4e79a7', '#76b7b2', '#f28e2b', '#e15759'], 5: ['#4e79a7', '#76b7b2', '#edc948', '#f28e2b', '#e15759'],
+    1: [TABLEAU.blue], 2: [TABLEAU.blue, TABLEAU.red], 3: [TABLEAU.blue, TABLEAU.yellow, TABLEAU.red],
+    4: [TABLEAU.blue, TABLEAU.teal, TABLEAU.orange, TABLEAU.red], 5: [TABLEAU.blue, TABLEAU.teal, TABLEAU.yellow, TABLEAU.orange, TABLEAU.red],
   }
   if (ramps[n]) return ramps[n]
   // more bands: interpolate along the five-colour ramp, so neighbours differ and none repeats

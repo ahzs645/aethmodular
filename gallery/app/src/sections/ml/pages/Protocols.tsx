@@ -9,10 +9,11 @@ import { MlWaiting, PageIntro, provenance, rows, useMl } from '../common'
 import { ExcludedNote, FixedSetNote, useExclusionSplit } from '@/lib/markedRows'
 import { addisMoments, PROTOCOL_COLOR, protocolOf, ruleRows, seasonFabs, useCalib } from './components/calib'
 import { PREPROCESSING_COLOR } from '@/lib/theme'
+import { TABLEAU } from '@/lib/palettes'
 
 const SHORT: Record<string, string> = { site_heldout: 'site-held-out', app: 'Calibration app' }
-const SOURCE_COLOR: Record<string, string> = { 'ftir_22 · by protocol': '#4e79a7', 'ftir_15 · locked models': '#59a14f' }
-const DRIVER_COLOR: Record<string, string> = { 'D²': '#e15759', Q: '#f28e2b', Fabs: '#76b7b2' }
+const SOURCE_COLOR: Record<string, string> = { 'ftir_22 · by protocol': TABLEAU.blue, 'ftir_15 · locked models': TABLEAU.green }
+const DRIVER_COLOR: Record<string, string> = { 'D²': TABLEAU.red, Q: TABLEAU.orange, Fabs: TABLEAU.teal }
 const MODEL_COLOR: Record<string, string> = { 'spline baseline (AIRSpec df1=6), k = 5': PREPROCESSING_COLOR.spline, 'raw, k = 6': PREPROCESSING_COLOR.raw }
 /** ftir_15's model labels ("AIRSpec df1=6 (k=5)") and ftir_22's spectra labels to one name */
 const spectraName = (s: unknown) => (String(s).startsWith('AIRSpec') ? 'spline baseline (AIRSpec df1=6)' : 'raw')

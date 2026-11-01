@@ -7,7 +7,7 @@ import { useChartOptions } from '@/lib/chartOptions'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { f2 } from '@/lib/format'
 import { ExcludedNote, FixedSetNote, useExclusionSplit } from '@/lib/markedRows'
-import { categoricalScale } from '@/lib/palettes'
+import { categoricalScale, TABLEAU } from '@/lib/palettes'
 import { num, type Row } from '@/lib/table'
 import { INK } from '@/lib/theme'
 import { Grid } from '../../common/ui'
@@ -123,14 +123,14 @@ export function EtadSpectra({ data }: { data: SpectralExport }) {
   if (split.key === 'all') {
     const outer = '5–95 % of spectra', inner = 'interquartile range', med = 'median', mean = 'mean spectrum (04)'
     bands = [
-      ...(lg.show(outer) ? [{ id: outer, wn, lo: col(dist, 'q5'), hi: col(dist, 'q95'), color: '#4e79a7', opacity: 0.14, group: outer }] : []),
-      ...(lg.show(inner) ? [{ id: inner, wn, lo: col(dist, 'q25'), hi: col(dist, 'q75'), color: '#4e79a7', opacity: 0.3, group: inner }] : []),
+      ...(lg.show(outer) ? [{ id: outer, wn, lo: col(dist, 'q5'), hi: col(dist, 'q95'), color: TABLEAU.blue, opacity: 0.14, group: outer }] : []),
+      ...(lg.show(inner) ? [{ id: inner, wn, lo: col(dist, 'q25'), hi: col(dist, 'q75'), color: TABLEAU.blue, opacity: 0.3, group: inner }] : []),
     ]
     series = [
-      ...(lg.show(med) ? [{ id: med, label: med, group: med, wn, y: col(dist, 'q50'), color: '#4e79a7', role: 'line' as const, width: 1.2 }] : []),
+      ...(lg.show(med) ? [{ id: med, label: med, group: med, wn, y: col(dist, 'q50'), color: TABLEAU.blue, role: 'line' as const, width: 1.2 }] : []),
       ...(lg.show(mean) ? [{ id: mean, label: mean, group: mean, wn, y: col(dist, 'mean'), color: INK.text, role: 'line' as const, width: 1.4 }] : []),
     ]
-    items = [{ label: outer, color: '#4e79a7', shape: 'square' }, { label: inner, color: '#4e79a7', shape: 'square' }, { label: med, color: '#4e79a7', shape: 'line' }, { label: mean, color: INK.text, shape: 'line' }]
+    items = [{ label: outer, color: TABLEAU.blue, shape: 'square' }, { label: inner, color: TABLEAU.blue, shape: 'square' }, { label: med, color: TABLEAU.blue, shape: 'line' }, { label: mean, color: INK.text, shape: 'line' }]
   } else {
     const shown = groups.filter((g) => lg.show(g.name))
     series = shown.map((g) => ({ id: g.name, label: g.name, group: g.name, wn, y: g.mean, color: colour(g.name), role: 'line', width: 1.3 }))

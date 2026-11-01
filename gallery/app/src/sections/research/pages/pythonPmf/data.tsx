@@ -13,11 +13,12 @@ import type { MetaFile, PmfFile, SeasonMeta } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import type { SpectralExport } from '../spectralCommon'
 import { baseId, type CaseContributions } from '../../common/pythonPmf'
+import { RESEARCH_SERIES } from '@/lib/palettes'
 
 export const EXPORTER = 'gallery/data/export_python_pmf.py'
 export const REPORT = 'python_pmf/Addis_Python_PMF_Analysis_Report.md'
 /** the five factors' colours: a neutral categorical ramp, deliberately not the archived sources' colours */
-export const FACTOR_COLOR = ['#2c7fb8', '#d08c2c', '#4f9d69', '#b5446e', '#6a51a3']
+export const FACTOR_COLOR = RESEARCH_SERIES.slice(0, 5)
 export const FACTORS = [1, 2, 3, 4, 5] as const
 export const factorName = (k: number) => `Factor ${k}`
 

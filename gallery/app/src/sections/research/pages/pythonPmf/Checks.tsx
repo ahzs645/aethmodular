@@ -29,8 +29,9 @@ import {
   CasePick, FACTOR_COLOR, FACTORS, REPORT, archivedFor, caseFilters, caseLabel, closest, factorName, tableRows,
   type PmfCase, type PythonPmfExport,
 } from './data'
+import { RESEARCH_SERIES } from '@/lib/palettes'
 
-const FOLD_COLOR = ['#2c7fb8', '#d08c2c', '#4f9d69', '#b5446e', '#6a51a3']
+const FOLD_COLOR = RESEARCH_SERIES.slice(0, 5)
 const ODD = 'ETAD-0037'
 const SOURCE = 'Research · Python PMF'
 

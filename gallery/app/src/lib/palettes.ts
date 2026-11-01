@@ -63,6 +63,18 @@ const BATLOW = [
   '#f7a17a', '#fba78d', '#fdada0', '#fdb3b2', '#fdb9c3', '#fcbfd5', '#fbc6e7', '#faccfa',
 ]
 
+/**
+ * Tableau 10 by name, for a chart that pins each of a few fixed series to a fixed colour (a map from
+ * series name to colour, so a series keeps its colour whatever else is drawn). For an open-ended list
+ * of categories use categoricalScale or useColourScheme(id, 'categorical', 'Tableau 10') instead.
+ */
+export const TABLEAU = {
+  blue: schemeTableau10[0], orange: schemeTableau10[1], red: schemeTableau10[2], teal: schemeTableau10[3], green: schemeTableau10[4],
+  yellow: schemeTableau10[5], purple: schemeTableau10[6], pink: schemeTableau10[7], brown: schemeTableau10[8], grey: schemeTableau10[9],
+} as const
+/** The research pages' series palette (sections/research/common/ui SERIES): blue, amber, green, rose, purple, then Tableau's tail. */
+export const RESEARCH_SERIES: readonly string[] = ['#2c7fb8', '#d08c2c', '#4f9d69', '#b5446e', '#6a51a3', '#8c564b', '#e377c2', '#7f7f7f']
+
 /** SPARTAN's October 2026 network composition figure, matched by eye. Shared by the map and
  * chemistry charts; these colours are fixed in both themes. */
 export const SPARTAN_COMPOSITION_COLOURS: Readonly<Record<string, string>> = {
