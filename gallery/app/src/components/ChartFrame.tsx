@@ -559,28 +559,29 @@ export function InfoTip({ children, label = 'Notes on this chart' }: { children:
  */
 function useFloatingTip(align: 'start' | 'end') {
   const id = useId()
-  const [place, setPlace] = useState<React.CSSProperties | null>(null)
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  const trigger = useRef<HTMLElement | null>(null)
+  const box = useRef<HTMLDivElement>(null)
+  const width = align === 'start' ? 420 : 360
+  // placed by the shared floating layer (hooks/useFloatingMenu: flips above when there is no room below,
+  // follows the visual viewport); no height cap but the window's
+  const place = useFloatingMenu(anchor !== null, trigger, box, Infinity, { width, align })
   const closeTimer = useRef<ReturnType<typeof setTimeout>>()
   const cancelClose = () => clearTimeout(closeTimer.current)
-  const close = () => { cancelClose(); setPlace(null) }
-  const closeSoon = () => { cancelClose(); closeTimer.current = setTimeout(() => setPlace(null), 120) }
+  const close = () => { cancelClose(); setAnchor(null) }
+  const closeSoon = () => { cancelClose(); closeTimer.current = setTimeout(() => setAnchor(null), 120) }
   useEffect(() => {
-    const shut = () => setPlace(null)
+    // a note is a passing hint: scrolling or resizing the page closes it rather than carrying it along
+    if (!anchor) return
+    const shut = (e: Event) => { if (!box.current?.contains(e.target as Node)) setAnchor(null) }
     window.addEventListener('resize', shut)
     window.addEventListener('scroll', shut, true)
-    return () => { cancelClose(); window.removeEventListener('resize', shut); window.removeEventListener('scroll', shut, true) }
-  }, [])
-  const show = (el: HTMLElement) => {
-    cancelClose()
-    const r = el.getBoundingClientRect()
-    const width = Math.min(align === 'start' ? 420 : 360, window.innerWidth - 24)
-    const want = align === 'start' ? r.left - 8 : r.right - width
-    const below = window.innerHeight - r.bottom > 160
-    setPlace({ position: 'fixed', width, left: Math.max(12, Math.min(want, window.innerWidth - width - 12)),
-      ...(below ? { top: r.bottom + 6, bottom: 'auto', maxHeight: window.innerHeight - r.bottom - 18 }
-        : { top: 'auto', bottom: window.innerHeight - r.top + 6, maxHeight: r.top - 18 }) })
-  }
-  const body = (children: ReactNode) => place && createPortal(<div id={id} role="tooltip" className="info-tip-body floating" style={place}
+    return () => { window.removeEventListener('resize', shut); window.removeEventListener('scroll', shut, true) }
+  }, [anchor])
+  useEffect(() => cancelClose, [])
+  const show = (el: HTMLElement) => { cancelClose(); trigger.current = el; setAnchor(el) }
+  const body = (children: ReactNode) => anchor && createPortal(<div ref={box} id={id} role="tooltip" className="info-tip-body floating"
+    style={place ?? { position: 'fixed', visibility: 'hidden', width }}
     onMouseEnter={cancelClose} onMouseLeave={closeSoon}>{children}</div>, document.body)
   return { id, place, show, close, closeSoon, body }
 }

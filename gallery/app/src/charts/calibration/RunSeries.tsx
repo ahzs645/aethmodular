@@ -3,7 +3,7 @@ import { Marker } from '@/components/RefLines'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { useRolling } from '@/components/RollingControls'
-import { Legend, toggleIn } from '@/components/Legend'
+import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -46,11 +46,13 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
   const [showRoll, setShowRoll] = useState(true)
   const rolling = useRolling('run-series')
   const ROLL_LABEL = rolling.label
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
-  const [hover, setHover] = useState<string | null>(null)
-  const legendHidden = new Set([...hidden, ...(showRoll ? [] : [ROLL_LABEL]), ...(showDeployed ? [] : [DEPLOYED_LABEL])])
-  const hot = hover && !legendHidden.has(hover) ? hover : null
-  const dim = (l: string) => (!hot || hot === l ? 1 : 0.15)
+  // seasons hide their points; the two overlays are owned by the controls above, the legend flips them too
+  const lg = useLegend(undefined, { external: {
+    [ROLL_LABEL]: { shown: showRoll, toggle: () => setShowRoll((v) => !v) },
+    [DEPLOYED_LABEL]: { shown: showDeployed, toggle: () => setShowDeployed((v) => !v) },
+  } })
+  const hidden = lg.hidden
+  const dim = lg.dim
   const colours = useColourScheme('run-series', 'categorical', 'Tableau 10')
   const groupColours = useMemo(() => groupColorFn(meta, run.eval.group, colours.name, colours.reverse), [meta, run.eval.group, colours.name, colours.reverse])
   const color = groupColours.color
@@ -95,7 +97,7 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
     const st = focusStyle(p.id ?? `#${p.i}`, null, { r: 3.2, level })
     return <circle key={p.i} cx={xy[i][0]} cy={xy[i][1]} r={st.r} fill={color(p.g)} fillOpacity={st.opacity * dim(p.g)} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={dim(p.g) === 1 ? st.dot : undefined}
       {...(p.id ? fidProps(baseFilterId(p.id)) : {})} />
-  }), [shown, xy, level, color, hot]) // eslint-disable-line react-hooks/exhaustive-deps
+  }), [shown, xy, level, color, lg.hover]) // eslint-disable-line react-hooks/exhaustive-deps
   // Mark: the excluded filters of the seasons shown, as × inside the axes; never in the rolling line or the summary
   const marks = useMemo<MarkPoint[]>(() => {
     const [d0, d1] = x.domain(), [y0, y1] = y.domain()
@@ -169,14 +171,7 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
             { label: ROLL_LABEL, color: INK.text, shape: 'line' as const },
             ...(hasDeployed ? [{ label: DEPLOYED_LABEL, color: INK.axis, shape: 'ring' as const }] : []),
           ]}
-          hidden={legendHidden}
-          onHover={setHover}
-          highlighted={hot}
-          onToggle={(l) => {
-            if (l === ROLL_LABEL) setShowRoll((v) => !v)
-            else if (l === DEPLOYED_LABEL) setShowDeployed((v) => !v)
-            else if (run.eval.group.includes(l)) setHidden((h) => toggleIn(h, l))
-          }}
+          {...lg.props}
           note="red line = 0 · dotted = 8 µg/m³"
         />
         {preds.length > 0 && (

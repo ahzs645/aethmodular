@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useId } from 'react'
+import { createContext, useContext, useMemo, useRef, useId } from 'react'
 import { robustDomain } from '@/lib/axes'
 import { AxisChoices } from '@/components/AxisChoices'
 import { Marker } from '@/components/RefLines'
@@ -15,7 +15,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
 import { PageChoiceControls, PageChoices, usePageChoice } from '@/lib/pageChoices'
 import { SidebarControls } from '@/lib/pageSidebar'
-import { dotFill, dotRim, useHighlightActions, type FilterRecord } from '@/lib/highlight'
+import { dotFill, dotRim, useEscapeUnpin, useHighlightActions, type FilterRecord } from '@/lib/highlight'
 import { ScatterLayer } from '@/components/ScatterLayer'
 import { BANK_COLOR, BASELINE_COLOR, FONT, INK, OCT1_HATCH, SPECTRAL_REGION, themed } from '@/lib/theme'
 import { f2, f3, pct, signed, coef, coefSigned } from '@/lib/format'
@@ -107,13 +107,8 @@ function SatoshiView({ data }: { data: SatoshiData }) {
   const sx = useSearchParam<string>('satx', 'TOR EC', [...SAT_AXES])
   const sy = useSearchParam<string>('saty', 'FTIR EC', [...SAT_AXES])
   const oct1 = useOct1()
-  // the pin only: a hover anywhere does not re-render the page
-  const hl = useHighlightActions()
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') hl.setPinned(null) }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [hl])
+  // Esc lets the pin go; a hover anywhere does not re-render the page
+  useEscapeUnpin()
   return (
     <PageChoices panel={false} defs={[
       { key: 'baseline', urlKey: 'satbase', label: 'Baseline', default: VIBES, options: BASELINES, legacy: ['svipbase', 'sladbase', 'senvbase', 'satSpecBaseline'],

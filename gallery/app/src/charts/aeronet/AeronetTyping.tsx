@@ -15,6 +15,7 @@ import { CAZORLA_CLASSES, CAZORLA_REGIONS, cazorlaClass, type CazorlaClass } fro
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { colouring, num } from './shared'
 import { toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
+import { Legend } from '@/components/Legend'
 
 const PAIRS = ['Cazorla 440–675', 'Russell / Giles 440–870'] as const
 type Pair = (typeof PAIRS)[number]
@@ -127,10 +128,8 @@ export function AeronetTyping({ rows, meta }: { rows: FilterRow[]; meta: MetaFil
             ) }] : []),
           ]} />
         )}
-        <div className="legend">
-          {legendKeys.map((k) => <span key={k} className="legend-item"><span className="swatch" style={{ background: col.color(k) }} />{col.label(k)}</span>)}
-          <span className="legend-item"><span className="swatch ring" style={{ color: INK.muted }} />inversion AOD 440 &lt; {L2_AOD440}</span>
-        </div>
+        <Legend items={[...legendKeys.map((k) => ({ label: col.label(k), color: col.color(k) })),
+          { label: `inversion AOD 440 < ${L2_AOD440}`, color: INK.muted, shape: 'ring' as const }]} />
         {tip.node}
       </div>
     </ChartFrame>

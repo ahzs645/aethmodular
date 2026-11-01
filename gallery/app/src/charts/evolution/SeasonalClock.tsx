@@ -1,9 +1,9 @@
-import { useId, useMemo, useRef, useState } from 'react'
+import { useId, useMemo, useRef } from 'react'
 import { seasonOnly, shortSeason } from '@/lib/seasons'
 import { seasonShade } from '@/components/SeasonBands'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
-import { Legend, toggleIn } from '@/components/Legend'
+import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
@@ -80,8 +80,9 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
   // textPath needs a path id; useId keeps two clocks on one page from sharing one
   const uid = useId().replace(/:/g, '')
 
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
-  const [hover, setHover] = useState<string | null>(null)
+  // sites are series; seasons are background keys (hover deepens their sectors) that also hide their months
+  const lg = useLegend(undefined, { background: meta.seasons.map((s) => s.name), hideBackground: true })
+  const hidden = lg.hidden
 
   const allSeries: Series[] = useMemo(
     () =>
@@ -106,9 +107,8 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
   const stat = o.values.stat as (typeof STATS)[number]
   const layout = o.values.layout as (typeof LAYOUTS)[number]
   // a hovered site dims the other sites' bars; a hovered season (a background key, not a series) deepens its own sectors
-  const siteHover = hover && series.some((s) => s.name === hover) ? hover : null
-  const seasonHover = hover && meta.seasons.some((s) => s.name === hover) ? hover : null
-  const dim = (name: string) => (siteHover === null || siteHover === name ? 1 : 0.15)
+  const seasonHover = lg.backgroundHover
+  const dim = lg.dim
   const valueOf = (c: Cell) => (c.n >= MIN_N ? (stat === 'Median' ? c.median : c.mean) : null)
 
   // ---- geometry: a square, with room outside the ring for month and season labels
@@ -317,10 +317,7 @@ export function SeasonalClock({ rows, meta, field }: { rows: FilterRow[]; meta: 
             ...allSeries.map((s) => ({ label: s.name, color: s.color })),
             ...(o.values.seasons ? meta.seasons : []).map((s) => ({ label: s.name, color: s.color, shape: 'band' as const })),
           ]}
-          hidden={hidden}
-          onToggle={l => setHidden(h => toggleIn(h, l))}
-          onHover={setHover}
-          highlighted={siteHover ?? seasonHover}
+          {...lg.props}
           note={emphasizeFebruary ? `bars share one value scale · February changes bins across Ethiopian conventions` : `bars share one value scale · ${calendarLabel(meta)}`}
         />
         <ExcludedNote fields={[field]} />

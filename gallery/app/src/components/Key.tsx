@@ -1,14 +1,19 @@
 import type { ReactNode } from 'react'
-import { FIT_STYLE, useEstimator } from '@/lib/regressionPrefs'
-import { INK } from '@/lib/theme'
+import { Legend, type LegendShape } from '@/components/Legend'
 
 /**
- * A static key in the gallery's legend style: what each colour, mark and line
- * means, for charts whose series are fixed (the interactive `Legend` hides and
- * dims series). One set of marks for every research page.
+ * A static key: what each colour, mark and line means, for charts whose series
+ * are fixed. It is `Legend` without `onToggle`/`onHover` (so it gets the tile
+ * modes, export colour tags and the gallery's swatches), under the names the
+ * research pages already use. New code can call `Legend` directly.
  */
 export type KeyKind = 'dot' | 'square' | 'hollow' | 'diamond' | 'line' | 'dash' | 'bar' | 'faded'
 export interface KeyItem { label: string; color: string; kind?: KeyKind }
+
+/** a Key's diamond is drawn hollow (the marks it names are outlined); the rest are Legend's shapes or aliases */
+const SHAPE: Record<KeyKind, LegendShape> = {
+  dot: 'dot', square: 'square', hollow: 'hollow', diamond: 'hollow-diamond', line: 'line', dash: 'dash', bar: 'bar', faded: 'faded',
+}
 
 export function Key({ items, children, relabelFits = false }: {
   items: KeyItem[]
@@ -18,27 +23,7 @@ export function Key({ items, children, relabelFits = false }: {
   relabelFits?: boolean
 }) {
   return (
-    <div className="legend">
-      {items.map((it) => (
-        <span key={it.label} className="legend-item">
-          <svg width={20} height={12} aria-hidden="true">
-            {(it.kind ?? 'dot') === 'dot' && <circle cx={10} cy={6} r={4} fill={it.color} fillOpacity={0.8} />}
-            {it.kind === 'square' && <rect x={6} y={2} width={8} height={8} fill={it.color} />}
-            {it.kind === 'hollow' && <circle cx={10} cy={6} r={4} fill="none" stroke={it.color} strokeWidth={1.2} />}
-            {it.kind === 'diamond' && <path d="M10 1 L15 6 L10 11 L5 6 Z" fill={INK.panel} stroke={it.color} strokeWidth={1.3} />}
-            {it.kind === 'line' && <line x1={1} x2={19} y1={6} y2={6} stroke={it.color} strokeWidth={2.2} />}
-            {it.kind === 'dash' && <line x1={1} x2={19} y1={6} y2={6} stroke={it.color} strokeWidth={1.4} strokeDasharray="4 3" />}
-            {it.kind === 'bar' && <rect x={1} y={3} width={18} height={6} fill={it.color} />}
-            {it.kind === 'faded' && <rect x={1} y={1} width={18} height={10} fill={it.color} opacity={0.3} />}
-          </svg>
-          {relabelFits ? <FitLabel text={it.label} /> : it.label}
-        </span>
-      ))}
-      {children}
-    </div>
+    <Legend items={items.map((it) => ({ label: it.label, color: it.color, shape: SHAPE[it.kind ?? 'dot'] }))}
+      relabelFits={relabelFits} group={false}>{children}</Legend>
   )
-}
-
-function FitLabel({ text }: { text: string }) {
-  return <>{text.replace(/Deming/g, FIT_STYLE[useEstimator()].label)}</>
 }

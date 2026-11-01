@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { createPortal } from 'react-dom'
+import { Dialog } from '@/components/Dialog'
 import { ExportColorPicker } from '@/components/ExportColorOptions'
 import { useExportSeasons, useExportSites } from '@/lib/exportSites'
 import { applyExportColors, DEFAULT_EXPORT_COLORS, readExportColors, type ExportColors } from '@/lib/exportColors'
@@ -240,14 +240,6 @@ function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: st
     return () => URL.revokeObjectURL(url)
   }, [previewBlob])
 
-  const dialogRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !dialogRef.current?.querySelector('.export-color-popover')) { e.stopPropagation(); onClose() } }
-    window.addEventListener('keydown', onKey, true)
-    dialogRef.current?.querySelector<HTMLButtonElement>('.export-download')?.focus()
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [onClose])
-
   const rasterSize = out[s.format]?.blob?.size
   // other resolutions scale roughly with the pixel count; marked ≈ because compression is not linear
   const scaleHint = (k: number) => {
@@ -263,9 +255,9 @@ function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: st
     onClose(s.format)
   }
 
-  return createPortal(
-    <div className="export-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div ref={dialogRef} className="export-dialog" role="dialog" aria-modal="true" aria-label={`Export ${title}`}>
+  // Escape closes the Colors popover first (components/Dialog NESTED_POPOVERS), then the dialog
+  return (
+    <Dialog onClose={() => onClose()} className="export-dialog" label={`Export ${title}`} initialFocus=".export-download">
         <header>
           <div>
             <strong>Export</strong>
@@ -389,8 +381,6 @@ function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: st
             </div>
           </div>
         )}
-      </div>
-    </div>,
-    document.body,
+    </Dialog>
   )
 }

@@ -16,6 +16,7 @@ import { ColorLegend } from '@/components/ColorLegend'
 import { useFitHeight } from '@/lib/chartFit'
 import { useTileSetting } from '@/lib/url'
 import { seasonColor } from '@/lib/siteColours'
+import { Legend } from '@/components/Legend'
 
 /** species worth a column when they are measured; the rest of the field list would only add empty columns */
 const PREFERRED = ['PM2.5 mass', 'HIPS BC', 'HIPS Fabs', 'EC (FTIR)', 'OC (FTIR)', 'OM (FTIR)', 'Sulfate', 'Nitrate', 'Ammonium', 'Potassium', 'Sodium', 'Calcium', 'Iron', 'Silicon', 'Aluminum', 'Zinc', 'Lead']
@@ -82,10 +83,10 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
           {matrix(facets.find((f) => f.name === open)!, Math.max(22, Math.min(46, (window.innerWidth - 300) / Math.max(1, species.length), (window.innerHeight - 320) / Math.max(1, vars.length))), 170)}
         </div>
       </SpectrumModal>}
-      <div className="legend">
+      <Legend items={[]}>
         <ColorLegend scale={color} scheme={colours.scheme} label="Spearman ρ" width={160} ticks={4} format={(v) => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0')} />
         <span className="legend-item">values shown where |ρ| ≥ 0.3{fit === null ? ' · ⤢ opens a matrix larger' : ''}</span>
-      </div>
+      </Legend>
     </ChartFrame>
   )
 

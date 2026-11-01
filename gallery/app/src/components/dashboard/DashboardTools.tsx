@@ -1,5 +1,5 @@
-import { Component, createContext, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import { Component, createContext, useContext, useId, useMemo, useState, type ReactNode } from 'react'
+import { Dialog } from '@/components/Dialog'
 import { Combobox } from '@/components/Combobox'
 import { useHighlightActions } from '@/lib/highlight'
 import { useSearchParam } from '@/lib/url'
@@ -10,33 +10,13 @@ import type { DashboardChart, DashboardData } from './registry'
 import type { PublicSiteStatus } from '@/lib/spartanPublic'
 import type { DetailRequest } from '@/lib/dashboardDetails'
 
-/** A shared, portalled dialog with keyboard containment and focus return. */
+/** The dashboard's dialogs: components/Dialog in the panel look, its heading naming it. */
 export function DashboardDialog({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
-  const root = useRef<HTMLDivElement>(null)
   const heading = useId()
-  const close = useRef(onClose)
-  close.current = onClose
-  useEffect(() => {
-    const before = document.activeElement as HTMLElement | null
-    const el = root.current!
-    el.querySelector<HTMLElement>('button, input, [tabindex="0"]')?.focus()
-    const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); close.current(); return }
-      if (e.key !== 'Tab') return
-      const items = [...el.querySelectorAll<HTMLElement>('button:not(:disabled), input, textarea, select, [tabindex="0"], a[href]')].filter(x => x.getClientRects().length)
-      const first = items[0], last = items[items.length - 1]
-      if (e.shiftKey && (document.activeElement === first || !el.contains(document.activeElement))) { e.preventDefault(); last?.focus() }
-      else if (!e.shiftKey && (document.activeElement === last || !el.contains(document.activeElement))) { e.preventDefault(); first?.focus() }
-    }
-    window.addEventListener('keydown', key, true)
-    return () => { window.removeEventListener('keydown', key, true); before?.focus({ preventScroll: true }) }
-  }, [])
-  return createPortal(<div className="map-dialog-backdrop" onPointerDown={e => { if (e.target === e.currentTarget) onClose() }}>
-    <div ref={root} className="panel dashboard-dialog" role="dialog" aria-modal="true" aria-labelledby={heading}>
+  return <Dialog onClose={onClose} backdropClassName="map-dialog-backdrop" className="panel dashboard-dialog" labelledBy={heading} initialFocus='button, input, [tabindex="0"]'>
       <header className="frame-head"><h2 id={heading}>{title}</h2><button type="button" className="btn" onClick={onClose} aria-label="Close dialog">Close ×</button></header>
       {children}
-    </div>
-  </div>, document.body)
+  </Dialog>
 }
 
 /** Render failures are isolated to their tile. Data failures have their own retry state. */

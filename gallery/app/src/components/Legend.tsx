@@ -1,5 +1,6 @@
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
-import { useEffect, useRef, useState, type MouseEvent } from 'react'
+import { chemText } from '@/lib/format'
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { usePrefs } from '@/lib/prefs'
 import { useChartLabel, useFitHeight, useTileLegend } from '@/lib/chartFit'
 
@@ -13,11 +14,23 @@ export const LEGEND_FOCUS = 'legend-focus'
 /** in a Dashboard tile, a legend longer than this shows its first items and "+N more" */
 const TILE_LIMIT = 8
 
+/**
+ * A swatch's mark. `hollow`, `dash` and `faded` are the names `Key` used (aliases of ring, dashed and band);
+ * `bar` is a wide flat bar and `hollow-diamond` a diamond outlined in the colour on the panel.
+ */
+export type LegendShape = 'dot' | 'ring' | 'square' | 'band' | 'line' | 'dashed' | 'diamond' | 'hollow-diamond' | 'bar'
+  | 'hollow' | 'dash' | 'faded'
+const SHAPE_ALIAS: Partial<Record<LegendShape, LegendShape>> = { hollow: 'ring', dash: 'dashed', faded: 'band' }
+/** the swatch's class (its shape with the aliases resolved) */
+export const legendShape = (shape: LegendShape | undefined): LegendShape => (shape && SHAPE_ALIAS[shape]) ?? shape ?? 'dot'
+/** shapes drawn in the text colour (an outline or a border), not a background */
+const OUTLINED = new Set<LegendShape>(['ring', 'dashed', 'hollow-diamond'])
+
 export interface LegendItem {
   label: string
   parent?: string
   color: string
-  shape?: 'dot' | 'ring' | 'square' | 'band' | 'line' | 'dashed' | 'diamond'
+  shape?: LegendShape
   /** shown after the label in muted mono, e.g. "n=190" */
   detail?: string
 }
@@ -28,7 +41,7 @@ export interface LegendItem {
  * pattern); the chart reads `hidden` and drops those marks. When `onHover` is
  * given, pointing at (or tabbing to) an item reports its label so the chart
  * can dim the other series; `highlighted` echoes it back to dim the other
- * legend items too. Without either it is a plain key.
+ * legend items too. Without either it is a plain key (what `Key` draws).
  */
 export function Legend({
   items,
@@ -37,6 +50,9 @@ export function Legend({
   onHover,
   highlighted,
   note,
+  children,
+  relabelFits = true,
+  group = true,
 }: {
   items: LegendItem[]
   hidden?: Set<string>
@@ -44,6 +60,13 @@ export function Legend({
   onHover?: (label: string | null) => void
   highlighted?: string | null
   note?: string
+  /** more legend content after the items, e.g. a ColorLegend ramp or a SizeLegend */
+  children?: ReactNode
+  /** labels say "Deming" for a fit the browser refits: name the active estimator instead. Off for a key
+   *  whose labels name fixed estimators side by side. */
+  relabelFits?: boolean
+  /** "Site · Season" labels grouped one line per site; off keeps every label whole */
+  group?: boolean
 }) {
   const label = useChartLabel()
   const displayItems = items.filter(it => label(it.label))
@@ -77,13 +100,14 @@ export function Legend({
   // a tile's legend setting: off draws nothing; bottom and right draw every item
   const long = inTile && (tile?.mode ?? 'auto') === 'auto' && displayItems.length > TILE_LIMIT + 1
   const shown = long && !all ? displayItems.slice(0, TILE_LIMIT) : displayItems
-  if (tile?.mode === 'off' || (!displayItems.length && !(note && explain))) return null
+  if (tile?.mode === 'off' || (!displayItems.length && !(note && explain) && children == null)) return null
+  const relabel = (text: string) => relabelFits ? estimatorText(text, method) : chemText(text)
   // "Site · Season" labels: grouped one line per site, the site named once; with a single site
   // its name is dropped altogether (the chart says which site). Other labels stay as they are.
   const PREFIX = ' · '
   const parts = shown.map((it) => {
     const text = label(it.label)
-    const k = text.indexOf(PREFIX)
+    const k = group ? text.indexOf(PREFIX) : -1
     return { it, group: it.parent ?? (k > 0 ? text.slice(0, k) : null), text: k > 0 ? text.slice(k + PREFIX.length) : text }
   })
   const groups = [...new Set(parts.map((p) => p.group).filter((g): g is string => !!g))]
@@ -92,6 +116,7 @@ export function Legend({
     const off = !!(hidden?.has(it.label) || (group && hidden?.has(group)))
     const dim = !!highlighted && highlighted !== it.label && !off
     const held = pinned === it.label
+    const shape = legendShape(it.shape)
     const cls = ['legend-item', onToggle ? 'clickable' : '', onHover ? 'hoverable' : '', off ? 'off' : '', dim ? 'dim' : '', held ? 'pinned' : ''].filter(Boolean).join(' ')
     // shift-click holds this item's hovered view (again lets go); a plain click toggles it as before
     const click = onToggle || onHover ? (e: MouseEvent) => {
@@ -116,10 +141,10 @@ export function Legend({
         tabIndex={live ? 0 : undefined}
       >
         <span
-          className={`swatch ${it.shape ?? 'dot'}`}
-          style={it.shape === 'dashed' || it.shape === 'ring' ? { color: it.color } : { background: it.color }}
+          className={`swatch ${shape}`}
+          style={OUTLINED.has(shape) ? { color: it.color } : { background: it.color }}
         />
-        {estimatorText(text, method)}
+        {relabel(text)}
         {it.detail && <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>{it.detail}</span>}
       </span>
     )
@@ -148,9 +173,26 @@ export function Legend({
       {long && <button type="button" className="legend-more" onClick={() => setAll(!all)} aria-expanded={all}
         title={all ? 'Show the first few only' : 'Show every item (the chart shrinks to make room, or the tile scrolls)'}>
         {all ? 'fewer' : `+${displayItems.length - TILE_LIMIT} more`}</button>}
-      {note && explain && <span className="legend-note">{estimatorText(note, method)}</span>}
+      {children}
+      {note && explain && <span className="legend-note">{relabel(note)}</span>}
     </div>
   )
+}
+
+export interface LegendOptions {
+  /**
+   * Background keys: legend entries for what sits behind the data (season shading), not series. Hovering
+   * one reports it as `backgroundHover` (the chart deepens its own shading) and dims no series; a click
+   * hides one only with `hideBackground`.
+   */
+  background?: Iterable<string>
+  /** background keys hide on a click as series do (the chart then drops that shading and its data) */
+  hideBackground?: boolean
+  /**
+   * Entries whose visibility a control owns (an overlay toggle beside the chart): shown off in the legend
+   * while `shown` is false, a click calls `toggle`, and a hover on one that is off dims nothing.
+   */
+  external?: Record<string, { shown: boolean; toggle: () => void }>
 }
 
 /**
@@ -158,21 +200,35 @@ export function Legend({
  * the pointer is on. `show(label)` is the filter, `dim(label)` the opacity
  * factor for a series (1, or `low` while another series is hovered), and
  * `props` spreads straight onto `<Legend>`. A hovered series that is hidden
- * dims nothing, so the chart never fades out entirely.
+ * dims nothing, so the chart never fades out entirely. Background keys and
+ * control-owned entries: `LegendOptions`.
  */
-export function useLegend(initialHidden?: Iterable<string>) {
+export function useLegend(initialHidden?: Iterable<string>, options: LegendOptions = {}) {
   const [hidden, setHidden] = useState<Set<string>>(() => new Set(initialHidden))
   const [hover, setHover] = useState<string | null>(null)
-  const active = hover !== null && !hidden.has(hover) ? hover : null
+  const { external = {}, hideBackground = false } = options
+  const background = new Set(options.background)
+  const offOutside = Object.keys(external).filter((l) => !external[l].shown)
+  const legendHidden = offOutside.length ? new Set([...hidden, ...offOutside]) : hidden
+  const live = hover !== null && !legendHidden.has(hover) ? hover : null
+  const active = live !== null && !background.has(live) ? live : null
+  const backgroundHover = live !== null && background.has(live) ? live : null
+  const toggle = (label: string) => {
+    if (external[label]) external[label].toggle()
+    else if (hideBackground || !background.has(label)) setHidden((h) => toggleIn(h, label))
+  }
   return {
     hidden,
     setHidden,
+    /** the hovered series (never a background key) */
     hover: active,
+    /** the hovered background key, e.g. a season whose shading deepens */
+    backgroundHover,
     setHover,
     show: (label: string) => !hidden.has(label),
     dim: (label: string, low = 0.15) => (active === null || active === label ? 1 : low),
-    toggle: (label: string) => setHidden((h) => toggleIn(h, label)),
-    props: { hidden, highlighted: active, onToggle: (l: string) => setHidden((h) => toggleIn(h, l)), onHover: setHover },
+    toggle,
+    props: { hidden: legendHidden, highlighted: active ?? backgroundHover, onToggle: toggle, onHover: setHover },
   }
 }
 

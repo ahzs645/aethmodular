@@ -3,7 +3,7 @@ import { RegressionControls } from '@/lib/regressionPrefs'
 import { chemText } from '@/lib/format'
 import { CONVENTION_LABEL, seasonOnly } from '@/lib/seasons'
 import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { Dialog } from '@/components/Dialog'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useHeaderHeight, useSidePanelOpen, useSidePanelView, type SidePanelView } from '@/hooks/useSidePanel'
 import { DateBrush, type DateRange } from '@/components/DateBrush'
@@ -959,21 +959,14 @@ const EXCL_TITLE: Record<ExclMode, string> = {
 
 /** The exclusions in a dialog over the page (Esc or a click outside closes it). */
 function ExclusionsDialog({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', esc)
-    return () => window.removeEventListener('keydown', esc)
-  }, [onClose])
-  return createPortal(
-    <div className="export-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="export-dialog exclusions-dialog" role="dialog" aria-modal="true" aria-label="Excluded samples">
+  return (
+    <Dialog onClose={onClose} className="export-dialog exclusions-dialog" label="Excluded samples">
         <header className="exclusions-dialog-head">
           <strong>Excluded samples</strong>
           <button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close"><XIcon /></button>
         </header>
         {children}
-      </div>
-    </div>, document.body)
+    </Dialog>)
 }
 
 /** Copy a list of exclusions (id, site · date, reason) as JSON, e.g. to add to the repo's exclusion list. */

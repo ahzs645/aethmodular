@@ -1,9 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
 import { FieldSelect } from '@/components/FieldSelect'
-import { Legend, toggleIn } from '@/components/Legend'
+import { Legend, useLegend } from '@/components/Legend'
 import { ScrubField } from '@/components/ScrubField'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -42,8 +42,8 @@ export function WindSpeedConcentration({ rows, meta, field, wspdField, pickField
   const f = pickField ? own : field
   const [binParam, setBin] = useSearchParam<string>(`${id}.bin`, '0.5')
   const bin = Math.min(2, Math.max(0.25, Number(binParam) || 0.5))
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
-  const [hover, setHover] = useState<string | null>(null)
+  const lg = useLegend()
+  const hidden = lg.hidden
   // the options and when each applies (lib/chartOptions)
   const o = useChartOptions(id, [
     { key: 'field', when: () => pickField, node: () => <FieldSelect label="Measurement" value={own} meta={meta} onChange={setOwn} ratios={false} /> },
@@ -59,7 +59,7 @@ export function WindSpeedConcentration({ rows, meta, field, wspdField, pickField
     return { name: s.name, color: s.color, n: pts.length, bins: speedBins(pts, bin).filter((b) => b.n >= MIN_N) }
   }).filter((s) => s.bins.length > 0), [rows, meta.sites, f, wspdField, bin])
   const series = allSeries.filter((s) => !hidden.has(s.name))
-  const dim = (name: string) => (hover === null || hover === name || !series.some((s) => s.name === hover) ? 1 : 0.15)
+  const dim = lg.dim
 
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const innerH = height - MARGIN.top - MARGIN.bottom
@@ -100,7 +100,7 @@ export function WindSpeedConcentration({ rows, meta, field, wspdField, pickField
           </svg>
         )}
         <Legend items={allSeries.map((s) => ({ label: s.name, color: s.color, shape: 'line' as const, detail: `n=${s.n}` }))}
-          hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} onHover={setHover} highlighted={hover} />
+          {...lg.props} />
         {tip.node}
       </div>
     </ChartFrame>

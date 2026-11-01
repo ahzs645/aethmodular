@@ -9,6 +9,7 @@ import { nonAbsorbingFraction } from '@/lib/aeronetMath'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { colouring, num, recordOf } from './shared'
 import { useMarkedRows } from '@/lib/markedRows'
+import { Legend } from '@/components/Legend'
 
 /** the surface BC Eom's w can use, in the notebook's order of preference (it fell back from ChemSpec BC to FTIR EC to HIPS) */
 export const BC_CHOICES = ['EC (FTIR)', 'HIPS BC', 'BC (public HIPS)'] as const
@@ -53,10 +54,8 @@ export function AeronetNonAbsorbing({ rows, meta }: { rows: FilterRow[]; meta: M
           ))}
         </div>
       )}
-      <div className="legend">
-        {col.order(rows.filter((r) => nonAbsorbingFraction(r, bc) !== null && num(r[SSA_BY_WAVELENGTH[0][1]]))).map((k) =>
-          <span key={k} className="legend-item"><span className="swatch" style={{ background: col.color(k) }} />{col.label(k)}</span>)}
-      </div>
+      <Legend items={col.order(rows.filter((r) => nonAbsorbingFraction(r, bc) !== null && num(r[SSA_BY_WAVELENGTH[0][1]]))).map((k) =>
+        ({ label: col.label(k), color: col.color(k) }))} />
     </ChartFrame>
   )
 }

@@ -3,7 +3,7 @@ import { seasonOnly } from '@/lib/seasons'
 import { SeasonBands, monthSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Toggle } from '@/components/ChartFrame'
-import { Legend, toggleIn } from '@/components/Legend'
+import { Legend, useLegend } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -34,8 +34,9 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
   const tip = useTooltip(wrapRef)
   const height = useFitHeight() ?? 420
 
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
-  const [hover, setHover] = useState<string | null>(null)
+  // sites are series; seasons are background keys (hover deepens their shading, they do not hide)
+  const lg = useLegend(undefined, { background: meta.seasons.map((s) => s.name) })
+  const hidden = lg.hidden
   const [bands, setBands] = useState(true)
 
   const allSeries = useMemo(
@@ -51,9 +52,8 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
   )
   const series = allSeries.filter((s) => !hidden.has(s.name))
   // a hovered site dims the other sites; a hovered season (a background key, not a series) deepens its own shading
-  const siteHover = hover && series.some((s) => s.name === hover) ? hover : null
-  const seasonHover = hover && meta.seasons.some((s) => s.name === hover) ? hover : null
-  const dim = (name: string) => (siteHover === null || siteHover === name ? 1 : 0.15)
+  const seasonHover = lg.backgroundHover
+  const dim = lg.dim
 
   const innerW = Math.max(240, width - MARGIN.left - MARGIN.right)
   const innerH = height - MARGIN.top - MARGIN.bottom
@@ -128,10 +128,7 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
             ...allSeries.map((s) => ({ label: s.name, color: s.color, shape: 'line' as const })),
             ...(mixed ? [] : meta.seasons.map((s) => ({ label: s.name, color: s.color, shape: 'band' as const }))),
           ]}
-          hidden={hidden}
-          onToggle={(l) => { if (allSeries.some((s) => s.name === l)) setHidden((h) => toggleIn(h, l)) }}
-          onHover={setHover}
-          highlighted={siteHover ?? seasonHover}
+          {...lg.props}
           note={emphasizeFebruary ? 'hollow marker = February (convention-dependent)' : calendarLabel(meta)}
         />
         <ExcludedNote fields={[field]} />
