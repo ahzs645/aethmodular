@@ -19,8 +19,8 @@ import { baselineName } from '@/lib/labels'
 import { BaselineRankProvider, useBaselineColors } from '@/lib/baselineRank'
 import { dotFill, dotRim, type FilterRecord, useHighlightActions } from '@/lib/highlight'
 import { baselineMetrics, pairedAbsoluteErrorDifference, retainedWavenumber } from '@/lib/baselineComparison'
-import { BaselineResearchDiagnostics, RegionContribution, SiteBandPattern, BlankSpread, svgLegendItem, type SvgLegendState } from '@/pages/BaselineResearchDiagnostics'
-import { useLegend } from '@/components/Legend'
+import { BaselineResearchDiagnostics, RegionContribution, SiteBandPattern, BlankSpread } from '@/pages/BaselineResearchDiagnostics'
+import { Legend, useLegend } from '@/components/Legend'
 import { BaselineFollowup } from '@/pages/BaselineFollowup'
 import { CompletedVibesDiagnostics } from '@/pages/BaselineResearchDiagnostics'
 import { BaselineExternalPilot } from '@/pages/BaselineExternalPilot'
@@ -149,12 +149,6 @@ function pairRecord(r: BaselinePair, source: string): FilterRecord {
   }
 }
 
-/** Legends live in the SVG so chart downloads retain the method identities. */
-function MethodLegend({ width, y, items, lg }: { width: number; y: number; items: { label: string; color: string }[]; lg: SvgLegendState }) {
-  const step = Math.min(175,(width-48)/items.length)
-  return <g transform={`translate(24,${y})`} fontFamily={FONT.family} fontSize={11}>{items.map((m,i)=>{ const { hit, ...p } = svgLegendItem(lg, m.label, step); return <g key={m.label} transform={`translate(${i*step},0)`} {...p}>{hit}<line x2={12} y1={-3} y2={-3} stroke={m.color} strokeWidth={2}/><text x={18} fill={INK.text}>{m.label}</text></g> })}</g>
-}
-
 function ResidualPlot({ rows, available, onInspect, cohort }: { rows: BaselinePair[]; available: Set<string>; onInspect: (s: string) => void; cohort: BaselineCohort }) {
   const COLOR = useBaselineColors()
   const ref = useRef<HTMLDivElement>(null); const { width } = useDimensions(ref); const tip = useTooltip(ref); const hl = useHighlightActions()
@@ -199,12 +193,12 @@ function ErrorDifferencePlot({ rows, cohort }: { rows: BaselinePair[]; cohort: B
   const better = values.filter(v => v < 0).length, worse = values.filter(v => v > 0).length
   return <ChartFrame title="Which method is closer for each filter?" tip={<p>The counts describe individual filters; they do not establish a statistically significant gain. Changing bins changes the display only. Inspired by the <a href="https://www.react-graph-gallery.com/histogram" target="_blank" rel="noreferrer">React Graph Gallery histogram</a>.</p>} controls={<Select label="Histogram bins" value={binCount} options={['10','20','40','80']} onChange={setBinCount}/>}>
     <Note>{cohortName(cohort)}, current display subset. Each filter contributes one value: |VIBES − TOR| − |Spline − TOR|. Negative favors VIBES; positive favors the spline baseline.</Note>
-    <div ref={ref} className="chart-wrap">{!rows.length ? <Empty>No test filters match both selections.</Empty> : <svg width={w} height={360} role="img" aria-label="Histogram of paired absolute error differences, VIBES minus AIRSpec"><g transform="translate(70,30)">
+    <div ref={ref} className="chart-wrap">{!rows.length ? <Empty>No test filters match both selections.</Empty> : <svg width={w} height={325} role="img" aria-label="Histogram of paired absolute error differences, VIBES minus AIRSpec"><g transform="translate(70,30)">
       <YAxis scale={y} x={0} gridWidth={iw} label="Physical filters" format={v=>Number.isInteger(v)?String(v):''}/>
       {bins.map((b,i)=>lg.show(side(b))&&<rect key={i} x={x(b.x0!)+.5} y={y(b.length)} width={Math.max(0,x(b.x1!)-x(b.x0!)-1)} height={ih-y(b.length)} fill={b.x1!<=0?COLOR.VIBES:COLOR.AIRSpec} fillOpacity={.8*lg.dim(side(b))} onMouseEnter={e=>tip.show(e,[`${f(b.x0)} to ${f(b.x1)} µg/filter`,`${b.length} filters (${f(100*b.length/rows.length,1)}%)`,`Lower bound included; upper bound ${i===bins.length-1?'included':'excluded'}.`])} onMouseLeave={tip.hide}></rect>)}
       <RefLine orient="v" at={x(0)} from={0} to={ih} />
       <XAxis scale={x} y={ih} label="Δ absolute error (µg/filter)"/>
-    </g><MethodLegend width={w} y={348} items={[{label:'VIBES closer (<0)',color:COLOR.VIBES},{label:'Spline closer (>0)',color:COLOR.AIRSpec}]} lg={lg}/></svg>}{tip.node}</div>
+    </g></svg>}{rows.length>0&&<Legend items={[{label:'VIBES closer (<0)',color:COLOR.VIBES,shape:'square'},{label:'Spline closer (>0)',color:COLOR.AIRSpec,shape:'square'}]} {...lg.props}/>}{tip.node}</div>
     <Note>{rows.length.toLocaleString()} paired filters: VIBES closer {better.toLocaleString()}, spline closer {worse.toLocaleString()}, exact ties {values.length-better-worse}. Mean difference (ΔMAE): {f(d3.mean(values))}; median: {f(d3.median(values))} µg/filter. All tails are shown. Exact ties fall in the bin starting at zero.</Note>
     <FixedSetNote what="the frozen paired IMPROVE test filters of this benchmark" />
   </ChartFrame>
@@ -219,6 +213,8 @@ function LoadingPlot({ groups }: { groups: BaselineGroup[] }) {
     <FixedSetNote what="the frozen paired IMPROVE test filters of this benchmark" />
   </ChartFrame>
 }
+/** one spectrum panel's height: the plot, its axis and the caption line (stacked panels name their method there) */
+const PANEL_H = 360
 function SpectraPlot({ spectrum:s, data, onSample, masks, archivedBenchmark=true }: { spectrum: BaselineSpectrum; data: BaselineData; onSample:(x:string)=>void; masks:HistoricalMask[]; archivedBenchmark?:boolean }) {
   const COLOR = useBaselineColors()
   const ref=useRef<HTMLDivElement>(null);const {width}=useDimensions(ref);const lg=useLegend()
@@ -267,12 +263,12 @@ function SpectraPlot({ spectrum:s, data, onSample, masks, archivedBenchmark=true
     {archivedBenchmark&&fullRange&&<Note>The archived raw spectrum and paired corrections end near 1425 cm⁻¹. {view==='Corrected spectra'?<>Orange shows the selected full-range VIBES correction (4000–500 cm⁻¹; 8-channel display means{fullTrace?`; ${traceVersionLabel(fullTrace)}`:''}). The prediction values below still refer to the archived fits.{!fullTrace&&' Full-range trace is loading or unavailable for this filter.'}</>:<>Choose Corrected spectra to display the current full-range VIBES trace. Raw/baseline and difference values below 1425 cm⁻¹ are unavailable.</>}</Note>}
     {!archivedBenchmark&&<Note>VIBES is corrected on 4000–500 cm⁻¹{fullTrace?` (${traceVersionLabel(fullTrace)})`:''}; the spline ends near 1425 cm⁻¹. Traces are 8-channel display means. Selecting the shared window crops the display of the full-range fit.{!fullTrace&&' Full-range VIBES is loading or unavailable; no archived trace is substituted.'}</Note>}
     {difference&&<Note>Pointwise corrected absorbance: VIBES − spline baseline. Zero means the corrections agree at that channel; a difference does not establish which is chemically correct.</Note>}
-    <div ref={ref} className="chart-wrap"><svg width={w} height={385*(layout==='Stacked'?Math.max(1,drawn.length):1)} role="img" aria-label={`Single-filter ${view.toLowerCase()}, ${range}, ${layout}`}>
-      {(layout==='Stacked'&&drawn.length?drawn.map(r=>[r]):[drawn]).map((panel,k)=><g key={k} transform={`translate(0,${k*385})`} data-spectrum-panel={layout==='Stacked'?panel[0]?.label??'comparison':'comparison'}>
+    <div ref={ref} className="chart-wrap"><svg width={w} height={PANEL_H*(layout==='Stacked'?Math.max(1,drawn.length):1)} role="img" aria-label={`Single-filter ${view.toLowerCase()}, ${range}, ${layout}`}>
+      {(layout==='Stacked'&&drawn.length?drawn.map(r=>[r]):[drawn]).map((panel,k)=><g key={k} transform={`translate(0,${k*PANEL_H})`} data-spectrum-panel={layout==='Stacked'?panel[0]?.label??'comparison':'comparison'}>
         <g transform="translate(72,20)"><YAxis scale={y} x={0} gridWidth={iw} label={difference?'Δ absorbance':'Absorbance'}/>{chosen.co2_low!==null&&shade(chosen.co2_low,chosen.co2_high!)}{chosen.upper!==null&&shade(chosen.upper,4000)}{difference&&<line x2={iw} y1={y(0)} y2={y(0)} stroke={INK.fit} strokeDasharray="4 3"/>}{panel.map(r=><path key={r.label} aria-label={r.label} d={line(r)} stroke={r.color} strokeWidth={1.7} strokeOpacity={lg.dim(r.label)} fill="none"/>)}<XAxis scale={x} y={ih} label="Wavenumber (cm⁻¹)" tickCount={7}/></g>
-        <MethodLegend width={w} y={350} items={(layout==='Stacked'&&k>0?panel:series).map(r=>({label:r.label,color:r.color}))} lg={lg}/><text x={24} y={375} fontFamily={FONT.family} fontSize={10} fill={INK.muted}>{`${range} · VIBES ${vibesRank==='70'?'completed rank 70':'preliminary rank 30'} · ${maskName(mask)} · display only`}</text>
+        <text x={24} y={350} fontFamily={FONT.family} fontSize={10} fill={INK.muted}>{layout==='Stacked'&&panel[0]&&<tspan fill={panel[0].color} fontWeight={600}>{`${panel[0].label} · `}</tspan>}{`${range} · VIBES ${vibesRank==='70'?'completed rank 70':'preliminary rank 30'} · ${maskName(mask)} · display only`}</text>
       </g>)}
-    </svg></div>
+    </svg><Legend items={series.map(r=>({label:r.label,color:r.color,shape:'line' as const}))} {...lg.props}/></div>
     <Note>{s.site}, {s.sample_id}, {s.date}. TOR {f(s.truth)} µg/filter.{archivedBenchmark&&<> AIRSpec {f(s.AIRSpec_prediction)}, archived VIBES {f(s.VIBES_prediction)} µg/filter. Predictions refer to the archived full-pool benchmark.</>}</Note>
     <Note>These 12 cases were selected post hoc as three worse and three better cases at BRIS1 and CACR1 in the archived benchmark. They are individual spectra, not representative averages or a ranking of current full-range performance.</Note>
   </ChartFrame>
@@ -327,7 +323,7 @@ function RecoveryPlot({data}:{data:BaselineData}) {
   const x=d3.scaleBand().domain(categories).range([0,iw]).padding(.35)
   const y=d3.scaleLinear().domain([0,(d3.max(categories.flatMap(c=>METHODS.filter(lg.show).map(m=>values(m,c))))??1)*1.2]).nice().range([ih,0])
   return <ChartFrame title="Blank removal and known-addition recovery" controls={<Segmented label="Spectroscopy outcome" value={outcome} options={['Blank residual RMS','Synthetic recovery RMSE']} onChange={setOutcome}/> }>
-    <div ref={ref} className="chart-wrap"><svg width={w} height={335} role="img" aria-label={outcome}><g transform="translate(70,20)"><YAxis scale={y} x={0} gridWidth={iw} label={blank?'Median RMS (10⁻⁴ absorbance)':'Median RMSE (10⁻³ absorbance)'}/><XAxis scale={x} y={ih} label={blank?'Held-out blanks':'Injected amplitude (absorbance)'} format={v=>blank?(v==='etad'?'ETAD (n=9)':'IMPROVE (n=126)'):v}/>{categories.flatMap(c=>METHODS.map((m,i)=>lg.show(m)&&<g key={c+m} opacity={lg.dim(m)}><rect x={x(c)!+i*x.bandwidth()/2} y={y(values(m,c))} width={x.bandwidth()/2} height={ih-y(values(m,c))} fill={COLOR[m]}/><text x={x(c)!+(i+.5)*x.bandwidth()/2} y={y(values(m,c))-6} textAnchor="middle" fontFamily={FONT.family} fontSize={11}>{f(values(m,c),2)}</text></g>))}</g><MethodLegend width={w} y={330} items={METHODS.map(m=>({label:m,color:COLOR[m]}))} lg={lg}/></svg></div>
+    <div ref={ref} className="chart-wrap"><svg width={w} height={315} role="img" aria-label={outcome}><g transform="translate(70,20)"><YAxis scale={y} x={0} gridWidth={iw} label={blank?'Median RMS (10⁻⁴ absorbance)':'Median RMSE (10⁻³ absorbance)'}/><XAxis scale={x} y={ih} label={blank?'Held-out blanks':'Injected amplitude (absorbance)'} format={v=>blank?(v==='etad'?'ETAD (n=9)':'IMPROVE (n=126)'):v}/>{categories.flatMap(c=>METHODS.map((m,i)=>lg.show(m)&&<g key={c+m} opacity={lg.dim(m)}><rect x={x(c)!+i*x.bandwidth()/2} y={y(values(m,c))} width={x.bandwidth()/2} height={ih-y(values(m,c))} fill={COLOR[m]}/><text x={x(c)!+(i+.5)*x.bandwidth()/2} y={y(values(m,c))-6} textAnchor="middle" fontFamily={FONT.family} fontSize={11}>{f(values(m,c),2)}</text></g>))}</g></svg><Legend items={METHODS.map(m=>({label:m,color:COLOR[m],shape:'square' as const}))} {...lg.props}/></div>
     <Note>{blank?'Held-out blanks are separate from background training. Smaller residual RMS supports background removal, not independent ambient chemical accuracy.':'The same nine independent parent blanks recur at three amplitudes. Recovery uses corrected(blank + injection) − corrected(blank). VIBES improves larger additions but worsens the weakest. These are not 27 independent parent blanks.'}</Note>
   </ChartFrame>
 }

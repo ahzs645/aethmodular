@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent } from 'react'
+import { useRef, useState } from 'react'
 import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
@@ -11,7 +11,8 @@ import { fixed as f } from '@/lib/format'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { useBaselineColors } from '@/lib/baselineRank'
 import { useHighlightActions } from '@/lib/highlight'
-import { useLegend } from '@/components/Legend'
+import { Legend, useLegend } from '@/components/Legend'
+import { ColorLegend } from '@/components/ColorLegend'
 import { BaselineFollowup } from '@/pages/BaselineFollowup'
 import type { ApplicabilityData, ApplicabilityRow, BaselineCohort, BaselineContribution, BaselineData, BaselineMethod, BaselinePair } from '@/lib/baselineComparison'
 import { FixedSetNote } from '@/lib/markedRows'
@@ -68,10 +69,10 @@ function ApplicabilityViews({data}:{data:ApplicabilityData}) {
     <ChartFrame title="Distance from training spectra" controls={<Segmented label="Spectral diagnostic" value={metric} options={['PCA score distance','Unmodeled spectral variation']} onChange={setMetric}/>}
       subtitle="Mean held-out absolute EC error by percentile of the training-only spectral distribution. Each method uses its own PCA fit.">
       <Note>Full-pool held-out IMPROVE filters only; 2,327 physical test filters per method. {metric==='PCA score distance'?'Score distance (T²) from an eight-component PCA fit. This is not the saved PLS score space.':'Residual spectral RMS (Q) after eight PCA components.'} Values are percentiles of the corresponding training spectra.</Note>
-      <div ref={ref} className="chart-wrap"><svg width={w} height={310} role="img" aria-label="Mean absolute held-out EC error by training spectral distance percentile"><g transform="translate(70,20)"><YAxis scale={y} x={0} gridWidth={iw} label="Mean |error| (µg/filter)"/><rect x={x(95)} width={x(100)-x(95)} height={ih} fill="#c49442" fillOpacity={.12}/>{METHODS.filter(lg.show).map(method=>{
+      <div ref={ref} className="chart-wrap"><svg width={w} height={295} role="img" aria-label="Mean absolute held-out EC error by training spectral distance percentile"><g transform="translate(70,20)"><YAxis scale={y} x={0} gridWidth={iw} label="Mean |error| (µg/filter)"/><rect x={x(95)} width={x(100)-x(95)} height={ih} fill="#c49442" fillOpacity={.12}/>{METHODS.filter(lg.show).map(method=>{
         const m=bins.filter(b=>b.method===method)
         return <g key={method} opacity={lg.dim(method)}><path d={d3.line<(typeof m)[number]>().x(b=>cx(b.low)).y(b=>y(b.mae))(m)??''} stroke={COLOR[method]} strokeWidth={2} fill="none"/>{m.map(b=><circle key={b.low} cx={cx(b.low)} cy={y(b.mae)} r={4.5} fill={COLOR[method]} onMouseEnter={e=>tip.show(e,[method,`Training percentile ${b.low}–${b.low+20}`,`${b.n} filters; mean |error| ${f(b.mae,3)} µg/filter`])} onMouseLeave={tip.hide}></circle>)}</g>
-      })}<XAxis scale={x} y={ih} label="Training spectral percentile"/></g><Legend width={w} y={300} items={METHODS.map(m=>({label:m,color:COLOR[m]}))} lg={lg}/></svg>{tip.node}</div>
+      })}<XAxis scale={x} y={ih} label="Training spectral percentile"/></g></svg><Legend items={METHODS.map(m=>({label:m,color:COLOR[m],shape:'line' as const}))} {...lg.props}/>{tip.node}</div>
       <Note>This is an exploratory binning of already inspected test outcomes. Mean errors can rise with EC loading or site composition. No cutoff has been selected or validated.</Note>
       <FixedSetNote what="the frozen held-out IMPROVE test filters" />
     </ChartFrame>
@@ -98,11 +99,11 @@ export function RegionContribution({data,sample}:{data:BaselineData;sample:strin
   const y=d3.scaleLinear().domain([-bound*1.08,bound*1.08]).nice().range([ih,0])
   return <ChartFrame title="What moves this prediction?" subtitle="An exact algebraic split of VIBES minus AIRSpec EC prediction for the selected inspected case. Terms depend on both frozen models.">
     <ExplainOnly><Note>{sample}. Each interval has a change from corrected spectra and a change from fitted EC coefficients. A separate intercept and centering term contributes {f(row.intercept_and_centering_delta,3)} µg/filter.</Note></ExplainOnly>
-    <div ref={ref} className="chart-wrap"><svg width={w} height={325} role="img" aria-label="Prediction difference decomposed by spectral region and model coefficient"><g transform="translate(95,20)"><YAxis scale={y} x={0} gridWidth={iw} label="Δ prediction (µg/filter)"/><line x2={iw} y1={y(0)} y2={y(0)} stroke={INK.text}/>{entries.flatMap(e=>[['spectra',COLOR.VIBES,'Corrected spectra'],['coefficients',COLOR.AIRSpec,'EC coefficients']].map(([key,color,label],i)=>{
+    <div ref={ref} className="chart-wrap"><svg width={w} height={310} role="img" aria-label="Prediction difference decomposed by spectral region and model coefficient"><g transform="translate(95,20)"><YAxis scale={y} x={0} gridWidth={iw} label="Δ prediction (µg/filter)"/><line x2={iw} y1={y(0)} y2={y(0)} stroke={INK.text}/>{entries.flatMap(e=>[['spectra',COLOR.VIBES,'Corrected spectra'],['coefficients',COLOR.AIRSpec,'EC coefficients']].map(([key,color,label],i)=>{
       const v=e[key as 'spectra'|'coefficients'];const xx=x(e.name)!+i*x.bandwidth()/2
       if(!lg.show(label))return null
       return <rect key={e.name+key} x={xx} y={Math.min(y(v),y(0))} width={x.bandwidth()/2} height={Math.abs(y(v)-y(0))} fill={color} opacity={lg.dim(label)}><title>{`${e.name} ${key}: ${f(v,3)} µg/filter`}</title></rect>
-    }))}<XAxis scale={x} y={ih} label="Wavenumber (cm⁻¹)"/></g><Legend width={w} y={315} items={[{label:'Corrected spectra',color:COLOR.VIBES},{label:'EC coefficients',color:COLOR.AIRSpec}]} lg={lg}/></svg></div>
+    }))}<XAxis scale={x} y={ih} label="Wavenumber (cm⁻¹)"/></g></svg><Legend items={[{label:'Corrected spectra',color:COLOR.VIBES,shape:'square' as const},{label:'EC coefficients',color:COLOR.AIRSpec,shape:'square' as const}]} {...lg.props}/></div>
     <ExplainOnly><Note>All terms plus rounding sum to {f(row.prediction_delta,3)} µg/filter. The symmetric split explains saved model arithmetic; it does not identify a chemical cause. The 12 inspection cases were selected after reviewing errors.</Note></ExplainOnly>
   </ChartFrame>
 }
@@ -125,7 +126,8 @@ export function SiteBandPattern({rows,cohort}:{rows:BaselinePair[];cohort:Baseli
   const color=d3.scaleDiverging([-bound,0,bound],d3.interpolateRgbBasis(colours.stops)).clamp(true)
   return <ChartFrame title="Site and loading pattern" controls={colours.picker} subtitle="Mean VIBES minus AIRSpec absolute EC error in the selected frozen test population. This screens for heterogeneity; it is not a trained model-routing rule.">
     <ExplainOnly><Note>{cohort==='full_pool'?'Full pool':'Restricted lowest-OC/EC'}, current display subset ({rows.length} paired physical filters). Colors show ΔMAE in µg/filter: the negative end of the palette favors VIBES, the positive end favors the spline baseline (AIRSpec. Cells with fewer than five filters are gray; blank cells have none.</Note></ExplainOnly>
-    <div ref={ref} className="chart-wrap"><svg width={w} height={ih+118} role="img" aria-label="Site by training loading quartile heatmap of paired absolute error difference"><g transform="translate(77,25)" fontFamily={FONT.family}>{cells.map(c=>c.n?<rect key={c.site+c.band} x={x(c.band)} y={y(c.site)} width={x.bandwidth()} height={y.bandwidth()} fill={c.n<5?INK.grid:color(c.delta!)} stroke={INK.panel} onMouseEnter={e=>tip.show(e,[`${c.site} / ${c.band}`,`${c.n} physical filters`,`ΔMAE ${f(c.delta,3)} µg/filter`,c.n<5?'Shown gray: fewer than five filters':''])} onMouseLeave={tip.hide}></rect>:null)}{sites.map(s=><text key={s} x={-8} y={y(s)!+y.bandwidth()/2+4} textAnchor="end" fontSize={10} fill={INK.text}>{s}</text>)}<XAxis scale={x} y={ih} label="Training-defined EC loading quartile"/></g><ColorKey x={77} y={ih+92} bound={bound} color={color}/></svg>{tip.node}</div>
+    <div ref={ref} className="chart-wrap"><svg width={w} height={ih+75} role="img" aria-label="Site by training loading quartile heatmap of paired absolute error difference"><g transform="translate(77,25)" fontFamily={FONT.family}>{cells.map(c=>c.n?<rect key={c.site+c.band} x={x(c.band)} y={y(c.site)} width={x.bandwidth()} height={y.bandwidth()} fill={c.n<5?INK.grid:color(c.delta!)} stroke={INK.panel} onMouseEnter={e=>tip.show(e,[`${c.site} / ${c.band}`,`${c.n} physical filters`,`ΔMAE ${f(c.delta,3)} µg/filter`,c.n<5?'Shown gray: fewer than five filters':''])} onMouseLeave={tip.hide}></rect>:null)}{sites.map(s=><text key={s} x={-8} y={y(s)!+y.bandwidth()/2+4} textAnchor="end" fontSize={10} fill={INK.text}>{s}</text>)}<XAxis scale={x} y={ih} label="Training-defined EC loading quartile"/></g></svg>
+      <div className="legend"><ColorLegend scale={color} scheme={colours.scheme} width={280} label="ΔMAE, µg/filter" format={v=>f(v,2)} note="− VIBES closer · AIRSpec closer +"/><Legend items={[{label:'fewer than 5 filters',color:INK.grid,shape:'square'}]}/></div>{tip.node}</div>
     <ExplainOnly><Note>Color saturates beyond ±{f(bound,2)} µg/filter, the 90th percentile of displayed cell magnitudes; hover gives exact values and counts. The quartiles use measured TOR EC, so they cannot route an Addis prediction without independent EC. The separate CLI notebook evaluates an exploratory spectrum-only router; this heatmap is not that model.</Note></ExplainOnly>
     <FixedSetNote what="the frozen paired IMPROVE test filters of this benchmark" />
   </ChartFrame>
@@ -148,34 +150,4 @@ export function BlankSpread({data}:{data:BaselineData}) {
     <div ref={ref} className="chart-wrap"><svg width={w} height={300} role="img" aria-label="Individual held-out blank residual RMS by correction method"><g transform="translate(75,20)"><YAxis scale={y} x={0} gridWidth={iw} label="RMS (10⁻⁴ absorbance)"/>{points.map((p,i)=><circle key={p.sample_id+p.method} cx={x(p.method)!+x.bandwidth()/2+((i%9)-4)*2.4} cy={y(p.rms_from_zero*1e4)} r={source==='ETAD'?4:2.7} fill={COLOR[p.method]} fillOpacity={.55} style={{cursor:'pointer'}} onClick={()=>openBlank(p.sample_id)}><title>{`${p.sample_id} ${p.method}: ${f(p.rms_from_zero,7)} absorbance`}</title></circle>)}<XAxis scale={x} y={ih} label="Correction method"/></g></svg></div>
     <Note>Field blanks can carry artifacts or residual material. This assesses background removal, not ambient EC accuracy. The nine ETAD blanks are independent parents; synthetic injections reuse parents at multiple amplitudes.</Note>
   </ChartFrame>
-}
-
-/** What an in-SVG legend needs from `useLegend`: click hides a series, hover or focus dims the others. */
-export type SvgLegendState={hidden:Set<string>;hover:string|null;toggle:(label:string)=>void;setHover:(label:string|null)=>void}
-/** Props for one reactive in-SVG legend entry; hidden entries fade to .35, the others to .3 while one is hovered. */
-export function svgLegendItem(lg:SvgLegendState,label:string,hitWidth:number) {
-  const off=lg.hidden.has(label)
-  return {role:'button',tabIndex:0,'aria-pressed':!off,'aria-label':`${label}: ${off?'show':'hide'}`,style:{cursor:'pointer'},opacity:off?.35:lg.hover&&lg.hover!==label?.3:1,
-    onClick:()=>lg.toggle(label),onKeyDown:(e:KeyboardEvent)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();lg.toggle(label)}},
-    onMouseEnter:()=>lg.setHover(label),onMouseLeave:()=>lg.setHover(null),onFocus:()=>lg.setHover(label),onBlur:()=>lg.setHover(null),
-    hit:<rect x={-3} y={-13} width={Math.max(20,hitWidth-6)} height={17} fill="transparent"/>}
-}
-
-function Legend({width,y,items,lg}:{width:number;y:number;items:{label:string;color:string}[];lg:SvgLegendState}) {
-  const step=Math.min(175,(width-50)/items.length)
-  return <g transform={`translate(25,${y})`} fontFamily={FONT.family} fontSize={10}>{items.map((item,i)=>{const {hit,...p}=svgLegendItem(lg,item.label,step);return <g key={item.label} transform={`translate(${i*step},0)`} {...p}>{hit}<line x2={12} y1={-3} y2={-3} stroke={item.color} strokeWidth={3}/><text x={17} fill={INK.text}>{item.label}</text></g>})}</g>
-}
-
-/** The heatmap's key: VIBES-closer purple through zero to AIRSpec-closer orange, plus the gray n<5 swatch. */
-function ColorKey({x,y,bound,color}:{x:number;y:number;bound:number;color:(v:number)=>string}) {
-  const stops=d3.range(0,1.0001,.1).map(t=>-bound+2*bound*t)
-  const kw=280
-  return <g transform={`translate(${x},${y})`} fontFamily={FONT.family} fontSize={10} fill={INK.text}>
-    <defs><linearGradient id="site-band-key">{stops.map((v,i)=><stop key={i} offset={`${i*10}%`} stopColor={color(v)}/>)}</linearGradient></defs>
-    <text x={0} y={-4}>ΔMAE, µg/filter</text>
-    <rect x={0} y={0} width={kw} height={9} fill="url(#site-band-key)"/>
-    <text x={0} y={21} fill={INK.muted}>{`−${f(bound,2)} VIBES closer`}</text>
-    <text x={kw} y={21} textAnchor="end" fill={INK.muted}>{`AIRSpec closer +${f(bound,2)}`}</text>
-    <rect x={kw+24} y={0} width={14} height={9} fill={INK.grid}/><text x={kw+43} y={8} fill={INK.muted}>fewer than 5 filters</text>
-  </g>
 }

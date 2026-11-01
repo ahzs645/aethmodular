@@ -294,6 +294,7 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
     </div>
     <ExcludedNote count={out.length} drawn />
   </ChartFrame>
+  // the fit readouts sit right of the plot; the site key is the HTML Key under it, as in the optical panel
   const legendX = plot.r + 30
   const legendY = plot.t + 4
   return <ChartFrame id="baseline-spectral-sites" title={title} tip={tipContent} controls={controls}>
@@ -313,12 +314,9 @@ function AllFilterScatter({ rows, mode, method, onMethod, site, onSite, mac, dem
       </g>)}</g>
       <text x={(plot.l + plot.r) / 2} y={plot.b + 49} textAnchor="middle" fontSize={12} fill={INK.axis}>{optical ? `HIPS Fabs ÷ MAC ${mac} (µg/m³)` : '2920 cm⁻¹ local height (corrected absorbance)'}</text>
       <text transform={`translate(19 ${(plot.t + plot.b) / 2}) rotate(-90)`} textAnchor="middle" fontSize={12} fill={INK.axis}>{optical ? 'Frozen FTIR EC prediction (µg/m³)' : '1617 cm⁻¹ local height (corrected absorbance)'}</text>
-      <g fontSize={11} fill={INK.text}>
-        <circle cx={legendX} cy={legendY} r={4} fill="#2C6E9E"/><text x={legendX + 10} y={legendY + 4}>Addis</text>
-        <circle cx={legendX} cy={legendY + 20} r={4} fill="#C49442"/><text x={legendX + 10} y={legendY + 24}>Bishoftu</text>
-      </g>
-      {methods.length > 0 && fitGroups.map((group, i) => <RegressionReadout key={group.name} stats={group.stats} title={group.name} color={group.color} x={legendX} y={legendY + 50 + i * readoutGap} width={250} />)}
-    </svg></div>
+      {methods.length > 0 && fitGroups.map((group, i) => <RegressionReadout key={group.name} stats={group.stats} title={group.name} color={group.color} x={legendX} y={legendY + 10 + i * readoutGap} width={250} />)}
+    </svg>
+      <Key items={[{ label: `Addis (n ${counts.Addis})`, color: siteColor('Addis') }, { label: `Bishoftu (n ${counts.Bishoftu})`, color: siteColor('Bishoftu') }]} /></div>
     {handNote && <Note>{handNote}</Note>}
     <ExcludedNote count={out.length} drawn />
   </ChartFrame>
