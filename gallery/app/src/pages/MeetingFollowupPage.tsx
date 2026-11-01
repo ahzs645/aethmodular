@@ -1,7 +1,5 @@
 import { monthBlocks } from '@/lib/regressionCI'
 import { demingLambda } from '@/lib/macMath'
-import { robustDomain } from '@/lib/axes'
-import { RefLine } from '@/components/RefLines'
 import { regression } from '@/lib/stats'
 import { EstimatorViews, FIT_STYLE, useEstimator, useRegressions, fitsFor } from '@/lib/regressionPrefs'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -19,16 +17,16 @@ import { FullRangeVibesStatus } from '@/components/FullRangeVibesStatus'
 import { MeetingCalibrationDetails } from '@/components/MeetingCalibrationDetails'
 import { SeasonalComposition } from '@/components/SeasonalComposition'
 import { SpecCurve } from '@/charts/calibration/SpecCurve'
-import { XAxis, YAxis } from '@/components/Axes'
 import { SpectrumPlot, type SpectrumBand, type SpectrumSeries } from '@/components/SpectrumPlot'
 import { channelQuantiles, iqrRows } from '@/lib/spectra'
 import { SweepPlot } from '@/components/SweepPlot'
+import { ScatterPlot, type ScatterPoint, type ScatterShape } from '@/components/ScatterPlot'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
 import { PageChoiceControls, PageChoices, usePageChoice } from '@/lib/pageChoices'
 import { SidebarControls } from '@/lib/pageSidebar'
-import { baseFilterId, dotRim, useHighlight, useHighlightActions } from '@/lib/highlight'
+import { baseFilterId, useHighlight, useHighlightActions } from '@/lib/highlight'
 import { ADDIS_ALL, BASELINE_COLOR, FONT, IMPROVE_GREY, INK, OCT1_HATCH, SPECTRAL_REGION, dotOpacity } from '@/lib/theme'
 import { ANALOG_SELECTION_EXCLUDED, OCT1_ALSO_EXCLUDED } from '@/components/SpectralRegions'
 import { coef, coefSigned, f2, fmt, signed } from '@/lib/format'
@@ -1077,9 +1075,6 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
   const { value: method } = usePageChoice('baseline', methods)
   const stat = useStat(data)
   const [gridSet, setGridSet] = useSearchParam<string>('migrid', 'passing', ['passing', 'all', 'none'])
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const gridColours = useColourScheme('slope-intercept-grid', 'categorical', 'Tableau 10')
   type P = { x: number; y: number; color: string; r: number; shape: 'dot' | 'tri' | 'star' | 'sq' | 'x'; op: number; tip: string[]; ci?: [number, number, number, number] }
   const pts: P[] = []
@@ -1121,24 +1116,13 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
   one(`allimprove|${method}|all-IMPROVE lot 251`, INK.fit, 'sq', 'All-IMPROVE model, lot 251')
   one('deployed|SPARTAN|current SPARTAN calibration', '#b91c1c', 'x', 'Current SPARTAN calibration')
 
-  const xs = pts.map((p) => p.x).filter(Number.isFinite), ys = pts.map((p) => p.y).filter(Number.isFinite)
-  const xDom = robustDomain(xs, 0.005, 0.995, { include: [0, 1.5], fallback: [0, 2] }).domain
-  const yDom = robustDomain(ys, 0.005, 0.995, { include: [-1, 1], fallback: [-5, 1] }).domain
+  // the summary markers over the clouds of splits and grid points; points beyond the 0.5–99.5 % ranges are pinned
+  // to the edge (components/ScatterPlot), and every mark answers the pointer through one ScatterLayer
+  const SHAPE: Record<P['shape'], ScatterShape> = { dot: 'dot', sq: 'square', tri: 'triangle', star: 'star', x: 'cross' }
+  const RIM: Partial<Record<P['shape'], { stroke: string; strokeWidth: number }>> = { sq: { stroke: INK.panel, strokeWidth: 1 }, tri: { stroke: INK.fit, strokeWidth: 1 }, star: { stroke: INK.panel, strokeWidth: 1 } }
+  const marks: ScatterPoint[] = [...pts.filter((p) => p.shape === 'dot'), ...pts.filter((p) => p.shape !== 'dot')].map((p, i) => ({
+    x: p.x, y: p.y, color: p.color, r: p.r, shape: SHAPE[p.shape], opacity: p.op, tip: p.tip, key: String(i), ...RIM[p.shape] }))
   const m = { top: 20, right: 20, bottom: 50, left: 64 }
-  const side = Math.max(300, Math.min((width || 600) - m.left - m.right, 560))
-  const x = d3.scaleLinear().domain(xDom).range([0, side]).nice()
-  const y = d3.scaleLinear().domain(yDom).range([side, 0]).nice()
-  const cx = (v: number) => x(Math.max(x.domain()[0], Math.min(x.domain()[1], v)))
-  const cy = (v: number) => y(Math.max(y.domain()[0], Math.min(y.domain()[1], v)))
-  const mark = (p: P, key: number) => {
-    const X = cx(p.x), Y = cy(p.y), r = p.r
-    const ev = { onMouseEnter: (e: React.MouseEvent) => tip.show(e, p.tip), onMouseLeave: tip.hide }
-    if (p.shape === 'dot') return <circle key={key} cx={X} cy={Y} r={r} fill={p.color} fillOpacity={p.op} {...dotRim()} {...ev} />
-    if (p.shape === 'sq') return <rect key={key} x={X - r * 0.8} y={Y - r * 0.8} width={r * 1.6} height={r * 1.6} fill={p.color} stroke={INK.panel} {...ev} />
-    if (p.shape === 'x') return <g key={key} {...ev}><line x1={X - r} x2={X + r} y1={Y - r} y2={Y + r} stroke={p.color} strokeWidth={3} /><line x1={X - r} x2={X + r} y1={Y + r} y2={Y - r} stroke={p.color} strokeWidth={3} /></g>
-    if (p.shape === 'tri') return <path key={key} d={`M${X},${Y - r} L${X + r},${Y + r * 0.8} L${X - r},${Y + r * 0.8} Z`} fill={p.color} stroke={INK.fit} strokeWidth={1} {...ev} />
-    return <path key={key} d={d3.symbol(d3.symbolStar, r * r * 3)() ?? ''} transform={`translate(${X},${Y})`} fill={p.color} stroke={INK.panel} {...ev} />
-  }
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › SlopeInterceptMap"
       title="Slope vs intercept — where the season calibrations land among every configuration tried, against the target (slope 1, intercept 0)"
@@ -1147,23 +1131,22 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
         <Segmented label="Grid configurations" value={gridSet as any} options={['passing', 'all', 'none'] as const} onChange={setGridSet as any} />
         {gridSet !== 'none' && gridColours.picker}
       </>}>
-      <div ref={ref}>
-        <svg width={side + m.left + m.right} height={side + m.top + m.bottom} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
-          <g transform={`translate(${m.left},${m.top})`}>
-            <rect x={x(0.8)} width={x(1.2) - x(0.8)} y={y(1)} height={y(-1) - y(1)} fill={INK.good} fillOpacity={0.1} />
-            <YAxis scale={y} x={0} label="Test set Deming intercept (µg/m³)" gridWidth={side} tickCount={6} labelX={-46} />
-            <XAxis scale={x} y={side} label="Test set Deming slope" tickCount={6} labelDy={38} />
-            <RefLine orient="v" at={x(1)} from={0} to={side} />
-            <RefLine orient="h" at={y(0)} from={0} to={side} />
-            {showCI && pts.filter(p => p.ci).map((p, i) => <g key={`ci-${i}`} data-fit-uncertainty="saved-coefficients" stroke={p.color} strokeOpacity={0.55} pointerEvents="none">
-              <line x1={cx(p.ci![0])} x2={cx(p.ci![1])} y1={cy(p.y)} y2={cy(p.y)} />
-              <line x1={cx(p.x)} x2={cx(p.x)} y1={cy(p.ci![2])} y2={cy(p.ci![3])} />
-            </g>)}
-            {pts.filter((p) => p.shape === 'dot').map(mark)}
-            {pts.filter((p) => p.shape !== 'dot').map((p, i) => mark(p, 100000 + i))}
-            <text x={x(1) + 6} y={y(0) - 6} fontSize={11} fill={INK.good}>target</text>
-          </g>
-        </svg>
+      <div>
+        <ScatterPlot points={marks} xClip={[0.005, 0.995]} xInclude={[0, 1.5]} yClip={[0.005, 0.995]} yInclude={[-1, 1]} refX={[1]} refY={[0]}
+          maxSide={560} minSide={300} margin={m} labelX={-46} xTicks={6} yTicks={6} note={false}
+          xLabel="Test set Deming slope" yLabel="Test set Deming intercept (µg/m³)"
+          under={({ x, y }) => {
+            const [x0, x1] = x.domain(), [y0, y1] = y.domain()
+            const cx = (v: number) => x(Math.max(x0, Math.min(x1, v))), cy = (v: number) => y(Math.max(y0, Math.min(y1, v)))
+            return <g pointerEvents="none">
+              <rect x={x(0.8)} width={x(1.2) - x(0.8)} y={y(1)} height={y(-1) - y(1)} fill={INK.good} fillOpacity={0.1} />
+              {showCI && pts.filter(p => p.ci).map((p, i) => <g key={`ci-${i}`} data-fit-uncertainty="saved-coefficients" stroke={p.color} strokeOpacity={0.55}>
+                <line x1={cx(p.ci![0])} x2={cx(p.ci![1])} y1={cy(p.y)} y2={cy(p.y)} />
+                <line x1={cx(p.x)} x2={cx(p.x)} y1={cy(p.ci![2])} y2={cy(p.ci![3])} />
+              </g>)}
+            </g>
+          }}
+          children={({ x, y }) => <text x={x(1) + 6} y={y(0) - 6} fontSize={11} fill={INK.good} pointerEvents="none">target</text>} />
         <Key items={[
           ...(gridSet !== 'none' ? [{ label: `grid configurations (${gridSet === 'passing' ? 'site-grouped, IMPROVE cross-validation R² ≥ 0.85' : 'all'}), coloured by cohort`, color: '#9aa5b1' }] : []),
           ...data.seasons.map((g2) => ({ label: `${g2} calibration, own season (▲ median, dots = splits)`, color: data.season_colors[g2] })),
@@ -1173,7 +1156,6 @@ function SlopeInterceptMap({ data }: { data: MeetingData }) {
           ...(showCI ? [{ label: 'saved 95% marginal intervals; endpoints clipped at axes', color: INK.muted, kind: 'bar' as const }] : []),
           { label: 'target box: slope 0.8–1.2, |intercept| < 1', color: INK.good, kind: 'faded' as const },
         ]} />
-        {tip.node}
       </div>
       <ExplainOnly><Note>Points beyond the axes are pinned to the edge. A season calibration read out on its own season spans a narrow Fabs range, so its slope and intercept are not comparable one-to-one with the all-Addis readouts; the stitched star is the like-for-like comparison.</Note></ExplainOnly>
       <FixedSetNote subject="the cloud of grid and split points (not the ■ and ✕, which follow the setting)" what="the run's saved readouts on all its Addis filters" />

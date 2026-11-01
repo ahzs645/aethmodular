@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef } from 'react'
 import { robustDomain } from '@/lib/axes'
 import { AxisChoices } from '@/components/AxisChoices'
-import { Marker } from '@/components/RefLines'
 import { useExport } from '@/lib/data'
 import { ExportState } from '@/components/ExportState'
 import * as d3 from 'd3'
@@ -9,7 +8,7 @@ import { ChartFrame, ExplainOnly, Note, Segmented, Select } from '@/components/C
 import { PageToc } from '@/components/PageToc'
 import { SatoshiSpectra } from '@/components/SatoshiSpectra'
 import { BankPicker, BaselinePicker, SeasonPicker } from '@/components/Pickers'
-import { XAxis, YAxis } from '@/components/Axes'
+import { XAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
@@ -25,7 +24,7 @@ import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
 import { collapsePanelAxes } from '@/lib/axes'
 import { SpectrumPlot } from '@/components/SpectrumPlot'
-import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
+import { SweepPlot, histogramSeries, type SweepSeries } from '@/components/SweepPlot'
 import { Key } from '@/components/Key'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { BandCell, FitCell } from '@/components/TableCells'
@@ -526,7 +525,6 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
   const { value: baseline } = usePageChoice('baseline', BASELINES) as { value: Baseline }
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const mm = maskFor(baseline, mask)
   const ep = data.envelope_points, mb = data.members
   // the page's axes (default: TOR against FTIR, square)
@@ -564,8 +562,11 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
   }, [pool, ep, hi, ax.x, ax.y])  // eslint-disable-line react-hooks/exhaustive-deps
   const maxBin = d3.max([...bins.values()]) ?? 1
   const hist = d3.bin().domain([0, 100]).thresholds(d3.range(0, 100, 10))(analogs.map((i) => ep.residual_pct[i] as number).filter(Number.isFinite))
-  const hx = d3.scaleLinear().domain([0, 100]).range([0, side])
-  const hy = d3.scaleLinear().domain([0, Math.max(0.2, (d3.max(hist, (b) => b.length) ?? 0) / Math.max(1, analogs.length) * 1.15)]).range([side, 0])
+  // the analogs' share per decile of residual percentile (components/SweepPlot histogram bars)
+  const histSeries = histogramSeries({ id: 'analogs', label: `Analogs of ${group}`, color: data.season_colors[group], fill: 0.8, bars: true,
+    edges: [hist[0]?.x0 ?? 0, ...hist.map((b) => b.x1!)], counts: hist.map((b) => b.length), total: analogs.length,
+    tip: (i, v) => [`percentile ${hist[i].x0}–${hist[i].x1}`, `${hist[i].length} analogs (${pct(v)})`] })
+  const histMax = Math.max(0.2, (d3.max(hist, (b) => b.length) ?? 0) / Math.max(1, analogs.length) * 1.15)
   const color = data.season_colors[group]
   const env = data.envelope.filter((e) => e.baseline === baseline && e.mask === mm)
   const years = data.years
@@ -587,18 +588,9 @@ function Envelope({ data, mask }: { data: SatoshiData; mask: Mask }) {
             points={analogs.filter((i) => Number.isFinite(vx(i)) && Number.isFinite(vy(i))).map((i) => ({ x: vx(i), y: vy(i), color, id: `improve:${ep.filter_id[i]}`,
               tip: [`IMPROVE ${ep.Site[i]} · filter ${ep.filter_id[i]}`, `TOR EC ${f3(ep.tor_ec_ugm3[i])} · FTIR ${f3(ep.ftir_oos_ugm3[i])} µg/m³`, `residual percentile ${f2(ep.residual_pct[i])}`] }))} />
         </div>
-        <svg width={side + m.left + m.right} height={side + m.top + m.bottom} fontFamily={FONT.family}>
-          <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>Analogs' residual percentile at matched TOR EC</text>
-          <g transform={`translate(${m.left},${m.top})`}>
-            <YAxis scale={hy} x={0} label="Share of analogs" tickCount={5} gridWidth={side} labelX={-42} format={(v) => `${Math.round(100 * v)} %`} />
-            <XAxis scale={hx} y={side} label="Residual percentile (low = lower envelope)" tickCount={5} labelDy={36} />
-            {hist.map((b, i) => <rect key={i} x={hx(b.x0!) + 1} width={Math.max(0, hx(b.x1!) - hx(b.x0!) - 2)} y={hy(b.length / Math.max(1, analogs.length))} height={side - hy(b.length / Math.max(1, analogs.length))} fill={color} fillOpacity={0.8}
-              onMouseEnter={(e) => tip.show(e, [`percentile ${b.x0}–${b.x1}`, `${b.length} analogs (${pct(b.length / Math.max(1, analogs.length))})`])} onMouseLeave={tip.hide} />)}
-            <Marker orient="h" at={hy(0.1)} from={0} to={side} />
-            <text x={side - 4} y={hy(0.1) - 5} textAnchor="end" fontSize={10} fontFamily={FONT.mono} fill={INK.text}>typical: 10 % per bar</text>
-          </g>
-        </svg>
-        {tip.node}
+        <SweepPlot series={[histSeries]} title="Analogs' residual percentile at matched TOR EC" width={side + m.left + m.right} height={side + 58} xDomain={[0, 100]} yDomain={[0, histMax]}
+          xLabel="Residual percentile (low = lower envelope)" yLabel="Share of analogs" yFormat={(v) => `${Math.round(100 * v)} %`}
+          yMarkers={[{ at: 0.1, label: 'typical: 10 % per bar' }]} />
       </div>
       <Key items={[{ label: 'All lot-251 IMPROVE filters (density)', color: INK.axis, kind: 'bar' }, { label: `Analogs of ${group}`, color, kind: 'dot' }]} />
       <table className="census-table" style={{ marginTop: 10 }}>
@@ -828,7 +820,6 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
   const { value: season, note: seasonNote } = usePageChoice('season', d.seasons)
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const mem = d.group_members
   const ptsAll: { id: string; pc1: number; ec: number; c: number; res: number }[] = []
   for (let i = 0; i < mem.baseline.length; i++) if (mem.baseline[i] === baseline && mem.region[i] === region && mem.group[i] === season)
@@ -869,7 +860,6 @@ function FingerprintGroups({ d }: { d: Oct1Data }) {
         <SpectrumPlot width={half} minWidth={260} height={262} title="Median spectrum of each cluster, 1800–500 cm⁻¹" window={[hi, lo]} yDomain={sDomain}
           regions={sRegions} hover="readout" yFormat={(v) => String(+v.toFixed(3))}
           series={specs.map((s) => ({ id: `c${s.c}`, label: `cluster ${s.c}`, wn, y: s.v, color: CLUSTER_COLORS[(s.c - 1) % 4], width: 1.8 }))} />
-        {tip.node}
       </div>
       <Key items={[...summ.map((s) => ({ label: `cluster ${s.cluster} (n ${s.n}, median Fabs/10 ${f2(s.ec_fabs10_median)})`, color: CLUSTER_COLORS[(s.cluster - 1) % 4] })), { label: 'outside the clustering region', color: INK.shade, kind: 'bar' as const }]} />
       {t && <Note>{shortSeason(season)}: {t.k} clusters, silhouette {f2(t.silhouette)} vs {f2(t.silhouette_null_p95)} for structureless data ({t.structure_beyond_null ? 'more distinct than chance' : t.min_cluster < 5 ? `the best split only isolates ${t.min_cluster} outlier filter${t.min_cluster > 1 ? 's' : ''}` : 'no more distinct than chance'}). Clusters differ in HIPS EC p {pfmt(t.kruskal_p_ec)}, in the standard model's error p {pfmt(t.kruskal_p_residual)}, in Al (dust) p {pfmt(t.kruskal_p_Al)}. PC1 vs EC Spearman ρ {f2(t.pc1_spearman_ec)}.</Note>}
