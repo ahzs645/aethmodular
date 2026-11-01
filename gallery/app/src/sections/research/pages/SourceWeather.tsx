@@ -1,17 +1,15 @@
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import { useColourScheme } from '@/lib/colourSchemes'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented, Select } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
 import { Crossplot } from '@/components/Crossplot'
-import { HeatCell } from '@/components/HeatCell'
+import { HeatMatrix } from '@/components/HeatMatrix'
 import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
-import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
 import { useExport } from '@/lib/data'
 import { fmt } from '@/lib/format'
 import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
-import { FONT, INK } from '@/lib/theme'
+import { INK } from '@/lib/theme'
 import type { FilterRow, PmfFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
@@ -44,30 +42,15 @@ function joinPmf(rows: FilterRow[], pmf: PmfFile | null): Joined[] {
   })
 }
 
-/** a factor × weather Spearman matrix, drawn as heat cells */
+/** a factor × weather Spearman matrix (components/HeatMatrix) */
 function Matrix({ rows, cols, cell }: { rows: string[]; cols: string[]; cell: (r: string, c: string) => { rho: number | null; n: number } }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
-  const labelW = 170, top = 120
-  const cw = Math.max(34, Math.min(70, (width - labelW - 10) / Math.max(1, cols.length))), ch = 26
   const colours = useColourScheme('sw-matrix', 'diverging')
   const color = d3.scaleQuantize<string>().domain([-1, 1]).range(colours.stops)
-  return (
-    <div ref={ref} style={{ position: 'relative', overflowX: 'auto' }}>
-      <svg width={labelW + cols.length * cw + 90} height={top + rows.length * ch + 6} fontFamily={FONT.family}>
-        {cols.map((c, j) => <text key={c} transform={`translate(${labelW + j * cw + cw / 2},${top - 6}) rotate(-50)`} fontSize={11} fill={INK.text}>{c}</text>)}
-        {rows.map((r, i) => <g key={r}>
-          <text x={labelW - 6} y={top + i * ch + ch / 2} dy="0.35em" textAnchor="end" fontSize={11.5} fill={INK.text}>{r}</text>
-          {cols.map((c, j) => { const v = cell(r, c)
-            return <HeatCell key={c} x={labelW + j * cw} y={top + i * ch} width={cw - 2} height={ch - 2} fill={v.rho === null ? null : color(v.rho)} label={v.rho === null ? '' : fmt(v.rho, 2)}
-              onEnter={(e) => tip.show(e, [`${r} × ${c}`, `Spearman ρ ${fmt(v.rho, 3)}`, `n ${v.n}`])} onLeave={tip.hide} /> })}
-        </g>)}
-      </svg>
-      <ColorLegend scale={color} scheme={colours.scheme} label="Spearman ρ" format={(v) => fmt(v, 1)} />
-      {tip.node}
-    </div>
-  )
+  const values = rows.map((r) => cols.map((c) => cell(r, c)))
+  return <HeatMatrix rows={rows} columns={cols} color={color} cellWidth={[34, 70]} gap={2} colLabels="rotate" colLabelAngle={-50} rowLabelSize={11.5}
+    cell={(i, j) => ({ value: values[i][j].rho, label: values[i][j].rho === null ? null : fmt(values[i][j].rho, 2),
+      tip: [`${rows[i]} × ${cols[j]}`, `Spearman ρ ${fmt(values[i][j].rho, 3)}`, `n ${values[i][j].n}`] })}
+    legend={{ scheme: colours.scheme, label: 'Spearman ρ', format: (v) => fmt(v, 1) }} />
 }
 
 /**
