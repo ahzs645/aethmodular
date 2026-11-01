@@ -9,7 +9,7 @@ import { fmt } from '@/lib/stats'
 import { FONT, INK, inkOn } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import { levelLabel, loadDailyAeronet, type AeronetLevel, type DailyAeronet } from '@/lib/aeronet'
-import { monthlyMeans } from '@/lib/aeronetMath'
+import { monthlyMeans } from '@/lib/stats'
 
 const QUANTITIES = [
   { key: 'aod500', label: 'AOD 500', digits: 2, reverse: false },

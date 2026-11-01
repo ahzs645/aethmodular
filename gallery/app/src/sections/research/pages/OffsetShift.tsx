@@ -8,7 +8,7 @@ import { INK } from '@/lib/theme'
 import type { FilterRow } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
-import { deming, ols, quantile, spearman } from '../common/stats'
+import { deming, ols, quantile, spearman } from '@/lib/stats'
 import { BASIS_NOTE, DataTable, Grid, SitePick, line, num, ofSite, point, seasonsOf, shortSeason, useConcRows, useSite } from '../common/ui'
 
 const DEMING_NB = 'research/addis_fabs_ec_deming/addis_fabs_ec_deming.ipynb'

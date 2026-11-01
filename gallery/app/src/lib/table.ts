@@ -5,18 +5,21 @@
  * both. The summaries here are the few every meeting figure needs: a median
  * with an interval over repeated splits, and histogram densities.
  */
+import { isFiniteNumber, quantileSorted } from './stats.ts'
+
 export type Value = string | number | boolean | null
 export type Row = Record<string, Value>
 export type Table = Row[] | Record<string, Value[]>
 
-export function rowsOf(t: Table | null | undefined): Row[] {
+/** row objects from a table in either form (columns are as long as the first); `R` types the rows a caller knows the shape of */
+export function rowsOf<R = Row>(t: Table | null | undefined): R[] {
   if (!t) return []
-  if (Array.isArray(t)) return t
+  if (Array.isArray(t)) return t as R[]
   const cols = Object.keys(t)
   const n = cols.length ? t[cols[0]].length : 0
   const out: Row[] = new Array(n)
   for (let i = 0; i < n; i++) { const r: Row = {}; for (const c of cols) r[c] = t[c][i]; out[i] = r }
-  return out
+  return out as R[]
 }
 
 /** Keep rows whose columns equal the given value (or one of the values in a list). */
@@ -29,7 +32,8 @@ export function where(rows: Row[], cond: Record<string, Value | Value[]> | undef
 /** Distinct values of a column, in first-seen order. */
 export const uniq = (rows: Row[], col: string): Value[] => [...new Set(rows.map((r) => r[col]))]
 
-export const num = (v: Value | undefined): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+/** a cell as a finite number, or null (strings, booleans, NaN and missing cells are not numbers; the guard is lib/stats isFiniteNumber) */
+export const num = (v: unknown): number | null => (isFiniteNumber(v) ? v : null)
 
 /** a summarised group: its `by` columns plus the statistic, interval and count */
 export type Summary = Row & { mid: number | null; lo: number | null; hi: number | null; n: number }
@@ -37,10 +41,7 @@ export type Interval = 'iqr' | 'p10-p90' | 'p5-p95' | 'minmax' | 'none'
 const BOUNDS: Record<Exclude<Interval, 'none'>, [number, number]> = { iqr: [0.25, 0.75], 'p10-p90': [0.1, 0.9], 'p5-p95': [0.05, 0.95], minmax: [0, 1] }
 export const INTERVAL_LABEL: Record<Interval, string> = { iqr: 'interquartile range', 'p10-p90': '10–90 %', 'p5-p95': '5–95 %', minmax: 'full range', none: '' }
 
-function q(sorted: number[], p: number) {
-  const i = (sorted.length - 1) * p, lo = Math.floor(i), hi = Math.ceil(i)
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo)
-}
+const q = quantileSorted
 
 /**
  * Median (or mean) of `value` per combination of the `by` columns, with an

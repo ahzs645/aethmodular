@@ -8,9 +8,8 @@ import { fmt } from '@/lib/format'
 import { ExcludedNote, FixedSetNote } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 import type { SectionPageProps } from '../../types'
-import { quantile } from '../common/stats'
+import { medianSorted, ols, quantile } from '@/lib/stats'
 import { DataTable, Grid, SERIES, num, pText, useConcRows } from '../common/ui'
-import { ols } from '../common/stats'
 import type { QuantileReference } from '@/lib/referencePopulation'
 import type { FilterRow } from '@/lib/types'
 
@@ -152,7 +151,7 @@ function FabsSurvival({ origin, rows }: { origin: Origin; rows: FilterRow[] }) {
   // at or above each quantile; the top entry (the maximum) has nothing above it on a log axis
   const network = q.slice(0, steps).flatMap((x, i) => (x >= X_MIN ? [{ x, y: 100 * (1 - i / steps), tip: [`Fabs ${fmt(x, 2)} Mm⁻¹`, `${fmt(100 * (1 - i / steps), 1)} % of IMPROVE filters at or above`] }] : []))
   const site = fabs.flatMap((x, i) => (x > 0 ? [{ x, y: (100 * (fabs.length - i)) / fabs.length, tip: [`Addis Fabs ${fmt(x, 1)} Mm⁻¹`, `${fmt((100 * (fabs.length - i)) / fabs.length, 1)} % of the Addis filters in view at or above`] }] : []))
-  const median = fabs.length ? fabs[Math.floor((fabs.length - 1) / 2)] / 2 + fabs[Math.ceil((fabs.length - 1) / 2)] / 2 : null
+  const median = fabs.length ? medianSorted(fabs) : null
   const bridge = [
     { x: sc.median_fabs, y: 50, tip: ['ftir_26 bridge median', `Fabs ${fmt(sc.median_fabs, 2)} Mm⁻¹`] },
     { x: c, y: (100 * sc.n_at_or_above_c) / sc.n, tip: [`ftir_26 bridge: ${sc.n_at_or_above_c} of ${sc.n.toLocaleString()} at or above ${c}`] },

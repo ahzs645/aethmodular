@@ -3,10 +3,7 @@
  * (mac.test.mjs). Each function is the browser form of a notebook calculation, named after it.
  */
 
-/** a finite number, or null */
-export const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
-
-const mean = (v: number[]) => v.reduce((a, b) => a + b, 0) / v.length
+import { boxStats, mean, ols } from '../../../lib/stats.ts'
 
 /**
  * The four ways AAARpos.ipynb (and ETAD_comprehensive_absorption_analysis.ipynb §12) turned paired
@@ -45,12 +42,6 @@ export function macMethods(x: number[], y: number[]): MacMethods | null {
     origin: s0xy / s0xx,
     xAtZero: slope === 0 ? NaN : -intercept / slope,
   }
-}
-
-/** Ordinary least squares of y on x (with intercept): slope, intercept, R². */
-export function ols(x: number[], y: number[]): { slope: number; intercept: number; r2: number; n: number } | null {
-  const m = macMethods(x, y)
-  return m ? { ...m.ols, n: m.n } : null
 }
 
 /**
@@ -100,11 +91,8 @@ export const linspace = (lo: number, hi: number, n: number) => Array.from({ leng
 
 /** Tukey's fences, Q1 - 1.5 IQR and Q3 + 1.5 IQR, with pandas' (and d3's) linear quantiles: the notebooks' remove_outliers_iqr */
 export function iqrFences(values: number[]): [number, number] | null {
-  const v = values.filter(Number.isFinite).sort((a, b) => a - b)
-  if (v.length < 4) return null
-  const q = (p: number) => { const h = (v.length - 1) * p, lo = Math.floor(h); return v[lo] + (v[Math.min(lo + 1, v.length - 1)] - v[lo]) * (h - lo) }
-  const q1 = q(0.25), q3 = q(0.75), iqr = q3 - q1
-  return [q1 - 1.5 * iqr, q3 + 1.5 * iqr]
+  const b = boxStats(values)
+  return b ? [b.loFence, b.hiFence] : null
 }
 
 /**

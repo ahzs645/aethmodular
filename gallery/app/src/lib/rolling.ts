@@ -4,6 +4,8 @@
  * window (t − 45 days, t]. `centred` puts the same width around each point instead. Pure, so node tests it
  * (lib/rolling.test.mjs); components/RollingControls is its control.
  */
+import { mean, median } from './stats.ts'
+
 export type RollStat = 'median' | 'mean'
 export type RollAlign = 'trailing' | 'centred'
 export interface RollSpec { days: number; stat: RollStat; align: RollAlign; minN: number }
@@ -16,11 +18,6 @@ export const ROLL_MAX_DAYS = 3650
 
 const DAY = 864e5
 
-const median = (vs: number[]) => {
-  const s = [...vs].sort((a, b) => a - b), m = s.length >> 1
-  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2
-}
-const mean = (vs: number[]) => vs.reduce((a, b) => a + b, 0) / vs.length
 
 /**
  * The statistic at each point of `pts` (sorted by date): trailing is pandas' (t − days, t], centred is

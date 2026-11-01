@@ -4,9 +4,8 @@
  * Deming fit of published FTIR EC on HIPS BC with the workbook's Addis error ratio (λ ∝ MAC²). At MAC 10 they
  * reproduce section6_sites.csv and section6_site_seasons.csv (decision.test.mjs). Node-tested, so relative imports.
  */
-import { deming, median } from '../../../research/common/stats.ts'
+import { deming, isFiniteNumber as finite, mean, median, spearman } from '../../../../lib/stats.ts'
 import { demingLambda } from '../../../../lib/macMath.ts'
-import { spearman } from '../../../../lib/stats.ts'
 
 export interface FlagFilter {
   id: string
@@ -44,8 +43,6 @@ export interface FlagGroup {
   interceptRatio: number | null
 }
 
-const mean = (v: number[]) => v.reduce((a, b) => a + b, 0) / v.length
-const finite = (v: number | null | undefined): v is number => v != null && Number.isFinite(v)
 
 /** One group's row of the notebook's site_season_table at `mac` (λ10 the workbook's LAMBDA_ADDIS at MAC 10). */
 export function summarise(code: string, season: string, g: FlagFilter[], mac: number, lambda10: number, flagAt = 0.5, minPairs = 15): FlagGroup {

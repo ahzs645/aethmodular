@@ -3,7 +3,7 @@
  * (stats.test.mjs). A "day" is one 24 h bin of the daily file (gallery/data/export_aethalometer.py),
  * labelled at its start in local time; everything here works on the five MA350 channels' BCc.
  */
-import { pearson, twoSample } from '../../../lib/stats.ts'
+import { describe as summarize, pearson, quantileSorted, twoSample, type Summary } from '../../../lib/stats.ts'
 import { seasonOfDate } from '../../../lib/seasons.ts'
 import type { SeasonMeta } from '../../../lib/types'
 
@@ -81,23 +81,8 @@ export function toDays(d: DailyColumns, seasons: readonly SeasonMeta[], screen: 
   return { days, dropped }
 }
 
-export interface Summary { n: number; mean: number; sd: number | null; median: number; q10: number; q25: number; q75: number; q90: number; min: number; max: number }
-
-/** linear-interpolated quantile of ascending values (numpy's default, as pandas' quantile) */
-export function quantileSorted(v: readonly number[], p: number): number {
-  const idx = (v.length - 1) * p, lo = Math.floor(idx), hi = Math.ceil(idx)
-  return lo === hi ? v[lo] : v[lo] + (idx - lo) * (v[hi] - v[lo])
-}
-
-/** n, mean, sample SD and quantiles of the finite values; null when there are none */
-export function summarize(values: Iterable<number | null | undefined>): Summary | null {
-  const v = [...values].filter((x): x is number => x !== null && x !== undefined && Number.isFinite(x)).sort((a, b) => a - b)
-  if (!v.length) return null
-  const mean = v.reduce((s, x) => s + x, 0) / v.length
-  const sd = v.length > 1 ? Math.sqrt(v.reduce((s, x) => s + (x - mean) ** 2, 0) / (v.length - 1)) : null
-  const q = (p: number) => quantileSorted(v, p)
-  return { n: v.length, mean, sd, median: q(0.5), q10: q(0.1), q25: q(0.25), q75: q(0.75), q90: q(0.9), min: v[0], max: v[v.length - 1] }
-}
+/** n, mean, sample SD and quantiles of the finite values (lib/stats describe), and the quantile it takes them with */
+export { summarize, quantileSorted, type Summary }
 
 /**
  * A centred moving mean over calendar time: each day's value is the mean of the days within

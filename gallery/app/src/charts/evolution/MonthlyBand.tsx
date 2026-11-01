@@ -8,6 +8,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
+import { monthlyStats } from '@/lib/stats'
 import { INK, MARGIN, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
@@ -42,20 +43,8 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
     () =>
       meta.sites
         .map((s) => {
-          const points = d3.range(1, 13).map((m) => {
-            const vals = rows
-              .filter((r) => r.site === s.name && r.month === m)
-              .map((r) => r[field])
-              .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
-              .sort(d3.ascending)
-            return {
-              month: m,
-              n: vals.length,
-              median: vals.length ? (d3.quantile(vals, 0.5) ?? null) : null,
-              q1: vals.length >= 4 ? (d3.quantile(vals, 0.25) ?? null) : null,
-              q3: vals.length >= 4 ? (d3.quantile(vals, 0.75) ?? null) : null,
-            }
-          })
+          // median per month, the IQR band once a month has IQR_MIN_N filters (as the seasonal clock)
+          const points = monthlyStats(rows.filter((r) => r.site === s.name), (r) => r.month, (r) => r[field])
           return { name: s.name, color: s.color, points }
         })
         .filter((s) => s.points.some((p) => p.median !== null)),

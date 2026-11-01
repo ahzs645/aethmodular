@@ -10,6 +10,8 @@
  * splits each site at its own median instead (FTIR_Group_Talk_Apr2026_Draft's iron split), so every site has a low
  * and a high half however far apart the sites' levels are.
  */
+import { quantileSorted } from './stats.ts'
+
 export type SplitKind = 'cutoffs' | 'median' | 'site-median' | 'tertiles' | 'quartiles' | 'quintiles' | 'deciles'
 
 export interface GroupingDef {
@@ -46,13 +48,6 @@ const QUANTILE_NAMES: Record<number, string[]> = {
   10: Array.from({ length: 10 }, (_, i) => `D${i + 1}${i === 0 ? ' (lowest)' : i === 9 ? ' (highest)' : ''}`),
 }
 
-/** the quantile of sorted values (linear between order statistics, as numpy's default) */
-function quantileSorted(sorted: number[], p: number): number {
-  if (!sorted.length) return NaN
-  const h = (sorted.length - 1) * p
-  const lo = Math.floor(h)
-  return sorted[lo] + (sorted[Math.min(lo + 1, sorted.length - 1)] - sorted[lo]) * (h - lo)
-}
 
 /**
  * The cutoffs a grouping uses on these values: its own, or the quantiles of the values. A per-site median split has

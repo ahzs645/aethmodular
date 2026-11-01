@@ -5,7 +5,7 @@
 import { useMemo } from 'react'
 import { useExport } from '@/lib/data'
 import type { FilterRow } from '@/lib/types'
-import { quantile } from './stats'
+import { quantile } from '../../../lib/stats.ts'
 
 export const OPTICS_PATH = 'research/hips_optics/filters.json'
 export const OPTICS_COMMAND = 'uv run python gallery/data/export_research_hips_optics.py'

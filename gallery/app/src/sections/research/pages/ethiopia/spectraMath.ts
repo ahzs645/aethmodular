@@ -9,7 +9,7 @@
  *
  * The export carries absorbance in mAbs (× 1000); these helpers do not care about the unit.
  */
-import { median, quantile } from '../../common/stats.ts'
+import { median, quantile } from '../../../../lib/stats.ts'
 
 // ---------------------------------------------------------------- Savitzky–Golay
 

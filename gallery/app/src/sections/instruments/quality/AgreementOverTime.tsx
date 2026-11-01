@@ -3,7 +3,7 @@ import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Key, type KeyItem } from '@/components/Key'
 import { SweepPlot, type SweepMark, type SweepMarker, type SweepSeries } from '@/components/SweepPlot'
 import { fmt } from '@/lib/format'
-import { pearson, splitAtGaps } from '@/lib/stats'
+import { mean, pearson, splitAtGaps } from '@/lib/stats'
 import { INK } from '@/lib/theme'
 import { useHighlightActions } from '@/lib/highlight'
 import { ExcludedNote, toSweepMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
@@ -23,7 +23,6 @@ export function trailing<T>(pts: { t: Date; v: T }[], days: number, minN: number
     return { t: p.t, v: vs.length >= minN ? stat(vs) : null }
   })
 }
-const mean = (vs: number[]) => vs.reduce((a, b) => a + b, 0) / vs.length
 /** a rolling line, broken wherever the filters stop for more than 45 days (no bridge across a sampling gap) */
 const lines = (id: string, label: string, color: string, pts: { t: Date; v: number | null }[]): SweepSeries[] =>
   splitAtGaps(pts.filter((p) => p.v !== null), (p) => p.t).map((seg, i) =>

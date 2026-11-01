@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { meanDirection, rainClass, spearman, weatherField } from './weather.ts'
+import { WEATHER_MIN_PAIRS, meanDirection, rainClass, weatherField } from './weather.ts'
+import { spearman as rankCorrelation } from './stats.ts'
+
+const spearman = (x, y) => rankCorrelation(x, y, WEATHER_MIN_PAIRS)
 
 const near = (a, b, tol = 1e-9) => assert.ok(Math.abs(a - b) < tol, `${a} != ${b}`)
 

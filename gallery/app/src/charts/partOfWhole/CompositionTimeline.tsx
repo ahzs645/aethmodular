@@ -8,6 +8,7 @@ import { XAxis, YAxis } from '@/components/Axes'
 import { timeSeasonBands, type SeasonBand } from '@/components/SeasonBands'
 import { seasonOfDate, seasonOnly } from '@/lib/seasons'
 import { fmt } from '@/lib/stats'
+import { num } from '@/lib/table'
 import { FONT, INK, MARGIN } from '@/lib/theme'
 import { useFitHeight } from '@/lib/chartFit'
 import { useSingleView } from '@/lib/singleView'
@@ -155,7 +156,6 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
   const single = useSingleView().on
 
   const panels = useMemo(() => {
-    const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
     return sites.flatMap((s): Panel[] => {
       const mine = rows.filter((r) => r.site === s.name && r.date)
       const dated = mine

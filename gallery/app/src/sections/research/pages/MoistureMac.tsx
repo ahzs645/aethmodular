@@ -11,7 +11,7 @@ import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
 import { useAddisMet } from '../common/met'
-import { correlationP, ols, pearsonR, quantile, steiger, type Fit } from '../common/stats'
+import { correlationP, ols, pearson, quantile, steiger, type OlsFit as Fit } from '@/lib/stats'
 import { BASIS_NOTE, DataTable, Grid, HIGH, LOW, MID, SitePick, initials, line, num, pText, ofSite, point, seasonsOf, shortSeason, useConcRows, useSite } from '../common/ui'
 
 const NB = 'notebooks/analysis/meteorology/pw_mac_calibration.ipynb'
@@ -76,7 +76,7 @@ export function MoistureMac({ rows: viewRows, meta: viewMeta }: SectionPageProps
   // Steiger: does FTIR EC correlate with AOD better than HIPS does?
   const trioOf = (rs: FilterRow[]) => rs.flatMap((r) => { const e = num(r, EC), h = num(r, HIPS_BC), a = num(r, AOD); return e !== null && h !== null && a !== null && e > 0 ? [{ e, h, a }] : [] })
   const trio = trioOf(siteRows), nTrioOut = trioOf(markedSite).length
-  const rE = pearsonR(trio.map((t) => t.a), trio.map((t) => t.e)), rH = pearsonR(trio.map((t) => t.a), trio.map((t) => t.h)), rEH = pearsonR(trio.map((t) => t.e), trio.map((t) => t.h))
+  const rE = pearson(trio.map((t) => t.a), trio.map((t) => t.e)), rH = pearson(trio.map((t) => t.a), trio.map((t) => t.h)), rEH = pearson(trio.map((t) => t.e), trio.map((t) => t.h))
   const st = rE !== null && rH !== null && rEH !== null && trio.length > 10 ? steiger(rE, rH, rEH, trio.length) : null
 
   const controls = <>

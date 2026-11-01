@@ -10,7 +10,8 @@ import { INK } from '@/lib/theme'
 
 import { lineKey } from '../../common/blankLines'
 import type { Optics } from '../../common/optics'
-import { ols, quantile } from '../../common/stats'
+import { ols, quantile } from '@/lib/stats'
+import { num } from '@/lib/table'
 import { DataTable, Grid, line, point } from '../../common/ui'
 import { refOf, type LinePalette } from './lines'
 import { useMarkedPairs } from './marked'
@@ -19,7 +20,6 @@ const NARRATIVE_NB = 'research/ftir_hips_chem/hips_offset_narrative.ipynb'
 
 export interface Paired { r: FilterRow; o: Optics }
 const keyOf = (o: Optics) => { const ref = refOf(o); return ref ? lineKey(ref) : null }
-const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 
 /**
  * hips_offset_narrative [10]: tau through time coloured by the calibration line each filter was read against, and

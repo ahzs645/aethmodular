@@ -5,6 +5,7 @@ import { Figure } from '@/components/Figure'
 import { Key } from '@/components/Key'
 import { f2 } from '@/lib/format'
 import { useMac } from '@/lib/mac'
+import { ols } from '@/lib/stats'
 import { num, type Row } from '@/lib/table'
 import type { SectionPageProps } from '../../types'
 import { useCalibRuns } from '../../research/pages/spectralCommon'
@@ -44,15 +45,6 @@ const NO_ROWS: Row[] = []
 const SITE_NAME: Record<string, string> = { addis: 'Addis Ababa', etbi: 'Bishoftu', chts: 'Beijing', indh: 'Delhi', uspa: 'JPL' }
 const CONFIG_COLORS = { 'locked 800 + AIRSpec (rule k)': '#2C6E9E', 'winner 440 + AIRSpec k=8': '#e15759' }
 const SERIES_COLORS = { blocked: '#2C6E9E', forward: '#f28e2b', observed: '#e15759', 'null (median, 5–95 %)': '#7f7f7f', 'null (median to q95)': '#7f7f7f' }
-
-/** OLS y = a + b·x */
-function ols(x: number[], y: number[]) {
-  const n = x.length, mx = x.reduce((s, v) => s + v, 0) / n, my = y.reduce((s, v) => s + v, 0) / n
-  let sxy = 0, sxx = 0
-  for (let i = 0; i < n; i++) { sxy += (x[i] - mx) * (y[i] - my); sxx += (x[i] - mx) ** 2 }
-  const b = sxy / sxx
-  return { slope: b, intercept: my - b * mx }
-}
 
 /**
  * ftir_43, ftir_45, ftir_46: does a learner on the calibration residual find anything a no-chemistry null or the
@@ -147,7 +139,7 @@ export function Residual(_props: SectionPageProps) {
       <p>A recurring proposal reads a model that predicts the FTIR − HIPS residual from the spectra as evidence of a missing absorber. The residual is r = f(X) − Fabs/MAC, and f(X) is itself a function of the spectra, so a learner can predict part of r by rebuilding f(X), with no chemistry at all. These notebooks run the controls on identical time-blocked folds (eight contiguous date blocks, so seasonal structure cannot leak). Nothing here is refitted: the learners were fitted on residuals at MAC 10 and their R² and RMSE are drawn as the notebooks printed them{m.changed ? <>, labelled MAC 10 while the reader's MAC is {m.mac}</> : ''}. Mass slopes of the residual at fixed f(X) follow the MAC exactly (× 10/MAC).</p>
     </PageIntro>
 
-    {live && <ResidualVsFx pts={live.pts} marked={live.marked} nOut={live.nOut} nAll={live.nAll} slope={live.fit.slope} intercept={live.fit.intercept} mac={m.mac} changed={m.changed} relation={relation}
+    {live && <ResidualVsFx pts={live.pts} marked={live.marked} nOut={live.nOut} nAll={live.nAll} slope={live.fit?.slope ?? NaN} intercept={live.fit?.intercept ?? NaN} mac={m.mac} changed={m.changed} relation={relation}
       provenance={<>Rebuilt live from <code>calibration_runs.json</code> (preset ocec800_airspec at Addis: the notebook's f(X), max |Δ| 5e-6 µg/m³ per ftir_46); follows the MAC. The notebook's relation: {provenance(data, ['null_relation'])}</>} />}
 
     <Figure kind="intervals" id="ml-residual-models" data={models} row="model"

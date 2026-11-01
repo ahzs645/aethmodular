@@ -1,4 +1,4 @@
-import { york, regressionSamples, type RegressionStats } from './stats.ts'
+import { quantileSorted, york, regressionSamples, type RegressionStats } from './stats.ts'
 import type { Estimator } from './regressionMethods.ts'
 
 export interface FitCI {
@@ -6,18 +6,10 @@ export interface FitCI {
   draws: [number, number][]; description: string
 }
 const cache = new WeakMap<RegressionStats, Map<Estimator, FitCI | null>>()
-export function percentile(values: number[], p: number): number {
-  return sortedPercentile(Float64Array.from(values).sort(), p)
-}
-/** a percentile of values already in ascending order (a typed array sorts numerically and fast) */
-function sortedPercentile(v: ArrayLike<number>, p: number): number {
-  const i = (v.length - 1) * p
-  return v[Math.floor(i)] + (v[Math.ceil(i)] - v[Math.floor(i)]) * (i % 1)
-}
-/** the 2.5 and 97.5 percentiles from one sort */
+/** the 2.5 and 97.5 percentiles from one sort (a typed array sorts numerically and fast) */
 function interval95(values: Float64Array): [number, number] {
   values.sort()
-  return [sortedPercentile(values, .025), sortedPercentile(values, .975)]
+  return [quantileSorted(values, .025), quantileSorted(values, .975)]
 }
 export function monthBlocks(rows: { site?: string; date?: string | null }[]): string[] | undefined {
   return rows.length && rows.every(r => r.site && /^\d{4}-\d{2}/.test(r.date ?? ''))

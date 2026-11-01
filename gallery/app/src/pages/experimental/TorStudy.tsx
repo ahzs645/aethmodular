@@ -17,6 +17,7 @@ import { useMac } from '@/lib/mac'
 import { ADDIS_ALL, FONT, IMPROVE_GREY, INK, themed } from '@/lib/theme'
 import { dotFill } from '@/lib/highlight'
 import { coef, coefSigned, f2, pct, signed } from '@/lib/format'
+import { hashUnit } from '@/lib/stats'
 import { Crossplot } from '@/components/Crossplot'
 import { RangeRows, type RangeRow, type RangeSeries } from '@/components/RangeRows'
 import { AxisChoices } from '@/components/AxisChoices'
@@ -478,7 +479,7 @@ function WhereItSits({ d }: { d: TorData }) {
   const sites = useNetwork(d).network.filter((r) => r.population === 'IMPROVE (TOR)')
   const siteVal: Record<string, keyof NetRow> = { 'EC µg/filter': 'ec_ug', 'EC µg/m³': 'ec_ugm3', 'OC/EC': 'ocec', 'PM2.5 µg/filter': 'pm_ug', 'distance percentile': 'distance', 'volume m³': 'volume' }
   const labelW = 210, rowH = 74, pw = Math.max(300, width - labelW - 30)
-  const jitter = (i: number) => ((Math.sin(i * 12.9898) * 43758.5453) % 1 + 1) % 1
+  const jitter = (i: number) => hashUnit(i)
   return (
     <ChartFrame id="xd-where" source={source('WhereItSits')} provenance={runLine(d)}
       title="Every population on the same axes — IMPROVE, the SPARTAN network, SPARTAN Addis and Adama"

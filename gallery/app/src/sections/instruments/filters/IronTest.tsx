@@ -9,13 +9,13 @@ import { SweepPlot } from '@/components/SweepPlot'
 import { fitLine, fmt } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { ExcludedNote } from '@/lib/markedRows'
-import { spearman } from '@/lib/weather'
+import { ols, spearman } from '@/lib/stats'
 import { seasonOnly, shortSeason } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { bcTag, seasonColor, seasonsIn, type Channel, type Pair, type PairSite } from './data'
-import { closestTo, ironSweep, linspace, ols, ols2 } from './mac'
+import { closestTo, ironSweep, linspace, ols2 } from './mac'
 
 const ABS = ['HIPS', 'aeth'] as const
 const MIN_N = 10, MIN_SEASON = 5
@@ -78,7 +78,7 @@ export function IronTest({ pairs, marked = [], meta, sites, ch, sigma }: {
     })
     // least-squares residuals are uncorrelated with the predictors by construction (Pearson r = 0), so the
     // notebook's r says nothing; a rank correlation still shows a curved or one-sided pattern
-    const rFe = spearman(multi.keep.map((i) => fe[i]), multi.residuals), rEc = spearman(multi.keep.map((i) => ec[i]), multi.residuals)
+    const rFe = spearman(multi.keep.map((i) => fe[i]), multi.residuals, { minN: 5 }), rEc = spearman(multi.keep.map((i) => ec[i]), multi.residuals, { minN: 5 })
     // the site's excluded filters with all three, drawn as × on the fitted panels (their residual from the same fit)
     const markedRows: Row[] = marked.filter((p) => p.site === site.name && p.iron !== null && p.ec !== null && yOf(p) !== null)
       .map((p) => ({ p, ec: p.ec!, y: yOf(p)!, fe: p.iron! }))

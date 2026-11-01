@@ -11,11 +11,11 @@
  * "Biomass-smoke (906)" preset trains on the same set). July07's "smoke" and spartan_ec's "biomass tool" are a
  * different model: the coefficients SPARTAN's calibration tool exported for lot 251.
  */
-import { median, ols } from '../../common/stats.ts'
+import { median, ols } from '../../../../lib/stats.ts'
+import { num } from '../../../../lib/table.ts'
 
 type Value = string | number | boolean | null
 type Row = Record<string, Value>
-const num = (v: Value | undefined): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 
 /** the gallery's row id for a SPARTAN ExternalFilterId: ETAD-0017-1 → ETAD-0017 (the scan suffix dropped) */
 export const galleryId = (external: string) => external.replace(/-\d+$/, '')

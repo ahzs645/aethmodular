@@ -7,6 +7,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { focusStyle, useHighlightActions } from '@/lib/highlight'
 import { ScatterLayer } from '@/components/ScatterLayer'
 import { boxStats, kde, fmt } from '@/lib/stats'
+import { jitter } from '@/lib/stats'
 import { INK, MARGIN, withUnit } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
@@ -23,11 +24,6 @@ const MODES = ['Boxplot', 'Box + points', 'Violin', 'Beeswarm'] as const
 /** one filter drawn as a point: a beeswarm or boxplot-with-jitter dot, or a plain boxplot's outlier */
 type Pt = { v: number; row: FilterRow; g: { name: string; site?: string; color: string }; kind: 'swarm' | 'jitter' | 'outlier'; at: readonly [number, number] }
 
-/** deterministic jitter so the points don't dance on every re-render */
-const jitter = (i: number, w: number) => {
-  const t = Math.sin(i * 12.9898) * 43758.5453
-  return (t - Math.floor(t) - 0.5) * w
-}
 const GROUPS = ['Site', 'Season', 'Group'] as const
 
 /**

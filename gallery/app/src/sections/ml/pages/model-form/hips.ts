@@ -4,13 +4,9 @@
  * VIP overlap and band summaries of two profiles. Pure (node-tested in hips.test.mjs); the fits themselves
  * (the PLS models, their VIP) are the notebook's.
  */
+import { median, spearman } from '../../../../lib/stats.ts'
 
 export interface TransferMetrics { n: number; slope: number; intercept: number; R2: number; RMSE: number; MAE: number; bias: number; median_bias: number }
-
-const median = (v: number[]) => {
-  const s = [...v].sort((a, b) => a - b), m = s.length >> 1
-  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2
-}
 
 /**
  * pls_transfer.regression_metrics: observed on x, an OLS line of predicted on observed, R² of that line (the
@@ -44,26 +40,6 @@ export function chosenK(curve: readonly { k: number; rmse: number }[]): number |
   return best?.k ?? null
 }
 
-/** ranks 1…n with ties averaged (scipy.stats.rankdata, as spearmanr uses) */
-function ranks(v: readonly number[]): number[] {
-  const order = v.map((_, i) => i).sort((a, b) => v[a] - v[b])
-  const r = new Array<number>(v.length)
-  for (let i = 0; i < order.length;) {
-    let j = i
-    while (j + 1 < order.length && v[order[j + 1]] === v[order[i]]) j++
-    for (let t = i; t <= j; t++) r[order[t]] = (i + j) / 2 + 1
-    i = j + 1
-  }
-  return r
-}
-
-function pearson(a: readonly number[], b: readonly number[]): number {
-  const n = a.length, ma = a.reduce((s, v) => s + v, 0) / n, mb = b.reduce((s, v) => s + v, 0) / n
-  let sab = 0, saa = 0, sbb = 0
-  for (let i = 0; i < n; i++) { sab += (a[i] - ma) * (b[i] - mb); saa += (a[i] - ma) ** 2; sbb += (b[i] - mb) ** 2 }
-  return sab / Math.sqrt(saa * sbb)
-}
-
 /** indices of the `n` largest values (numpy's argsort(...)[-n:]; a tie exactly at the cut is broken by index) */
 function top(v: readonly number[], n: number): Set<number> {
   return new Set(v.map((_, i) => i).sort((a, b) => v[a] - v[b] || a - b).slice(-n))
@@ -81,7 +57,7 @@ export function vipOverlap(a: readonly number[], b: readonly number[], threshold
   const ta = top(a, topN), tb = top(b, topN)
   const mass = a.reduce((s, v) => s + v * v, 0)
   return {
-    spearman_r: pearson(ranks(a), ranks(b)),
+    spearman_r: spearman(a, b) ?? NaN,
     important_a_n: ia.size, important_b_n: ib.size,
     important_jaccard: union ? both / union : NaN,
     top_n_overlap: [...ta].filter((i) => tb.has(i)).length,

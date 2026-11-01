@@ -10,7 +10,7 @@ import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import { uniq, type Row, type Value } from '@/lib/table'
 import { FONT, INK } from '@/lib/theme'
 import type { FilterRow } from '@/lib/types'
-import { median } from '../../common/stats'
+import { median } from '@/lib/stats'
 import { provenance, rows as tableRows, type SpectralExport } from '../spectralCommon'
 import { SMOKE_CALS, SMOKE_SETS, smokePoints, smokeScores, type SmokePoint } from './data'
 

@@ -11,16 +11,15 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/format'
 import { FONT, INK } from '@/lib/theme'
-import { seasonOnly } from '@/lib/seasons'
+import { shortSeason } from '@/lib/seasons'
 import { useSearchParam } from '@/lib/url'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { VOLUME } from '@/lib/viewFields'
-import type { Fit } from './stats'
+import type { OlsFit as Fit } from '@/lib/stats'
+import { num as cell } from '@/lib/table'
 
-export const num = (r: Record<string, unknown> | undefined, f: string): number | null => {
-  const v = r?.[f]
-  return typeof v === 'number' && Number.isFinite(v) ? v : null
-}
+/** a row's field as a finite number, or null (lib/table num on r[f]) */
+export const num = (r: Record<string, unknown> | undefined, f: string): number | null => cell(r?.[f])
 export const has = (r: Record<string, unknown>, ...fs: string[]) => fs.every((f) => num(r, f) !== null)
 
 /**
@@ -85,7 +84,8 @@ export function seasonsOf(rows: FilterRow[], meta: MetaFile): { name: string; co
     .map((name, i) => ({ name, color: all.find((s) => s.name === name)?.color ?? SERIES[i % SERIES.length] }))
 }
 
-export const shortSeason = (s: string) => seasonOnly(s).replace(/\s*\(.*\)\s*$/, '')
+/** the season's name without its site or month range (lib/seasons), as the research pages label seasons */
+export { shortSeason }
 
 /** a crossplot point for a filter row, with the usual tip and record */
 export function point(r: FilterRow, x: number, y: number, color: string, xLabel: string, yLabel: string, source: string, extra: string[] = [], hollow = false): CrossPoint {

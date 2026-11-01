@@ -10,7 +10,7 @@ import { pearson } from '@/lib/stats'
 import { INK } from '@/lib/theme'
 import type { FilterRow } from '@/lib/types'
 import { CHANNELS, FTIR_EC, HIPS_BC, HIPS_FABS, HIPS_NM, NEAREST_TO_HIPS, atnField, bccField, type Channel, type PairSite } from './data'
-import { num } from './mac'
+import { num } from '@/lib/table'
 
 const MIN_N = 8
 

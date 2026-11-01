@@ -9,7 +9,7 @@
  * sites change their nearest site) are over the IMPROVE sites only; the SPARTAN targets (leading '*') are in
  * both matrices here as well, so a target can be put in focus too.
  */
-import { median, spearman } from './stats.ts'
+import { median, spearman } from '../../../lib/stats.ts'
 
 export type Cells = Record<string, unknown[]>
 

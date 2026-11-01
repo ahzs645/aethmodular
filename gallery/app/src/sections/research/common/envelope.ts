@@ -4,7 +4,7 @@
  * Filters → excluded as every chart does. On the rows the exporter used (the export's exclusions applied, nothing
  * excluded by hand) they are its saved rows (envelope.test.mjs). The IMPROVE sides need the FED exports and stay saved.
  */
-import { ols, quantile } from './stats.ts'
+import { ols, quantile } from '../../../lib/stats.ts'
 
 /** the exporter's quantiles (QUANTILES: 5, 25, 50, 75, 95 %), numpy's linear rule */
 export interface Quantiles { n: number; p05: number | null; p25: number | null; p50: number | null; p75: number | null; p95: number | null }

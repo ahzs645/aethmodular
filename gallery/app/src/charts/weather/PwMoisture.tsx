@@ -10,7 +10,9 @@ import { fidProps } from '@/lib/filterEdits'
 import { fmt } from '@/lib/stats'
 import { FONT, INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
-import { spearman } from '@/lib/weather'
+import { WEATHER_MIN_PAIRS } from '@/lib/weather'
+import { spearman } from '@/lib/stats'
+import { num } from '@/lib/table'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { ExcludedNote, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 import { markTip } from '@/lib/exclusionMode'
@@ -64,19 +66,18 @@ export function PwMoisture({ rows, meta, onePick }: { rows: FilterRow[]; meta: M
     const out: Series[] = []
     const make = (key: string, label: string, color: string, hollow: boolean, pts: Point[]) => {
       if (pts.length < MIN_N) return
-      out.push({ key, label, color, hollow, pts, rho: spearman(pts.map((p) => p.x), pts.map((p) => p.y)), fit: isDew ? logFit(pts) : null })
+      out.push({ key, label, color, hollow, pts, rho: spearman(pts.map((p) => p.x), pts.map((p) => p.y), WEATHER_MIN_PAIRS), fit: isDew ? logFit(pts) : null })
     }
-    const num = (r: FilterRow, f: string) => (typeof r[f] === 'number' && Number.isFinite(r[f]) ? (r[f] as number) : null)
-    for (const [site, rs] of d3.groups(rows.filter((r) => num(r, PW) !== null), (r) => r.site)) {
+    for (const [site, rs] of d3.groups(rows.filter((r) => num(r[PW]) !== null), (r) => r.site)) {
       const color = meta.sites.find((s) => s.name === site)?.color ?? INK.accent
       make(`${site}|era5`, `${site} · ERA5`, color, false, rs.flatMap((r) => {
-        const x = num(r, isDew ? 'Dew point (ERA5)' : 'Relative humidity (ERA5)')
-        return x === null ? [] : [{ row: r, x, y: num(r, PW)! }]
+        const x = num(r[isDew ? 'Dew point (ERA5)' : 'Relative humidity (ERA5)'])
+        return x === null ? [] : [{ row: r, x, y: num(r[PW])! }]
       }))
       make(`${site}|station`, `${site} · airport station${isDew ? ' (from T, RH)' : ''}`, onePick ? STATION : color, true, rs.flatMap((r) => {
-        const t = num(r, 'Temperature (station)'), rh = num(r, 'Relative humidity (station)')
+        const t = num(r['Temperature (station)']), rh = num(r['Relative humidity (station)'])
         const x = isDew ? (t !== null && rh !== null ? dewPoint(t, rh) : null) : rh
-        return x === null ? [] : [{ row: r, x, y: num(r, PW)! }]
+        return x === null ? [] : [{ row: r, x, y: num(r[PW])! }]
       }))
     }
     return out
@@ -87,12 +88,11 @@ export function PwMoisture({ rows, meta, onePick }: { rows: FilterRow[]; meta: M
   const markReason = useMarkReason()
   const markedPts = useMemo<Point[]>(() => {
     const here = new Set(rows.map((r) => r.site))
-    const num = (r: FilterRow, f: string) => (typeof r[f] === 'number' && Number.isFinite(r[f]) ? (r[f] as number) : null)
-    return markedAll.filter((r) => here.has(r.site) && num(r, PW) !== null).flatMap((r) => {
-      const era = num(r, isDew ? 'Dew point (ERA5)' : 'Relative humidity (ERA5)')
-      const t = num(r, 'Temperature (station)'), rh = num(r, 'Relative humidity (station)')
+    return markedAll.filter((r) => here.has(r.site) && num(r[PW]) !== null).flatMap((r) => {
+      const era = num(r[isDew ? 'Dew point (ERA5)' : 'Relative humidity (ERA5)'])
+      const t = num(r['Temperature (station)']), rh = num(r['Relative humidity (station)'])
       const st = isDew ? (t !== null && rh !== null ? dewPoint(t, rh) : null) : rh
-      return [era, st].flatMap((x) => (x === null ? [] : [{ row: r, x, y: num(r, PW)! }]))
+      return [era, st].flatMap((x) => (x === null ? [] : [{ row: r, x, y: num(r[PW])! }]))
     })
   }, [markedAll, rows, isDew])
 

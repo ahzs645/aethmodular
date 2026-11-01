@@ -8,7 +8,7 @@
  * > cutoff (`df[ratio] <= threshold`); a side needs three filters for a fit (scipy linregress); the residual is
  * y − x; ΔR² is R²(low) − R²(high).
  */
-import { regression, type RegressionOptions, type RegressionStats } from './stats.ts'
+import { quantile, regression, type RegressionOptions, type RegressionStats } from './stats.ts'
 
 export interface SplitItem { x: number; y: number; t: number; site: string }
 
@@ -26,15 +26,8 @@ export function splitValue(row: Record<string, unknown>, field: string, per: str
   return finite(b) && b !== 0 ? a / b : null
 }
 
-/** the p-quantile of ascending values, linear between order statistics (numpy's default); NaN when empty */
-export function quantileSorted(sorted: readonly number[], p: number): number {
-  if (!sorted.length) return NaN
-  const h = (sorted.length - 1) * p
-  const lo = Math.floor(h)
-  return sorted[lo] + (sorted[Math.min(lo + 1, sorted.length - 1)] - sorted[lo]) * (h - lo)
-}
-
-export const medianOf = (values: readonly number[]) => quantileSorted([...values].filter(Number.isFinite).sort((a, b) => a - b), 0.5)
+/** the median as the split pages take it: numpy's linear quantile at 0.5 of the finite values; NaN when none */
+export const medianOf = (values: readonly number[]) => quantile(values, 0.5)
 
 /** each site's median of the variable over these items (follow_up_analysis: `df['iron_ec_ratio'].median()` per site) */
 export function siteMedianCuts(items: readonly SplitItem[]): Map<string, number> {

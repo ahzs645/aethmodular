@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from 'react'
 import * as d3 from 'd3'
 import { loadJson, useExport } from '@/lib/data'
 import type { FilterRow, MetaFile } from '@/lib/types'
-import { num } from './mac'
+import { num } from '@/lib/table'
 
 export const CHANNELS = ['UV', 'Blue', 'Green', 'Red', 'IR'] as const
 export type Channel = (typeof CHANNELS)[number]

@@ -4,7 +4,8 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { archivedMatch, baseId, disagrees, gapAfter, negativeRmseBound, pearson, qcCell, scores } from './pythonPmf.ts'
+import { archivedMatch, baseId, disagrees, gapAfter, negativeRmseBound, qcCell, scores } from './pythonPmf.ts'
+import { pearson } from '../../../lib/stats.ts'
 
 const read = (rel) => JSON.parse(fs.readFileSync(new URL(`../../../../public/data/${rel}`, import.meta.url), 'utf8'))
 const data = read('research/python_pmf/python_pmf.json')

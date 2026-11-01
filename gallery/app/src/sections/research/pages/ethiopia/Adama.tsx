@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Figure } from '@/components/Figure'
 import { f2 } from '@/lib/format'
 import type { Row } from '@/lib/table'
-import { median } from '../../common/stats'
+import { median } from '@/lib/stats'
 import { provenance, rows as tableRows, type SpectralExport } from '../spectralCommon'
 import { adamaPoints } from './data'
 

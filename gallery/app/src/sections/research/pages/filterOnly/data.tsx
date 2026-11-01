@@ -11,6 +11,7 @@ import { useMac } from '@/lib/mac'
 import { ExcludedNote, useExclMode, useExclusionSplit } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
+import { rowsOf as tableRows } from '@/lib/table'
 import { useSearchParam } from '@/lib/url'
 import { MIN_TRAIN, POPULATIONS, evaluate, inPopulation, type Block, type FPoint, type Population, type Scheme } from '../../common/filterOnly'
 
@@ -26,7 +27,8 @@ interface PointsFile { generated: string; points: FPoint[]; omitted_default: str
 /** the release's own tables, columnar (name -> values) */
 export type Columns = Record<string, (string | number | boolean | null)[]>
 export interface ReleaseFile { generated: string; blocks: Columns; id11: Columns; performance: Columns; proportionality: Columns; coefficients: Columns; influence: Columns; cohorts: Columns; denominator: Columns }
-export const rowsOf = (t: Columns): Record<string, any>[] => (t[Object.keys(t)[0]] ?? []).map((_, i) => Object.fromEntries(Object.keys(t).map((k) => [k, t[k][i]])))
+/** the release's columns as rows (lib/table rowsOf), loosely typed as its pages read them */
+export const rowsOf = (t: Columns): Record<string, any>[] => tableRows<Record<string, any>>(t)
 
 export interface FoData {
   /** the diagnostic filters that count under Filters → excluded (lib/markedRows useCountedFilter) */

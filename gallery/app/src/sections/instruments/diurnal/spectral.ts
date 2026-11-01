@@ -6,6 +6,7 @@
  * on minutes; here every quantity is taken on the export's day-hour means. Free of React and d3, so
  * node can test it (spectral.test.mjs).
  */
+import { mean, orNull, quantile, sd } from '../../../lib/stats.ts'
 
 export const SPECTRAL_CHANNELS = ['UV', 'Blue', 'Green', 'Red', 'IR'] as const
 export type SpectralChannel = (typeof SPECTRAL_CHANNELS)[number]
@@ -35,21 +36,14 @@ export function bccAae(a: Val, b: Val, la: number, lb: number): number | null {
 export function wavelengthCv(values: readonly Val[]): number | null {
   const v = values.filter(ok)
   if (v.length < 2) return null
-  const mean = v.reduce((a, b) => a + b, 0) / v.length
-  if (!(mean > FLOOR)) return null
-  const sd = Math.sqrt(v.reduce((a, b) => a + (b - mean) ** 2, 0) / (v.length - 1))
-  return sd / mean
+  const m = mean(v)
+  if (!(m > FLOOR)) return null
+  return sd(v) / m
 }
 
-/** a quantile of sorted values, linear between ranks (pandas' and d3's default) */
-export function quantileSorted(sorted: readonly number[], p: number): number | null {
-  const n = sorted.length
-  if (!n) return null
-  const i = (n - 1) * p, lo = Math.floor(i), hi = Math.min(n - 1, lo + 1)
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo)
-}
+/** the median of the finite values as pandas takes it (lib/stats quantile at 0.5); null when there are none */
 export function median(values: readonly Val[]): number | null {
-  return quantileSorted(values.filter(ok).sort((a, b) => a - b), 0.5)
+  return orNull(quantile(values, 0.5))
 }
 
 /** per day-hour, every derived quantity of the notebooks' compute_derived_metrics */
@@ -143,15 +137,4 @@ export function blockSummary(hours: readonly number[], ir: readonly Val[], d: De
     return { block: b.label, n: valid.length, minutes: valid.reduce((a, i) => a + minutes(i), 0),
       ir: col(ir), uvIr: col(d.uvIr), aaeUvIr: col(d.aaeUvIr), aaeBlueIr: col(d.aaeBlueIr), deltaC: col(d.deltaC), cv: col(d.cv) }
   })
-}
-
-/** Pearson r over the pairs where both are finite */
-export function pearson(x: readonly Val[], y: readonly Val[]): number | null {
-  const p: [number, number][] = []
-  x.forEach((a, i) => { const b = y[i]; if (ok(a) && ok(b)) p.push([a, b]) })
-  if (p.length < 3) return null
-  const mx = p.reduce((s, [a]) => s + a, 0) / p.length, my = p.reduce((s, [, b]) => s + b, 0) / p.length
-  let sxy = 0, sxx = 0, syy = 0
-  for (const [a, b] of p) { sxy += (a - mx) * (b - my); sxx += (a - mx) ** 2; syy += (b - my) ** 2 }
-  return sxx > 0 && syy > 0 ? sxy / Math.sqrt(sxx * syy) : null
 }

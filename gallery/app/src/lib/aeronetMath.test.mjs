@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { cazorlaClass, exclusionCurve, fineSoil, meanSe, monthlyMeans, nonAbsorbingFraction, pearson, quantileSorted } from './aeronetMath.ts'
+import { cazorlaClass, exclusionCurve, fineSoil, nonAbsorbingFraction } from './aeronetMath.ts'
+import { meanSe, monthlyMeans, pearson, quantileSorted } from './stats.ts'
 
 const near = (a, b, tol = 1e-9) => assert.ok(Math.abs(a - b) < tol, `${a} != ${b}`)
 

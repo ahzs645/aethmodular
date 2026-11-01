@@ -5,6 +5,7 @@
  * R² = 1 − SSE/SST, Pearson r, mean bias), the Pearson r of a factor's contributions against an archived KF factor or
  * a gallery measurement, and the breaks a time series takes at long sampling gaps.
  */
+import { pearson } from '../../../lib/stats.ts'
 
 /** ETAD-0017-1 → ETAD-0017: the gallery's row id for a SPARTAN filter id (lib/filterId baseFilterId, kept local for node) */
 export const baseId = (id: string): string => id.replace(/^([A-Z]{4}-\d{4})-\d+$/, '$1')
@@ -23,18 +24,6 @@ export function scores(obs: readonly number[], pred: readonly number[]): Scores 
   let sst = 0, spp = 0, sop = 0
   for (let i = 0; i < n; i++) { const a = o[i] - mo, b = p[i] - mp; sst += a * a; spp += b * b; sop += a * b }
   return { n, rmse: Math.sqrt(sse / n), mae: sae / n, r2: sst > 0 ? 1 - sse / sst : NaN, r: sst > 0 && spp > 0 ? sop / Math.sqrt(sst * spp) : NaN, bias: bias / n, sse }
-}
-
-/** Pearson r over the finite pairs; null below 3 pairs or with no spread */
-export function pearson(xs: readonly number[], ys: readonly number[]): number | null {
-  const x: number[] = [], y: number[] = []
-  for (let i = 0; i < Math.min(xs.length, ys.length); i++) if (Number.isFinite(xs[i]) && Number.isFinite(ys[i])) { x.push(xs[i]); y.push(ys[i]) }
-  const n = x.length
-  if (n < 3) return null
-  const mx = x.reduce((a, b) => a + b, 0) / n, my = y.reduce((a, b) => a + b, 0) / n
-  let sxx = 0, syy = 0, sxy = 0
-  for (let i = 0; i < n; i++) { const a = x[i] - mx, b = y[i] - my; sxx += a * a; syy += b * b; sxy += a * b }
-  return sxx > 0 && syy > 0 ? sxy / Math.sqrt(sxx * syy) : null
 }
 
 /** one five-factor case's per-filter contributions, as python_pmf.json carries them */

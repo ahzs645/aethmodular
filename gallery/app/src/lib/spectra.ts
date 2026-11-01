@@ -4,6 +4,7 @@
  * quantile bands in the several layouts the exports use, and per-channel
  * quantiles across a set of traces. No React, so `npm test` runs them.
  */
+import { quantileSorted } from './stats.ts'
 
 /** Index of the grid value closest to `v`; the grid may be ascending or descending. */
 export function nearestIndex(grid: ArrayLike<number>, v: number): number {
@@ -34,10 +35,6 @@ export function channelQuantiles(traces: ArrayLike<number>[], qs: number[]): num
   return out
 }
 
-function quantileSorted(s: number[], q: number): number {
-  const i = (s.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i)
-  return s[lo] + (s[hi] - s[lo]) * (i - lo)
-}
 
 /**
  * The exports store quantile bands three ways: five rows (10/25/50/75/90 %), three rows

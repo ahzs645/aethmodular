@@ -5,7 +5,8 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { FONT, INK, inkOn } from '@/lib/theme'
-import { WEATHER_VARS, spearman } from '@/lib/weather'
+import { WEATHER_MIN_PAIRS, WEATHER_VARS } from '@/lib/weather'
+import { spearman } from '@/lib/stats'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { ColorLegend } from '@/components/ColorLegend'
@@ -36,7 +37,7 @@ export function SiteWeatherSummary({ rows, meta, field, current, onSite }: {
       cells: WEATHER_VARS.map((v) => {
         const ok = withField.filter((r) => typeof r[v.era5] === 'number')
         return { v, n: ok.length, level: d3.mean(ok, (r) => r[v.era5] as number) ?? null,
-          rho: ok.length >= MIN_N ? spearman(ok.map((r) => r[v.era5] as number), ok.map((r) => r[field] as number)) : null }
+          rho: ok.length >= MIN_N ? spearman(ok.map((r) => r[v.era5] as number), ok.map((r) => r[field] as number), WEATHER_MIN_PAIRS) : null }
       }),
     }
   }).filter((t) => t.n > 0 && t.cells.some((c) => c.n > 0)).sort((a, b) => a.site.localeCompare(b.site)), [rows, field])

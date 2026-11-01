@@ -17,6 +17,7 @@
  *  - paired: filters with OC, EC and Fabs all > 0, run_ftir_51 §11 (figures 11a and 11b);
  *  - own:    a field wherever it is reported; a ratio wherever both its parts are > 0.
  */
+import { isFiniteNumber as num, quantileSorted } from './stats.ts'
 
 export type Population = 'paired' | 'own'
 
@@ -126,7 +127,6 @@ export function rankedReference(file: ReferenceFile, pop: Population, q: Quantit
 }
 
 type Row = Record<string, unknown>
-const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 
 /** the carbon and absorption a filter must carry for the paired population, the quantity's own fields first */
 const PAIR_CANDIDATES = { EC: ['EC (FTIR)', 'EC (TOR)', 'EC (ChemSpec FTIR)'], OC: ['OC (FTIR)', 'OC (TOR)', 'OC (ChemSpec FTIR)'] }
@@ -151,12 +151,6 @@ export function filterValue(r: Row, q: Pick<Quantity, 'parts'>, pop: Population)
   return num(v) ? v : null
 }
 
-/** type-7 (linear) quantile of sorted values: pandas' default and d3.quantileSorted */
-export function quantileSorted(v: readonly number[], p: number): number {
-  if (!v.length) return NaN
-  const h = (v.length - 1) * p, lo = Math.floor(h)
-  return lo + 1 < v.length ? v[lo] + (h - lo) * (v[lo + 1] - v[lo]) : v[lo]
-}
 
 export interface PlacedSite { key: string; n: number; p25: number; p50: number; p75: number; values: number[] }
 
