@@ -25,6 +25,8 @@ export interface MatrixItem {
   weight?: number
   size?: number
   italic?: boolean
+  /** set the label in the mono face (configuration codes) */
+  mono?: boolean
   /** a coloured dot before a row label (a site's colour) */
   dot?: string
   /** muted text after a row label, e.g. "n=24" */
@@ -165,10 +167,10 @@ const monoWidth = (s: string, size: number) => s.length * size * 0.6
 const PAD = 8
 
 /** cut a label with an ellipsis to a width */
-function cut(text: string, size: number, room: number, weight = 400) {
-  if (textWidth(text, size, weight) <= room) return text
+function cut(text: string, size: number, room: number, weight = 400, family: string = FONT.family) {
+  if (textWidth(text, size, weight, family) <= room) return text
   let s = text
-  while (s.length > 1 && textWidth(`${s}…`, size, weight) > room) s = s.slice(0, -1)
+  while (s.length > 1 && textWidth(`${s}…`, size, weight, family) > room) s = s.slice(0, -1)
   return `${s.trimEnd()}…`
 }
 /** split a label at the space nearest its middle */
@@ -219,8 +221,9 @@ export function HeatMatrix(p: HeatMatrixProps) {
   const rowText = useMemo(() => R.map((r) => {
     const size = r.size ?? rowSize, weight = r.weight ?? 400, label = labelOf(r)
     const extra = (r.dot ? 14 : 0) + (r.suffix ? 4 + monoWidth(r.suffix, size * 0.9) : 0)
-    const full = label ? textWidth(label, size, weight) : 0
-    const shown = full + extra > maxLabel ? cut(label, size, maxLabel - extra, weight) : label
+    const family = r.mono ? FONT.mono : FONT.family
+    const full = label ? textWidth(label, size, weight, family) : 0
+    const shown = full + extra > maxLabel ? cut(label, size, maxLabel - extra, weight, family) : label
     return { shown, cut: shown !== label, w: Math.min(maxLabel, full + extra) }
   }), [R, rowSize, maxLabel])
   const labelW = Math.max(0, ...rowText.map((t) => t.w), p.rowHeader ? textWidth(p.rowHeader, 11) : 0)
@@ -404,7 +407,7 @@ export function HeatMatrix(p: HeatMatrixProps) {
             const rowTip = r.tip ?? (t.cut ? [r.title ?? labelOf(r)] : undefined)
             return <g key={r.key} style={p.onRow ? { cursor: 'pointer' } : undefined} onClick={p.onRow ? () => p.onRow!(i) : undefined} {...showTip(rowTip)}>
               {r.dot && <circle cx={groupW + 5} cy={rowLabelY(i)} r={5} fill={r.dot} />}
-              {t.shown && <text x={x} y={rowLabelY(i)} dy="0.35em" textAnchor={align} fontSize={size} fontWeight={on ? 650 : r.weight} fontStyle={r.italic ? 'italic' : undefined} fill={r.color ?? INK.text}>
+              {t.shown && <text x={x} y={rowLabelY(i)} dy="0.35em" textAnchor={align} fontSize={size} fontWeight={on ? 650 : r.weight} fontStyle={r.italic ? 'italic' : undefined} fontFamily={r.mono ? FONT.mono : undefined} fill={r.color ?? INK.text}>
                 {t.shown}{r.suffix && <tspan fill={INK.muted} fontFamily={FONT.mono} fontSize={size * 0.9}> {r.suffix}</tspan>}
               </text>}
               {extras.map((e, k) => <text key={e.key} x={extraPos[k] + 4} y={rowLabelY(i)} dy="0.35em" fontSize={11} fontFamily={FONT.mono} fill={e.color ?? INK.muted}>{e.text(i)}</text>)}
