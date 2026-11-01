@@ -98,18 +98,20 @@ export interface Loaded<T> {
   key: string | null
 }
 
-/** One settled load: the key it was for, and its result or error. */
-export interface Settled<T> { key: string; data: T | null; error: string }
+/** One settled load: the key it was for, its result or error, and the last load that succeeded (for `keep`). */
+export interface Settled<T> { key: string; data: T | null; error: string; good?: { key: string; data: T } }
 
 /**
  * What a loading hook shows for `key` given the last load that settled (pure, so it is node-tested).
- * A load for another key is never shown, except with `keep`: then its data stays up (no error, loading)
- * until the current key lands, so a chart does not blank between two picks. A null key loads nothing.
+ * A load for another key is never shown, except with `keep`: then the last successful load stays up
+ * while the current key loads, and beside the current key's error if it fails, so a chart does not
+ * blank between two picks. A null key loads nothing.
  */
 export function settle<T>(last: Settled<T> | null, key: string | null, keep = false): Loaded<T> {
   if (key === null) return { data: null, error: '', loading: false, key: null }
-  if (last && last.key === key) return { data: last.data, error: last.error, loading: false, key }
-  if (keep && last && last.data !== null) return { data: last.data, error: '', loading: true, key: last.key }
+  const current = last && last.key === key ? last : null
+  if (current && (current.data !== null || !keep || !current.good)) return { data: current.data, error: current.error, loading: false, key }
+  if (keep && last?.good) return { data: last.good.data, error: current?.error ?? '', loading: !current, key: last.good.key }
   return { data: null, error: '', loading: true, key: null }
 }
 
@@ -140,8 +142,8 @@ export function useLoaded<T>(key: string | null, load: () => Promise<T>, { keep 
     if (key === null) return
     let live = true
     load().then(
-      (data) => { if (live) setLast({ key, data, error: '' }) },
-      (e) => { if (live) setLast({ key, data: null, error: errorText(e) }) })
+      (data) => { if (live) setLast({ key, data, error: '', good: data === null ? undefined : { key, data } }) },
+      (e) => { if (live) setLast((prev) => ({ key, data: null, error: errorText(e), good: prev?.good })) })
     return () => { live = false }
     // key stands for load's inputs; deps adds what a key cannot name
     // eslint-disable-next-line react-hooks/exhaustive-deps

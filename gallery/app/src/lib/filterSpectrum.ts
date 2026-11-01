@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react'
 import { loadEtadIds, loadSimilarityMeta, loadTraces, type Traces } from '@/lib/similarity'
-import { loadDerived } from '@/lib/data'
+import { loadDerived, useLoaded } from '@/lib/data'
 import { baseFilterId } from '@/lib/highlight'
 
 /**
@@ -69,33 +68,26 @@ export interface FilterSpectrumData {
  * reported in `unavailable`, so one failed baseline does not hide the other.
  */
 export function useFilterSpectrum(id: string | null | undefined, methods: readonly SpectrumMethod[], vibesRank: '30' | '70' = '70'): FilterSpectrumData | null {
-  const [data, setData] = useState<FilterSpectrumData | null>(null)
-  const key = methods.join(',')
-  const requestKey = `${id}|${key}|${vibesRank}`
-  useEffect(() => {
-    if (!id || (!id.startsWith('improve:') && !id.startsWith('etad:') && !/^ETAD-\d{4}/.test(id))) return
-    let live = true
-    ;(async () => {
-      const sim = await simIndex()
-      const sids = await resolve(id, sim)
-      if (!sids.length || !live) return
-      const sampleId = sids[0]
-      const k = sim.index.get(sampleId)!
-      const loaded = await Promise.allSettled(methods.map(async (m) => {
-        const source = await traces(m, vibesRank)
-        return [m, { wn: source.wn, y: source.traces.of(k), rankCap: source.rankCap, backgroundRank: source.backgroundRank, presentationStatus: source.presentationStatus }] as const
-      }))
-      const series: FilterSpectrumData['series'] = {}, unavailable: SpectrumMethod[] = []
-      loaded.forEach((result, i) => {
-        if (result.status === 'fulfilled') series[result.value[0]] = result.value[1]
-        else unavailable.push(methods[i])
-      })
-      if (live) setData({ forId: id, requestKey, sampleId, series, unavailable })
-    })().catch(() => { /* no spectrum is not an error in a drawer */ })
-    return () => { live = false }
-  }, [id, key, vibesRank]) // eslint-disable-line react-hooks/exhaustive-deps
-  // a method switch keeps the old lines until the new ones land; a new filter clears them
-  return data && data.requestKey === requestKey ? data : null
+  const requestKey = `${id}|${methods.join(',')}|${vibesRank}`
+  const known = !!id && (id.startsWith('improve:') || id.startsWith('etad:') || /^ETAD-\d{4}/.test(id))
+  // no spectrum is not an error in a drawer: a failure reads as none
+  return useLoaded(known ? requestKey : null, async (): Promise<FilterSpectrumData | null> => {
+    const sim = await simIndex()
+    const sids = await resolve(id!, sim)
+    if (!sids.length) return null
+    const sampleId = sids[0]
+    const k = sim.index.get(sampleId)!
+    const loaded = await Promise.allSettled(methods.map(async (m) => {
+      const source = await traces(m, vibesRank)
+      return [m, { wn: source.wn, y: source.traces.of(k), rankCap: source.rankCap, backgroundRank: source.backgroundRank, presentationStatus: source.presentationStatus }] as const
+    }))
+    const series: FilterSpectrumData['series'] = {}, unavailable: SpectrumMethod[] = []
+    loaded.forEach((result, i) => {
+      if (result.status === 'fulfilled') series[result.value[0]] = result.value[1]
+      else unavailable.push(methods[i])
+    })
+    return { forId: id!, requestKey, sampleId, series, unavailable }
+  }).data
 }
 
 /** Base id (ETAD-0017) for an Addis drawer id or an "etad:<MediaId>" sample id; null otherwise. */
@@ -113,32 +105,20 @@ async function addisBase(id: string): Promise<string | null> {
  * a PM10 or blank filter, and so on. Null for non-Addis ids and while loading.
  */
 export function useAddisStatus(id: string | null | undefined): AddisStatus | null {
-  const [status, setStatus] = useState<{ id: string; s: AddisStatus } | null>(null)
-  useEffect(() => {
-    if (!id || (!id.startsWith('etad:') && !/^ETAD-\d{4}/.test(id))) return
-    let live = true
-    ;(async () => {
-      const base = await addisBase(id)
-      const all = (await etadJson()).status ?? {}
-      const s = base ? all[base] ?? { in_run: false, in_test_set: false, note: 'not in the frozen spectra run or the Addis test set' } : null
-      if (live && s) setStatus({ id, s })
-    })().catch(() => {})
-    return () => { live = false }
-  }, [id])
-  return status && status.id === id ? status.s : null
+  const addis = !!id && (id.startsWith('etad:') || /^ETAD-\d{4}/.test(id))
+  return useLoaded(addis ? id : null, async () => {
+    const base = await addisBase(id!)
+    const all = (await etadJson()).status ?? {}
+    return base ? all[base] ?? { in_run: false, in_test_set: false, note: 'not in the frozen spectra run or the Addis test set' } : null
+  }).data
 }
 
 /** All Addis statuses keyed by similarity sample id ("etad:<MediaId>"), for tooltips. */
 export function useAddisStatusBySample(): Map<string, AddisStatus> {
-  const [map, setMap] = useState<Map<string, AddisStatus>>(new Map())
-  useEffect(() => {
-    let live = true
-    etadJson().then((j) => {
-      const m = new Map<string, AddisStatus>()
-      for (const [b, sids] of Object.entries(j.ids)) for (const sid of sids) if (j.status?.[b]) m.set(sid, j.status[b])
-      if (live) setMap(m)
-    }).catch(() => {})
-    return () => { live = false }
-  }, [])
-  return map
+  return useLoaded('addis-status-by-sample', () => etadJson().then((j) => {
+    const m = new Map<string, AddisStatus>()
+    for (const [b, sids] of Object.entries(j.ids)) for (const sid of sids) if (j.status?.[b]) m.set(sid, j.status[b])
+    return m
+  })).data ?? NO_STATUS
 }
+const NO_STATUS = new Map<string, AddisStatus>()

@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useSearchParam } from '@/lib/url'
 import { seasonOnly } from '@/lib/seasons'
-import { loadSpartanIndex, loadSpartanFilters, loadSpartanReference, type SpartanIndex } from '@/lib/spartan'
+import { loadSpartanIndex, loadSpartanFilters, loadSpartanReference } from '@/lib/spartan'
 import { cleanReference, mergeReferenceRows, sampleRows, type QuantileReference, type ReferenceRow } from '@/lib/referencePopulation'
-import { loadJson } from '@/lib/data'
+import { loadJson, useLoaded } from '@/lib/data'
 import { useCountedFilter, useExclMode, useKnownFilter } from '@/lib/markedRows'
 import { MAX_IMPROVE_SITES, loadImprove, networkColor } from '@/lib/networks'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -29,24 +29,10 @@ export function useFilterReference(row: FilterRow, meta: MetaFile, allRows: Filt
   const [seasonPick, setSeasonPick] = useSearchParam<string>('sampleSeason', 'all')
   const [mode, setMode] = useSearchParam<string>('sampleRef', 'same')
   const [picked, setPicked] = useSearchParam<string>('sampleSites', row.code)
-  const [index, setIndex] = useState<SpartanIndex | null>(null)
-  const [improve, setImprove] = useState<ImproveSites | null>(null)
-  const [indexError, setIndexError] = useState('')
-  // `summary`: the whole IMPROVE network as quantiles (improve_reference.json); its rows are then a sample, for the crossplot
-  const [data, setData] = useState<{ key: string; rows: ReferenceRow[]; summary?: QuantileReference } | null>(null)
-  const [loadError, setLoadError] = useState('')
-  useEffect(() => {
-    let live = true
-    loadSpartanIndex().then(v => { if (live) setIndex(v) }).catch(e => { if (live) setIndexError(String(e)) })
-    return () => { live = false }
-  }, [])
-  // the IMPROVE list only when sites are being chosen (or a link names some): the drawer never needs it otherwise
-  useEffect(() => {
-    if (mode !== 'sites' || improve) return
-    let live = true
-    loadJson<ImproveSites>('improve_samples/index.json').then(v => { if (live) setImprove(v) }).catch(() => { /* SPARTAN sites still offered */ })
-    return () => { live = false }
-  }, [mode, improve])
+  const { data: index, error: indexError } = useLoaded('spartan-index', loadSpartanIndex)
+  // the IMPROVE list only when sites are being chosen (or a link names some): the drawer never needs it otherwise;
+  // a failure leaves the SPARTAN sites still offered
+  const improve = useLoaded(mode === 'sites' ? 'improve-sites' : null, () => loadJson<ImproveSites>('improve_samples/index.json')).data
   // Only the small site index is loaded up front. A named site or a multi-selection loads
   // those sites' filter numbers; the entire network is fetched only when explicitly chosen.
   const spartanSites = useMemo(() => {
@@ -63,22 +49,17 @@ export function useFilterReference(row: FilterRow, meta: MetaFile, allRows: Filt
   const codes = useMemo(() => [...new Set(mode === 'sites' ? picked.split(',').filter(c => sites.some(s => s.code === c)) : spartanSites.filter(s => s.name === mode).map(s => s.code))].sort(), [mode, picked, sites, spartanSites])
   const key = mode === 'network' ? '*' : mode === 'improve' ? 'improve:*' : codes.join(',')
   const remote = mode === 'network' || mode === 'improve' || mode === 'sites' || (mode !== 'same' && mode !== 'study' && (!index || index.sites.some(s => codes.includes(s.code))))
-  useEffect(() => {
-    if (!remote || !index) return
-    let live = true
-    setLoadError('')
+  // `summary`: the whole IMPROVE network as quantiles (improve_reference.json); its rows are then a sample, for the crossplot.
+  // keep: the last reference stays (with its own key) while the next loads; codes and mode are represented by the request key
+  const reference = useLoaded<{ key: string; rows: ReferenceRow[]; summary?: QuantileReference }>(remote && index ? key : null, () => {
+    if (mode === 'improve') return loadJson<QuantileReference>('improve_reference.json').then(summary => ({ key, rows: sampleRows(summary), summary }))
     const spartanCodes = codes.filter(c => !improveCodes.has(c)), improvePicked = codes.filter(c => improveCodes.has(c))
-    if (mode === 'improve') {
-      loadJson<QuantileReference>('improve_reference.json')
-        .then(summary => { if (live) setData({ key, rows: sampleRows(summary), summary }) }).catch(e => { if (live) setLoadError(String(e)) })
-      return () => { live = false }
-    }
     const request = mode === 'network' ? loadSpartanReference().then(v => v.rows)
       : Promise.all([spartanCodes.length || !improvePicked.length ? loadSpartanFilters(spartanCodes).then(v => v.rows) : [],
         improvePicked.length ? loadImprove(improvePicked).then(v => v.rows as unknown as ReferenceRow[]) : []]).then(([a, b]) => [...a, ...b])
-    request.then(rows => { if (live) setData({ key, rows }) }).catch(e => { if (live) setLoadError(String(e)) })
-    return () => { live = false }
-  }, [remote, index, key, improveCodes]) // codes and mode are represented by the request key
+    return request.then(rows => ({ key, rows }))
+  }, { keep: true, deps: [improveCodes] })
+  const data = reference.data, loadError = reference.error
   const known = useMemo(() => [...studyRows, ...allRows], [studyRows, allRows])
   // Filters → excluded: a gallery filter counts as it does in the charts (hand exclusions, keep= and filters put back
   // one by one too); a filter only a site file has keeps that file's exclusion unless Include

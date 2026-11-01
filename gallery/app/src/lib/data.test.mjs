@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { codesOf, errorText, keyOf, loadDerived, settle } from './data.ts'
 
-test('settle shows only the current key, or the last data under keep', () => {
-  const last = { key: 'a', data: 1, error: '' }
+test('settle shows only the current key, or the last good data under keep', () => {
+  const last = { key: 'a', data: 1, error: '', good: { key: 'a', data: 1 } }
   assert.deepEqual(settle(last, 'a'), { data: 1, error: '', loading: false, key: 'a' })
   assert.deepEqual(settle(last, 'b'), { data: null, error: '', loading: true, key: null })
   assert.deepEqual(settle(last, 'b', true), { data: 1, error: '', loading: true, key: 'a' })
@@ -11,10 +11,13 @@ test('settle shows only the current key, or the last data under keep', () => {
   assert.deepEqual(settle(last, null, true), { data: null, error: '', loading: false, key: null })
 })
 
-test('settle reports the current key\'s error and never an old one', () => {
-  const failed = { key: 'a', data: null, error: 'a.json: HTTP 404' }
-  assert.deepEqual(settle(failed, 'a'), { data: null, error: 'a.json: HTTP 404', loading: false, key: 'a' })
-  assert.deepEqual(settle(failed, 'b', true), { data: null, error: '', loading: true, key: null })
+test('settle reports the current key\'s error; keep holds the last good data beside it', () => {
+  const failed = { key: 'b', data: null, error: 'b.json: HTTP 404', good: { key: 'a', data: 1 } }
+  assert.deepEqual(settle(failed, 'b'), { data: null, error: 'b.json: HTTP 404', loading: false, key: 'b' })
+  assert.deepEqual(settle(failed, 'b', true), { data: 1, error: 'b.json: HTTP 404', loading: false, key: 'a' })
+  // an older key's error is never shown
+  assert.deepEqual(settle(failed, 'c', true), { data: 1, error: '', loading: true, key: 'a' })
+  assert.deepEqual(settle({ key: 'a', data: null, error: 'x' }, 'a', true), { data: null, error: 'x', loading: false, key: 'a' })
 })
 
 test('keyOf ignores order and repeats; codesOf inverts it', () => {

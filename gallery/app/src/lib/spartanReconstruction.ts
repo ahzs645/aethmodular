@@ -8,8 +8,8 @@
  * Sodium and Chloride are SPARTAN's sea salt split (not the sodium ion), Water and Residual are by
  * difference. So a stack takes its components from one basis or the other, never both.
  */
-import { useEffect, useMemo, useState } from 'react'
-import { loadJson } from './data'
+import { useMemo } from 'react'
+import { loadJson, useLoaded } from './data'
 import type { FilterRow, MetaFile } from './types'
 
 interface CompositionFile {
@@ -69,14 +69,8 @@ export const reconMeta = (meta: MetaFile): MetaFile => ({
  * null while the file loads; rows: [] where no filter has a balance (IMPROVE).
  */
 export function useReconstructedRows(rows: FilterRow[], enabled: boolean): { rows: FilterRow[]; missing: number } | null {
-  const [file, setFile] = useState<CompositionFile | null>(null)
-  const [failed, setFailed] = useState(false)
-  useEffect(() => {
-    if (!enabled || file) return
-    let live = true
-    loadJson<CompositionFile>('spartan_composition.json').then((d) => { if (live) setFile(d) }).catch(() => { if (live) setFailed(true) })
-    return () => { live = false }
-  }, [enabled, file])
+  const { data: file, error } = useLoaded(enabled ? 'spartan_composition.json' : null, () => loadJson<CompositionFile>('spartan_composition.json'))
+  const failed = !!error
   return useMemo(() => {
     if (!enabled) return null
     if (failed) return { rows: [], missing: rows.length }
