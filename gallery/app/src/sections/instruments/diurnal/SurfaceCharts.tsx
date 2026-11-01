@@ -46,7 +46,7 @@ const madeFrom = (file: SurfaceFile) => file.resolution === 'hourly'
 /** facets when a chart has several lines per group and the seasons are split */
 function facetBy<T>(groups: DayGroup[], render: (g: DayGroup, w?: number) => T) {
   return groups.length > 1
-    ? <FacetGrid items={groups} minCell={340} maxCols={3} share="y" itemKey={(g) => g.name} render={(g, w) => render(g, w) as never} />
+    ? <FacetGrid items={groups} minCell={340} maxCols={3} itemKey={(g) => g.name} render={(g, w) => render(g, w) as never} />
     : render(groups[0]) as never
 }
 

@@ -234,7 +234,7 @@ export function MinuteKstar({ site, name }: { site: MinuteSite | null; name: str
     <ChartFrame id="aq-min-kstar" title={`${name} · the instrument K against the closure K*, minute by minute`}
       subtitle={`On minutes with ATN1 ≥ 5 and both spot BCs positive: the instrument's K (dashed) and K* = (BC1 − BC2)/(BC1·ATN2 − BC2·ATN1), the K that makes the two spots agree that minute (solid, IQR whiskers), by spot-1 attenuation and by the spot's age. Spot 2 compensated with the instrument's K over the reported BCc has a median of ${fmt(quantile(s2, 0), 4)}–${fmt(quantile(s2, 1), 4)} across the bins: at minute resolution the reported K closes the two spots exactly, so the daily-mean K* on the chart above (and ftir_49's daily fallback) measures the averaging, not a mis-set K.`}
       provenance={`research/ftir_ec_phase3/ftir_49_ma350_raw_chain_diagnostics A1 (kstar_vs_K_by_atn_and_age) · ${SOURCE}`}>
-      {!rows.length ? <NoMinute name={name} /> : <FacetGrid items={['ATN1', 'spot age']} minCell={360} maxCols={2} share="y"
+      {!rows.length ? <NoMinute name={name} /> : <FacetGrid items={['ATN1', 'spot age']} minCell={360} maxCols={2}
         render={(by, cell) => <SweepPlot width={cell} height={260} xScale="point" title={`by ${by === 'ATN1' ? 'spot-1 attenuation' : 'spot age'}`} xLabel={by === 'ATN1' ? 'ATN1 bin' : 'Time on the spot'} yLabel="K"
           series={[...series(by, 'Kstar'), ...series(by, 'K')]} />} />}
       {rows.length > 0 && <Key items={[...(['UV', 'Blue', 'Green', 'Red', 'IR'] as const).map((c) => ({ label: c, color: CHANNEL_COLOR[c], kind: 'dot' as const })), { label: 'K* (closure), IQR whiskers', color: INK.text, kind: 'line' }, { label: 'K (instrument)', color: INK.text, kind: 'dash' }]} />}

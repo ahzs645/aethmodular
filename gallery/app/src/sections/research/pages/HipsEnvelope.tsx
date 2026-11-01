@@ -241,7 +241,7 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
         subtitle="Raw HIPS reflectance R1 against transmittance T1 per site: samples hollow grey, field blanks in the site colour, with the blanks' OLS line where there are at least three. Closer in spirit to Warren et al. Figure 2 than the IMPROVE FED ratios, but still not its registered detector record."
         provenance={RT_NB}>
         {/* one R1 / T1 range for every site under Panel axes: Shared (Own: each site its own) */}
-        <FacetGrid items={siteNames} minCell={280} share site={(s) => s} render={(s, w) => {
+        <FacetGrid items={siteNames} minCell={280} site={(s) => s} render={(s, w) => {
           const code = rows.find((r) => r.site === s)?.code
           const smp = optics.filter((o) => o.code === code && o.type !== 'FB' && o.R1 !== null && o.T1 !== null)
           const bl = blanks.filter((b) => b.code === code && b.R1 !== null && b.T1 !== null)
