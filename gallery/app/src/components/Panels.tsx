@@ -5,7 +5,7 @@ import { PanelGroupControls, PanelGroupProvider, PanelSlot, usePanelGroupValue, 
 import { useDimensions } from '@/hooks/useGalleryData'
 import { ChartFit, useFitHeight } from '@/lib/chartFit'
 import { panelLetter, panelRow, panelWrap, pickPanels, type PanelSize } from '@/lib/facets'
-import type { PanelDim } from '@/lib/axes'
+import type { PanelAxes, PanelDim } from '@/lib/axes'
 import type { FitGrouping } from '@/lib/siteRegression'
 
 /**
@@ -74,13 +74,15 @@ export interface PanelGroupProps {
   show?: readonly string[]
   /** keys to draw first, in this order; the rest follow in their own */
   order?: readonly string[]
+  /** fix Panel axes for this figure (a meeting figure as presented) instead of following the gallery's setting */
+  mode?: PanelAxes
 }
 
 /** the title row's height, taken off a fitted height */
 export const PANEL_TITLE_H = 22
 
-export function Panels({ panels, gap = 24, letters = true, minHeight = 140, align = 'start', label, wrap = false, expandable = true,
-  share, grouping, legend, controls, axesControl = true, dims, show, order }: {
+export function Panels({ panels, gap = 24, letters = true, minHeight = 140, align = 'start', label, wrap = false, maxCols, center = false, expandable = true,
+  share, grouping, legend, controls, axesControl = true, dims, show, order, mode }: {
   panels: PanelDef[]
   gap?: number
   /** a, b, … before each title (default on, with two panels or more: a composite is usually captioned panel by panel) */
@@ -93,6 +95,10 @@ export function Panels({ panels, gap = 24, letters = true, minHeight = 140, alig
   label?: string
   /** when the panels do not fit side by side, flow them into equal columns (lib/facets panelWrap) rather than one stack */
   wrap?: boolean
+  /** with `wrap`, at most this many columns */
+  maxCols?: number
+  /** centre the panels when they do not fill the width */
+  center?: boolean
   /** ⤢ on every panel (default true; a panel's own `expandable` wins) */
   expandable?: boolean
 } & PanelGroupProps) {
@@ -100,10 +106,10 @@ export function Panels({ panels, gap = 24, letters = true, minHeight = 140, alig
   const { width } = useDimensions(ref)
   const fit = useFitHeight()
   const [open, setOpen] = useState<string | null>(null)
-  const group = usePanelGroupValue({ share, grouping })
+  const { value: group, joined } = usePanelGroupValue({ share, grouping, mode })
   const drawn = pickPanels(panels.map((p) => p.key), show, order).map((i) => panels[i])
   const n = drawn.length
-  const lay = wrap ? panelWrap(width, drawn, gap) : (() => { const r = panelRow(width, drawn, gap); return { ...r, cols: r.stacked ? 1 : n, rows: r.stacked ? n : 1 } })()
+  const lay = wrap ? panelWrap(width, drawn, gap, maxCols) : (() => { const r = panelRow(width, drawn, gap); return { ...r, cols: r.stacked ? 1 : n, rows: r.stacked ? n : 1 } })()
   // one panel needs no letter
   if (n < 2) letters = false
   const headed = (p: PanelDef) => !!(p.title || p.note || letters)
@@ -113,15 +119,15 @@ export function Panels({ panels, gap = 24, letters = true, minHeight = 140, alig
   const shown = at >= 0 ? drawn[at] : null
   const big = typeof window === 'undefined' ? 900 : Math.max(320, Math.min(1100, window.innerWidth - 160))
   const grid = lay.cols > 1 && lay.rows > 1
-  const sharing = !!share && n > 1
+  const sharing = !!share && !mode && n > 1
 
   return (
     <PanelGroupProvider value={group}>
-      <PanelGroupControls value={group} axesControl={sharing && axesControl} dims={dims ?? (drawn.some((p) => p.site) ? ['site'] : [])} extra={controls} />
+      {!joined && <PanelGroupControls value={group} axesControl={sharing && axesControl} dims={dims ?? (drawn.some((p) => p.site) ? ['site'] : [])} extra={controls} />}
       <div ref={ref} className="panels" role="group" aria-label={label}
         style={grid
-          ? { display: 'grid', gridTemplateColumns: `repeat(${lay.cols}, minmax(0, ${Math.max(...lay.widths)}px))`, gap, alignItems: align === 'center' ? 'center' : 'start' }
-          : { display: 'flex', flexDirection: lay.stacked ? 'column' : 'row', gap, alignItems: lay.stacked ? 'stretch' : align === 'center' ? 'center' : 'flex-start' }}>
+          ? { display: 'grid', gridTemplateColumns: `repeat(${lay.cols}, minmax(0, ${Math.max(...lay.widths)}px))`, gap, alignItems: align === 'center' ? 'center' : 'start', justifyContent: center ? 'center' : undefined }
+          : { display: 'flex', flexDirection: lay.stacked ? 'column' : 'row', gap, alignItems: lay.stacked ? (center ? 'center' : 'stretch') : align === 'center' ? 'center' : 'flex-start', justifyContent: center && !lay.stacked ? 'center' : undefined }}>
         {width > 0 && drawn.map((p, i) => (
           <PanelCell key={p.key} width={lay.widths[i]} title={p.title} note={p.note} letter={letters ? panelLetter(i) : undefined}
             label={panelLabel(p)} onExpand={(p.expandable ?? expandable) ? () => setOpen(p.key) : undefined}>
@@ -198,10 +204,13 @@ export function panelChildren(children: ReactNode): ReactElement[] {
 
 /**
  * Panels from children: each child is one panel at least `min` wide, flowing into equal columns (two on a wide
- * screen, one on a phone). The research tabs' and meeting pages' `Grid` is this. Letters are off (the children carry
- * their own titles); ⤢ sits in each panel's corner. Every Panels group option (`share`, `legend`, …) passes through.
+ * screen, one on a phone). The research tabs' and meeting pages' `Grid` is this. It is the panel group of Panels
+ * (PanelCell chrome, ⤢ in each panel's corner, `share`, one fit grouping box, `legend`, `show`/`order` by child key)
+ * on the CSS track `repeat(auto-fit, minmax(min, 1fr))`, so a child that draws nothing (an ExplainOnly with Explain
+ * off) leaves no empty column. Letters are off (the children carry their own titles). Children size themselves.
  */
-export function PanelGrid({ children, min = 340, gap = 18, letters = false, ...rest }: {
+export function PanelGrid({ children, min = 340, gap = 18, letters = false, label, expandable = true,
+  share, grouping, legend, controls, axesControl = true, dims, show, order, mode }: {
   children: ReactNode
   min?: number
   gap?: number
@@ -210,8 +219,28 @@ export function PanelGrid({ children, min = 340, gap = 18, letters = false, ...r
   expandable?: boolean
 } & PanelGroupProps) {
   const kids = panelChildren(children)
-  return <Panels wrap gap={gap} letters={letters} {...rest}
-    panels={kids.map((k, i) => ({ key: k.key != null ? String(k.key) : String(i), min,
-      // a child sizes itself to its box: in the ⤢ dialog that box is the dialog's width
-      render: ({ width, expanded }) => expanded ? <div style={{ width }}>{k}</div> : k }))} />
+  const keys = kids.map((k, i) => (k.key != null ? String(k.key) : String(i)))
+  const { value: group, joined } = usePanelGroupValue({ share, grouping, mode })
+  const [open, setOpen] = useState<string | null>(null)
+  const drawn = pickPanels(keys, show, order)
+  const at = open === null ? -1 : drawn.findIndex((i) => keys[i] === open)
+  const big = typeof window === 'undefined' ? 900 : Math.max(320, Math.min(1100, window.innerWidth - 160))
+  return (
+    <PanelGroupProvider value={group}>
+      {!joined && <PanelGroupControls value={group} axesControl={!!share && !mode && drawn.length > 1 && axesControl} dims={dims} extra={controls} />}
+      <div className="panel-grid" role="group" aria-label={label}
+        style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(min(${min}px, 100%), 1fr))`, gap, alignItems: 'start' }}>
+        {drawn.map((i, pos) => (
+          <PanelCell key={keys[i]} letter={letters ? panelLetter(pos) : undefined} onExpand={expandable ? () => setOpen(keys[i]) : undefined}>
+            <PanelSlot panelKey={keys[i]}>{kids[i]}</PanelSlot>
+          </PanelCell>
+        ))}
+        {at >= 0 && <ExpandedPanel letter={letters ? panelLetter(at) : undefined} onClose={() => setOpen(null)}>
+          {/* a child sizes itself to its box: in the dialog that box is the dialog's width */}
+          <PanelSlot panelKey={keys[drawn[at]]}><ChartFit height={null}><div style={{ width: big }}>{kids[drawn[at]]}</div></ChartFit></PanelSlot>
+        </ExpandedPanel>}
+      </div>
+      {legend}
+    </PanelGroupProvider>
+  )
 }

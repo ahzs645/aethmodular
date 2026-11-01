@@ -90,11 +90,17 @@ const GroupCtx = createContext<GroupValue | null>(null)
 /** the panel a chart sits in: its key (Own) and site (Per site) */
 const SlotCtx = createContext<{ key: string; site?: string } | null>(null)
 
-/** the group a layout provides (components/Panels, FacetGrid): call once per layout, render <PanelGroupProvider> */
-export function usePanelGroupValue({ share, grouping }: { share?: ShareAxes; grouping?: FitGrouping | 'none' }): GroupValue {
+/**
+ * The group a layout provides (components/Panels, FacetGrid): call once per layout, render <PanelGroupProvider>. A
+ * layout nested in another group that sets nothing of its own (no `share`, `grouping` or `mode`) joins that group
+ * (`joined`): its charts share the outer ranges and hoist to the outer control row, which it then leaves out.
+ */
+export function usePanelGroupValue({ share, grouping, mode: fixed }: { share?: ShareAxes; grouping?: FitGrouping | 'none'; mode?: PanelAxes }): { value: GroupValue; joined: boolean } {
+  const parent = useContext(GroupCtx)
   const store = useRef<GroupStore>()
   if (!store.current) store.current = new GroupStore()
-  const [mode] = usePanelAxes()
+  const [gallery] = usePanelAxes()
+  const mode = fixed ?? gallery
   // a shape passed inline is a new function every render; the group keeps the first per axis kind
   const shapeKey = typeof share === 'object' && share ? `x:${typeof share.x}|y:${typeof share.y}` : String(share)
   const shapes$ = useRef(share)
@@ -109,11 +115,28 @@ export function usePanelGroupValue({ share, grouping }: { share?: ShareAxes; gro
     } : undefined
     return { x: live('x'), y: live('y') }
   }, [shapeKey]) // eslint-disable-line react-hooks/exhaustive-deps
-  return useMemo(() => ({ store: store.current!, shapes, mode, grouping }), [shapes, mode, grouping])
+  const own = useMemo(() => ({ store: store.current!, shapes, mode, grouping }), [shapes, mode, grouping])
+  const joined = !!parent && share === undefined && grouping === undefined && fixed === undefined
+  return { value: joined ? parent! : own, joined }
 }
 
 export const PanelGroupProvider = ({ value, children }: { value: GroupValue; children: ReactNode }) =>
   <GroupCtx.Provider value={value}>{children}</GroupCtx.Provider>
+
+/**
+ * A panel group without a layout, for figures whose panels sit in page markup of their own (the meeting page's
+ * IMPROVE and Addis boxes): the charts anywhere inside share ranges, one fit grouping box and the hoisted controls,
+ * drawn in a row above `children`; layouts nested inside join it. `mode` fixes Panel axes for this figure (as presented).
+ */
+export function PanelGroup({ share, grouping, mode, controls, axesControl = true, dims, children }: {
+  share?: ShareAxes; grouping?: FitGrouping | 'none'; mode?: PanelAxes; controls?: ReactNode; axesControl?: boolean; dims?: PanelDim[]; children: ReactNode
+}) {
+  const { value, joined } = usePanelGroupValue({ share, grouping, mode })
+  return <PanelGroupProvider value={value}>
+    {!joined && <PanelGroupControls value={value} axesControl={!!share && !mode && axesControl} dims={dims} extra={controls} />}
+    {children}
+  </PanelGroupProvider>
+}
 
 /** one panel of a group (the layouts wrap each panel, and its ⤢ copy, in one) */
 export function PanelSlot({ panelKey, site, children }: { panelKey: string; site?: string; children: ReactNode }) {
@@ -133,12 +156,14 @@ const noSubscribe = () => () => {}
  * the first panel has filed a range: draw your own.
  */
 export function useGroupDomain(axis: Axis, own: Extent | null): { domain: Extent; final: boolean } | null {
-  const g = useContext(GroupCtx), slot = useContext(SlotCtx)
+  const g = useContext(GroupCtx)
   const id = useId()
+  // a chart straight inside a PanelGroup, not in a layout's panel, is a panel of its own
+  const slot = useContext(SlotCtx) ?? { key: id }
   const shape = g?.shapes?.[axis]
   // Own with no shape changes nothing: skip the round trip
-  const active = !!g && !!slot && !!shape && !(g.mode === 'Own' && shape === true)
-  const key = active ? `${panelAxesKey(g!.mode, slot!)}|${axis}` : ''
+  const active = !!g && !!shape && !(g.mode === 'Own' && shape === true)
+  const key = active ? `${panelAxesKey(g!.mode, slot)}|${axis}` : ''
   const lo = own?.[0], hi = own?.[1]
   const ok = active && lo != null && hi != null && Number.isFinite(lo) && Number.isFinite(hi)
   useLayoutEffect(() => {
@@ -147,10 +172,9 @@ export function useGroupDomain(axis: Axis, own: Extent | null): { domain: Extent
   }, [g, id, key, ok, lo, hi])
   useLayoutEffect(() => () => g?.store.set(id, '', null), [g, id])
   const union = useSyncExternalStore(g ? g.store.subscribe : noSubscribe, () => (active && g ? g.store.get(key) : null))
-  return useMemo(() => {
-    if (!active || !union) return null
-    return typeof shape === 'function' ? { domain: shape(union), final: true } : { domain: union, final: false }
-  }, [active, union, shape])
+  // not memoised: a shape may read state of the chart's (it is called through a ref to the latest one)
+  if (!active || !union) return null
+  return typeof shape === 'function' ? { domain: shape(union), final: true } : { domain: union, final: false }
 }
 
 /**

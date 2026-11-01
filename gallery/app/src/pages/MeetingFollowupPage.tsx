@@ -9,7 +9,9 @@ import * as d3 from 'd3'
 import { ChartFrame, Empty, ExplainOnly, Note, Select, Segmented, Toggle } from '@/components/ChartFrame'
 import { BaselineOptionsProvider, BaselinePicker, CountPicker, SeasonPicker, clampCount, useBaselineOptions } from '@/components/Pickers'
 import { PageToc } from '@/components/PageToc'
-import { Crossplot, sharedCrossDomains, type CrossPoint } from '@/components/Crossplot'
+import { Crossplot, type CrossPoint } from '@/components/Crossplot'
+import { PanelGrid, Panels } from '@/components/Panels'
+import { PanelGroup } from '@/components/PanelGroup'
 import { Key as SharedKey } from '@/components/Key'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { BandCell, FitCell } from '@/components/TableCells'
@@ -365,8 +367,9 @@ function CohortCoverage({ data, galleryRows }: { data: MeetingData; galleryRows:
 }
 
 // ------------------------------------------------------------------ scatter
+/** each child a panel (components/Panels PanelGrid): two columns on a wide screen, one on a phone */
 function Grid({ children, cols = 2 }: { children: ReactNode; cols?: number }) {
-  return <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${cols > 2 ? 260 : 320}px, 1fr))`, gap: 14 }}>{children}</div>
+  return <PanelGrid min={cols > 2 ? 260 : 320} gap={14}>{children}</PanelGrid>
 }
 
 /** The page's keys relabel saved Deming lines with the active estimator (the browser refits them). */
@@ -795,8 +798,6 @@ function ThreePlots({ data }: { data: MeetingData }) {
   const baselineTag = <em className="baseline-tag">{methodName(method)}</em>
   const torHips = improve('tor', 'fabs'), ftirTor = improve('ftir', 'tor'), ftirHips = improve('ftir', 'fabs')
   const addis = addisPts(fitId, season, undefined, perFilter)
-  // all four panels on one EC range, always: the IMPROVE and Addis loadings compare by eye
-  const shared = sharedCrossDomains([torHips, ftirTor, ftirHips, addis])
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › ThreePlots" title="Three crossplots per season — TOR EC vs HIPS, FTIR vs TOR and FTIR vs HIPS on held-out IMPROVE filters, beside the Addis test set from the same calibration and the spectra"
       subtitle="Only IMPROVE filters from sites held out of the calibration set are drawn (cross-validation). 'Seasonal calibration' is one model per season from its 500 analogs; the all-IMPROVE models are Ann's reading of the current model (lot 251, or the frozen full-pool model for the selected analysis version). For the all-IMPROVE models, the IMPROVE panels can show either the season's analogs or every held-out IMPROVE filter."
@@ -808,6 +809,8 @@ function ThreePlots({ data }: { data: MeetingData }) {
         <Select label="IMPROVE colour" value={colorBy} options={[...COLOR_BY]} onChange={setColorBy} optionLabel={(v) => (v === 'grey' ? 'Grey' : v)} />
       </>}>
       <MeetingCalibrationDetails fit={calibrationFit} />
+      {/* all four panels on one EC range, always (Panel axes fixed at Shared): the IMPROVE and Addis loadings compare by eye */}
+      <PanelGroup share mode="Shared">
       <div className="plot-groups">
         <section className="plot-group improve">
           <h3>
@@ -817,21 +820,20 @@ function ThreePlots({ data }: { data: MeetingData }) {
               : pooled ? `cross-validation · all IMPROVE filters at sites held out of the ${modelLabel(fam).toLowerCase()} calibration set, not only the analogs`
               : `cross-validation · the ${seasonName} analogs at sites held out of the ${modelLabel(fam).toLowerCase()} calibration set`}</span>
           </h3>
-          <div className="plot-group-grid three">
-            <Crossplot title="TOR EC vs HIPS" points={torHips} errorRatio={q('tor_vs_fabs')?.deming_lambda} xLabel={hipsLabel} yLabel={ecAxis('tor', unit)} domain={shared.domain} />
-            <Crossplot title="FTIR EC vs TOR EC" points={ftirTor} errorRatio={q('ftir_vs_tor')?.deming_lambda} xLabel={ecAxis('tor', unit)} yLabel={ecAxis('ftir', unit)} domain={shared.domain} />
-            <Crossplot title="FTIR EC vs HIPS" points={ftirHips} errorRatio={q('ftir_vs_fabs')?.deming_lambda} xLabel={hipsLabel} yLabel={ecAxis('ftir', unit)} domain={shared.domain} />
-          </div>
+          <Panels label="IMPROVE crossplots" letters={false} gap={10} panels={[
+            { key: 'tor-hips', min: 200, render: () => <Crossplot title="TOR EC vs HIPS" points={torHips} errorRatio={q('tor_vs_fabs')?.deming_lambda} xLabel={hipsLabel} yLabel={ecAxis('tor', unit)} /> },
+            { key: 'ftir-tor', min: 200, render: () => <Crossplot title="FTIR EC vs TOR EC" points={ftirTor} errorRatio={q('ftir_vs_tor')?.deming_lambda} xLabel={ecAxis('tor', unit)} yLabel={ecAxis('ftir', unit)} /> },
+            { key: 'ftir-hips', min: 200, render: () => <Crossplot title="FTIR EC vs HIPS" points={ftirHips} errorRatio={q('ftir_vs_fabs')?.deming_lambda} xLabel={hipsLabel} yLabel={ecAxis('ftir', unit)} /> },
+          ]} />
         </section>
         <section className="plot-group addis">
           <h3>
             Test set: Addis {baselineTag}
           </h3>
-          <div className="plot-group-grid">
-            <Crossplot title={`Addis ${seasonPhrase(season)}: FTIR vs HIPS`} points={addis} domain={shared.domain} errorRatio={sAd?.deming_lambda ?? data.summary.lambda} xLabel={hipsLabel} yLabel={ecAxis('ftir', unit)} />
-          </div>
+          <Crossplot title={`Addis ${seasonPhrase(season)}: FTIR vs HIPS`} points={addis} errorRatio={sAd?.deming_lambda ?? data.summary.lambda} xLabel={hipsLabel} yLabel={ecAxis('ftir', unit)} />
         </section>
       </div>
+      </PanelGroup>
       <Key items={[
         ...(colorBy === 'grey' ? [{ label: pooled ? 'every held-out IMPROVE filter' : `IMPROVE analogs of ${isAllAddis(season) ? 'all Addis' : shortSeason(season)}, cross-validation sites`, color: IMPROVE_GREY }] : []),
         ...(isAllAddis(season)

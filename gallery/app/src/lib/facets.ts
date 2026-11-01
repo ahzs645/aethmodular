@@ -64,16 +64,16 @@ export function fitColumns(width: number, need: number, n: number, { gap = 12, m
 /**
  * Wrapped composite layout (components/Panels `wrap`, the research and meeting `Grid`): one row while every panel's
  * `min` fits (panelRow), else equal columns as many as the widest `min` allows, the panels flowing into rows
- * (what `repeat(auto-fit, minmax(min, 1fr))` did by hand). One column is a stack. `cols` is the column count,
+ * (what `repeat(auto-fit, minmax(min, 1fr))` did by hand), at most `maxCols`. One column is a stack. `cols` is the column count,
  * `rows` the row count; widths are whole pixels.
  */
-export function panelWrap(width: number, panels: PanelSize[], gap = 24): { stacked: boolean; cols: number; rows: number; widths: number[] } {
+export function panelWrap(width: number, panels: PanelSize[], gap = 24, maxCols = Infinity): { stacked: boolean; cols: number; rows: number; widths: number[] } {
   const n = panels.length
   const row = panelRow(width, panels, gap)
-  if (!row.stacked) return { stacked: false, cols: Math.max(1, n), rows: 1, widths: row.widths }
+  if (!row.stacked && n <= maxCols) return { stacked: false, cols: Math.max(1, n), rows: 1, widths: row.widths }
   const need = Math.max(...panels.map((p) => p.min ?? 240))
-  const cols = Math.max(1, Math.min(n, Math.floor((width + gap) / (need + gap))))
-  if (cols <= 1) return { stacked: true, cols: 1, rows: n, widths: row.widths }
+  const cols = Math.max(1, Math.min(n, maxCols, Math.floor((width + gap) / (need + gap))))
+  if (cols <= 1) return { stacked: n > 1, cols: 1, rows: n, widths: panels.map((p) => Math.floor(Math.max(p.min ?? 240, Math.min(p.max ?? Infinity, width)))) }
   const cell = Math.floor((width - gap * (cols - 1)) / cols)
   return { stacked: false, cols, rows: Math.ceil(n / cols), widths: panels.map((p) => Math.floor(Math.min(p.max ?? Infinity, cell))) }
 }

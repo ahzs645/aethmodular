@@ -23,7 +23,7 @@ import { facetGrid, panelLetter, pickPanels } from '@/lib/facets'
 export interface FacetCell { height: number | null; expanded: boolean }
 
 export function FacetGrid<T>({ items, render, minCell, maxCols, maxCell, gap, title, note, label, letters = false, expandable = true, center, minHeight = 120,
-  itemKey, site, share, grouping, legend, controls, axesControl = true, dims, show, order }: {
+  itemKey, site, share, grouping, legend, controls, axesControl = true, dims, show, order, mode }: {
   items: T[]
   render: (item: T, cellWidth: number, index: number, cell: FacetCell) => ReactNode
   minCell?: number
@@ -51,7 +51,7 @@ export function FacetGrid<T>({ items, render, minCell, maxCols, maxCell, gap, ti
   const { width } = useDimensions(ref)
   const fit = useFitHeight()
   const [open, setOpen] = useState<string | null>(null)
-  const group = usePanelGroupValue({ share, grouping })
+  const { value: group, joined } = usePanelGroupValue({ share, grouping, mode })
   const keyOf = (it: T, i: number) => itemKey?.(it, i) ?? (typeof it === 'string' ? it : String(i))
   const keys = items.map(keyOf)
   // the facets drawn, in order, each with its index in `items` (what `render` and `title` are handed)
@@ -64,10 +64,10 @@ export function FacetGrid<T>({ items, render, minCell, maxCols, maxCell, gap, ti
   const big = typeof window === 'undefined' ? 900 : Math.max(320, Math.min(maxCell ? maxCell * 1.6 : 1000, window.innerWidth - 160))
   const at = open === null ? -1 : drawn.findIndex((d) => d.key === open)
   const shown = at >= 0 ? drawn[at] : null
-  const sharing = !!share && drawn.length > 1
+  const sharing = !!share && !mode && drawn.length > 1
   return (
     <PanelGroupProvider value={group}>
-      <PanelGroupControls value={group} axesControl={sharing && axesControl} dims={dims ?? (site ? ['site'] : [])} extra={controls} />
+      {!joined && <PanelGroupControls value={group} axesControl={sharing && axesControl} dims={dims ?? (site ? ['site'] : [])} extra={controls} />}
       <div ref={ref} style={{ display: 'grid', gridTemplateColumns: `repeat(${g.cols}, ${g.cell}px)`, gap: g.gap, alignItems: 'start', justifyContent: center ? 'center' : undefined }}>
         {drawn.map(({ it, i, key }, pos) => (
           <PanelCell key={key} title={title?.(it, i)} note={note?.(it, i)} letter={letters ? panelLetter(pos) : undefined} label={name(it, i)}

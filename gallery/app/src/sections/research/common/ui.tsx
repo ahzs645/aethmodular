@@ -7,6 +7,7 @@ import { useMemo, useRef, type ReactNode } from 'react'
 import * as d3 from 'd3'
 import { Segmented, Select } from '@/components/ChartFrame'
 import type { CrossLine, CrossPoint } from '@/components/Crossplot'
+import { PanelGrid, type PanelGroupProps } from '@/components/Panels'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/format'
@@ -161,7 +162,10 @@ export const pText = (p: number) => (!Number.isFinite(p) ? '—' : p < 1e-4 ? '<
 /** "Precipitable water (AERONET)" -> "PW", "Relative humidity (station)" -> "RH": initials of a multi-word name */
 export const initials = (field: string) => { const w = field.split(' (')[0].split(/\s+/); return w.length > 1 ? w.map((x) => x[0].toUpperCase()).join('') : w[0] }
 
-/** a two-column grid of panels on a wide screen, one column on a phone */
-export function Grid({ children, min = 340 }: { children: ReactNode; min?: number }) {
-  return <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(min(${min}px, 100%), 1fr))`, gap: 18, alignItems: 'start' }}>{children}</div>
+/**
+ * Panels side by side on a wide screen, one column on a phone: each child is a panel at least `min` wide
+ * (components/Panels PanelGrid), so the research tabs get the panel group (⤢, `share`, one fit grouping box, `legend`).
+ */
+export function Grid({ children, min = 340, ...group }: { children: ReactNode; min?: number } & PanelGroupProps) {
+  return <PanelGrid min={min} {...group}>{children}</PanelGrid>
 }

@@ -50,3 +50,18 @@ test('groupExtents shares a range within each Panel axes group', () => {
   assert.deepEqual(groupExtents(regs('Per site')).get('B|y'), [2, 3])
   assert.deepEqual(groupExtents(regs('Own')).get('A-dry|y'), [0, 4])
 })
+
+test('panelWrap caps the columns at maxCols', () => {
+  const p = Array.from({ length: 4 }, () => ({ min: 200 }))
+  assert.equal(panelWrap(1200, p, 16).cols, 4)
+  const two = panelWrap(1200, p, 16, 2)
+  assert.equal(two.cols, 2)
+  assert.equal(two.rows, 2)
+  assert.deepEqual(two.widths, [592, 592, 592, 592])
+})
+
+test('panelWrap with one column stacks full-width panels', () => {
+  const w = panelWrap(900, [{ min: 200 }, { min: 200, max: 500 }], 16, 1)
+  assert.equal(w.stacked, true)
+  assert.deepEqual(w.widths, [900, 500])
+})
