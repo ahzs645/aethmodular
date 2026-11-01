@@ -1,17 +1,16 @@
 import { useMemo } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { BC_CHOICES, bcOption, useChartOptions } from '@/lib/chartOptions'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { fmt } from '@/lib/stats'
-import { useSearchParam } from '@/lib/url'
 import { SSA_BY_WAVELENGTH } from '@/lib/aeronet'
 import { nonAbsorbingFraction } from '@/lib/aeronetMath'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { colouring, num, recordOf } from './shared'
 import { useMarkedRows } from '@/lib/markedRows'
 
-/** the surface BC Eom's w can use, in the notebook's order of preference (it fell back from ChemSpec BC to FTIR EC to HIPS) */
-export const BC_CHOICES = ['EC (FTIR)', 'HIPS BC', 'BC (public HIPS)'] as const
+/** the surface BC Eom's w can use, in the notebook's order of preference (it fell back from ChemSpec BC to FTIR EC to HIPS): lib/chartOptions BC_CHOICES */
 
 /**
  * Eom et al. (2025)'s non-absorbing fraction against the column's SSA: w = (AS + AN) / (AS + AN + BC) from the
@@ -20,8 +19,9 @@ export const BC_CHOICES = ['EC (FTIR)', 'HIPS BC', 'BC (public HIPS)'] as const
  */
 export function AeronetNonAbsorbing({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }) {
   const present = BC_CHOICES.filter((f) => rows.some((r) => num(r[f])))
-  const [bcParam, setBc] = useSearchParam<string>('aeronet.w.bc', BC_CHOICES[0], BC_CHOICES)
-  const bc = present.includes(bcParam as (typeof BC_CHOICES)[number]) ? bcParam : present[0] ?? BC_CHOICES[0]
+  // the filter BC (lib/chartOptions bcOption): kept in the link as aeronet.w.bc
+  const o = useChartOptions('aeronet.w', [bcOption({ present })])
+  const bc = o.values.bc as string
   const col = useMemo(() => colouring(rows, meta), [rows, meta])
   // Filters → excluded: Mark (lib/markedRows): these sites' excluded filters, built the same way and drawn as ×
   const marked = useMarkedRows()
@@ -44,7 +44,7 @@ export function AeronetNonAbsorbing({ rows, meta }: { rows: FilterRow[]; meta: M
     <ChartFrame id="aeronet-w-ssa" title="Non-absorbing fraction against SSA — by wavelength"
       subtitle={`w = (AS + AN) / (AS + AN + BC): ammonium sulfate (1.375 × sulfate) and ammonium nitrate (1.290 × nitrate) over themselves plus ${bc}, all from the filter, against the window-mean single-scattering albedo at each AERONET wavelength. Eom et al. (2025) found SSA rising with w across 14 sites; ${n} filters here have both. Fits follow the gallery's estimator.`}
       provenance="notebooks/analysis/surface_columnar_linkage.ipynb sections 2 and 8 (w parameter; w vs SSA, which the notebook could not draw without the inversion)"
-      controls={<Select label="BC" value={bc} options={present.length ? [...present] : [...BC_CHOICES]} onChange={setBc} />}>
+      controls={o.controls()}>
       {all.length === 0 ?<Empty>No filter in view has sulfate, nitrate, {bc} and an inversion SSA in its window.</Empty> : (
         <div className="aeronet-panels" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 8 }}>
           {panels.map((p) => (

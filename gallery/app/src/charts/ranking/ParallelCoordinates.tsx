@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { styleBrush } from '@/lib/brush'
 import { robustDomain } from '@/lib/axes'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Note, Segmented, Select, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
+import { speciesFamilyOption, useChartOptions } from '@/lib/chartOptions'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -70,12 +71,28 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
   const tip = useTooltip(wrapRef)
 
   const groupNames = meta.field_groups.map((g) => g.label)
-  const [group, setGroup] = useState(groupNames.includes('Ions') ? 'Ions' : groupNames[0] ?? '')
-  const [colorBy, setColorBy] = useState<(typeof COLOR_BY)[number]>('Site')
-  const [normalise, setNormalise] = useState(false)
   const { hidden, setHidden, dim, props: legendProps } = useLegend()
   /** active brush per field, in pixels of that axis; pixel space is what the eye selected, so clamped values at an axis end are brushable */
   const [brushes, setBrushes] = useState<Record<string, PixelRange>>({})
+  // another family or scale moves every axis under the brushes, so they clear; another colour resets the legend
+  const o = useChartOptions('parallel', [
+    speciesFamilyOption({ groups: groupNames, onChange: () => setBrushes({}) }),
+    { key: 'colorBy', label: 'Colour', choices: COLOR_BY, default: 'Site', onChange: () => setHidden(new Set()) },
+    { key: 'normalise', label: 'Normalise', toggle: true, default: false, onChange: () => setBrushes({}), title: "every axis 0–1: value ÷ that species' 98th percentile, so the axes share one scale" },
+    { key: 'brush', node: () => anyBrush ? (
+      <span className="control">
+        <strong>{selected.size}</strong> of {lines.length} filters selected
+        <button type="button" className="btn quiet" onClick={clearBrushes} title="Remove every axis brush (double-click an axis clears just that one)">
+          clear
+        </button>
+      </span>
+    ) : (
+      <span className="control">{lines.length} filters</span>
+    ) },
+  ])
+  const group = o.values.group as string
+  const colorBy = o.values.colorBy as (typeof COLOR_BY)[number]
+  const normalise = o.values.normalise as boolean
   // bumping this rebuilds every brush from scratch, which is how "clear" wipes the d3-owned rectangles
   const [brushEpoch, setBrushEpoch] = useState(0)
   const brushRefs = useRef(new Map<string, SVGGElement>())
@@ -249,23 +266,7 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
       title="Parallel coordinates — every species of a family, every filter"
       subtitle="One polyline per filter across one axis per species, where the radar shows only a site median per axis: the whole composition of every filter at once, so co-varying species read as parallel strands and a filter that is odd on one axis shows which others it is odd on. Each axis spans the 2–98 % bulk of its species. Drag along an axis to keep only the filters in that range; brush several axes to intersect them. Hover a line to find the filter in every other chart; click it for the full record."
       provenance="react-graph-gallery.com/parallel-plot · not in the estate (0 figures)"
-      controls={
-        <>
-          <Select label="Species family" value={group} options={groupNames} onChange={(v) => { setGroup(v); setBrushes({}) }} />
-          <Segmented label="Colour" value={colorBy} options={COLOR_BY} onChange={(v) => { setColorBy(v); setHidden(new Set()) }} />
-          <Toggle label="Normalise" checked={normalise} onChange={(v) => { setNormalise(v); setBrushes({}) }} title="every axis 0–1: value ÷ that species' 98th percentile, so the axes share one scale" />
-          {anyBrush ? (
-            <span className="control">
-              <strong>{selected.size}</strong> of {lines.length} filters selected
-              <button type="button" className="btn quiet" onClick={clearBrushes} title="Remove every axis brush (double-click an axis clears just that one)">
-                clear
-              </button>
-            </span>
-          ) : (
-            <span className="control">{lines.length} filters</span>
-          )}
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap">
         {axes.length < 2 ? (

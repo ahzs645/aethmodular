@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Segmented } from '@/components/ChartFrame'
+import { ChartFrame } from '@/components/ChartFrame'
+import { useChartOptions } from '@/lib/chartOptions'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { INK, FONT } from '@/lib/theme'
@@ -24,7 +25,9 @@ export function AvailabilityHeatmap({ rows, meta, xField, yField }: { rows: Filt
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const [which, setWhich] = useState<'x' | 'y' | 'both'>('both')
+  const o = useChartOptions('coverage', [{ key: 'which', label: 'Count filters with', default: 'both', title: `x = ${xField} · y = ${yField}`,
+    choices: [{ value: 'x', label: 'x field' }, { value: 'y', label: 'y field' }, { value: 'both', label: 'Both' }] }])
+  const which = o.values.which as 'x' | 'y' | 'both'
   const colours = useColourScheme('coverage', 'sequential')
   const edits = useFilterEdits()
 
@@ -67,16 +70,7 @@ export function AvailabilityHeatmap({ rows, meta, xField, yField }: { rows: Filt
       title="Heatmap — sample coverage by site and month"
       subtitle="How many filters carry the measurement per site per month. Gaps here are the reason several notebooks exist at all: Beijing reaches back to 2013, Delhi only starts mid-2022. 'Both' shows what the crossplot can actually use."
       provenance="stands in for the data-availability strip charts · react-graph-gallery.com/heatmap"
-      controls={<>
-        <Segmented
-          label="Count filters with"
-          value={which}
-          options={['x', 'y', 'both'] as const}
-          optionLabel={(o) => (o === 'both' ? 'Both' : `${o} field`)}
-          onChange={setWhich}
-          title={`x = ${xField} · y = ${yField}`}
-        />
-      </>}
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap">
         <svg width={width} height={innerH + margin.top + margin.bottom}>

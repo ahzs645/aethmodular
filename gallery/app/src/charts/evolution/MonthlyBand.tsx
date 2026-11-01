@@ -2,7 +2,8 @@ import { useMemo, useRef, useState } from 'react'
 import { seasonOnly } from '@/lib/seasons'
 import { SeasonBands, monthSeasonBands } from '@/components/SeasonBands'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Toggle } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { useChartOptions } from '@/lib/chartOptions'
 import { Legend, toggleIn } from '@/components/Legend'
 import { XAxis, YAxis } from '@/components/Axes'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -36,7 +37,8 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
 
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [hover, setHover] = useState<string | null>(null)
-  const [bands, setBands] = useState(true)
+  const o = useChartOptions('monthly-band', [{ key: 'bands', label: 'IQR bands', toggle: true, default: true }])
+  const bands = o.values.bands as boolean
 
   const allSeries = useMemo(
     () =>
@@ -86,7 +88,7 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
       title="Area chart — monthly climatology with an IQR band"
       subtitle={`Median by calendar month with the interquartile range shaded. ${mixed ? 'Each site keeps its own calendar, so the month axis is left unshaded; hover a point for its local season.' : `Season shading uses the ${calendarLabel(meta)}.`}${emphasizeFebruary ? ' February is flagged because the two Ethiopian conventions assign it to different seasons.' : ''}`}
       provenance="stands in for 59 fill_between+plot figures · react-graph-gallery.com/area-plot"
-      controls={<Toggle label="IQR bands" checked={bands} onChange={setBands} />}
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap">
         {series.length === 0 ? (

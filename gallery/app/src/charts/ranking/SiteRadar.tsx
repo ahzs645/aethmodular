@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { speciesFamilyOption, useChartOptions } from '@/lib/chartOptions'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -28,8 +29,12 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
   const tip = useTooltip(wrapRef)
 
   const groupNames = meta.field_groups.map((g) => g.label)
-  const [group, setGroup] = useState(groupNames.includes('Ions') ? 'Ions' : groupNames[0] ?? '')
-  const [norm, setNorm] = useState<(typeof NORMS)[number]>('÷ max site median')
+  const o = useChartOptions('radar', [
+    speciesFamilyOption({ groups: groupNames }),
+    { key: 'norm', label: 'Normalise', choices: NORMS, default: '÷ max site median' },
+  ])
+  const group = o.values.group as string
+  const norm = o.values.norm as (typeof NORMS)[number]
   const { hidden, dim, props: legendProps } = useLegend()
 
   const species = useMemo(
@@ -95,12 +100,7 @@ export function SiteRadar({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
       title="Radar — each site's chemical fingerprint"
       subtitle="One polygon per site: the site median of every species in the chosen family, normalised per axis. '÷ max site median' puts the highest site at the rim on every axis; '÷ pooled median' draws the ring at 1 where a site matches the estate as a whole, so anything outside the ring is enriched."
       provenance="not in the estate · react-graph-gallery.com/radar-chart"
-      controls={
-        <>
-          <Select label="Species family" value={group} options={groupNames} onChange={setGroup} />
-          <Segmented label="Normalise" value={norm} options={NORMS} onChange={setNorm} />
-        </>
-      }
+      controls={o.controls()}
     >
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', justifyContent: 'center' }}>
         {species.length < 3 || sites.length === 0 ? (
