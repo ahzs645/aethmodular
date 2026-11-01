@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { Dialog } from '@/components/Dialog'
 import { Empty } from '@/components/ChartFrame'
 
 // the dialog's map loads MapLibre, so it is fetched when the dialog first opens
@@ -159,25 +159,15 @@ export function SitePicker({ items: itemsIn, onToggle: toggleIn, onAll, onClear,
 
 /** A large map in a dialog: click dots to add or remove sites; scroll, drag or +/− to move. */
 function MapDialog({ items, onToggle, onClose, limitNote, noun }: { items: SiteItem[]; onToggle: (key: string) => void; onClose: () => void; limitNote?: string; noun: string }) {
-  const dialog = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    dialog.current?.focus()
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
   const n = items.filter((it) => it.selected).length
-  return createPortal(
-    <div className="map-dialog-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="map-dialog" role="dialog" aria-modal="true" aria-label={`Pick ${noun} on the map`} tabIndex={-1} ref={dialog}>
+  return (
+    <Dialog onClose={onClose} backdropClassName="map-dialog-backdrop" className="map-dialog" label={`Pick ${noun} on the map`}>
         <header>
           <strong>Pick {noun} on the map</strong>
           <span className="site-picker-count">{limitNote ?? `${n} of ${items.length} selected`}</span>
           <button type="button" className="btn" onClick={onClose}>Done</button>
         </header>
         <Suspense fallback={<Empty>Loading the map…</Empty>}><SiteMap items={items} onToggle={onToggle} /></Suspense>
-      </div>
-    </div>,
-    document.body,
+    </Dialog>
   )
 }

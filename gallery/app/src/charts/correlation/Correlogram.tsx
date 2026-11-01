@@ -28,6 +28,7 @@ import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { MENU_ACTION } from '@/lib/filterEdits'
 import { XIcon } from '@/components/Icons'
 import { createPortal } from 'react-dom'
+import { Dialog, NESTED_POPOVERS } from '@/components/Dialog'
 import { chemText } from '@/lib/format'
 import { ExcludedNote } from '@/lib/markedRows'
 
@@ -269,16 +270,11 @@ function PairFocus({ pair: [fx, fy], rows, meta, site, onClose }: {
       site: r.site, season: r.season ? String(r.season) : undefined, seasonColor: meta.seasons.find((se) => se.name === r.season)?.color,
       open: () => hl.openSample(r.id),
       tip: [r.id, `${r.site} · ${r.date}`, `${chemText(fx)}: ${fmt(r[fx] as number)}`, `${chemText(fy)}: ${fmt(r[fy] as number)}`] })), [rows, fx, fy, meta.seasons]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    // a record opened from a point is closed first, by its own Esc
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.drawer')) onClose() }
-    window.addEventListener('keydown', esc)
-    return () => window.removeEventListener('keydown', esc)
-  }, [onClose])
   const unit = (f: string) => meta.field_units?.[f] ? ` (${meta.field_units[f].replace('ug/m3', 'µg/m³').replace('Mm-1', 'Mm⁻¹')})` : ''
-  return createPortal(
-    <div className="export-backdrop pair-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="export-dialog pair-focus" role="dialog" aria-label={`${chemText(fy)} vs ${chemText(fx)}`}>
+  // a record opened from a point opens its drawer over this dialog: not modal, and the drawer's own Esc closes it first
+  return (
+    <Dialog onClose={onClose} backdropClassName="export-backdrop pair-backdrop" className="export-dialog pair-focus" label={`${chemText(fy)} vs ${chemText(fx)}`}
+      modal={false} escapeGuard={`.drawer, ${NESTED_POPOVERS}`}>
         <header>
           <div><strong>{chemText(fy)} vs {chemText(fx)}</strong><span className="export-title">{site} · {points.length} filters</span></div>
           <button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close" title="Close (Esc)"><XIcon /></button>
@@ -286,9 +282,7 @@ function PairFocus({ pair: [fx, fy], rows, meta, site, onClose }: {
         {/* the title is the dialog's; the fit grouping control is Crossplot's own, on the gallery-wide setting */}
         <Crossplot points={points} title="" xLabel={`${fx}${unit(fx)}`} yLabel={`${fy}${unit(fy)}`}
           maxSide={Math.max(320, Math.min(640, window.innerHeight - 300))} sameScale={false} />
-      </div>
-    </div>,
-    document.body,
+    </Dialog>
   )
 }
 

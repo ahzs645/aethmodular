@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import { Dialog } from '@/components/Dialog'
 import { QueryBuilder, ValueEditor, formatQuery, isOptionGroupArray, type Field, type OptionGroup, type RuleGroupType, type ValueEditorProps, type ValueSelectorProps } from 'react-querybuilder'
 import { Combobox } from '@/components/Combobox'
 import { MultiCombobox } from '@/components/MultiCombobox'
@@ -110,8 +110,7 @@ export function GuardrailEditor({ title, src, scope, initial, onApply, onPreview
   const [formulas, setFormulas] = useState<Formula[]>(initial.formulas)
   const [saved, setSaved] = useState<SavedSet[]>(readSaved)
   const [saveName, setSaveName] = useState('')
-  const dialog = useRef<HTMLDivElement>(null)
-  // focus the popup once when it opens; Esc cancels (via a ref, so typing never re-runs the focus)
+  // Esc cancels (via a ref, so it always reads the latest changes)
   // closing with changes asks first: apply them, discard them, or keep editing
   const [confirming, setConfirming] = useState(false)
   const snapshot = (q: RuleGroupType, fs: Formula[]) => formatQuery(q, 'json_without_ids') + JSON.stringify(fs.filter((f) => f.formula.trim()))
@@ -120,12 +119,6 @@ export function GuardrailEditor({ title, src, scope, initial, onApply, onPreview
   const requestClose = () => (dirty ? setConfirming(true) : onClose())
   const close = useRef(requestClose)
   close.current = confirming ? () => setConfirming(false) : requestClose
-  useEffect(() => {
-    dialog.current?.focus()
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') close.current() }
-    window.addEventListener('keydown', esc)
-    return () => window.removeEventListener('keydown', esc)
-  }, [])
 
   const rows = useMemo(() => guardRows(src), [src])
   const baseFields = useMemo(() => guardFields(src), [src])
@@ -174,9 +167,8 @@ export function GuardrailEditor({ title, src, scope, initial, onApply, onPreview
   }
   const removeSet = (name: string) => { const next = saved.filter((s) => s.name !== name); setSaved(next); writeSaved(next) }
 
-  return createPortal(
-    <div className="export-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) requestClose() }}>
-      <div ref={dialog} tabIndex={-1} className="export-dialog guard-dialog" role="dialog" aria-modal="true" aria-label={`Guardrails for ${title}`}>
+  return (
+    <Dialog onClose={() => close.current()} onBackdrop={requestClose} className="export-dialog guard-dialog" label={`Guardrails for ${title}`}>
         <div className="guard-top">
           <header className="guard-head">
             <div><strong>Guardrails</strong><span className="export-title">{title}</span></div>
@@ -258,9 +250,7 @@ export function GuardrailEditor({ title, src, scope, initial, onApply, onPreview
             </div>
           </div>
         </div>}
-      </div>
-    </div>,
-    document.body,
+    </Dialog>
   )
 }
 

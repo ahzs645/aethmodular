@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useMemo, useRef, useState } from 'react'
+import { Dialog } from '@/components/Dialog'
 import { TERMS } from '@/lib/glossary'
 import { BookIcon, XIcon } from '@/components/Icons'
 
@@ -16,19 +16,12 @@ export function GlossaryButton() {
 export function GlossaryDialog({ onClose }: { onClose: () => void }) {
   const [q, setQ] = useState('')
   const input = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    input.current?.focus()
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose() } }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [onClose])
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase()
     return s ? TERMS.filter((t) => `${t.term} ${t.long ?? ''} ${t.text}`.toLowerCase().includes(s)) : TERMS
   }, [q])
-  return createPortal(
-    <div className="export-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="export-dialog glossary-dialog" role="dialog" aria-modal="true" aria-label="Glossary">
+  return (
+    <Dialog onClose={onClose} className="export-dialog glossary-dialog" label="Glossary" initialFocus={input}>
         <header>
           <div><strong>Glossary</strong><span className="export-title">the terms behind the charts</span></div>
           <button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close" title="Close (Esc)"><XIcon /></button>
@@ -43,8 +36,6 @@ export function GlossaryDialog({ onClose }: { onClose: () => void }) {
           ))}
           {!shown.length && <p className="site-empty">No term matches “{q}”.</p>}
         </dl>
-      </div>
-    </div>,
-    document.body,
+    </Dialog>
   )
 }

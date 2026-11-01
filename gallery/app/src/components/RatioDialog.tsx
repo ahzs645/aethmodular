@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { Dialog } from '@/components/Dialog'
 import { Combobox } from '@/components/Combobox'
 import { prettyUnit } from '@/components/FieldSelect'
 import { RATIO_GROUP, ratioKey, ratioUnit, type RatioDef } from '@/lib/viewFields'
@@ -52,7 +52,6 @@ function RatioDialog({ meta, presets, count, onPick, onClose }: {
   meta: MetaFile; presets: RatioDef[]; count: (d: RatioDef) => number
   onPick: (d: RatioDef) => void; onClose: () => void
 }) {
-  const ref = useRef<HTMLDivElement>(null)
   const options = useMemo(() => meta.field_groups.filter((g) => g.label !== RATIO_GROUP)
     .flatMap((g) => g.fields.filter((f) => meta.fields.includes(f)).map((f) => {
       const u = prettyUnit(meta.field_units?.[f])
@@ -61,19 +60,12 @@ function RatioDialog({ meta, presets, count, onPick, onClose }: {
   const has = (f: string) => options.some((o) => o.key === f)
   const [num, setNum] = useState(() => (has('EC (FTIR)') ? 'EC (FTIR)' : options[0]?.key ?? ''))
   const [den, setDen] = useState(() => (has('PM2.5 mass') ? 'PM2.5 mass' : options[1]?.key ?? ''))
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose() } }
-    window.addEventListener('keydown', onKey, true)
-    ref.current?.querySelector<HTMLButtonElement>('.ratio-preset, .btn.primary')?.focus()
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [onClose])
   const d = { num, den }
   const same = num === den
   const n = same ? 0 : count(d)
   const unit = ratioUnit(meta.field_units?.[num], meta.field_units?.[den])
-  return createPortal(
-    <div className="export-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div ref={ref} className="export-dialog ratio-dialog" role="dialog" aria-modal="true" aria-label="Define a ratio">
+  return (
+    <Dialog onClose={onClose} className="export-dialog ratio-dialog" label="Define a ratio" initialFocus=".ratio-preset, .btn.primary">
         <header>
           <div><strong>Define a ratio</strong><span className="export-title">one value per filter, usable in every chart</span></div>
           <button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close" title="Close (Esc)"><XIcon /></button>
@@ -106,8 +98,6 @@ function RatioDialog({ meta, presets, count, onPick, onClose }: {
           <button type="button" className="btn" onClick={onClose}>Cancel</button>
           <button type="button" className="btn primary" disabled={same || n === 0} onClick={() => onPick(d)}>Add and use</button>
         </div>
-      </div>
-    </div>,
-    document.body,
+    </Dialog>
   )
 }

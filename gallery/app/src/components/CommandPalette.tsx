@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import { Dialog } from '@/components/Dialog'
 import { useHeaderNav, type ChartTarget } from '@/lib/headerNav'
 import index from '@/chartIndex.json'
 import { SearchIcon } from '@/components/Icons'
@@ -173,12 +173,6 @@ function Palette({ onClose }: { onClose: () => void }) {
   const flat = useMemo(() => sections.flatMap((s) => s.items), [sections])
 
   useEffect(() => { setActive(0); list.current?.scrollTo({ top: 0 }) }, [q])
-  useEffect(() => {
-    input.current?.focus()
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose() } }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [onClose])
   useEffect(() => { list.current?.querySelector('.palette-item.active')?.scrollIntoView({ block: 'nearest' }) }, [active])
   const choose = (i?: Item) => {
     if (!i) return
@@ -195,9 +189,8 @@ function Palette({ onClose }: { onClose: () => void }) {
       : chartsFound > shownCharts ? `${total} results · first ${shownCharts} charts shown`
         : `${total} result${total === 1 ? '' : 's'}`
   let n = -1
-  return createPortal(
-    <div className="export-backdrop palette-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="palette" role="dialog" aria-modal="true" aria-label="Search the gallery">
+  return (
+    <Dialog onClose={onClose} backdropClassName="export-backdrop palette-backdrop" className="palette" label="Search the gallery" initialFocus={input}>
         <div className="palette-bar">
           <span className="palette-icon" aria-hidden><SearchIcon /></span>
           <input ref={input} className="palette-input" type="text" placeholder="Search tabs, meetings and charts" value={q}
@@ -235,8 +228,6 @@ function Palette({ onClose }: { onClose: () => void }) {
           <span className="palette-count" aria-live="polite">{status}</span>
           <span className="palette-keys" aria-hidden><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span></span>
         </div>
-      </div>
-    </div>,
-    document.body,
+    </Dialog>
   )
 }

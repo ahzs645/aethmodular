@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { Dialog } from '@/components/Dialog'
 import * as d3 from 'd3'
 import { Combobox } from '@/components/Combobox'
 import { Segmented } from '@/components/ChartFrame'
@@ -142,11 +142,6 @@ function ComponentSetDialog({ start, mode, note, bases, standardColor, onSave, o
 }) {
   const [draft, setDraft] = useState<ComponentSetDef>(start)
   const set = (patch: Partial<ComponentSetDef>) => setDraft((d) => ({ ...d, ...patch }))
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('.combobox-menu, .export-color-popover')) { e.stopPropagation(); onClose() } }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [onClose])
 
   const info = bases[draft.basis]!
   const chosen = draft.fields.filter((f) => info.available.includes(f))
@@ -233,9 +228,8 @@ function ComponentSetDialog({ start, mode, note, bases, standardColor, onSave, o
     )
   }
 
-  return createPortal(
-    <div className="export-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="export-dialog ratio-dialog grouping-dialog cset-dialog" role="dialog" aria-modal="true" aria-label={title}>
+  return (
+    <Dialog onClose={onClose} className="export-dialog ratio-dialog grouping-dialog cset-dialog" label={title}>
         <header>
           <div><strong>{title}</strong>
             <span className="export-title">{mode === 'copy' ? 'saving makes a set of yours; the ready-made set stays as it is' : 'what the stacked bars stack: components, names, order, colours, legend'}</span></div>
@@ -290,8 +284,6 @@ function ComponentSetDialog({ start, mode, note, bases, standardColor, onSave, o
             onClick={() => onSave({ id: draft.id, name, basis: draft.basis, fields: chosen, colors: keep(draft.colors), labels: keep(draft.labels), ...(legend === 'top' ? { legend } : {}) })}>
             {mode === 'own' ? 'Save' : 'Create and use'}</button>
         </div>
-      </div>
-    </div>,
-    document.body,
+    </Dialog>
   )
 }

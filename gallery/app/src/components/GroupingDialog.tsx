@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Dialog } from '@/components/Dialog'
 import * as d3 from 'd3'
 import { Combobox } from '@/components/Combobox'
 import { FieldSelect, prettyUnit } from '@/components/FieldSelect'
@@ -66,18 +66,12 @@ function GroupingDialog({ meta, rows, start, copy = false, field: startField, on
   meta: MetaFile; rows: FilterRow[]; start?: GroupingDef; copy?: boolean; field?: string
   onSave: (d: GroupingDef) => void; onRemove?: () => void; onClose: () => void
 }) {
-  const ref = useRef<HTMLDivElement>(null)
   const has = (f: string) => meta.fields.includes(f)
   const firstField = startField && has(startField) ? startField : has('Iron') ? 'Iron' : meta.fields[0] ?? ''
   const [draft, setDraft] = useState<GroupingDef>(() => start ?? { id: newGroupingId(), name: '', field: firstField, kind: 'median', cuts: [], labels: [] })
   // cutoffs as typed (a half-typed "1." must not be rewritten under the cursor)
   const [cutText, setCutText] = useState<string[]>(() => (start?.cuts ?? []).map(String))
   const set = (patch: Partial<GroupingDef>) => setDraft((d) => ({ ...d, ...patch }))
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('.combobox-menu')) { e.stopPropagation(); onClose() } }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [onClose])
 
   const def: GroupingDef = { ...draft, cuts: draft.kind === 'cutoffs' ? cutText.map(Number).filter((v, i) => cutText[i].trim() !== '' && Number.isFinite(v)) : [] }
   const values = useMemo(() => rows.map((r) => r[def.field]).filter((v): v is number => typeof v === 'number' && Number.isFinite(v)), [rows, def.field])
@@ -100,9 +94,8 @@ function GroupingDialog({ meta, rows, start, copy = false, field: startField, on
     setCutText((p.cuts ?? []).map(String))
   }
 
-  return createPortal(
-    <div className="export-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div ref={ref} className="export-dialog ratio-dialog grouping-dialog" role="dialog" aria-modal="true" aria-label={start && !copy ? 'Edit a grouping' : 'New grouping'}>
+  return (
+    <Dialog onClose={onClose} className="export-dialog ratio-dialog grouping-dialog" label={start && !copy ? 'Edit a grouping' : 'New grouping'}>
         <header>
           <div><strong>{copy ? 'Your copy of a notebook grouping' : start ? 'Edit grouping' : 'New grouping'}</strong><span className="export-title">one measurement split into labelled bands, for panels or colour in every chart</span></div>
           <button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close" title="Close (Esc)"><XIcon /></button>
@@ -157,9 +150,7 @@ function GroupingDialog({ meta, rows, start, copy = false, field: startField, on
           <button type="button" className="btn" onClick={onClose}>Cancel</button>
           <button type="button" className="btn primary" disabled={!ok} onClick={() => onSave({ ...def, name })}>{start && !copy ? 'Save' : 'Create and use'}</button>
         </div>
-      </div>
-    </div>,
-    document.body,
+    </Dialog>
   )
 }
 
