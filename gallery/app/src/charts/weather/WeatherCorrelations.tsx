@@ -4,15 +4,16 @@ import { SpectrumModal } from '@/components/FilterSpectrumPlot'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
 import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { chemText } from '@/lib/format'
-import { FONT, INK, inkOn } from '@/lib/theme'
+import { INK } from '@/lib/theme'
 import { WEATHER_MIN_PAIRS, WEATHER_VARS, weatherField, type WeatherSource } from '@/lib/weather'
 import { spearman } from '@/lib/stats'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { ColorLegend } from '@/components/ColorLegend'
+import { HeatMatrix } from '@/components/HeatMatrix'
+import { textWidth } from '@/lib/fitLabel'
 import { useFitHeight } from '@/lib/chartFit'
 import { useSearchParam } from '@/lib/url'
 import { seasonColor } from '@/lib/siteColours'
@@ -31,7 +32,6 @@ const MIN_N = 10
 export function WeatherCorrelations({ rows, meta, source, site }: { rows: FilterRow[]; meta: MetaFile; source: WeatherSource; site: { name: string; code: string } | null }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
-  const tip = useTooltip(wrapRef)
   const fit = useFitHeight()
   // a fitted tile shows one matrix, sized to it (its ⋯ menu picks which); the page shows every season,
   // and a click opens one larger
@@ -56,6 +56,8 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
     }))
   }, [at, vars.map((v) => v.field).join(), species.join(), meta.seasons, site]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const varItems = useMemo(() => vars.map((v) => ({ key: v.field, label: v.label })), [vars.map((v) => v.field).join()]) // eslint-disable-line react-hooks/exhaustive-deps
+  const speciesItems = useMemo(() => species.map((f) => ({ key: f, label: chemText(f), title: f })), [species.join()]) // eslint-disable-line react-hooks/exhaustive-deps
   const colours = useColourScheme('weather-correlations', 'diverging')
   const color = d3.scaleQuantize<string>().domain([-1, 1]).range(colours.stops)
   const EVERY = 'Every season'
@@ -76,7 +78,6 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
       provenance="meteorology_revisions R5 (seasonal correlation matrices) · meteorology_source_interaction §3 (temperature range as an inversion proxy)">
       <div ref={wrapRef} className="chart-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 18, justifyContent: 'center' }}>
         {!site || species.length === 0 || vars.length === 0 ? <Empty>No site with weather and at least {MIN_N} measured filters in this subset.</Empty> : shownFacets.map((fc) => matrix(fc, cell, labelW, fit === null ? () => setOpen(fc.name) : undefined))}
-        {tip.node}
       </div>
       {open && facets.find((f) => f.name === open) && <SpectrumModal id={`${site?.name ?? ''} · ${open}`} title="Weather × chemistry correlations" onClose={() => setOpen(null)}>
         <div style={{ display: 'flex', justifyContent: 'center', overflowX: 'auto' }}>
@@ -91,23 +92,21 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
   )
 
   function matrix(fc: (typeof facets)[number], cell: number, labelW: number, onOpen?: () => void) {
-    // the season and its n are the panel's title row (components/Panels PanelCell), so the svg starts at the column labels
-    const fw = labelW + species.length * cell + 10, fh = 50 + vars.length * cell + 10
+    // the season and its n are the panel's title row (components/Panels PanelCell), so the matrix starts at the column labels
+    // room for the slanted species names that run past the last column
+    const overflow = Math.max(0, Math.max(0, ...species.map((f) => textWidth(chemText(f), 10))) * Math.cos((50 * Math.PI) / 180) - cell / 2)
+    const fw = labelW + species.length * cell + 10 + overflow
     return (
-          <PanelCell key={fc.name} width={fw} title={<span style={{ color: fc.color }}>{fc.name}</span>} note={`n=${fc.n}`} label={fc.name} onExpand={onOpen}>
-          <svg width={fw} height={fh} fontFamily={FONT.family}>
-            {species.map((f, j) => <text key={f} transform={`translate(${labelW + j * cell + cell / 2},${46}) rotate(-50)`} fontSize={10} fill={INK.muted}>{chemText(f)}</text>)}
-            {vars.map((v, i) => <text key={v.field} x={labelW - 6} y={50 + i * cell + cell / 2} dy="0.35em" textAnchor="end" fontSize={10.5} fill={INK.text}>{v.label}</text>)}
-            {fc.cells.flatMap((row, i) => row.map((c, j) => {
-              const fill = c.rho === null ? INK.empty : color(c.rho)
-              return <g key={`${i}-${j}`} transform={`translate(${labelW + j * cell},${50 + i * cell})`}
-                {...tip.bind(() => [`${fc.name}: ${c.v.label} vs ${c.f}`, c.rho === null ? `n = ${c.n} (too few)` : `ρ = ${fmt(c.rho, 2)} · n = ${c.n}`])}>
-                <rect width={cell - 1} height={cell - 1} fill={fill} />
-                {c.rho !== null && Math.abs(c.rho) >= 0.3 && cell >= 18 && <text x={cell / 2} y={cell / 2} dy="0.35em" textAnchor="middle" fontSize={9} fill={inkOn(fill)} fontFamily={FONT.mono}>{fmt(c.rho, 1)}</text>}
-              </g>
-            }))}
-          </svg>
-          </PanelCell>
+      <PanelCell key={fc.name} width={fw} title={<span style={{ color: fc.color }}>{fc.name}</span>} note={`n=${fc.n}`} label={fc.name} onExpand={onOpen}>
+        <HeatMatrix rows={varItems} columns={speciesItems} width={fw} cellWidth={cell} cellHeight="square" maxLabelWidth={labelW - 8} rowLabelSize={10.5}
+          colLabels="rotate" colLabelAngle={-50} colLabelSize={10} colLabelColor={INK.muted} labelSize={9} legend={null} fitRows={false}
+          color={color}
+          cell={(i, j) => {
+            const c = fc.cells[i][j]
+            return { value: c.rho, label: c.rho !== null && Math.abs(c.rho) >= 0.3 ? fmt(c.rho, 1) : null,
+              tip: [`${fc.name}: ${c.v.label} vs ${c.f}`, c.rho === null ? `n = ${c.n} (too few)` : `ρ = ${fmt(c.rho, 2)} · n = ${c.n}`] }
+          }} />
+      </PanelCell>
     )
   }
 }

@@ -3,14 +3,11 @@
  * season pickers (kept in the URL under the page's prefix), season colours, a plain results table, ranked bars
  * and the crossplot points every page builds from the rows.
  */
-import { useMemo, useRef, type ReactNode } from 'react'
-import * as d3 from 'd3'
+import { useMemo, type ReactNode } from 'react'
+import { BarRows } from '@/components/BarRows'
 import type { CrossLine, CrossPoint } from '@/components/Crossplot'
-import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/format'
-import { clipText } from '@/lib/fitLabel'
-import { FONT, INK } from '@/lib/theme'
+import { FONT } from '@/lib/theme'
 import { shortSeason } from '@/lib/seasons'
 import { ALL_SITES, SitePicker, usePageSite } from '@/lib/siteFocus'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -129,35 +126,9 @@ export interface Bar { key: string; label: string; value: number | null; signed?
  * (blue positive, red negative, as the gallery draws r), else the accent.
  */
 export function Bars({ bars, label, max, format = (v) => fmt(v, 2) }: { bars: Bar[]; label: string; max?: number; format?: (v: number) => string }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
-  const labelW = Math.min(240, Math.max(120, width * 0.34)), noteW = 70
-  // labels end at the bars: cut what would run off the left edge, measured at the 11.5 px they are drawn at
-  const w = Math.max(120, width - labelW - noteW - 8)
-  const shown = bars.filter((b) => b.value !== null)
-  const x = d3.scaleLinear().domain([0, max ?? (d3.max(shown, (b) => b.value!) || 1)]).range([0, w]).nice()
-  const rowH = 20
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <svg width={labelW + w + noteW} height={shown.length * rowH + 30} fontFamily={FONT.family}>
-        {shown.map((b, i) => {
-          const c = b.signed == null ? INK.accent : b.signed >= 0 ? INK.positive : INK.negative
-          return <g key={b.key} transform={`translate(0,${i * rowH})`} {...(b.tip ? tip.bind(b.tip) : {})}>
-            <text x={labelW - 6} y={rowH / 2} dy="0.35em" textAnchor="end" fontSize={11.5} fill={INK.text}>{clipText(b.label, labelW - 8, { size: 11.5, minChars: 9 })}</text>
-            <rect x={labelW} y={3} width={Math.max(1, x(b.value!))} height={rowH - 6} fill={c} fillOpacity={0.75} />
-            <text x={labelW + x(b.value!) + 4} y={rowH / 2} dy="0.35em" fontSize={10.5} fontFamily={FONT.mono} fill={INK.muted}>{format(b.value!)}{b.note ? `  ${b.note}` : ''}</text>
-          </g>
-        })}
-        <g transform={`translate(${labelW},${shown.length * rowH + 4})`}>
-          <line x1={0} x2={w} stroke={INK.axis} />
-          {x.ticks(4).map((t) => <text key={t} x={x(t)} y={14} textAnchor="middle" fontSize={10} fill={INK.muted}>{format(t)}</text>)}
-          <text x={w / 2} y={26} textAnchor="middle" fontSize={11} fill={INK.muted}>{label}</text>
-        </g>
-      </svg>
-      {tip.node}
-    </div>
-  )
+  // components/BarRows draws them; this keeps the research pages' short form
+  return <BarRows rows={bars.map((b) => ({ key: b.key, label: b.label, value: b.value, signed: b.signed, note: b.note, tip: b.tip }))}
+    max={max} format={format} axis={{ label, ticks: 4 }} />
 }
 
 /** a p value: three significant figures, or "< 0.0001" */

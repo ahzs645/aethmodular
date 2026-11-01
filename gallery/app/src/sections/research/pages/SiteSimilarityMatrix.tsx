@@ -1,17 +1,15 @@
-import { memo, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
-import { ColorLegend } from '@/components/ColorLegend'
+import { HeatMatrix, type MatrixItem } from '@/components/HeatMatrix'
 import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
 import { useChartOptions } from '@/lib/chartOptions'
 import { averageLinkage, corrDistance, leafOrder, type Clade } from '@/lib/cluster'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { f2, fmt } from '@/lib/format'
-import { labelGutter } from '@/lib/fitLabel'
 import { FixedSetNote } from '@/lib/markedRows'
 import { num, type Table } from '@/lib/table'
-import { FONT, INK } from '@/lib/theme'
+import { INK } from '@/lib/theme'
 
 /** the five SPARTAN targets carry a leading '*' in ftir_52's matrix */
 const isTarget = (s: string) => s.startsWith('*')
@@ -58,24 +56,17 @@ export function SiteSimilarityMatrix({ table, provenance }: { table: Table | und
     return { names: keep.map((i) => full.names[i]), r, tree, order, domain: [Math.min(lo, 0.99), 1] as [number, number] }
   }, [full, o.values.sites, o.values.target, o.values.n])
 
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(wrapRef)
-  const tip = useTooltip(wrapRef)
   const colours = useColourScheme('network-site-corr', 'sequential')
-  const [hover, setHover] = useState<[number, number] | null>(null)
+  const measureRef = useRef<HTMLDivElement>(null)
+  const { width } = useDimensions(measureRef)
 
   const layout = useMemo(() => {
     if (!view) return null
     const n = view.order.length
-    const left0 = 64
-    const cell = Math.max(2.5, Math.min(18, (width - left0 - 12) / n))
+    const cell = Math.max(2.5, Math.min(18, (width - 64 - 12) / n))
     const font = Math.min(11, cell * 0.85)
     // every name once the rows are tall enough to read; otherwise the SPARTAN targets only
     const allLabels = font >= 6.5
-    // the row names as drawn: the SPARTAN targets bold and at least 10 px, the rest at the cell's font
-    const left = allLabels ? Math.max(labelGutter(view.names.filter((s) => !isTarget(s)).map(label), { size: font, pad: 8, min: left0 }),
-      labelGutter(view.names.filter(isTarget).map(label), { size: Math.max(font, 10), weight: 700, pad: 8, min: left0 })) : left0
-    const side = cell * n
     const pos = new Map(view.order.map((idx, k) => [idx, k]))
     // dendrogram: leaves at their cell centre, internal nodes at their children's mid and merge height
     const maxH = view.tree.height || 1
@@ -83,7 +74,7 @@ export function SiteSimilarityMatrix({ table, provenance }: { table: Table | und
     const y = d3.scaleSqrt().domain([0, maxH]).range([TREE_H, 4])
     const links: string[] = []
     const place = (c: Clade): number => {
-      if (!c.children) return left + (pos.get(c.idx!)! + 0.5) * cell
+      if (!c.children) return (pos.get(c.idx!)! + 0.5) * cell
       const xs = c.children.map(place)
       const cy = y(c.height)
       c.children.forEach((ch, i) => links.push(`M${xs[i]},${ch.children ? y(ch.height) : TREE_H}V${cy}`))
@@ -91,7 +82,7 @@ export function SiteSimilarityMatrix({ table, provenance }: { table: Table | und
       return (Math.min(...xs) + Math.max(...xs)) / 2
     }
     place(view.tree)
-    return { n, cell, font, allLabels, left, top: TREE_H + 6, side, links, y, maxH }
+    return { n, cell, font, allLabels, links, y, maxH }
   }, [view, width])
 
   const scale = useMemo(() => {
@@ -99,60 +90,46 @@ export function SiteSimilarityMatrix({ table, provenance }: { table: Table | und
     return d3.scaleLinear<string>().domain(ramp.map((_, i) => dom[0] + (i / (ramp.length - 1)) * (dom[1] - dom[0]))).range(ramp).clamp(true)
   }, [colours.stops, view])
 
+  // rows and columns in leaf order; memoised with the cell lookup so a hover never rebuilds the cells
+  const axes = useMemo(() => {
+    if (!view || !layout) return null
+    const rows: MatrixItem[] = view.order.map((idx) => {
+      const s = view.names[idx], t = isTarget(s)
+      return { key: s, title: label(s), label: layout.allLabels || t ? `${label(s)}${layout.allLabels ? '' : ' ▸'}` : '',
+        weight: t ? 700 : 400, size: t ? Math.max(layout.font, 10) : layout.font }
+    })
+    const cols: MatrixItem[] = view.order.map((idx) => ({ key: view.names[idx], title: label(view.names[idx]), label: '' }))
+    return { rows, cols }
+  }, [view, layout])
+  const cellAt = useCallback((i: number, j: number) => (view ? view.r[view.order[i]][view.order[j]] ?? undefined : undefined), [view])
+  const tipAt = useCallback((i: number, j: number) => {
+    if (!view) return null
+    const v = view.r[view.order[i]][view.order[j]]
+    const nm = (k: number) => label(view.names[view.order[k]])
+    return [`${nm(i)} × ${nm(j)}`, `r = ${v == null ? '—' : fmt(v, 4)}`, `1 − r = ${v == null ? '—' : fmt(1 - v, 4)}`]
+  }, [view])
+  const legend = useMemo(() => ({ scale: scale as unknown as { domain(): number[]; (v: number): string }, scheme: colours.scheme, label: 'r of median spectra', format: (v: number) => fmt(v, 3) }), [scale, colours.scheme])
+
   const title = 'Site × site similarity, clustered — which IMPROVE sites share a spectrum, and where the SPARTAN sites join the tree'
-  if (!view || !layout) return <ChartFrame id="network-site-corr" title={title} provenance={provenance}><Empty>The export has no site × site matrix; re-run ftir_52 and the Research spectral export.</Empty></ChartFrame>
-  const { n, cell, font, allLabels, left, top, side } = layout
-  const nm = (k: number) => label(view.names[view.order[k]])
-  const rAt = (a: number, b: number) => view.r[view.order[a]][view.order[b]]
-  const move = (e: React.MouseEvent<SVGRectElement>) => {
-    const box = e.currentTarget.getBoundingClientRect()
-    const j = Math.floor((e.clientX - box.left) / cell), i = Math.floor((e.clientY - box.top) / cell)
-    if (i < 0 || j < 0 || i >= n || j >= n) return
-    if (!hover || hover[0] !== i || hover[1] !== j) setHover([i, j])
-    const v = rAt(i, j)
-    tip.show(e, [`${nm(i)} × ${nm(j)}`, `r = ${v == null ? '—' : fmt(v, 4)}`, `1 − r = ${v == null ? '—' : fmt(1 - v, 4)}`])
-  }
+  if (!view || !layout || !axes) return <ChartFrame id="network-site-corr" title={title} provenance={provenance}><Empty>The export has no site × site matrix; re-run ftir_52 and the Research spectral export.</Empty></ChartFrame>
+  const { n, cell } = layout
   return (
     <ChartFrame id="network-site-corr" title={title}
       subtitle={`Pearson r between every pair of sites' median spline-baseline spectra (IMPROVE sites with ≥ 20 spectra, and the five SPARTAN targets in bold), ordered by average-linkage clustering on 1 − r; the tree above joins sites at the mean distance between their groups (square-root scale). Most pairs sit above 0.9, so the colour runs from the 2nd percentile of the off-diagonal r (${f2(view.domain[0])}) to 1. Sites: Nearest to a target keeps that target and its closest IMPROVE sites and clusters them again on their own. Point at a cell for the pair.`}
       provenance={provenance} controls={o.controls()}>
-      <div ref={wrapRef} className="chart-wrap" onMouseLeave={() => { setHover(null); tip.hide() }}>
-        <svg width={left + side + 12} height={top + side + 8} fontFamily={FONT.family} style={{ display: 'block' }}>
-          <g fill="none" stroke={INK.axis} strokeWidth={1}>{layout.links.map((d, i) => <path key={i} d={d} />)}</g>
-          <text x={left - 6} y={layout.y(layout.maxH)} dy="0.35em" textAnchor="end" fontSize={10} fill={INK.muted}>1 − r {fmt(layout.maxH, 3)}</text>
-          <text x={left - 6} y={TREE_H} dy="0.35em" textAnchor="end" fontSize={10} fill={INK.muted}>0</text>
-          <Cells view={view} left={left} top={top} cell={cell} scale={scale} />
-          {view.order.map((idx, k) => {
-            const s = view.names[idx], t = isTarget(s)
-            if (!allLabels && !t) return null
-            return <text key={s} x={left - 4} y={top + (k + 0.5) * cell} dy="0.35em" textAnchor="end" fontSize={t ? Math.max(font, 10) : font}
-              fontWeight={t ? 700 : 400} fill={INK.text}>{label(s)}{!allLabels && ' ▸'}</text>
-          })}
-          {hover && <g fill="none" stroke={INK.text} strokeWidth={1} pointerEvents="none">
-            <rect x={left} y={top + hover[0] * cell} width={side} height={cell} />
-            <rect x={left + hover[1] * cell} y={top} width={cell} height={side} />
+      <div ref={measureRef}>
+        <HeatMatrix rows={axes.rows} columns={axes.cols} cell={cellAt} tip={tipAt} color={scale} cellLabels="never"
+          cellWidth={cell} cellHeight="square" gap={0} crisp hover="cross" colLabels="none" rowLabelSize={layout.font} maxLabelWidth={400}
+          fitRows={false} before={TREE_H + 6} center legend={legend} legendExtra={<span className="legend-note">{n} sites</span>}
+          footer={<FixedSetNote what="ftir_52's saved site × site matrix of median spectra" />}>
+          {(l) => <g pointerEvents="none">
+            <g fill="none" stroke={INK.axis} strokeWidth={1} transform={`translate(${l.left},0)`}>{layout.links.map((d, i) => <path key={i} d={d} />)}</g>
+            {/* the tree's scale in the label gutter; flush left when the gutter is too narrow for it */}
+            <text x={l.left < 72 ? 0 : l.left - 6} y={layout.y(layout.maxH)} dy="0.35em" textAnchor={l.left < 72 ? 'start' : 'end'} fontSize={10} fill={INK.muted}>1 − r {fmt(layout.maxH, 3)}</text>
+            <text x={l.left - 6} y={TREE_H} dy="0.35em" textAnchor="end" fontSize={10} fill={INK.muted}>0</text>
           </g>}
-          <rect x={left} y={top} width={side} height={side} fill="transparent" onMouseMove={move} />
-        </svg>
-        {tip.node}
+        </HeatMatrix>
       </div>
-      <div className="legend" style={{ justifyContent: 'center' }}>
-        <ColorLegend scale={scale as unknown as { domain(): number[]; (v: number): string }} scheme={colours.scheme} label="r of median spectra" format={(v) => fmt(v, 3)} />
-        <span className="legend-note">{n} sites</span>
-      </div>
-      <FixedSetNote what="ftir_52's saved site × site matrix of median spectra" />
     </ChartFrame>
   )
 }
-
-/** the cells, drawn once per view and colour ramp (hover only moves the outline) */
-const Cells = memo(function Cells({ view, left, top, cell, scale }: {
-  view: { r: (number | null)[][]; order: number[] }; left: number; top: number; cell: number; scale: (v: number) => string
-}) {
-  return <g shapeRendering="crispEdges">
-    {view.order.flatMap((a, i) => view.order.map((b, j) => {
-      const v = view.r[a][b]
-      return v == null ? null : <rect key={`${i}-${j}`} x={left + j * cell} y={top + i * cell} width={cell + 0.3} height={cell + 0.3} fill={scale(v)} />
-    }))}
-  </g>
-})

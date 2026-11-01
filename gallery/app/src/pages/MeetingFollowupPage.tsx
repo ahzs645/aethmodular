@@ -38,6 +38,7 @@ import { CV_PROTOCOL_SHORT, PREPROCESSING, baselineName, ecAxis } from '@/lib/la
 import { loadTraces } from '@/lib/similarity'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
+import { HeatMatrix } from '@/components/HeatMatrix'
 import { withUnit } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { ExcludedNote, FixedSetNote, useCountedFilter } from '@/lib/markedRows'
@@ -1229,9 +1230,6 @@ function GridStep({ data }: { data: MeetingData }) {
   const [metric, setMetric] = useSearchParam<string>('mmetric', 'intercept', METRICS)
   const [readout, setReadout] = useSearchParam<string>('mread', 'all', READOUTS)
   const [gate, setGate] = useState(true)
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const g = data.grid
   if (!g) return <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › GridStep" title="Category grid"><Empty>The grid has not been exported yet.</Empty></ChartFrame>
   const idx: number[] = []
@@ -1251,9 +1249,6 @@ function GridStep({ data }: { data: MeetingData }) {
     if (mode !== 'site_heldout' || ((g.heldout_R2[i] as number | null) ?? 0) >= 0.85) c.pass += 1
     cells.set(key, c)
   }
-  const left = 230, top = 20
-  const w = Math.max(600, width), cw = Math.max(3, (w - left - 20) / Math.max(1, bins.length)), chH = 26
-  const h = cats.length * chH + 70
   const dom = metric === 'intercept' ? [-2.5, 0, 2.5] : metric === 'slope' ? [0, 1, 2] : [0.5, 0.85, 1]
   // intercept and slope diverge around agreement; CV R² is sequential: each with its own palette (lib/colourSchemes)
   const divColours = useColourScheme('category-grid', 'diverging')
@@ -1272,33 +1267,20 @@ function GridStep({ data }: { data: MeetingData }) {
         {/* fading by CV R² is moot when the cells are already coloured by it */}
         {mode === 'site_heldout' && metric !== 'CV R²' && <Toggle label="Fade cells failing IMPROVE cross-validation R² ≥ 0.85" checked={gate} onChange={setGate} />}
       </>}>
-      <div ref={ref} style={{ overflowX: 'auto' }}>
-        <svg width={w} height={h} fontFamily={FONT.family}>
-          <g transform={`translate(${left},${top})`}>
-            {cats.map((cat, r) => (
-              <g key={cat} transform={`translate(0,${r * chH})`}>
-                <text x={-8} y={chH / 2 + 4} textAnchor="end" fontSize={11.5} fill={INK.text}>{cat}</text>
-                {bins.map((b, c) => {
-                  const cell = cells.get(`${cat}|${b}`)
-                  if (!cell) return null
-                  const v = cell.v / cell.n
-                  const faded = gate && mode === 'site_heldout' && metric !== 'CV R²' && cell.pass === 0
-                  return <rect key={b} x={c * cw} y={1} width={cw - 0.5} height={chH - 2} fill={color(v)} opacity={faded ? 0.3 : 1} stroke={faded ? 'none' : INK.text} strokeWidth={faded ? 0 : 0.3}
-                    {...tip.bind(() => [`${cat} · cutoff ≈ ${b}`, `${METRIC_LABEL[metric] ?? metric}${metric !== 'CV R²' ? ` (${READOUT_LABEL[readout] ?? readout})` : ''}: ${f2(v)}`, `${cell.n} fits · k ${d3.min(cell.k)}–${d3.max(cell.k)}`, mode === 'site_heldout' ? `${cell.pass}/${cell.n} pass IMPROVE cross-validation R² ≥ 0.85` : 'interleaved CV holds out no whole site: no cross-validation R² gate'])} />
-                })}
-              </g>
-            ))}
-            {bins.map((b, c) => (b % 250 === 0) && <text key={b} x={c * cw + cw / 2} y={cats.length * chH + 16} fontSize={10.5} textAnchor="middle" fill={INK.muted}>{b}</text>)}
-            <text x={(bins.length * cw) / 2} y={cats.length * chH + 36} fontSize={12} fontWeight={600} textAnchor="middle">Cohort size (IMPROVE filters)</text>
-          </g>
-        </svg>
-        <Key items={mode === 'site_heldout' && gate && metric !== 'CV R²' ? [{ label: 'no fit in the bin passes IMPROVE cross-validation R² ≥ 0.85', color: '#9aa5b1', kind: 'faded' }] : []}>
-          <ColorLegend scale={color} scheme={colours.scheme} width={220}
-            label={metric === 'intercept' ? `Test set (Addis) Deming intercept (µg/m³, ${READOUT_LABEL[readout] ?? readout})` : metric === 'slope' ? `Test set (Addis) Deming slope (${READOUT_LABEL[readout] ?? readout})` : 'IMPROVE cross-validation R² (calibration set)'}
-            note={metric === 'intercept' ? 'white = 0' : metric === 'slope' ? 'white = 1' : undefined} />
-        </Key>
-        {tip.node}
-      </div>
+      <HeatMatrix rows={cats} columns={bins.map((b) => ({ key: String(b), label: b % 250 === 0 ? String(b) : '' }))} cellWidth={[3, 2000]} cellHeight={26} gap={[0.5, 2]}
+        rowLabelSize={11.5} maxLabelWidth={230} colLabels="horizontal" colLabelPosition="bottom" colLabelSize={10.5} colLabelColor={INK.muted} colHeader="Cohort size (IMPROVE filters)" cellLabels="never"
+        cell={(r, c) => {
+          const cell = cells.get(`${cats[r]}|${bins[c]}`)
+          if (!cell) return undefined
+          const v = cell.v / cell.n, b = bins[c]
+          const faded = gate && mode === 'site_heldout' && metric !== 'CV R²' && cell.pass === 0
+          return { value: v, fill: color(v), opacity: faded ? 0.3 : undefined, stroke: faded ? undefined : INK.text, strokeWidth: 0.3,
+            tip: [`${cats[r]} · cutoff ≈ ${b}`, `${METRIC_LABEL[metric] ?? metric}${metric !== 'CV R²' ? ` (${READOUT_LABEL[readout] ?? readout})` : ''}: ${f2(v)}`, `${cell.n} fits · k ${d3.min(cell.k)}–${d3.max(cell.k)}`, mode === 'site_heldout' ? `${cell.pass}/${cell.n} pass IMPROVE cross-validation R² ≥ 0.85` : 'interleaved CV holds out no whole site: no cross-validation R² gate'] }
+        }}
+        legendItems={mode === 'site_heldout' && gate && metric !== 'CV R²' ? [{ label: 'no fit in the bin passes IMPROVE cross-validation R² ≥ 0.85', color: '#9aa5b1', kind: 'faded' }] : []}
+        legend={{ scale: color, scheme: colours.scheme, width: 220,
+          label: metric === 'intercept' ? `Test set (Addis) Deming intercept (µg/m³, ${READOUT_LABEL[readout] ?? readout})` : metric === 'slope' ? `Test set (Addis) Deming slope (${READOUT_LABEL[readout] ?? readout})` : 'IMPROVE cross-validation R² (calibration set)',
+          note: metric === 'intercept' ? 'white = 0' : metric === 'slope' ? 'white = 1' : undefined }} />
       {(data.grid_summary ?? []).map((gs) => <ExplainOnly key={gs.method}><Note>{methodName(gs.method)}, site-grouped cross-validation: {gs.passing} fits pass IMPROVE cross-validation R² ≥ 0.85; their all-Addis test set slopes span {coef(gs.slope_min)}–{coef(gs.slope_max)} and intercepts {coefSigned(gs.intercept_min)} to {coefSigned(gs.intercept_max)}; {gs.balanced} reach slope 0.8–1.2 with |intercept| &lt; 1.</Note></ExplainOnly>)}
       <ExplainOnly><Note>Colour scale: {metric === 'intercept' ? 'blue = negative intercept, red = positive, white = 0 (µg/m³, clamped at ±2.5)' : metric === 'slope' ? 'blue = slope below 1, white = 1, red = above (clamped 0–2)' : 'white 0.5 → dark blue 1.0'}. Single-cohort categories (entire pool, smoke 906) sit in one column.</Note></ExplainOnly>
     </ChartFrame>

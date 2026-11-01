@@ -1,13 +1,13 @@
 import { createContext, useContext, useMemo, type ComponentType, type ReactNode } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
-import { ColorLegend } from '@/components/ColorLegend'
 import { mediaKey, useEtadByMedia } from '@/lib/etadMedia'
 import { Crossplot, sharedCrossDomains, type CrossPoint } from '@/components/Crossplot'
 import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
 import { collapsePanelAxes, type PanelDim } from '@/lib/axes'
 import { FacetGrid } from '@/components/FacetGrid'
-import { HeatCell } from '@/components/HeatCell'
+import { HeatMatrix } from '@/components/HeatMatrix'
+import { BarRows, type BarRow } from '@/components/BarRows'
 import { IntervalStrip, type IntervalBlock, type IntervalMark, type IntervalPanel } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { Legend, useLegend } from '@/components/Legend'
@@ -25,7 +25,7 @@ import { TABLEAU } from '@/lib/palettes'
 /**
  * A chart from a description: the chart kind and which columns of a long
  * table to draw. The same few chart types every page already uses
- * (Crossplot, SpectrumPlot, SweepPlot, IntervalStrip, heat map, table), so a
+ * (Crossplot, SpectrumPlot, SweepPlot, IntervalStrip, HeatMatrix, BarRows, table), so a
  * figure declared here looks, hovers, pins and exports like a hand-built one.
  *
  *   <Figure kind="spectrum" data={rows} wn="wn" y="median" series="series" lo="q25" hi="q75" title="…" />
@@ -74,6 +74,7 @@ export type FigureSpec =
   | (Base & { kind: 'intervals'; row: string; series?: string; block?: string; panels: { value: string; label: string; reference?: number; lo?: string; hi?: string }[]; aggregate?: { stat?: 'median' | 'mean'; interval?: Interval }; labelWidth?: number })
   | (Base & { kind: 'histogram'; value: string; series: string; log?: boolean; bins?: number; xLabel: string; medians?: boolean; height?: number })
   | (Base & { kind: 'heatmap'; row: string; column: string; value: string; domain?: [number, number]; ramp?: 'diverging' | 'sequential'; format?: FormatName; valueLabel?: string; cell?: [number, number] })
+  | (Base & { kind: 'bars'; label: string; value: string; color?: string; sort?: 'none' | 'desc' | 'asc'; format?: FormatName; xLabel?: string; reference?: number; domain?: [number, number] })
   | (Base & { kind: 'table'; columns?: { key: string; label?: string; format?: FormatName }[] })
   | (Base & { kind: 'custom'; component: string; props?: Record<string, unknown> })
 export type RegionName = 'analog' | 'oct1' | 'ptfe' | 'co2'
@@ -165,6 +166,7 @@ export function Figure(props: FigureSpec & { about?: ReactNode; provenance?: Rea
     : spec.kind === 'intervals' ? <IntervalsFigure spec={spec} rows={rows} />
     : spec.kind === 'histogram' ? <HistogramFigure spec={spec} rows={rows} />
     : spec.kind === 'heatmap' ? <HeatmapFigure spec={spec} rows={rows} />
+    : spec.kind === 'bars' ? <BarsFigure spec={spec} rows={rows} />
     : <TableFigure spec={spec} rows={rows} />
   return (
     <ChartFrame id={id} title={spec.title} subtitle={spec.subtitle} tip={spec.tip} controls={controls} about={props.about} provenance={props.provenance}
@@ -318,38 +320,37 @@ function HistogramFigure({ spec, rows }: { spec: Extract<FigureSpec, { kind: 'hi
 
 // ------------------------------------------------------------------ heat map
 function HeatmapFigure({ spec, rows }: { spec: Extract<FigureSpec, { kind: 'heatmap' }>; rows: Row[] }) {
-  const rs = uniq(rows, spec.row).map(String), cs = uniq(rows, spec.column).map(String)
-  const vals = rows.map((r) => num(r[spec.value])).filter((v): v is number => v != null)
+  const rs = useMemo(() => uniq(rows, spec.row).map(String), [rows, spec.row])
+  const cs = useMemo(() => uniq(rows, spec.column).map(String), [rows, spec.column])
+  const byCell = useMemo(() => new Map(rows.map((r) => [`${r[spec.row]}\u0000${r[spec.column]}`, num(r[spec.value])])), [rows, spec.row, spec.column, spec.value])
+  const vals = [...byCell.values()].filter((v): v is number => v != null)
   const dom = spec.domain ?? (spec.ramp === 'sequential' ? (d3.extent(vals) as [number, number]) : [-1, 1] as [number, number])
   // the palette is picked from the colour ramp below (kept in the URL as <id>.palette), as on every correlation chart
   const colours = useColourScheme(spec.id ?? 'figure-heatmap', spec.ramp === 'sequential' ? 'sequential' : 'diverging')
   const ramp = colours.stops
-  const scale = d3.scaleLinear<string>().domain(ramp.map((_, i) => dom[0] + (i / (ramp.length - 1)) * (dom[1] - dom[0]))).range(ramp).clamp(true)
+  const scale = useMemo(() => d3.scaleLinear<string>().domain(ramp.map((_, i) => dom[0] + (i / (ramp.length - 1)) * (dom[1] - dom[0]))).range(ramp).clamp(true),
+    [ramp.join(), dom[0], dom[1]]) // eslint-disable-line react-hooks/exhaustive-deps
   const f = FORMAT[spec.format ?? 'f2']
   // `cell` enlarges the grid; the labels grow with the cell height
   const cell = { w: spec.cell?.[0] ?? 64, h: spec.cell?.[1] ?? 26 }, k = Math.max(1, cell.h / 26)
-  const left = Math.min(200 * k, 8 + 6.6 * k * Math.max(...rs.map((r) => r.length)))
-  // column titles wider than a cell are set at an angle, with room above and to the right for them
-  const colW = 6.3 * k * Math.max(...cs.map((c) => c.length)), slant = colW > cell.w - 4
-  const top = slant ? Math.round(colW * 0.57 + 12 * k) : Math.round(22 * k), right = slant ? Math.max(8, colW * 0.82 - cell.w / 2) : 8
-  // the cells (not cells + row labels) sit in the middle of the panel when there is room; left-aligned when not
-  const at = (r: string, c: string) => num(rows.find((x) => String(x[spec.row]) === r && String(x[spec.column]) === c)?.[spec.value])
-  return <div className="chart-wrap" style={{ overflowX: 'auto' }}>
-    <svg width={left + cs.length * cell.w + right} height={top + rs.length * cell.h + 6} fontFamily={FONT.family}
-      style={{ display: 'block', marginLeft: `max(0px, calc(50% - ${left + (cs.length * cell.w) / 2}px))` }}>
-      {cs.map((c, j) => {
-        const x = left + j * cell.w + cell.w / 2
-        return slant
-          ? <text key={c} x={x} y={top - 6} transform={`rotate(-35 ${x} ${top - 6})`} textAnchor="start" fontSize={11 * k} fontWeight={600} fill={INK.text}>{c}</text>
-          : <text key={c} x={x} y={14 * k} textAnchor="middle" fontSize={11 * k} fontWeight={600} fill={INK.text}>{c}</text>
-      })}
-      {rs.map((r, i) => <g key={r}>
-        <text x={left - 8} y={top + i * cell.h + cell.h / 2} dy="0.35em" textAnchor="end" fontSize={11 * k} fill={INK.text}>{r}</text>
-        {cs.map((c, j) => { const v = at(r, c); return <HeatCell key={c} x={left + j * cell.w + 1} y={top + i * cell.h + 1} width={cell.w - 2} height={cell.h - 2} fill={v == null ? null : scale(v)} label={v == null ? null : f(v)} fontSize={10 * k} /> })}
-      </g>)}
-    </svg>
-    <div className="legend" style={{ justifyContent: 'center' }}><ColorLegend scale={scale as unknown as { domain(): number[]; (v: number): string }} scheme={colours.scheme} label={spec.valueLabel ?? spec.value} format={(v) => f(v)} /></div>
-  </div>
+  const at = useMemo(() => (i: number, j: number) => byCell.get(`${rs[i]}\u0000${cs[j]}`) ?? null, [byCell, rs, cs])
+  return <HeatMatrix rows={rs} columns={cs} cell={at} color={scale} format={(v) => f(v)} cellWidth={cell.w} cellHeight={cell.h} gap={2} center
+    rowLabelSize={11 * k} colLabelSize={11 * k} colLabelWeight={600} colLabels="slant" colLabelAngle={-35} labelSize={10 * k} maxLabelWidth={200 * k}
+    legend={{ scale: scale as unknown as { domain(): number[]; (v: number): string }, scheme: colours.scheme, label: spec.valueLabel ?? spec.value, format: (v) => f(v) }} />
+}
+
+// ------------------------------------------------------------------ bars
+function BarsFigure({ spec, rows }: { spec: Extract<FigureSpec, { kind: 'bars' }>; rows: Row[] }) {
+  const color = useColors(spec)
+  const f = FORMAT[spec.format ?? 'f2']
+  const bars = rows.map((r, i): BarRow => ({ key: `${r[spec.label]}|${i}`, label: String(r[spec.label] ?? '—'), value: num(r[spec.value]),
+    color: spec.color ? color(r[spec.color]) : undefined, opacity: spec.color ? 0.85 : undefined,
+    tip: [String(r[spec.label] ?? '—'), `${spec.xLabel ?? spec.value}: ${f(num(r[spec.value]))}`, ...(spec.color ? [`${spec.color}: ${r[spec.color] ?? '—'}`] : [])] }))
+  const groups = spec.color ? uniq(rows, spec.color) : []
+  return <>
+    <BarRows rows={bars} sort={spec.sort ?? 'none'} format={(v) => f(v)} reference={spec.reference} axis={{ label: spec.xLabel ?? spec.value }} domain={spec.domain} />
+    {groups.length > 1 && <Key items={groups.map((g) => ({ label: String(g), color: color(g), kind: 'square' as const }))} />}
+  </>
 }
 
 // ------------------------------------------------------------------ table

@@ -1,7 +1,8 @@
 import { useMemo, useRef } from 'react'
+import { SiteMonthMatrix } from '@/components/SiteMonthMatrix'
+import type { MatrixItem } from '@/components/HeatMatrix'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, ExplainOnly, Note, Select } from '@/components/ChartFrame'
-import { ColorLegend } from '@/components/ColorLegend'
 import { Key } from '@/components/Key'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -9,7 +10,6 @@ import { useColourScheme } from '@/lib/colourSchemes'
 import { dataUrl } from '@/lib/data'
 import { useSearchParam } from '@/lib/url'
 import { FONT, INK, themed } from '@/lib/theme'
-import { clipText } from '@/lib/fitLabel'
 import { calendarMonths, daysInMonth, studyOverlap, type AeronetAvailability as AeronetData, type AeronetAvailabilitySite, type AvailabilitySite, type CompletenessRule, type NotebookAvailability } from '@/lib/notebookAvailability'
 
 /** the Data availability views' colours, defined once: each data stream, and a site's sampling status */
@@ -87,31 +87,22 @@ function MonthMatrix({ sites, product, unit, rows, year }: { sites: Availability
     return ordered.length ? calendarMonths(ordered[0], ordered[ordered.length - 1]).filter(m => year === 'All years' || m.startsWith(year)) : []
   }, [rows, year])
   const counts = useMemo(() => new Map(rows.map(r => [`${r.code}|${r.month}`, r.count])), [rows])
-  const ref = useRef<HTMLDivElement>(null), { width } = useDimensions(ref)
-  const wrap = useRef<HTMLDivElement>(null), tip = useTooltip(wrap)
   const colours = useColourScheme('availability-product-months', 'sequential')
-  const labelW = 170, cell = Math.max(14, Math.min(42, (width - labelW - 10) / Math.max(1, months.length)))
-  const w = Math.max(width, labelW + months.length * cell + 10), h = 48 + sites.length * 24
   // square-root ramp from 0: one filter a month still shows, and the legend's ticks read as counts
   const color = d3.scaleSequentialSqrt(d3.interpolateRgbBasis(colours.name === 'Gallery' && !colours.reverse ? colours.stops.slice(2) : colours.stops))
     .domain([0, Math.max(1, ...rows.map(r => r.count))])
+  const items = useMemo<MatrixItem[]>(() => sites.map(s => ({ key: s.code, label: siteLabel(s), tip: [siteLabel(s)] })), [sites])
   if (!months.length) return <Empty>No monthly records for this product and year.</Empty>
-  return <div ref={wrap}>
-    <div className="chart-scroll availability-month-matrix" ref={ref} tabIndex={0} role="region" aria-label="Monthly sampling heatmap, scroll for all months and sites"><svg width={w} height={h} fontFamily={FONT.family} role="img" aria-label={`${sites.length} sites, ${months.length} months, ${product} sampling counts`}>
-      {months.map((month, j) => <g key={month}>{(j === 0 || month.endsWith('-01')) && <text x={labelW + j * cell} y={13} fontSize={11} fill={INK.text}>{month.slice(0, 4)}</text>}{(cell > 25 || [1, 4, 7, 10].includes(+month.slice(5))) && <text x={labelW + j * cell + cell / 2} y={32} textAnchor="middle" fontSize={9} fill={INK.muted}>{month.slice(5)}</text>}</g>)}
-      {sites.map((s, i) => <g key={s.code}><text x={labelW - 8} y={48 + i * 24 + 14} textAnchor="end" fontSize={11} fill={INK.text}
-        {...tip.bind([siteLabel(s)])}>{s.name === s.code ? s.code : clipText(`${s.code} · ${s.name}`, labelW - 12)}</text>{months.map((month, j) => {
-        const n = counts.get(`${s.code}|${month}`) ?? 0, p = s.products[product]
-        const inside = p?.date_min && p.date_max && month >= p.date_min.slice(0, 7) && month <= p.date_max.slice(0, 7)
-        return <rect key={month} x={labelW + j * cell} y={48 + i * 24} width={cell - 1} height={20} fill={n ? color(n) : inside ? INK.empty : INK.panel} stroke={n || inside ? 'none' : INK.grid}
-          {...tip.bind(() => [`${s.code} · ${month}`, `${n.toLocaleString()} ${unit}`, ...(!inside && !n ? ['outside the reported span'] : [])])} />
-      })}</g>)}
-    </svg></div>
-    <Key items={[{ label: 'none that month, inside the reported span', color: INK.empty, kind: 'square' }]}>
-      <ColorLegend scale={color} scheme={colours.scheme} label={`${unit} per month`} format={(v) => d3.format('~s')(v)} ticks={4} />
-    </Key>
-    {tip.node}
-  </div>
+  return <SiteMonthMatrix rows={items} months={months} monthLabels="months" colLabelPosition="top" cellWidth={[14, 42]} cellHeight={24} gap={[1, 4]}
+    maxLabelWidth={160} color={color} cellLabels="never" ariaLabel={`${sites.length} sites, ${months.length} months, ${product} sampling counts`}
+    cell={(i, month) => {
+      const s = sites[i], n = counts.get(`${s.code}|${month}`) ?? 0, p = s.products[product]
+      const inside = !!(p?.date_min && p.date_max && month >= p.date_min.slice(0, 7) && month <= p.date_max.slice(0, 7))
+      return { value: n || null, fill: n ? color(n) : inside ? INK.empty : INK.panel, stroke: n || inside ? undefined : INK.grid,
+        tip: [`${s.code} · ${month}`, `${n.toLocaleString()} ${unit}`, ...(!inside && !n ? ['outside the reported span'] : [])] }
+    }}
+    legendItems={[{ label: 'none that month, inside the reported span', color: INK.empty, kind: 'square' }]}
+    legend={{ scale: color, scheme: colours.scheme, label: `${unit} per month`, format: (v) => d3.format('~s')(v), ticks: 4 }} />
 }
 
 export function StudyAvailability({ data }: { data: NotebookAvailability }) {
@@ -221,40 +212,27 @@ function AeronetLanes({ sites, rows, year }: { sites: AeronetAvailabilitySite[];
     return ordered.length ? calendarMonths(ordered[0], ordered[ordered.length - 1]).filter(m => year === 'All years' || m.startsWith(year)) : []
   }, [rows, year])
   const maxFilters = Math.max(1, ...rows.map(r => r.filters))
-  const ref = useRef<HTMLDivElement>(null), { width } = useDimensions(ref)
-  const wrap = useRef<HTMLDivElement>(null), tip = useTooltip(wrap)
-  const labelW = 210, lane = 7, gap = 1, block = AERONET_LANES.length * (lane + gap) + 9
-  const cell = Math.max(3, Math.min(30, (width - labelW - 10) / Math.max(1, months.length)))
-  const w = Math.max(width, labelW + months.length * cell + 10), h = 40 + sites.length * block
+  // one row per lane, grouped by site: the site's name in the outer gutter, the lane's beside its cells
+  const lanes = useMemo(() => sites.flatMap(s => {
+    const group = `${s.code} · ${s.name.length > 15 ? `${s.name.slice(0, 14)}…` : s.name}`
+    const first = [s.filter_first, s.daily_first].filter(Boolean).sort()[0]?.slice(0, 7) ?? ''
+    const last = [s.filter_last, s.daily_last].filter(Boolean).sort().reverse()[0]?.slice(0, 7) ?? ''
+    return AERONET_LANES.map(l => ({ s, l, first, last, item: { key: `${s.code}|${l.key}`, label: l.label, size: 7.5, color: INK.muted, group,
+      tip: [`${s.code} · ${s.name}`, `${s.station.replace(/_/g, ' ')}, ${fmt(s.km)} km`] } as MatrixItem }))
+  }), [sites])
+  const items = useMemo(() => lanes.map(x => x.item), [lanes])
   if (!months.length) return <Empty>No months in this selection.</Empty>
-  return <div ref={wrap}><div className="chart-scroll availability-month-matrix" ref={ref} tabIndex={0} role="region" aria-label="AERONET and filter months by site, scroll for all months"><svg width={w} height={h} fontFamily={FONT.family} role="img" aria-label={`${sites.length} sites by ${months.length} months: filters, daily AOD and inversion days`}>
-    {months.map((month, j) => <g key={month}>
-      {(j === 0 || month.endsWith('-01')) && <><line x1={labelW + j * cell} x2={labelW + j * cell} y1={18} y2={h} stroke={INK.grid} /><text x={labelW + j * cell + 2} y={13} fontSize={11} fill={INK.text}>{cell * 12 >= 30 || j === 0 ? month.slice(0, 4) : ''}</text></>}
-      {cell > 25 && <text x={labelW + j * cell + cell / 2} y={32} textAnchor="middle" fontSize={9} fill={INK.muted}>{month.slice(5)}</text>}
-    </g>)}
-    {sites.map((s, i) => {
-      const y0 = 40 + i * block
-      const first = [s.filter_first, s.daily_first].filter(Boolean).sort()[0]?.slice(0, 7) ?? ''
-      const last = [s.filter_last, s.daily_last].filter(Boolean).sort().reverse()[0]?.slice(0, 7) ?? ''
-      return <g key={s.code}>
-        <text x={labelW - 62} y={y0 + 13} textAnchor="end" fontSize={11} fill={INK.text}
-          {...tip.bind([`${s.code} · ${s.name}`, `${s.station.replace(/_/g, ' ')}, ${fmt(s.km)} km`])}>{clipText(`${s.code} · ${s.name}`, labelW - 66)}</text>
-        {AERONET_LANES.map((l, k) => <text key={l.key} x={labelW - 6} y={y0 + k * (lane + gap) + lane - 0.5} textAnchor="end" fontSize={7.5} fill={INK.muted}>{l.label}</text>)}
-        {months.map((month, j) => {
-          const r = byKey.get(`${s.code}|${month}`), inside = month >= first && month <= last
-          if (!r && !inside) return null
-          return AERONET_LANES.map((l, k) => {
-            const n = r?.[l.key] ?? 0
-            const share = l.key === 'filters' ? Math.sqrt(n / maxFilters) : n / daysInMonth(month)
-            const extra = l.key === 'filters' && r ? ` (${r.filters_aod} with an AOD in the window, ${r.filters_inv} with an inversion)` : ''
-            return <rect key={`${month}|${l.key}`} x={labelW + j * cell} y={y0 + k * (lane + gap)} width={Math.max(1, cell - 0.6)} height={lane}
-              fill={n ? l.color : INK.empty} fillOpacity={n ? 0.25 + 0.75 * Math.min(1, share) : 1}
-              {...tip.bind(() => [`${s.code} · ${month}`, `${n} ${l.unit}${extra}`])} />
-          })
-        })}
-      </g>
-    })}
-  </svg></div>{tip.node}</div>
+  return <SiteMonthMatrix rows={items} months={months} colLabelPosition="top" cellWidth={[3, 30]} cellHeight={8} gap={[0.6, 1]} groupGap={9} groupLabels
+    fitRows={false} cellLabels="never" ariaLabel={`${sites.length} sites by ${months.length} months: filters, daily AOD and inversion days`}
+    cell={(i, month) => {
+      const { s, l, first, last } = lanes[i]
+      const r = byKey.get(`${s.code}|${month}`)
+      if (!r && !(month >= first && month <= last)) return undefined
+      const n = r?.[l.key] ?? 0
+      const share = l.key === 'filters' ? Math.sqrt(n / maxFilters) : n / daysInMonth(month)
+      const extra = l.key === 'filters' && r ? ` (${r.filters_aod} with an AOD in the window, ${r.filters_inv} with an inversion)` : ''
+      return { fill: n ? l.color : INK.empty, opacity: n ? 0.25 + 0.75 * Math.min(1, share) : 1, tip: [`${s.code} · ${month}`, `${n} ${l.unit}${extra}`] }
+    }} />
 }
 
 export function PriorCoverage({ data }: { data: NotebookAvailability }) {

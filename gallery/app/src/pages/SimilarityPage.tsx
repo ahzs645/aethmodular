@@ -15,11 +15,11 @@ import { useLoaded } from '@/lib/data'
 import { useSearchParam } from '@/lib/url'
 import { usePageSite } from '@/lib/siteFocus'
 import { baseFilterId, type FilterRecord, useHighlightActions } from '@/lib/highlight'
-import { FONT, INK } from '@/lib/theme'
+import { INK } from '@/lib/theme'
 import { f3, fmt } from '@/lib/format'
 import { IntervalStrip } from '@/components/IntervalStrip'
-import { HeatCell } from '@/components/HeatCell'
-import { ColorLegend } from '@/components/ColorLegend'
+import { HeatMatrix } from '@/components/HeatMatrix'
+import { BarRows, type BarRow } from '@/components/BarRows'
 import { ANALYSIS_CALENDAR_NOTE } from '@/lib/seasons'
 import { baselineName } from '@/lib/labels'
 import { useColourScheme } from '@/lib/colourSchemes'
@@ -327,65 +327,38 @@ function GroupRanking({ meta, ranked, target, selfR, compare, onCompare, onTarge
 
 /** Rows: the target site as a whole and each of its seasons. Columns: the top-ranked groups. */
 function SeasonMatrix({ meta, pairs, target, columns }: { meta: SimilarityMeta; pairs: PairMatrix | null; target: number; columns: number[] }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const site = meta.groups[target].site
   const rowGroups = useMemo(() => meta.groups.map((g, i) => ({ g, i })).filter(({ g }) => g.site === site).map(({ i }) => i), [meta, site])
-  const cells = useMemo(() => {
-    if (!pairs) return []
-    return rowGroups.flatMap((r) => columns.map((c) => ({ r, c, v: pairs.get(r, c) })))
-  }, [pairs, rowGroups, columns])
-  const labelW = 190
-  const top = 120
-  const cw = columns.length ? Math.max(24, Math.min(64, (width - labelW - 10) / columns.length)) : 0
-  const ch = 28
-  const vals = cells.map((c) => c.v).filter((v): v is number => v != null)
+  const values = useMemo(() => (pairs ? rowGroups.map((r) => columns.map((c) => pairs.get(r, c))) : []), [pairs, rowGroups, columns])
+  const vals = values.flat().filter((v): v is number => v != null)
   // the palette is picked from the ramp below (lib/colourSchemes), as on the other heatmaps
   const colours = useColourScheme('similarity-groups', 'sequential', 'Gallery')
   const color = d3.scaleSequential(d3.interpolateRgbBasis(colours.stops)).domain([d3.min(vals) ?? 0, d3.max(vals) ?? 1])
+  const rows = useMemo(() => rowGroups.map((r) => ({ key: String(r), label: groupLabel(meta, r), weight: r === target ? 700 : 400, color: groupColor(meta, r, INK.text), suffix: `n=${meta.groups[r].n}` })), [rowGroups, meta, target])
+  const cols = useMemo(() => columns.map((c) => ({ key: String(c), label: groupLabel(meta, c), size: 10.5, color: meta.sites[meta.groups[c].site].split === 'test' ? TEST_COLOR : INK.text,
+    tip: [groupLabel(meta, c), siteWhere(meta.sites[meta.groups[c].site]), `${meta.groups[c].n} filters`] })), [columns, meta])
+  const cell = useMemo(() => (i: number, j: number) => {
+    const r = rowGroups[i], c = columns[j], v = values[i]?.[j] ?? null
+    return { value: v, outline: r === target, tip: [`${groupLabel(meta, r)} vs ${groupLabel(meta, c)}`, `mean r ${fmt(v, 4)}`, siteWhere(meta.sites[meta.groups[c].site])] }
+  }, [rowGroups, columns, values, target, meta])
   return (
     <ChartFrame
       title="Season by season — is the match year-round or one season only?"
       subtitle={`Rows are ${meta.sites[site].label} as a whole and each of its seasons. Columns are the top-ranked groups from the chart above. Each cell is the mean r between the two groups.`}
       provenance="export_similarity.py · pairs_{method}_{mask}.bin"
     >
-      <div ref={ref} className="chart-wrap" style={{ overflowX: 'auto' }}>
-        {!pairs ? <LoadState what="scores" /> : columns.length === 0 ? <Empty>No columns to show.</Empty> : (
-          <svg width={Math.max(width, labelW + cw * columns.length + 10)} height={top + rowGroups.length * ch + 8}>
-            <g fontFamily={FONT.family}>
-              {columns.map((c, j) => (
-                <text key={c} transform={`translate(${labelW + j * cw + cw / 2},${top - 6}) rotate(-45)`} fontSize={10.5} {...tip.bind([groupLabel(meta, c), siteWhere(meta.sites[meta.groups[c].site]), `${meta.groups[c].n} filters`])} fill={meta.sites[meta.groups[c].site].split === 'test' ? TEST_COLOR : INK.text}>{groupLabel(meta, c)}</text>
-              ))}
-              {rowGroups.map((r, i) => (
-                <text key={r} x={labelW - 8} y={top + i * ch + ch / 2} dy="0.35em" textAnchor="end" fontSize={11.5} fontWeight={r === target ? 700 : 400} fill={groupColor(meta, r, INK.text)}>
-                  {groupLabel(meta, r)} <tspan fill={INK.muted} fontFamily={FONT.mono} fontSize={10}>n={meta.groups[r].n}</tspan>
-                </text>
-              ))}
-              {cells.map(({ r, c, v }) => {
-                const i = rowGroups.indexOf(r)
-                const j = columns.indexOf(c)
-                return (
-                  <HeatCell key={`${r}-${c}`} x={labelW + j * cw} y={top + i * ch} width={cw - 1} height={ch - 1} fill={v == null ? null : color(v)} outline={r === target}
-                    label={cw >= 40 && v != null ? f3(v) : null} onEnter={(e) => tip.show(e, [`${groupLabel(meta, r)} vs ${groupLabel(meta, c)}`, `mean r ${fmt(v, 4)}`, siteWhere(meta.sites[meta.groups[c].site])])} onLeave={tip.hide} />
-                )
-              })}
-            </g>
-          </svg>
-        )}
-        {vals.length > 0 && <div className="legend"><ColorLegend scale={color} scheme={colours.scheme} label="mean Pearson r between the two groups" width={200} format={f3} /></div>}
-        {vals.length > 0 && <Note>The outlined row is the current target.</Note>}
-        {tip.node}
-      </div>
+      {!pairs ? <LoadState what="scores" /> : columns.length === 0 ? <Empty>No columns to show.</Empty> : (
+        <HeatMatrix rows={rows} columns={cols} cell={cell} color={color} format={f3} cellWidth={[24, 64]} cellHeight={28}
+          rowLabelSize={11.5} colLabels="rotate" colLabelAngle={-45}
+          legend={vals.length > 0 ? { scheme: colours.scheme, label: 'mean Pearson r between the two groups', width: 200, format: f3 } : null}
+          footer={vals.length > 0 ? <Note>The outlined row is the current target.</Note> : null} />
+      )}
     </ChartFrame>
   )
 }
 
 
 function TopComposition({ meta, rows, available, targetLabel }: { meta: SimilarityMeta; rows: { filter: number; r: number }[]; available: number; targetLabel: string }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const bySite = useMemo(() => {
     const m = new Map<number, number[]>()
     for (const { filter } of rows) {
@@ -400,50 +373,32 @@ function TopComposition({ meta, rows, available, targetLabel }: { meta: Similari
   const total = rows.length
   const effective = total ? 1 / d3.sum(bySite, (s) => (s.fs.length / total) ** 2) : 0
   const top5 = total ? d3.sum(bySite.slice(0, 5), (s) => s.fs.length) / total : 0
-  const labelW = 150
-  const rowH = 18
-  const innerW = Math.max(160, width - labelW - 70)
-  const x = d3.scaleLinear().domain([0, d3.max(shown, (s) => s.fs.length) ?? 1]).range([0, innerW]).nice()
   const seasonsSeen = new Map<string, string>()
   const lg = useLegend()
+  const bars: BarRow[] = shown.map((s) => {
+    const cal = calendarOf(meta, s.site)
+    const counts = cal.map((c, k) => ({ c, n: s.fs.filter((f) => meta.filters.season[f] === k).length }))
+    const undated = s.fs.filter((f) => meta.filters.season[f] < 0).length
+    const site = meta.sites[s.site]
+    counts.forEach(({ c }) => seasonsSeen.set(c.name, c.color))
+    return {
+      key: String(s.site), label: `${site.label}${site.split === 'test' ? ' †' : ''}`, labelColor: site.split === 'test' ? TEST_COLOR : INK.text, valueLabel: String(s.fs.length),
+      // a season hidden in the legend leaves a gap, so the bar keeps its length
+      segments: [...counts.map(({ c, n }) => ({ key: c.name, value: n, color: c.color, opacity: lg.show(c.name) ? lg.dim(c.name, 0.2) : 0 })),
+        ...(undated ? [{ key: 'undated', value: undated, color: INK.neutral, opacity: 1 }] : [])],
+      tip: [`${site.site} · ${splitName(site.split)}`, siteWhere(site), `${s.fs.length} of ${total} (${Math.round((100 * s.fs.length) / total)}%)`, ...counts.filter((c) => c.n).map((c) => `${c.c.name}: ${c.n}`), ...(undated ? [`undated: ${undated}`] : [])],
+    }
+  })
   return (
     <ChartFrame
       title="Where the most similar filters come from — by site, stacked by season"
       subtitle={`The ${total} filters from other sites most similar to ${targetLabel}, counted by source site and split by each filter's local season.`}
       provenance="export_similarity.py · top_{method}_{mask}.bin"
     >
-      <div ref={ref} className="chart-wrap">
-        {total === 0 ? <LoadState /> : (
-          <svg width={width} height={shown.length * rowH + 30}>
-            <g transform={`translate(${labelW},6)`} fontFamily={FONT.family}>
-              {shown.map((s, i) => {
-                const cal = calendarOf(meta, s.site)
-                const counts = cal.map((c, k) => ({ c, n: s.fs.filter((f) => meta.filters.season[f] === k).length }))
-                const undated = s.fs.filter((f) => meta.filters.season[f] < 0).length
-                let acc = 0
-                return (
-                  <g key={s.site} transform={`translate(0,${i * rowH})`}
-                    {...tip.bind([`${meta.sites[s.site].site} · ${splitName(meta.sites[s.site].split)}`, siteWhere(meta.sites[s.site]), `${s.fs.length} of ${total} (${Math.round((100 * s.fs.length) / total)}%)`, ...counts.filter((c) => c.n).map((c) => `${c.c.name}: ${c.n}`), ...(undated ? [`undated: ${undated}`] : [])])}>
-                    <text x={-8} y={rowH / 2} dy="0.35em" textAnchor="end" fontSize={11.5} fill={meta.sites[s.site].split === 'test' ? TEST_COLOR : INK.text}>{meta.sites[s.site].label}{meta.sites[s.site].split === 'test' ? ' †' : ''}</text>
-                    {counts.map(({ c, n }) => {
-                      seasonsSeen.set(c.name, c.color)
-                      const x0 = acc
-                      acc += n
-                      return n && lg.show(c.name) ? <rect key={c.name} x={x(x0)} y={2} width={x(acc) - x(x0)} height={rowH - 4} fill={c.color} opacity={lg.dim(c.name, 0.2)} /> : null
-                    })}
-                    {undated > 0 && <rect x={x(acc)} y={2} width={x(acc + undated) - x(acc)} height={rowH - 4} fill={INK.neutral} />}
-                    <text x={x(s.fs.length) + 5} y={rowH / 2} dy="0.35em" fontSize={10.5} fontFamily={FONT.mono} fill={INK.muted}>{s.fs.length}</text>
-                  </g>
-                )
-              })}
-            </g>
-          </svg>
-        )}
-        <Legend {...lg.props} items={[...seasonsSeen.entries()].map(([label, color]) => ({ label, color, shape: 'square' as const }))} />
-        {total > 0 && <ExplainOnly><Note>{total} filters from {bySite.length} sites{rest ? `, of which ${bySite.length - 20} smaller contributors (${rest} filters) are not drawn` : ''}. The top 5 sites supply {Math.round(top5 * 100)}%, and the effective number of sites (1/Σp²) is {fmt(effective, 1)}: a lower number means the list is more concentrated. † marks an outer test site.</Note></ExplainOnly>}
-        {available < meta.top_k && <Note>Outer test sites are hidden, so {available} of the {meta.top_k} stored most-similar filters remain.</Note>}
-        {tip.node}
-      </div>
+      {total === 0 ? <LoadState /> : <BarRows rows={bars} rowHeight={18} barHeight={14} axis={false} maxLabelWidth={150} />}
+      <Legend {...lg.props} items={[...seasonsSeen.entries()].map(([label, color]) => ({ label, color, shape: 'square' as const }))} />
+      {total > 0 && <ExplainOnly><Note>{total} filters from {bySite.length} sites{rest ? `, of which ${bySite.length - 20} smaller contributors (${rest} filters) are not drawn` : ''}. The top 5 sites supply {Math.round(top5 * 100)}%, and the effective number of sites (1/Σp²) is {fmt(effective, 1)}: a lower number means the list is more concentrated. † marks an outer test site.</Note></ExplainOnly>}
+      {available < meta.top_k && <Note>Outer test sites are hidden, so {available} of the {meta.top_k} stored most-similar filters remain.</Note>}
     </ChartFrame>
   )
 }

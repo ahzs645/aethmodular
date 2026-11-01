@@ -1,12 +1,11 @@
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
 import { FacetGrid } from '@/components/FacetGrid'
-import { HeatCell } from '@/components/HeatCell'
+import { HeatMatrix, type MatrixItem } from '@/components/HeatMatrix'
 import { Key } from '@/components/Key'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
-import { useTooltip } from '@/hooks/useTooltip'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { loadJson, useEach } from '@/lib/data'
 import { seasonOnly } from '@/lib/seasons'
@@ -100,26 +99,21 @@ function profileOf(s: Spectral, key: string, title: string, keep: (i: number) =>
 
 type Across = 'sites' | 'seasons'
 type Draw = 'cells' | 'lines'
-const PM = { top: 22, right: 6, bottom: 22, left: 84 }
+const HOUR_COLUMNS: MatrixItem[] = HOURS.map((h) => ({ key: String(h), label: h % 6 === 0 ? String(h).padStart(2, '0') : '' }))
 
-/** one profile as a heat map: channel rows, hour columns */
-function ProfileGrid({ p, width, fill, tip }: { p: Profile; width: number; fill: (v: number | null) => string | null; tip: ReturnType<typeof useTooltip> }) {
-  const iw = width - PM.left - PM.right, cw = iw / 24, ch = 18
-  return (
-    <svg width={width} height={PM.top + p.rows.length * ch + PM.bottom} fontFamily={FONT.family}>
-      <text x={PM.left} y={13} fontSize={12} fontWeight={600} fill={p.color ?? INK.text}>{p.title}</text>
-      <g transform={`translate(${PM.left},${PM.top})`}>
-        {p.rows.map((r, i) => <g key={r.c}>
-          <text x={-6} y={i * ch + ch / 2} dy="0.32em" textAnchor="end" fontSize={10.5} fill={INK.muted}>{r.c} ({WAVELENGTH_NM[r.c]})</text>
-          {HOURS.map((h) => <HeatCell key={h} x={h * cw} y={i * ch} width={cw - 0.5} height={ch - 0.5} fill={fill(r.ratio[h])}
-            onEnter={(e) => tip.show(e, [`${p.title} · ${r.c} · ${hourLabel(h)} (${utcLabel(p.offset)})`,
-              r.ratio[h] == null ? `${r.n[h]} day-hours (too few)` : `${fmt(r.ratio[h], 2)} × the channel's daily mean`,
-              `median ${fmt(r.median[h], 2)} ${UG} over ${r.n[h]} day-hours`, `daily mean of the hourly medians ${fmt(r.dailyMean, 2)} ${UG}`])} onLeave={tip.hide} />)}
-        </g>)}
-        {[0, 6, 12, 18].map((h) => <text key={h} x={h * cw} y={p.rows.length * ch + 13} fontSize={10} fill={INK.muted}>{String(h).padStart(2, '0')}</text>)}
-      </g>
-    </svg>
-  )
+/** one profile as a heat map: channel rows, hour columns (components/HeatMatrix) */
+function ProfileGrid({ p, width, fill }: { p: Profile; width: number; fill: (v: number | null) => string | null }) {
+  const rows = useMemo(() => p.rows.map((r): MatrixItem => ({ key: r.c, label: `${r.c} (${WAVELENGTH_NM[r.c]})`, color: INK.muted })), [p.rows])
+  return <HeatMatrix width={width} title={p.title} titleColor={p.color ?? INK.text} rows={rows} columns={HOUR_COLUMNS} rowLabelSize={10.5}
+    colLabels="horizontal" colLabelPosition="bottom" colLabelAlign="start" colLabelSize={10} colLabelColor={INK.muted}
+    cellWidth={[1, 1000]} cellHeight={18} gap={0.5} fitRows={false} cellLabels="never" legend={null}
+    cell={(i, h) => ({ fill: fill(p.rows[i].ratio[h]) })}
+    tip={(i, h) => {
+      const r = p.rows[i]
+      return [`${p.title} · ${r.c} · ${hourLabel(h)} (${utcLabel(p.offset)})`,
+        r.ratio[h] == null ? `${r.n[h]} day-hours (too few)` : `${fmt(r.ratio[h], 2)} × the channel's daily mean`,
+        `median ${fmt(r.median[h], 2)} ${UG} over ${r.n[h]} day-hours`, `daily mean of the hourly medians ${fmt(r.dailyMean, 2)} ${UG}`]
+    }} />
 }
 
 /**
@@ -130,8 +124,6 @@ function ProfileGrid({ p, width, fill, tip }: { p: Profile; width: number; fill:
 export function NormalisedHeatmap({ focus, focusName, spectra, sites, seasons }: {
   focus: Spectral | null; focusName: string; spectra: Record<string, Spectral>; sites: SiteMeta[]; seasons: readonly SeasonMeta[]
 }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const tip = useTooltip(ref)
   const [across, setAcross] = useSearchParam<Across>('dn.hm', 'sites', ['sites', 'seasons'])
   const [draw, setDraw] = useSearchParam<Draw>('dn.hmd', 'cells', ['cells', 'lines'])
   const colours = useColourScheme('diurnal-heatmap', 'diverging', 'Red–yellow–blue')
@@ -151,10 +143,10 @@ export function NormalisedHeatmap({ focus, focusName, spectra, sites, seasons }:
         <Segmented label="Panels" value={across} options={['sites', 'seasons'] as Across[]} onChange={setAcross} optionLabel={(k) => (k === 'sites' ? 'Sites' : focus ? `${focusName} by season` : 'Seasons')} />
         <Segmented label="Draw" value={draw} options={['cells', 'lines'] as Draw[]} onChange={setDraw} optionLabel={(k) => (k === 'cells' ? 'Heat map' : 'Curves')} />
       </>}>
-      <div ref={ref} className="chart-wrap">
+      <div className="chart-wrap">
         {!panels.length ? <Empty>No site in view has an hourly MA350 export.</Empty>
           : draw === 'cells'
-            ? <FacetGrid items={panels} minCell={340} maxCols={2} render={(p, w) => <ProfileGrid p={p} width={w} fill={fill} tip={tip} />} />
+            ? <FacetGrid items={panels} minCell={340} maxCols={2} render={(p, w) => <ProfileGrid p={p} width={w} fill={fill} />} />
             : <FacetGrid items={panels} minCell={320} maxCols={2} render={(p, w) => (
                 <HourPlot title={p.title} width={w} height={220} offset={p.offset} yLabel="× daily mean" hours={[0, 23]}
                   yMarkers={[{ at: 1, color: INK.identity }]}
@@ -164,7 +156,6 @@ export function NormalisedHeatmap({ focus, focusName, spectra, sites, seasons }:
         {draw === 'cells' ? panels.length > 0 && <div className="legend">
           <ColorLegend scale={scale} scheme={colours.scheme} width={160} label="× the channel's daily mean" format={(v) => `${fmt(2 ** v, v === 0 ? 0 : 1)}×`} />
         </div> : <Key items={CHANNELS.map((c) => ({ label: c, color: CHANNEL_COLOUR[c], kind: 'line' as const }))} />}
-        {tip.node}
       </div>
     </ChartFrame>
   )

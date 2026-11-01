@@ -1,15 +1,12 @@
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame } from '@/components/ChartFrame'
 import { useChartOptions } from '@/lib/chartOptions'
-import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
-import { INK, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useColourScheme } from '@/lib/colourSchemes'
-import { ColorLegend } from '@/components/ColorLegend'
+import { SiteMonthMatrix } from '@/components/SiteMonthMatrix'
+import { calendarMonths } from '@/lib/notebookAvailability'
 import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
-import { useFitHeight } from '@/lib/chartFit'
 import { ExcludedNote } from '@/lib/markedRows'
 
 /**
@@ -22,9 +19,6 @@ import { ExcludedNote } from '@/lib/markedRows'
  * coverage windows do not line up.
  */
 export function AvailabilityHeatmap({ rows, meta, xField, yField }: { rows: FilterRow[]; meta: MetaFile; xField: string; yField: string }) {
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(wrapRef)
-  const tip = useTooltip(wrapRef)
   const o = useChartOptions('coverage', [{ key: 'which', label: 'Count filters with', default: 'both', title: `x = ${xField} · y = ${yField}`,
     choices: [{ value: 'x', label: 'x field' }, { value: 'y', label: 'y field' }, { value: 'both', label: 'Both' }] }])
   const which = o.values.which as 'x' | 'y' | 'both'
@@ -34,34 +28,23 @@ export function AvailabilityHeatmap({ rows, meta, xField, yField }: { rows: Filt
   const has = (r: FilterRow, f: string) => typeof r[f] === 'number' && Number.isFinite(r[f] as number)
   const label = which === 'x' ? xField : which === 'y' ? yField : `both ${xField} and ${yField}`
 
-  const { cells, periods, sites, maxCount } = useMemo(() => {
+  const { byKey, periods, sites, maxCount } = useMemo(() => {
     const sites = meta.sites.map((s) => s.name)
-    const byKey = new Map<string, number>()
-    const idsOf = new Map<string, string[]>()
-    const periodSet = new Set<string>()
+    const byKey = new Map<string, string[]>()
     for (const r of rows) {
       const ok = which === 'x' ? has(r, xField) : which === 'y' ? has(r, yField) : has(r, xField) && has(r, yField)
       if (!ok) continue
-      const period = r.date.slice(0, 7) // YYYY-MM
-      periodSet.add(period)
-      const k = `${r.site}|${period}`
-      byKey.set(k, (byKey.get(k) ?? 0) + 1)
-      idsOf.set(k, [...(idsOf.get(k) ?? []), r.id])
+      const k = `${r.site}|${r.date.slice(0, 7)}` // YYYY-MM
+      const ids = byKey.get(k)
+      if (ids) ids.push(r.id)
+      else byKey.set(k, [r.id])
     }
-    const periods = [...periodSet].sort()
-    const cells = [...byKey.entries()].map(([k, count]) => {
-      const [site, period] = k.split('|')
-      return { site, period, count, ids: idsOf.get(k) ?? [] }
-    })
-    return { cells, periods, sites, maxCount: d3.max(cells, (c) => c.count) ?? 1 }
+    // every month from the first to the last, so a gap in sampling is a run of blank columns
+    const present = [...byKey.keys()].map((k) => k.split('|')[1]).sort()
+    const periods = present.length ? calendarMonths(present[0], present[present.length - 1]) : []
+    return { byKey, periods, sites, maxCount: Math.max(1, ...[...byKey.values()].map((ids) => ids.length)) }
   }, [rows, which, xField, yField, meta.sites])
 
-  const margin = { top: 14, right: 20, bottom: 56, left: 110 }
-  const innerW = Math.max(320, width - margin.left - margin.right)
-  const fit = useFitHeight()
-  const rowH = fit === null ? 34 : Math.max(10, Math.min(34, (fit - margin.top - margin.bottom) / Math.max(1, sites.length)))
-  const innerH = sites.length * rowH
-  const cellW = innerW / Math.max(1, periods.length)
   const color = d3.scaleQuantize<string>().domain([0, maxCount]).range(colours.stops)
 
   return (
@@ -72,47 +55,21 @@ export function AvailabilityHeatmap({ rows, meta, xField, yField }: { rows: Filt
       provenance="stands in for the data-availability strip charts · react-graph-gallery.com/heatmap"
       controls={o.controls()}
     >
-      <div ref={wrapRef} className="chart-wrap">
-        <svg width={width} height={innerH + margin.top + margin.bottom}>
-          <g transform={`translate(${margin.left},${margin.top})`}>
-            {cells.map((c, i) => {
-              const yi = sites.indexOf(c.site)
-              const xi = periods.indexOf(c.period)
-              if (yi < 0 || xi < 0) return null
-              return (
-                <rect
-                  key={i}
-                  x={xi * cellW} y={yi * rowH}
-                  width={Math.max(1, cellW - 0.6)} height={rowH - 4}
-                  fill={color(c.count)} rx={1.5}
-                  // a cell is a site's month of filters: click lists them in the side panel, right-click excludes or keeps them
-                  {...fidsProps(c.ids, `${c.site} · ${c.period}`)} style={{ cursor: 'pointer' }}
-                  onClick={() => { tip.hide(); edits.openGroup({ title: `${c.site} · ${c.period}`, ids: c.ids, fields: [xField, yField] }) }}
-                  {...tip.bind([c.site, c.period, `${c.count} filters with ${label}`, 'click to list them · right-click to exclude or keep'])}
-                />
-              )
-            })}
-            {sites.map((s, i) => (
-              <text key={s} x={-10} y={i * rowH + (rowH - 4) / 2} dy="0.32em" textAnchor="end" fontSize={12} fill={INK.text} fontFamily={FONT.family}>
-                {s}
-              </text>
-            ))}
-            {periods.map((p, i) =>
-              p.endsWith('-01') ? (
-                <text key={p} transform={`translate(${i * cellW + cellW / 2},${innerH + 6}) rotate(-58)`} fontSize={10} fill={INK.muted} textAnchor="end" fontFamily={FONT.family}>
-                  {p.slice(0, 4)}
-                </text>
-              ) : null
-            )}
-          </g>
-        </svg>
-        {/* the ramp is the colour control: click it for the palettes */}
-        <div className="legend">
-          <ColorLegend scale={color} scheme={colours.scheme} label="filters per month" width={160} format={(v) => String(Math.round(v))} note={`counting ${label}`} />
-        </div>
-        <ExcludedNote fields={[xField, yField]} />
-        {tip.node}
-      </div>
+        <SiteMonthMatrix rows={sites} months={periods} colLabelPosition="bottom" cellWidth={[1, 1000]} cellHeight={34} gap={[0.6, 4]} radius={1.5}
+          rowLabelSize={12} cellLabels="never" color={color} fitRows={[10, 34]}
+          cell={(i, month) => {
+            const ids = byKey.get(`${sites[i]}|${month}`)
+            if (!ids) return undefined
+            // a cell is a site's month of filters: click lists them in the side panel, right-click excludes or keeps them
+            return { value: ids.length, props: fidsProps(ids, `${sites[i]} · ${month}`),
+              tip: [sites[i], month, `${ids.length} filters with ${label}`, 'click to list them · right-click to exclude or keep'] }
+          }}
+          onCell={(i, j) => {
+            const ids = byKey.get(`${sites[i]}|${periods[j]}`)
+            if (ids) edits.openGroup({ title: `${sites[i]} · ${periods[j]}`, ids, fields: [xField, yField] })
+          }}
+          legend={{ scale: color, scheme: colours.scheme, label: 'filters per month', width: 160, format: (v) => String(Math.round(v)), note: `counting ${label}` }}
+          footer={<ExcludedNote fields={[xField, yField]} />} />
     </ChartFrame>
   )
 }

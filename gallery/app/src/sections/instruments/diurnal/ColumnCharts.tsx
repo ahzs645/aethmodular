@@ -1,18 +1,19 @@
 import { useMemo, useRef } from 'react'
 import { useColourScheme } from '@/lib/colourSchemes'
-import { ColorLegend } from '@/components/ColorLegend'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
-import { HeatCell } from '@/components/HeatCell'
+import { HeatMatrix, type MatrixItem } from '@/components/HeatMatrix'
 import { Key } from '@/components/Key'
 import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/format'
-import { FONT, INK } from '@/lib/theme'
+import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { SiteMeta } from '@/lib/types'
 import { dates, HOURS, hourLabel, hourRuns, unscale, utcLabel, type ColumnFile, type ColumnIndex } from './data'
 import { cycleSeries, dayGroups, HourPlot, inGroup, splitLabels, type DaySplit } from './HourCycle'
+
+/** the hour columns, labelled every third hour */
+const HOUR_COLUMNS: MatrixItem[] = HOURS.map((h) => ({ key: String(h), label: h % 3 === 0 ? String(h).padStart(2, '0') : '' }))
 
 const PROVENANCE = 'notebooks/analysis/meteorology/aeronet_addis_diagnostics.ipynb and aeronet_addis_deep_dive.ipynb (Addis only), research/ftir_ec_phase3/AERONET_SPARTAN_2026-08-22.md (retrieval hours by city); here every SPARTAN site with a station'
 
@@ -26,57 +27,46 @@ export function DaylightWindow({ index, sites, focus, onFocus }: {
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
-  const tip = useTooltip(wrapRef)
   const rows = sites.filter((s) => index.sites[s.code])
   // on a narrow screen the notes go and the cells shrink, so the grid fits without scrolling
   const narrow = width > 0 && width < 720
-  const labelW = narrow ? 104 : 170, noteW = narrow ? 0 : 210, head = 26, rowH = 22
+  const labelW = narrow ? 104 : 170, noteW = narrow ? 0 : 210
   const cell = Math.max(narrow ? 9 : 12, Math.min(30, Math.floor((width - labelW - noteW) / 24)))
-  const w = labelW + 24 * cell + noteW
   const shares = rows.map((s) => { const c = index.sites[s.code].hour_counts.aod, t = d3.sum(c) || 1; return c.map((n) => n / t) })
   const max = d3.max(shares.flat()) ?? 1
   const colours = useColourScheme('diurnal-daylight', 'sequential')
   const colour = d3.scaleSequential(d3.interpolateRgbBasis(colours.name === 'Gallery' && !colours.reverse ? colours.stops.slice(1) : colours.stops)).domain([0, max])
-  const y = (i: number) => head + (i + 1) * rowH
+  // the first row is the filter, which samples every hour; then one row per site (components/HeatMatrix)
+  const matrixRows: MatrixItem[] = [{ key: '24 h filter', size: 12 }, ...rows.map((s) => ({ key: s.code, label: s.name, dot: s.color, size: narrow ? 11 : 12 }))]
+  const focusRow = rows.findIndex((s) => s.code === focus)
   return (
     <ChartFrame id="diurnal-daylight" title="What the photometer sees of a 24 h filter — retrieval hours by site"
       subtitle={`For each site in view, the share of its AERONET direct-sun retrievals (${index.level}) falling in each local standard hour; a dot marks the almucantar inversion hours (at least 2 % of the site's inversions), which carry AAOD and SSA. The top row is the filter: it samples all 24. The note gives the median number of hours with a retrieval on a day that has any. Click a site to look at it below.`}
       provenance={PROVENANCE}>
-      <div ref={wrapRef} className="chart-wrap" style={{ overflowX: 'auto' }}>
-        {rows.length === 0 ? <Empty>No site in view has an AERONET station. Pick SPARTAN sites in the Filters panel.</Empty> : (
-          <svg width={w} height={y(rows.length) + 6} fontFamily={FONT.family}>
-            {HOURS.filter((h) => h % 3 === 0).map((h) => <text key={h} x={labelW + h * cell + cell / 2} y={head - 10} textAnchor="middle" fontSize={10} fill={INK.muted}>{String(h).padStart(2, '0')}</text>)}
-            <text x={labelW - 8} y={head + rowH / 2} dy="0.35em" textAnchor="end" fontSize={12} fill={INK.text}>24 h filter</text>
-            {HOURS.map((h) => <HeatCell key={h} x={labelW + h * cell + 1} y={head + 1} width={cell - 2} height={rowH - 4} fill={INK.neutral} />)}
-            {!narrow && <text x={labelW + 24 * cell + 8} y={head + rowH / 2} dy="0.35em" fontSize={11} fill={INK.muted}>samples every hour</text>}
-            {rows.map((s, i) => {
-              const info = index.sites[s.code], inv = new Set(info.inv_hours), on = s.code === focus
-              return (
-                <g key={s.code} transform={`translate(0,${y(i)})`} style={{ cursor: 'pointer' }} onClick={() => onFocus(s.code)}>
-                  <rect x={0} width={w} height={rowH - 2} fill={on ? INK.tint : 'transparent'} />
-                  <circle cx={10} cy={rowH / 2 - 1} r={5} fill={s.color} />
-                  <text x={22} y={rowH / 2} dy="0.1em" fontSize={narrow ? 11 : 12} fontWeight={on ? 650 : 400} fill={INK.text}>{s.name}</text>
-                  {HOURS.map((h) => {
-                    const v = shares[i][h]
-                    return <HeatCell key={h} x={labelW + h * cell + 1} y={1} width={cell - 2} height={rowH - 4} fill={v > 0 ? colour(v) : null}
-                      onEnter={(e) => tip.show(e, [`${s.name} · ${hourLabel(h)} (${utcLabel(info.offset)})`, `${fmt(100 * v, 1)} % of ${info.retrievals.toLocaleString()} retrievals`,
-                        `${info.hour_counts.inv[h]} inversions${inv.has(h) ? ' (an inversion hour)' : ''}`, `${fmt(info.hours_per_day, 0)} h with a retrieval on a typical day`])} onLeave={tip.hide}>
-                      {inv.has(h) && <circle cx={labelW + h * cell + cell / 2} cy={rowH / 2 - 1} r={narrow ? 1.8 : 2.4} fill={INK.text} pointerEvents="none" />}
-                    </HeatCell>
-                  })}
-                  {!narrow && <text x={labelW + 24 * cell + 8} y={rowH / 2} dy="0.1em" fontSize={11} fill={INK.muted}>
-                    {fmt(info.hours_per_day, 0)} h/day · inversions {hourRuns(info.inv_hours) || '—'}
-                  </text>}
-                </g>
-              )
-            })}
-          </svg>
+      <div ref={wrapRef}>
+        {rows.length === 0 ? <div className="chart-wrap"><Empty>No site in view has an AERONET station. Pick SPARTAN sites in the Filters panel.</Empty></div> : (
+          <HeatMatrix rows={matrixRows} columns={HOUR_COLUMNS} cellWidth={cell} cellHeight={22} gap={[2, 4]} fitRows={false} cellLabels="never"
+            colLabels="horizontal" colLabelSize={10} colLabelColor={INK.muted} maxLabelWidth={labelW - 30}
+            selectedRow={focusRow >= 0 ? focusRow + 1 : null} onRow={(i) => { if (i > 0) onFocus(rows[i - 1].code) }}
+            extraColumns={narrow ? [] : [{ key: 'note', side: 'right', text: (i) => {
+              if (i === 0) return 'samples every hour'
+              const info = index.sites[rows[i - 1].code]
+              return `${fmt(info.hours_per_day, 0)} h/day · inversions ${hourRuns(info.inv_hours) || '—'}`
+            } }]}
+            cell={(i, h) => (i === 0 ? { fill: INK.neutral } : { value: shares[i - 1][h], fill: shares[i - 1][h] > 0 ? colour(shares[i - 1][h]) : null })}
+            tip={(i, h) => {
+              if (i === 0) return ['24 h filter', `${hourLabel(h)}: the filter samples every hour`]
+              const s = rows[i - 1], info = index.sites[s.code], v = shares[i - 1][h]
+              return [`${s.name} · ${hourLabel(h)} (${utcLabel(info.offset)})`, `${fmt(100 * v, 1)} % of ${info.retrievals.toLocaleString()} retrievals`,
+                `${info.hour_counts.inv[h]} inversions${new Set(info.inv_hours).has(h) ? ' (an inversion hour)' : ''}`, `${fmt(info.hours_per_day, 0)} h with a retrieval on a typical day`]
+            }}
+            legend={{ scale: colour, scheme: colours.scheme, label: "share of the site's retrievals in the hour", format: (v) => `${fmt(100 * v, 0)} %` }}
+            legendItems={[{ label: 'inversion hour', color: INK.text, kind: 'dot' }]}>
+            {(l) => <g pointerEvents="none">{rows.flatMap((s, i) => index.sites[s.code].inv_hours.map((h) =>
+              <circle key={`${s.code}:${h}`} cx={l.x(h) + (l.cellW - 2) / 2} cy={l.y(i + 1) + (l.cellH - 4) / 2} r={narrow ? 1.8 : 2.4} fill={INK.text} />))}</g>}
+          </HeatMatrix>
         )}
-        {tip.node}
       </div>
-      {rows.length > 0 && <Key items={[{ label: 'inversion hour', color: INK.text, kind: 'dot' }]}>
-        <ColorLegend scale={colour} scheme={colours.scheme} label="share of the site's retrievals in the hour" format={(v) => `${fmt(100 * v, 0)} %`} />
-      </Key>}
     </ChartFrame>
   )
 }
