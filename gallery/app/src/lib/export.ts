@@ -174,10 +174,14 @@ export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] =
       const el = document.createElementNS(NS, 'rect')
       const dashed = sw.classList.contains('dashed'), ring = sw.classList.contains('ring')
       // a diamond swatch is a rotated square: draw the diamond, not its bounding box
-      if (sw.classList.contains('diamond')) {
+      const hollowDiamond = sw.classList.contains('hollow-diamond')
+      if (hollowDiamond || sw.classList.contains('diamond')) {
         const d = document.createElementNS(NS, 'path'), cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2
         d.setAttribute('d', `M${cx},${rect.top}L${rect.right},${cy}L${cx},${rect.bottom}L${rect.left},${cy}Z`)
-        d.setAttribute('fill', cs.backgroundColor)
+        if (hollowDiamond) {
+          // an outline on the panel: a figure's background is white, so no fill
+          d.setAttribute('fill', 'none'); d.setAttribute('stroke', cs.borderTopColor); d.setAttribute('stroke-width', '1.3')
+        } else d.setAttribute('fill', cs.backgroundColor)
         annotate(sw, d)
         place(sw, { els: [d], box: boxOf(rect) })
         continue

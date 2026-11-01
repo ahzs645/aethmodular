@@ -10,6 +10,7 @@ import { SSA_BY_WAVELENGTH } from '@/lib/aeronet'
 import { meanSe } from '@/lib/aeronetMath'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { colouring, num } from './shared'
+import { Legend } from '@/components/Legend'
 
 const M = { top: 12, right: 18, bottom: 44, left: 56 }
 const WAVELENGTHS = SSA_BY_WAVELENGTH.map(([w]) => w)
@@ -68,13 +69,10 @@ export function AeronetSsaSpectrum({ rows, meta }: { rows: FilterRow[]; meta: Me
             </g>
           </svg>
         )}
-        <div className="legend">
-          {lines.map((l) => {
-            const a = l.pts[0].mean, b = l.pts[l.pts.length - 1].mean
-            return <span key={l.k} className="legend-item"><span className="swatch" style={{ background: col.color(l.k) }} />
-              {col.label(l.k)} <span className="u">n={l.n}{a !== null && b !== null ? ` · 1020 − 440: ${b - a >= 0 ? '+' : ''}${fmt(b - a, 3)}` : ''}</span></span>
-          })}
-        </div>
+        <Legend items={lines.map((l) => {
+          const a = l.pts[0].mean, b = l.pts[l.pts.length - 1].mean
+          return { label: col.label(l.k), color: col.color(l.k), detail: `n=${l.n}${a !== null && b !== null ? ` · 1020 − 440: ${b - a >= 0 ? '+' : ''}${fmt(b - a, 3)}` : ''}` }
+        })} />
         {tip.node}
       </div>
     </ChartFrame>

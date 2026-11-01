@@ -14,6 +14,7 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { BC_CHOICES } from './AeronetNonAbsorbing'
 import { colouring, num, recordOf } from './shared'
 import { useMarkedPoints } from '@/lib/markedRows'
+import { Legend } from '@/components/Legend'
 
 const COLUMN = [
   { key: AOD500, label: 'AOD 500', color: '#2c7fb8' },
@@ -97,10 +98,9 @@ export function AeronetEom({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }
             </g>
           </svg>
         )}
-        <div className="legend">
-          {COLUMN.map((c) => <span key={c.key} className="legend-item"><span className="swatch" style={{ background: c.color }} />{c.label}</span>)}
+        <Legend items={COLUMN.map((c) => ({ label: c.label, color: c.color }))}>
           <span className="legend-item u">points in (a, b) coloured by {col.by}</span>
-        </div>
+        </Legend>
         {tip.node}
       </div>
     </ChartFrame>

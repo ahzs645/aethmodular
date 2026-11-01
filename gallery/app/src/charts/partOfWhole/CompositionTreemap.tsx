@@ -528,8 +528,8 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
       {editor.node}
       {reconOn && recon && recon.missing > 0 && rows.length > 0 && <p className="chart-note">{recon.missing.toLocaleString()} of {allRows.length.toLocaleString()} filters in view have no SPARTAN mass balance (no reconstruction published for them) and are left out, so the PM2.5 read against a stack is over the same filters.</p>}
       {showDominance && <p className="chart-note">{dominated(rows)} of {rows.length} filters have one {itemNoun.replace(/s$/, '')} above {o.values.above} % of the filter's {totalNoun} total (the count under each bar is that bar's).</p>}
-      {overTime && stripKey.length > 0 && <div className="legend">{stripKey.map((s) => <span key={s.name} className="legend-item"><span className="swatch square" style={{ background: s.color }} />{seasonOnly(s.name)}</span>)}
-        <span className="legend-note">top strip: {strip ? strip.title ?? strip.value : meta.season_convention === 'rain_rule' ? "the rain rule, from this year's rain" : 'the selected season calendar'}</span></div>}
+      {overTime && stripKey.length > 0 && <Legend items={stripKey.map((s) => ({ label: seasonOnly(s.name), color: s.color, shape: 'square' as const }))}
+        note={`top strip: ${strip ? strip.title ?? strip.value : meta.season_convention === 'rain_rule' ? "the rain rule, from this year's rain" : 'the selected season calendar'}`} />}
       {notes}
     </ChartFrame>
   )
