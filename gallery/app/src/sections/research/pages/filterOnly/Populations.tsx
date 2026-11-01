@@ -3,20 +3,17 @@
  * 03), the three models across populations (proportionality 04), equal filters against equal quarters
  * (proportionality 05), and the stricter-denominator ratio sensitivity (filter_only_diagnostics 05).
  */
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Note } from '@/components/ChartFrame'
-import { ColorLegend } from '@/components/ColorLegend'
 import { FacetGrid } from '@/components/FacetGrid'
-import { HeatCell } from '@/components/HeatCell'
+import { HeatMatrix } from '@/components/HeatMatrix'
 import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
-import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { fmt, signed } from '@/lib/format'
-import { FONT, INK } from '@/lib/theme'
+import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { Grid } from '../../common/ui'
 import { MODELS, POPULATIONS, denominatorSensitivity, evaluate, inPopulation, summarize, type FPoint, type Model, type Population, type Summary } from '../../common/filterOnly'
@@ -36,34 +33,24 @@ function usePopulationGrid(points: FPoint[], s: Settings) {
 /** stability 03: % MAE improvement of OLS over the training median, site × population */
 export function PopulationHeat({ points, s }: { points: FPoint[]; s: Settings }) {
   const grid = usePopulationGrid(points, s)
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
   const colours = useColourScheme('fo-heat', 'diverging')
   const vals = grid.flatMap((g) => g.cells.map((c) => c.sum.improvementPct)).filter(Number.isFinite)
   const bound = Math.max(10, ...vals.map(Math.abs))
   // blue = OLS better, red = worse, as the notebook's RdBu (and the gallery's r) draw it
   const color = d3.scaleQuantize<string>().domain([-bound, bound]).range([...colours.stops].reverse())
-  const labelW = 96, top = 30, cw = Math.max(64, Math.min(120, (width - labelW - 8) / POPULATIONS.length)), ch = 44
   return (
     <ChartFrame id="fo-heat" title="Selection sensitivity — held-out improvement over the median in every frozen population"
       subtitle="Leave quarter out · filter-weighted · 100 × (median MAE − OLS MAE) / median MAE; positive = lower OLS error · n is the whole population"
       provenance={<>{NB_STAB} figure 03</>} source={`${SOURCE}/Populations.tsx › PopulationHeat`}
       tip={<>The memberships are the release's saved ones (EC ≥ k × its reported MDL among the 480 ratio filters); no threshold is chosen from these errors. At the release's settings (with Filters → excluded: Include) JPL keeps 84 ratio filters and 28 at 1.5 × MDL, where the improvement shrinks to 9.6 % and 0.5 %; its seven-filter 2 × population cannot supply ten training filters. Addis's 1.5 ×, 2 × and 3 × populations are the same 189 filters.</>}>
-      <div ref={ref} style={{ position: 'relative', overflowX: 'auto' }}>
-        <svg width={labelW + POPULATIONS.length * cw + 4} height={top + SITES.length * ch + 4} fontFamily={FONT.family}>
-          {POPULATIONS.map((p, j) => <text key={p.key} x={labelW + j * cw + cw / 2} y={top - 10} textAnchor="middle" fontSize={11.5} fill={INK.text}>{p.label}</text>)}
-          {grid.map((g, i) => <g key={g.site}>
-            <text x={labelW - 8} y={top + i * ch + ch / 2} dy="0.35em" textAnchor="end" fontSize={12} fill={INK.text}>{g.site}</text>
-            {g.cells.map((c, j) => { const v = c.sum.improvementPct, ok = Number.isFinite(v)
-              return <HeatCell key={c.population} x={labelW + j * cw} y={top + i * ch} width={cw - 2} height={ch - 2} fill={ok ? color(v) : null} fontSize={11}
-                label={ok ? `${signed(v, 1)}%  n=${c.n}` : `n/a  n=${c.n}`}
-                onEnter={(e) => tip.show(e, [`${g.site} · ${popLabel(c.population)}`, ok ? `improvement ${signed(v, 1)} %` : 'no evaluated quarter', `OLS MAE ${fmt(c.sum.filters.mae.ols * s.k, 2)} · median MAE ${fmt(c.sum.filters.mae.median * s.k, 2)} ${s.u}`, `${c.sum.filters.n} evaluated of ${c.n} filters · ${c.sum.evaluatedBlocks} quarters`])} onLeave={tip.hide} /> })}
-          </g>)}
-        </svg>
-        <ColorLegend scale={color} scheme={colours.scheme} label="MAE improvement (%)" format={(v) => fmt(v, 0)} />
-        {tip.node}
-      </div>
+      <HeatMatrix rows={grid.map((g) => g.site)} rowLabelSize={12} columns={POPULATIONS.map((p) => ({ key: p.key, label: p.label }))} colLabelSize={11.5} colLabels="horizontal"
+        cellWidth={[64, 120]} cellHeight={44} gap={2} labelSize={11} cellLabels="always"
+        cell={(i, j) => {
+          const g = grid[i], c = g.cells[j], v = c.sum.improvementPct, ok = Number.isFinite(v)
+          return { fill: ok ? color(v) : null, label: ok ? `${signed(v, 1)}%  n=${c.n}` : `n/a  n=${c.n}`,
+            tip: [`${g.site} · ${popLabel(c.population)}`, ok ? `improvement ${signed(v, 1)} %` : 'no evaluated quarter', `OLS MAE ${fmt(c.sum.filters.mae.ols * s.k, 2)} · median MAE ${fmt(c.sum.filters.mae.median * s.k, 2)} ${s.u}`, `${c.sum.filters.n} evaluated of ${c.n} filters · ${c.sum.evaluatedBlocks} quarters`] }
+        }}
+        legend={{ scale: color, scheme: colours.scheme, label: 'MAE improvement (%)', format: (v) => fmt(v, 0) }} />
       <Note>An empty cell means no quarter had {s.minTrain} training filters: the population exists but cannot be evaluated.</Note>
       <FoExcludedNote s={s} any />
     </ChartFrame>

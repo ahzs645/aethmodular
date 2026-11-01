@@ -5,22 +5,19 @@
  * Filters → excluded (common/pythonPmf.ts, node-tested against the package's saved values); with every filter
  * counted it equals the package's.
  */
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented, Select } from '@/components/ChartFrame'
-import { ColorLegend } from '@/components/ColorLegend'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { Figure } from '@/components/Figure'
-import { HeatCell } from '@/components/HeatCell'
+import { HeatMatrix } from '@/components/HeatMatrix'
 import { Key } from '@/components/Key'
-import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { fmt } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { ExcludedNote, FixedSetNote, useCountedFilter, useExclusionSplit, useKnownFilter, useMarkedRows } from '@/lib/markedRows'
 import { num, type Row } from '@/lib/table'
-import { FONT, INK } from '@/lib/theme'
+import { INK } from '@/lib/theme'
 import type { FilterRow, MetaFile, PmfFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import { BASIS_NOTE, DataTable, useConcRows } from '../../common/ui'
@@ -151,31 +148,16 @@ export function Archived({ data, c, setCase, archived }: { data: PythonPmfExport
 interface Variable { key: string; label: string; short: string; value: (r: FilterRow) => number | null; saved?: string }
 
 function Matrix({ rows, cols, cell, picked, onPick }: { rows: string[]; cols: Variable[]; cell: (f: number, v: Variable) => { r: number | null; n: number; saved: number | null }; picked: [number, string]; onPick: (f: number, v: string) => void }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
-  const labelW = 74, top = 22, ch = 30
-  const cw = Math.max(60, Math.min(120, (width - labelW - 8) / Math.max(1, cols.length)))
   const colours = useColourScheme('ppmf-matrix', 'diverging')
   const color = d3.scaleQuantize<string>().domain([-1, 1]).range(colours.stops)
-  return (
-    <div ref={ref} style={{ position: 'relative', overflowX: 'auto' }}>
-      <svg width={labelW + cols.length * cw + 4} height={top + rows.length * ch + 4} fontFamily={FONT.family}>
-        {cols.map((c, j) => <text key={c.key} x={labelW + j * cw + cw / 2} y={top - 7} textAnchor="middle" fontSize={11} fill={INK.text}>{c.short}</text>)}
-        {rows.map((name, i) => <g key={name}>
-          <text x={labelW - 6} y={top + i * ch + ch / 2} dy="0.35em" textAnchor="end" fontSize={11.5} fill={FACTOR_COLOR[i]}>{name}</text>
-          {cols.map((c, j) => {
-            const v = cell(i + 1, c)
-            return <HeatCell key={c.key} x={labelW + j * cw} y={top + i * ch} width={cw - 2} height={ch - 2} fill={v.r === null ? null : color(v.r)} label={v.r === null ? '' : fmt(v.r, 2)}
-              outline={picked[0] === i + 1 && picked[1] === c.key} onClick={() => onPick(i + 1, c.key)}
-              onEnter={(e) => tip.show(e, [`${name} × ${c.label}`, `r ${fmt(v.r, 3)} (n ${v.n})`, ...(v.saved != null ? [`package (102 filters): ${fmt(v.saved, 3)}`] : []), 'click: draw it below'])} onLeave={tip.hide} />
-          })}
-        </g>)}
-      </svg>
-      <ColorLegend scale={color} scheme={colours.scheme} label="Pearson r" format={(v) => fmt(v, 1)} />
-      {tip.node}
-    </div>
-  )
+  return <HeatMatrix rows={rows.map((name, i) => ({ key: name, color: FACTOR_COLOR[i] }))} rowLabelSize={11.5} columns={cols.map((c) => ({ key: c.key, label: c.short, title: c.label }))}
+    color={color} cellWidth={[60, 120]} cellHeight={30} gap={2} colLabels="horizontal" onCell={(i, j) => onPick(i + 1, cols[j].key)}
+    cell={(i, j) => {
+      const c = cols[j], name = rows[i], v = cell(i + 1, c)
+      return { value: v.r, label: v.r === null ? null : fmt(v.r, 2), outline: picked[0] === i + 1 && picked[1] === c.key,
+        tip: [`${name} × ${c.label}`, `r ${fmt(v.r, 3)} (n ${v.n})`, ...(v.saved != null ? [`package (102 filters): ${fmt(v.saved, 3)}`] : []), 'click: draw it below'] }
+    }}
+    legend={{ scheme: colours.scheme, label: 'Pearson r', format: (v) => fmt(v, 1) }} />
 }
 
 export function Measurements({ data, c, setCase, rows: viewRows, meta }: { data: PythonPmfExport; c: PmfCase | null; setCase: (k: string) => void; rows: FilterRow[]; meta: MetaFile }) {

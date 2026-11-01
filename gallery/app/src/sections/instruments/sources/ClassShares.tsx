@@ -1,13 +1,11 @@
 import { useMemo, useRef } from 'react'
-import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
-import { XAxis } from '@/components/Axes'
+import { BarRows, type BarRow } from '@/components/BarRows'
 import { Key } from '@/components/Key'
 import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
 import { f2, pct } from '@/lib/format'
 import { seasonOfDate } from '@/lib/seasons'
-import { FONT, INK, inkOn } from '@/lib/theme'
+import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import { ExcludedNote } from '@/lib/markedRows'
 import type { FilterRow, MetaFile } from '@/lib/types'
@@ -31,7 +29,6 @@ export function ClassShares({ rows, meta, daily, pair, basis, regions }: {
   const [from, setFrom] = useSearchParam<AaeFrom>('aes.sharesFrom', 'absorption', FROMS)
   const ref = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
 
   const bars = useMemo<Bar[]>(() => {
     const groups: { code: string; name: string; color: string; items: { season: string | null; v: number | null }[] }[] = basis === 'Daily bins'
@@ -54,15 +51,12 @@ export function ClassShares({ rows, meta, daily, pair, basis, regions }: {
 
   // on a narrow screen the labels give way (cut short, full name in the tooltip) and the n column goes
   const narrow = width < 560
-  const rowH = 22, noteW = narrow ? 0 : 120
-  const labelW = Math.min(narrow ? 120 : 240, 16 + 6.4 * Math.max(10, ...bars.map((b) => b.label.length + (b.strong ? 0 : 2))))
-  const fitLabel = (t: string) => (t.length * 6.4 + 16 > labelW ? `${t.slice(0, Math.max(4, Math.floor((labelW - 22) / 6.4)))}…` : t)
-  const iw = Math.max(120, width - labelW - noteW - 12)
-  const x = d3.scaleLinear().domain([0, 1]).range([0, iw])
-  // a gap before each site's block
-  let yAt = 0
-  const placed = bars.map((b, i) => { if (b.strong && i > 0) yAt += 8; const y = yAt; yAt += rowH; return { ...b, y } })
-  const h = yAt + 40
+  const barRows = useMemo<BarRow[]>(() => bars.map((b) => ({
+    key: b.key, label: b.label, title: b.strong ? b.site : `${b.site} · ${b.label}`, labelColor: b.strong ? b.color : INK.text, labelWeight: b.strong ? 600 : 400,
+    group: b.key.split('|')[0], valueLabel: null, note: narrow ? undefined : `n=${b.s.n} · med ${f2(b.s.median)}`,
+    segments: CLASSES.map((c) => ({ key: c, value: b.s.shares[c], color: CLASS_COLOR[c], opacity: b.strong ? 0.95 : 0.8, label: pct(b.s.shares[c]),
+      tip: [`${b.site}${b.strong ? '' : ` · ${b.label}`}`, `${c}: ${pct(b.s.shares[c])} of ${b.s.n}`, `median AAE ${f2(b.s.median)}`] })),
+  })), [bars, narrow])
   return (
     <ChartFrame id="aeth-sources-class-shares"
       title={`Fossil / mixed / biomass by season — share of ${basis === 'Daily bins' ? 'daily bins' : 'filters'} in each AAE class`}
@@ -71,31 +65,12 @@ export function ClassShares({ rows, meta, daily, pair, basis, regions }: {
       controls={<Segmented label="AAE from" value={from} options={FROMS} onChange={setFrom} optionLabel={(o) => (o === 'BCc' ? 'BCc (notebooks)' : 'Absorption')} />}>
       <div ref={ref} style={{ position: 'relative' }}>
         {!bars.length ? <Empty>No site in view has aethalometer AAE.</Empty> : <>
-          <svg width={labelW + iw + noteW} height={h} fontFamily={FONT.family} style={{ display: 'block' }}>
-            <g transform={`translate(${labelW},4)`}>
-              {placed.map((b) => {
-                let at = 0
-                return <g key={b.key} transform={`translate(0,${b.y})`}>
-                  <text x={-8} y={rowH / 2} dy="0.35em" textAnchor="end" fontSize={11} fontWeight={b.strong ? 600 : 400} fill={b.strong ? b.color : INK.text}>{fitLabel(b.label)}</text>
-                  {CLASSES.map((c) => {
-                    const w = x(b.s.shares[c]), x0 = at
-                    at += w
-                    return <g key={c} onMouseMove={(e) => tip.show(e, [`${b.site}${b.strong ? '' : ` · ${b.label}`}`, `${c}: ${pct(b.s.shares[c])} of ${b.s.n}`, `median AAE ${f2(b.s.median)}`])} onMouseLeave={tip.hide}>
-                      <rect x={x0} y={3} width={Math.max(0, w)} height={rowH - 6} fill={CLASS_COLOR[c]} fillOpacity={b.strong ? 0.95 : 0.8} />
-                      {w > 34 && <text x={x0 + w / 2} y={rowH / 2} dy="0.35em" textAnchor="middle" fontSize={10} fill={inkOn(CLASS_COLOR[c])} pointerEvents="none">{pct(b.s.shares[c])}</text>}
-                    </g>
-                  })}
-                  {!narrow && <text x={iw + 8} y={rowH / 2} dy="0.35em" fontSize={10} fontFamily={FONT.mono} fill={INK.muted}>n={b.s.n} · med {f2(b.s.median)}</text>}
-                </g>
-              })}
-              <XAxis scale={x} y={yAt + 2} tickCount={5} format={(v) => `${Math.round(+v * 100)} %`} />
-            </g>
-          </svg>
+          <BarRows rows={barRows} domain={[0, 1]} rowHeight={22} labelSize={11} maxLabelWidth={narrow ? 120 : 240}
+            axis={{ ticks: 5, format: (v) => `${Math.round(v * 100)} %` }} />
           <Key items={CLASSES.map((c) => ({ label: c, color: CLASS_COLOR[c], kind: 'square' as const }))} />
           {/* Filters → excluded: Mark (lib/markedRows): on the filter windows, the excluded filters with an AAE are in no share; the daily bins are not filters */}
           {basis === 'Filter windows' && <ExcludedNote fields={[AAE_PAIRS[pair].field]} />}
         </>}
-        {tip.node}
       </div>
     </ChartFrame>
   )

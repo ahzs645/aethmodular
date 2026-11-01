@@ -1,10 +1,9 @@
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
 import { FacetGrid } from '@/components/FacetGrid'
-import { HeatCell } from '@/components/HeatCell'
-import { useTooltip } from '@/hooks/useTooltip'
+import { HeatMatrix } from '@/components/HeatMatrix'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { fmt } from '@/lib/format'
 import { pearson } from '@/lib/stats'
@@ -25,30 +24,30 @@ export function channelCorr(days: Day[], value: (d: Day, c: Channel) => number |
 const offDiagonal = (m: Matrix) => m.flatMap((row, i) => row.filter((v, j) => j < i && finite(v))) as number[]
 
 function Triangle({ code, atn, bcc, width, meta, color }: { code: string; atn: Matrix; bcc: Matrix; width: number; meta: MetaFile; color: (v: number) => string }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const tip = useTooltip(ref)
-  const n = CHANNELS.length, left = 44, top = 24
-  const cell = Math.max(24, Math.min(44, (width - left - 8) / n))
+  const n = CHANNELS.length
+  // the cell size the grid had with its 44 px of row labels; HeatMatrix measures the labels themselves
+  const cell = Math.max(24, Math.min(44, (width - 52) / n))
   const a = offDiagonal(atn), b = offDiagonal(bcc)
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <svg width={left + n * cell + 8} height={top + n * cell + 44} fontFamily={FONT.family}>
-        <text x={0} y={14} fontSize={12.5} fontWeight={600} fill={instrumentColor(code, meta)}>{instrumentName(code, meta)}</text>
-        <g transform={`translate(${left},${top})`}>
-          {CHANNELS.map((ci, i) => CHANNELS.map((cj, j) => {
-            if (i === j) return <HeatCell key={`${i}${j}`} x={j * cell} y={i * cell} width={cell - 1} height={cell - 1} fill={INK.zebra} label={ci} fontSize={9} />
-            const below = j < i, v = (below ? atn : bcc)[i][j]
-            return <HeatCell key={`${i}${j}`} x={j * cell} y={i * cell} width={cell - 1} height={cell - 1} fill={finite(v) ? color(v) : null} label={finite(v) ? v.toFixed(2).replace(/^0/, '').replace(/^-0/, '−') : '—'} fontSize={cell > 34 ? 10 : 8.5}
-              onEnter={(e) => tip.show(e, [`${instrumentName(code, meta)} · ${ci} with ${cj}`, `${below ? 'raw attenuation' : 'BCc'}: r = ${fmt(v, 3)}`, below ? `BCc: r = ${fmt(bcc[i][j], 3)}` : `raw attenuation: r = ${fmt(atn[i][j], 3)}`])} onLeave={tip.hide} />
-          }))}
-          {CHANNELS.map((c, i) => <text key={c} x={-6} y={i * cell + cell / 2} dy="0.32em" textAnchor="end" fontSize={10} fill={INK.muted}>{c}</text>)}
-          <text x={0} y={n * cell + 14} fontSize={10.5} fill={INK.muted}>below: raw ATN · above: BCc</text>
-          <text x={0} y={n * cell + 28} fontSize={10.5} fill={INK.text}>mean r {fmt(d3.mean(a), 2)} (ATN) · {fmt(d3.mean(b), 2)} (BCc)</text>
-        </g>
-      </svg>
-      {tip.node}
-    </div>
-  )
+  const name = instrumentName(code, meta)
+  return <HeatMatrix title={name} titleColor={instrumentColor(code, meta)} rows={CHANNELS} columns={CHANNELS} colLabels="none" rowLabelSize={10}
+    cellWidth={cell} cellHeight={cell} fitRows={false} labelSize={cell > 34 ? 10 : 8.5} cellLabels="always" legend={null} after={34}
+    rowLabelAlign="end" maxLabelWidth={60}
+    cell={(i, j) => {
+      if (i === j) return { fill: INK.zebra, label: CHANNELS[i] }
+      const v = (j < i ? atn : bcc)[i][j]
+      return finite(v) ? { value: v, fill: color(v), label: v.toFixed(2).replace(/^0/, '').replace(/^-0/, '−') } : { value: null, label: '—' }
+    }}
+    tip={(i, j) => {
+      if (i === j) return null
+      const below = j < i
+      return [`${name} · ${CHANNELS[i]} with ${CHANNELS[j]}`, `${below ? 'raw attenuation' : 'BCc'}: r = ${fmt((below ? atn : bcc)[i][j], 3)}`,
+        below ? `BCc: r = ${fmt(bcc[i][j], 3)}` : `raw attenuation: r = ${fmt(atn[i][j], 3)}`]
+    }}>
+    {(l) => <g fontFamily={FONT.family} pointerEvents="none">
+      <text x={l.left} y={l.top + l.innerH + 14} fontSize={10.5} fill={INK.muted}>below: raw ATN · above: BCc</text>
+      <text x={l.left} y={l.top + l.innerH + 28} fontSize={10.5} fill={INK.text}>mean r {fmt(d3.mean(a), 2)} (ATN) · {fmt(d3.mean(b), 2)} (BCc)</text>
+    </g>}
+  </HeatMatrix>
 }
 
 /**

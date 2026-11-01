@@ -2,13 +2,10 @@
  * Pieces the Sources (AAE) charts share: which sites are in view, the notebooks each chart stands in
  * for, the fossil / mixed / biomass shading behind an AAE axis, and the counts matrix.
  */
-import { useRef, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useColourScheme } from '@/lib/colourSchemes'
-import { ColorLegend } from '@/components/ColorLegend'
 import * as d3 from 'd3'
-import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
-import { HeatCell } from '@/components/HeatCell'
+import { HeatMatrix } from '@/components/HeatMatrix'
 import { FONT, INK } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { CLASS_COLOR, type AaeRegions } from './aae'
@@ -74,53 +71,20 @@ export function CountMatrix({ id, rows, cols, count, rowLabel, colLabel, rowColo
   outline?: (r: string, c: string) => boolean
   cellWidth?: number
 }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(ref)
-  const tip = useTooltip(ref)
-  const left = Math.min(220, 14 + 6.6 * Math.max(...rows.map((r) => r.length), rowLabel.length * 0.8))
-  const cw = Math.max(52, Math.min(cellWidth, (width - left - 64) / Math.max(1, cols.length)))
-  const ch = 28, top = cols.some((c) => c.length * 6.4 > cw - 6) ? 52 : 40
   const totals = new Map(rows.map((r) => [r, cols.reduce((a, c) => a + count(r, c), 0)]))
-  const w = left + cols.length * cw + 60
   const colours = useColourScheme(id, 'sequential')
   const ramp = d3.interpolateRgbBasis(colours.stops)
   // cells use 10–85 % of the palette, so an empty-looking share still shows and a full row's label stays readable
-  const shade = (t: number) => ramp(t)
   const key = d3.scaleSequential((v: number) => ramp(0.1 + 0.75 * v)).domain([0, 1])
-  return <div ref={ref} style={{ position: 'relative', overflowX: 'auto' }}>
-    <svg width={w} height={top + rows.length * ch + 10} fontFamily={FONT.family} style={{ display: 'block' }}>
-      <text x={left + (cols.length * cw) / 2} y={12} textAnchor="middle" fontSize={11} fill={INK.muted}>{colLabel}</text>
-      <text x={left - 8} y={top - 8} textAnchor="end" fontSize={11} fill={INK.muted}>{rowLabel}</text>
-      {cols.map((c, j) => <text key={c} x={left + j * cw + cw / 2} y={top - 8} textAnchor="middle" fontSize={11} fontWeight={600} fill={colColor?.(c) ?? INK.text}>
-        {/* a heading wider than its cell takes two lines */}
-        {(c.length * 6.4 > cw - 6 ? twoLines(c) : [c]).map((t, k, all) => <tspan key={k} x={left + j * cw + cw / 2} dy={k ? 13 : -(all.length - 1) * 13}>{t}</tspan>)}
-      </text>)}
-      <text x={left + cols.length * cw + 8} y={top - 8} fontSize={11} fill={INK.muted}>n</text>
-      {rows.map((r, i) => {
-        const tot = totals.get(r) ?? 0
-        return <g key={r}>
-          <text x={left - 8} y={top + i * ch + ch / 2} dy="0.35em" textAnchor="end" fontSize={11} fill={rowColor?.(r) ?? INK.text}>{r}</text>
-          {cols.map((c, j) => {
-            const n = count(r, c), share = tot ? n / tot : 0
-            return <HeatCell key={c} x={left + j * cw + 1} y={top + i * ch + 1} width={cw - 2} height={ch - 2}
-              fill={n ? shade(0.1 + 0.75 * share) : null} label={n ? `${n} · ${Math.round(100 * share)}%` : '·'} outline={outline?.(r, c)}
-              onEnter={(e) => tip.show(e, [`${r} → ${c}`, `${n} of ${tot} (${Math.round(100 * share)} % of the row)`])} onLeave={tip.hide} />
-          })}
-          <text x={left + cols.length * cw + 8} y={top + i * ch + ch / 2} dy="0.35em" fontSize={11} fontFamily={FONT.mono} fill={INK.muted}>{tot}</text>
-        </g>
-      })}
-    </svg>
-    <div className="legend"><ColorLegend scale={key} scheme={colours.scheme} width={140} label="share of the row" format={(v) => `${Math.round(100 * v)} %`} /></div>
-    {tip.node}
-  </div>
-}
-
-/** split a label at the space nearest its middle */
-function twoLines(text: string): string[] {
-  const spaces = [...text.matchAll(/ /g)].map((m) => m.index ?? 0)
-  if (!spaces.length) return [text]
-  const at = spaces.reduce((a, b) => (Math.abs(b - text.length / 2) < Math.abs(a - text.length / 2) ? b : a))
-  return [text.slice(0, at), text.slice(at + 1)]
+  return <HeatMatrix rows={rows.map((r) => ({ key: r, color: rowColor?.(r) }))} columns={cols.map((c) => ({ key: c, color: colColor?.(c) }))}
+    cellWidth={[52, cellWidth]} cellHeight={28} gap={2} colLabels="wrap" colLabelWeight={600} rowHeader={rowLabel} colHeader={colLabel} cellLabels="always"
+    extraColumns={[{ key: 'n', header: 'n', side: 'right', text: (i) => String(totals.get(rows[i]) ?? 0) }]}
+    cell={(i, j) => {
+      const r = rows[i], c = cols[j], tot = totals.get(r) ?? 0, n = count(r, c), share = tot ? n / tot : 0
+      return { fill: n ? ramp(0.1 + 0.75 * share) : null, label: n ? `${n} · ${Math.round(100 * share)}%` : '·', outline: outline?.(r, c),
+        tip: [`${r} → ${c}`, `${n} of ${tot} (${Math.round(100 * share)} % of the row)`] }
+    }}
+    legend={{ scale: key, scheme: colours.scheme, width: 140, label: 'share of the row', format: (v) => `${Math.round(100 * v)} %` }} />
 }
 
 /** a one-line reading under a chart */

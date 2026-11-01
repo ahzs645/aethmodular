@@ -3,8 +3,7 @@ import { useColourScheme } from '@/lib/colourSchemes'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
-import { ColorLegend } from '@/components/ColorLegend'
-import { HeatCell } from '@/components/HeatCell'
+import { HeatMatrix, type MatrixItem } from '@/components/HeatMatrix'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -71,6 +70,7 @@ export function SpectralShape({ series, meta, screen, by }: { series: Series[]; 
   const what = kind === 'absorption' ? 'b_abs(λ) / b_abs(880 nm)' : 'BCc(λ) / BCc(IR)'
   const colours = useColourScheme(`aeth-overview-spectrum-${by}`, 'sequential')
   const color = d3.scaleSequential(d3.interpolateRgbBasis(colours.stops)).domain([0.5, 1]).clamp(true)
+  const channelItems = useMemo(() => CHANNELS.map((c): MatrixItem => ({ key: c, color: channelColor(c) })), [])
 
   const site = series[0]?.inst.site
   return (
@@ -101,21 +101,11 @@ export function SpectralShape({ series, meta, screen, by }: { series: Series[]; 
             </svg>
             {corr && corr.n >= 3 && (
               <div>
-                <svg width={matrixW} height={matrixW + 10} fontFamily={FONT.family}>
-                  <text x={4} y={12} fontSize={12} fontWeight={600} fill={INK.text}>Channels' daily BCc, r (n = {corr.n})</text>
-                  <g transform="translate(46,22)">
-                    {CHANNELS.map((a, i) => <g key={a}>
-                      <text x={-6} y={i * 34 + 17} dy="0.32em" textAnchor="end" fontSize={11} fill={channelColor(a)}>{a}</text>
-                      <text x={i * 34 + 17} y={5 * 34 + 14} textAnchor="middle" fontSize={11} fill={channelColor(a)}>{a}</text>
-                      {CHANNELS.map((b, j) => {
-                        const r = corr.r[i][j]
-                        return <HeatCell key={b} x={j * 34} y={i * 34} width={33} height={33} fill={r === null ? null : color(r)} label={r === null ? '—' : fmt(r, 2)}
-                          onEnter={(e) => tip.show(e, [`${a} against ${b}`, `r = ${fmt(r, 3)} over ${corr.n} days with all five channels`])} onLeave={tip.hide} />
-                      })}
-                    </g>)}
-                  </g>
-                </svg>
-                <div className="legend"><ColorLegend scale={color} scheme={colours.scheme} width={150} label="r" format={(v) => fmt(v, 2)} note="below 0.5 drawn as 0.5" /></div>
+                <HeatMatrix title={`Channels' daily BCc, r (n = ${corr.n})`} rows={channelItems} columns={channelItems} colLabels="horizontal" colLabelPosition="bottom"
+                  cellWidth={34} cellHeight={34} fitRows={false} gap={1} color={color} format={(v) => fmt(v, 2)} cellLabels="always"
+                  cell={(i, j) => (corr.r[i][j] === null ? { value: null, label: '—' } : corr.r[i][j])}
+                  tip={(i, j) => [`${CHANNELS[i]} against ${CHANNELS[j]}`, `r = ${fmt(corr.r[i][j], 3)} over ${corr.n} days with all five channels`]}
+                  legend={{ scale: color, scheme: colours.scheme, width: 150, label: 'r', format: (v) => fmt(v, 2), note: 'below 0.5 drawn as 0.5' }} />
               </div>
             )}
           </div>
