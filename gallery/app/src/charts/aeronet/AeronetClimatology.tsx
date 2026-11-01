@@ -6,7 +6,7 @@ import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
-import { FONT, INK, inkOn } from '@/lib/theme'
+import { FONT, INK, inkOn, MONTHS } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import { levelLabel, loadDailyAeronet, type AeronetLevel, type DailyAeronet } from '@/lib/aeronet'
 import { monthlyMeans } from '@/lib/stats'
@@ -20,7 +20,6 @@ const QUANTITIES = [
   { key: 'pw', label: 'Precipitable water (cm)', digits: 1, reverse: false },
 ] as const
 type QKey = (typeof QUANTITIES)[number]['key']
-const MONTHS = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')
 /** a month with fewer days than this is drawn faint: its mean rests on a handful of clear days */
 const FEW = 5
 

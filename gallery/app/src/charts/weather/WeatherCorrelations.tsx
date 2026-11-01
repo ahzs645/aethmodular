@@ -15,6 +15,7 @@ import { useColourScheme } from '@/lib/colourSchemes'
 import { ColorLegend } from '@/components/ColorLegend'
 import { useFitHeight } from '@/lib/chartFit'
 import { useTileSetting } from '@/lib/url'
+import { seasonColor } from '@/lib/siteColours'
 
 /** species worth a column when they are measured; the rest of the field list would only add empty columns */
 const PREFERRED = ['PM2.5 mass', 'HIPS BC', 'HIPS Fabs', 'EC (FTIR)', 'OC (FTIR)', 'OM (FTIR)', 'Sulfate', 'Nitrate', 'Ammonium', 'Potassium', 'Sodium', 'Calcium', 'Iron', 'Silicon', 'Aluminum', 'Zinc', 'Lead']
@@ -45,7 +46,7 @@ export function WeatherCorrelations({ rows, meta, source, site }: { rows: Filter
   const facets = useMemo(() => {
     const seasons = d3.groups(at, (r) => r.season).sort((a, b) => meta.seasons.findIndex((s) => s.name === a[0]) - meta.seasons.findIndex((s) => s.name === b[0]))
     return [['All filters', at] as const, ...seasons].map(([name, rs]) => ({
-      name: String(name).replace(`${site?.name} · `, ''), color: meta.seasons.find((s) => s.name === name)?.color ?? INK.text,
+      name: String(name).replace(`${site?.name} · `, ''), color: seasonColor(meta, name, INK.text),
       cells: vars.map((v) => species.map((f) => {
         const ok = rs.filter((r) => typeof r[v.field] === 'number' && typeof r[f] === 'number')
         return { v, f, n: ok.length, rho: ok.length >= MIN_N ? spearman(ok.map((r) => r[v.field] as number), ok.map((r) => r[f] as number), WEATHER_MIN_PAIRS) : null }

@@ -9,7 +9,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { monthlyStats } from '@/lib/stats'
-import { INK, MARGIN, withUnit } from '@/lib/theme'
+import { INK, MARGIN, withUnit, MONTHS } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
 import { useDashboardDetails } from '@/lib/dashboardDetails'
@@ -17,7 +17,6 @@ import { measuredRows } from '@/lib/metricDefinition'
 import { useFitHeight } from '@/lib/chartFit'
 import { ExcludedNote } from '@/lib/markedRows'
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 /**
  * Area chart with an uncertainty band — the `fill_between + plot` recipe,

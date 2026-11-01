@@ -7,6 +7,8 @@ import type { SectionPageProps } from '../../types'
 import { useCalibRuns } from '../../research/pages/spectralCommon'
 import { MlWaiting, PageIntro, provenance, rows, useMl } from '../common'
 import { FixedSetNote } from '@/lib/markedRows'
+import { TABLEAU } from '@/lib/palettes'
+import { BASELINE_COLOR } from '@/lib/theme'
 
 const NOTEBOOKS = 'research/ftir_ec_phase3/ftir_42_target_definition_experiment, ftir_48_pyrolysis_split_target, ftir_41_adama_three_method_reconciliation, ftir_44_adama_through_locked_calibrations; ftir_40_quartz_tor_campaign_design as the design companion'
 
@@ -14,11 +16,11 @@ const TARGET: Record<string, string> = {
   EC_TOR: 'EC, TOR (the locked target)', EC_TOT: 'EC, TOT', OC_TOR: 'OC, TOR', TC: 'TC (OC + EC)',
   DELTA: 'Δ = OP_TOT − OP_TOR', OP_TOR: 'OP, TOR', OP_TOT: 'OP, TOT', DELTA_RATIO: 'Δ / EC_TOR',
 }
-const COHORT_COLORS = { 'Lowest-OC/EC (800) + AIRSpec': '#2C6E9E', 'Full pool (no selection) + AIRSpec': '#e15759' }
+const COHORT_COLORS = { 'Lowest-OC/EC (800) + AIRSpec': BASELINE_COLOR.AIRSpec, 'Full pool (no selection) + AIRSpec': TABLEAU.red }
 const COHORT_SHORT: Record<string, string> = { 'Lowest-OC/EC (800) + AIRSpec': 'Lowest-OC/EC 800', 'Full pool (no selection) + AIRSpec': 'Full pool' }
 const ADAMA_COLORS = {
-  'EC, TOR (quartz)': '#2C3E50', 'EC, TOT (quartz)': '#7f7f7f', 'deployed FTIR EC': '#59a14f', 'locked 800 + AIRSpec': '#2C6E9E',
-  'sweep winner 440, k = 8': '#b07aa1', 'EC_TOT-target model': '#f28e2b', 'HIPS Fabs/MAC': '#e15759',
+  'EC, TOR (quartz)': '#2C3E50', 'EC, TOT (quartz)': '#7f7f7f', 'deployed FTIR EC': TABLEAU.green, 'locked 800 + AIRSpec': BASELINE_COLOR.AIRSpec,
+  'sweep winner 440, k = 8': TABLEAU.purple, 'EC_TOT-target model': TABLEAU.orange, 'HIPS Fabs/MAC': TABLEAU.red,
 }
 
 const dateLabel = (r: Row) => `${r.date}${r.flag ? ` · ${r.flag}` : ''}`

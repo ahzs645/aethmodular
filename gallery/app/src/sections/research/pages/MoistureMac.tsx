@@ -13,6 +13,7 @@ import type { SectionPageProps } from '../../types'
 import { useAddisMet } from '../common/met'
 import { correlationP, ols, pearson, quantile, steiger, type OlsFit as Fit } from '@/lib/stats'
 import { BASIS_NOTE, DataTable, Grid, HIGH, LOW, MID, SitePick, initials, line, num, pText, ofSite, point, seasonsOf, shortSeason, useConcRows, useSite } from '../common/ui'
+import { namedColor } from '@/lib/siteColours'
 
 const NB = 'notebooks/analysis/meteorology/pw_mac_calibration.ipynb'
 const EC = 'EC (FTIR)', FABS = 'HIPS Fabs', HIPS_BC = 'HIPS BC'
@@ -39,7 +40,7 @@ export function MoistureMac({ rows: viewRows, meta: viewMeta }: SectionPageProps
   const moisture = meta.fields.includes(mParam) ? mParam : MOISTURE.find((f) => meta.fields.includes(f) && siteRows.some((r) => num(r, f) !== null)) ?? meta.fields[0]
   const [splitParam, setSplit] = useSearchParam<'median' | 'terciles'>('mm.split', 'median', ['median', 'terciles'])
   const seasons = useMemo(() => seasonsOf(siteRows, meta), [siteRows, meta])
-  const colorOf = (season: string) => seasons.find((s) => s.name === season)?.color ?? INK.muted
+  const colorOf = (season: string) => namedColor(seasons, season)
   const unit = meta.field_units[moisture] ?? ''
   const mLabel = `${moisture}${unit ? ` (${unit})` : ''}`
 

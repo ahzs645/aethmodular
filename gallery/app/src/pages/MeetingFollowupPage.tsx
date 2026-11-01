@@ -718,7 +718,7 @@ function RepeatStrip({ data }: { data: MeetingData }) {
     rows.push({ g, m: ms.base, label: ms.label, vals: vals.sort((a, b) => a - b) })
   }
   const ref0 = isSlope ? 1 : 0
-  const colors: Record<string, string> = { addis: INK.fit, ftir_vs_fabs: '#c026d3', tor_vs_fabs: '#0f766e', ftir_vs_tor: '#2171b5' }
+  const colors: Record<string, string> = { addis: INK.fit, ftir_vs_fabs: '#c026d3', tor_vs_fabs: '#0f766e', ftir_vs_tor: INK.accent }
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › RepeatStrip" title={`One separate calibration per season, built from that season's IMPROVE spectral analogs: are the analogs mispredicted the way Addis is? Deming ${metric}, median and 10–90 % over 100 splits`}
       subtitle={`Each block is its own calibration set: the 500 IMPROVE filters whose spectra correlate best with that season's median Addis spectrum ("All Addis" uses the all-season median). Each split holds about 20 % of those analogs out by whole site (cross-validation), picks the number of PLS factors on the rest, and predicts both the held-out IMPROVE filters and the season's Addis filters (the test set) with the same calibration.${isSlope ? '' : ' Intercepts are in µg/m³ of EC.'}`}>
@@ -1205,7 +1205,7 @@ function Combined({ data }: { data: MeetingData }) {
   }
   const slopeDomain: [number, number] = [0, Math.max(1.5, d3.max(rows, (r) => (showCI ? r.s.slope_ci_high : null) ?? r.s.deming_slope) ?? 1.5)]
   const interceptDomain: [number, number] = [Math.min(-2, d3.min(rows, (r) => (showCI ? r.s.intercept_ci_low : null) ?? r.s.deming_intercept) ?? -2), Math.max(0.5, d3.max(rows, (r) => (showCI ? r.s.intercept_ci_high : null) ?? r.s.deming_intercept) ?? 0.5)]
-  const calColor = d3.scaleOrdinal<string>().domain(cals.map((c) => c.label)).range([INK.fit, '#6b7280', '#2171b5', '#c026d3', '#0f766e', '#d97706'])
+  const calColor = d3.scaleOrdinal<string>().domain(cals.map((c) => c.label)).range([INK.fit, '#6b7280', INK.accent, INK.deming, INK.good, '#d97706'])
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › Combined" title="Calibrations compared — Addis Deming slope and intercept by season for every calibration"
       subtitle="Ann: combine the three seasonal analog sets into one calibration and compare against the VIP/Euclidean analogs and the seasonally calibrated results."

@@ -14,6 +14,8 @@ import type { MetaFile, PmfFile, PmfRow } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import instruments from '@/sections/instruments'
 import { ExcludedNote, useCountedFilter, useExclusionSplit } from '@/lib/markedRows'
+import { namedColor } from '@/lib/siteColours'
+import { paletteColours } from '@/lib/palettes'
 
 const AETH = 'IR BCc (aethalometer)'
 /** the method pairs, minuend first: the notebook's residual is FTIR EC − aethalometer BC */
@@ -26,6 +28,8 @@ type Pair = keyof typeof PAIRS
 const PAIR_KEYS = Object.keys(PAIRS) as Pair[]
 const FORMS = ['Absolute', 'Percent'] as const
 const LAYOUTS = ['One plot', 'Per season'] as const
+/** colours for a season meta does not list */
+const TABLEAU_10 = paletteColours('categorical', 'Tableau 10')
 
 interface Day { p: PmfRow; bm: number; res: number; season: string }
 
@@ -75,7 +79,7 @@ export function ResidualVsBiomass({ pmf, rows, meta }: { pmf: PmfFile; rows: Pmf
   const days = useMemo(() => candidates.filter((d) => isCounted(d.p.id)), [candidates, isCounted])
   const nOut = candidates.length - days.length
 
-  const seasonColor = (s: string, i: number) => meta.seasons.find((x) => x.name === s)?.color ?? d3.schemeTableau10[i % 10]
+  const seasonColor = (s: string, i: number) => namedColor(meta.seasons, s, TABLEAU_10[i % TABLEAU_10.length])
   const seasons = useMemo(() => [...new Set(days.map((d) => d.season))].sort((x, y) => {
     const ix = meta.seasons.findIndex((s) => s.name === x), iy = meta.seasons.findIndex((s) => s.name === y)
     return (ix < 0 ? 99 : ix) - (iy < 0 ? 99 : iy) || x.localeCompare(y)

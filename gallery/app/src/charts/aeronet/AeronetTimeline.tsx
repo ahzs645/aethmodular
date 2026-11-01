@@ -8,13 +8,14 @@ import { focusStyle, useHighlightActions } from '@/lib/highlight'
 import { ScatterLayer } from '@/components/ScatterLayer'
 import { fidProps } from '@/lib/filterEdits'
 import { fmt } from '@/lib/stats'
-import { INK, withUnit } from '@/lib/theme'
+import { INK, withUnit, VARIABLE_COLOR } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
 import { loadDailyAeronet, L2_AOD440, type AeronetLevel, type DailyAeronet } from '@/lib/aeronet'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
 import { useFitHeight } from '@/lib/chartFit'
 import { ExcludedNote, toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
+import { namedColor } from '@/lib/siteColours'
 
 const M = { top: 8, right: 20, bottom: 30, left: 68 }
 const PANEL = 92, GAP = 14
@@ -77,7 +78,7 @@ export function AeronetTimeline({ rows, meta, field, site, station, level = '15'
     aod: ext(daily?.aod500, 0), fmf: d3.scaleLinear().domain([0, 1]).range([panelH, 0]), aaod: ext(daily?.aaod675, 0), ssa: ext(daily?.ssa440, undefined, 1),
   }
   const yF = useMemo(() => d3.scaleLinear().domain([Math.min(0, d3.min(pts, (p) => p.v) ?? 0), (d3.max(pts, (p) => p.v) ?? 1) * 1.05]).range([panelH, 0]).nice(), [pts, panelH])
-  const seasonColor = (p: (typeof pts)[number]) => meta.seasons.find((s) => s.name === p.row.season)?.color ?? INK.text
+  const seasonColor = (p: (typeof pts)[number]) => namedColor(meta.seasons, p.row.season, INK.text)
   const xy = useMemo(() => pts.map((p) => [x(p.t), yF(p.v)] as const), [pts, x, yF])
   // Filters → excluded: Mark (lib/markedRows): this site's excluded filters as × on the measurement panel
   const markedAll = useMarkedRows()
@@ -125,8 +126,8 @@ export function AeronetTimeline({ rows, meta, field, site, station, level = '15'
                   {runs.map((r, i) => <rect key={i} x={x(r.a)} width={Math.max(1, x(r.b) - x(r.a) + innerW / Math.max(1, days.length))} height={panelH} fill={r.color} opacity={0.1} />)}
                   <YAxis scale={k === 'field' ? yF : y[k]} x={0} gridWidth={innerW} tickCount={3}
                     label={k === 'field' ? withUnit(field, meta.field_units) : TITLES[k]} labelX={-50} pick={k === 'field' ? 'field' : undefined} />
-                  {k === 'aod' && <path d={line(daily.aod500, y.aod)} fill="none" stroke="#2c7fb8" strokeWidth={1.1} />}
-                  {k === 'fmf' && <path d={line(daily.fmf, y.fmf)} fill="none" stroke="#41ab5d" strokeWidth={1.1} />}
+                  {k === 'aod' && <path d={line(daily.aod500, y.aod)} fill="none" stroke={VARIABLE_COLOR.aod} strokeWidth={1.1} />}
+                  {k === 'fmf' && <path d={line(daily.fmf, y.fmf)} fill="none" stroke={VARIABLE_COLOR.fineModeFraction} strokeWidth={1.1} />}
                   {(k === 'aaod' || k === 'ssa') && days.map(({ t, i }) => {
                     const v = val(k === 'aaod' ? daily.aaod675 : daily.ssa440, i)
                     if (v === null) return null

@@ -8,12 +8,13 @@ import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { useHighlightActions } from '@/lib/highlight'
 import { fmt, regression } from '@/lib/stats'
 import { FIT_STYLE, fitsFor, useRegressions, type Estimator } from '@/lib/regressionPrefs'
-import { INK, withUnit } from '@/lib/theme'
+import { INK, withUnit, VARIABLE_COLOR } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { ScrubField } from '@/components/ScrubField'
 import { useMarkedPoints } from '@/lib/markedRows'
+import { RESEARCH_SERIES } from '@/lib/palettes'
 
-const DRY = '#d08c2c', HUMID = '#2c7fb8'
+const DRY = RESEARCH_SERIES[1], HUMID = VARIABLE_COLOR.humidity
 const SWEEP = d3.range(30, 85, 2.5)
 const MIN_N = 8
 const BEST_N = 15

@@ -29,6 +29,7 @@ import { NO_PMF, PMF_SOURCE, pmfShareField } from '@/lib/pmfGroups'
 import { placements, quantilePlacements, stripPosition, ratioPlacement, ratioReference, isFiniteNumber, type Placement, type ReferenceRow } from '@/lib/referencePopulation'
 import { DrawerShell, DrawerScroll } from '@/components/DrawerShell'
 import { XIcon } from '@/components/Icons'
+import { namedColor, siteCodeColor } from '@/lib/siteColours'
 
 
 /** English ordinal suffix: 1st, 2nd, 3rd, 11th, 51st. */
@@ -189,8 +190,8 @@ export function SampleDrawer({
   const [fitPerGroup, setFitPerGroup] = useSearchParam<string>('sampleFitGroup', '0')
   const { grp, picker: groupPicker, missingNote } = useChartGrouping('sample', paired, () => setFitPerGroup('1'))
   const perBand = !!grp && fitPerGroup === '1'
-  const seasonColor = (season: unknown) => meta.seasons.find(se => se.name === season)?.color ?? INK.muted
-  const siteColor = (code: unknown) => ref.sites.find(s => s.code === code)?.color ?? INK.muted
+  const seasonColor = (season: unknown) => namedColor(meta.seasons, season)
+  const siteColor = (code: unknown) => siteCodeColor(ref, code)
   const cross = useMemo(() => {
     const pool = referenceRows
       .map((r) => ({ r, x: r[cx], y: r[cy] }))

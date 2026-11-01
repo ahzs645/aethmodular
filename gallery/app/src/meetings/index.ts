@@ -1,6 +1,6 @@
 import type { MeetingSpec } from './types'
+import { MONTHS } from '@/lib/theme'
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 /** a meeting's name in the picker: its date as month, day, year, e.g. "Oct 28, 2026" (from the ISO date, no time zone) */
 export const meetingLabel = (iso: string) => {
   const [y, m, d] = iso.split('-').map(Number)

@@ -8,6 +8,7 @@ import { INK, FONT } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
 import { ChartAside } from '@/lib/singleView'
+import { seasonColor } from '@/lib/siteColours'
 
 const STAGE3 = ['HIPS coverage', 'Season'] as const
 const FEED_BOTH = 'FTIR EC: both exports'
@@ -85,7 +86,7 @@ export function MethodSankey({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
     const carbonColor: Record<string, string> = { [FEED_BOTH]: INK.accent, [FEED_INHOUSE]: '#6baed6', [FEED_CHEMSPEC]: '#9e9ac8', [FEED_NONE]: INK.neutral }
     const thirdOrder = stage3 === 'HIPS coverage' ? [HIPS_YES, HIPS_NO] : meta.seasons.map((s) => s.name)
     const thirdColor = (k: string) =>
-      stage3 === 'HIPS coverage' ? (k === HIPS_YES ? INK.deming : INK.neutral) : meta.seasons.find((s) => s.name === k)?.color ?? INK.muted
+      stage3 === 'HIPS coverage' ? (k === HIPS_YES ? INK.deming : INK.neutral) : seasonColor(meta, k)
 
     const nodes: N[] = [
       ...meta.sites.filter((s) => shownRows.some((r) => r.site === s.name)).map((s) => ({ id: `s:${s.name}`, label: s.name, color: s.color, stage: 0 })),

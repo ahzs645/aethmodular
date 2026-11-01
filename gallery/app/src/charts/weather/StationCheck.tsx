@@ -7,7 +7,7 @@ import { RegressionLines, useRegressionSummary } from '@/components/RegressionOv
 import { FacetGrid } from '@/components/FacetGrid'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt, regression } from '@/lib/stats'
-import { FONT } from '@/lib/theme'
+import { FONT, VARIABLE_COLOR } from '@/lib/theme'
 import { dotFill, dotRim } from '@/lib/highlight'
 import type { StationCompare } from '@/lib/weather'
 
@@ -19,7 +19,7 @@ const VARS = [
 type Var = (typeof VARS)[number]
 // room for the crossplots' own axes: tick labels and titles on x and y (the title is the facet's)
 const M = { top: 12, right: 14, bottom: 46, left: 56 }
-const DOT = '#2c7fb8'
+const DOT = VARIABLE_COLOR.station
 
 /**
  * ERA5 against the Addis Ababa airport station (Meteostat, WMO 63450), day by day over the

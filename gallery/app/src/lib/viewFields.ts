@@ -12,6 +12,8 @@
  *   difference in loading. A filter without a volume drops out of mass-per-filter charts.
  * - Ratios: numerator / denominator on the same filter, after the two steps above.
  */
+import { prettyUnit } from './theme.ts'
+
 export interface RatioDef { num: string; den: string }
 export type Basis = 'conc' | 'mass'
 
@@ -58,7 +60,7 @@ export const ratiosParam = (defs: RatioDef[]): string | null =>
 /** a µg/m³ field, in any of the spellings the exports use */
 export const isConcentration = (unit: string | undefined) => !!unit && /^(µg\/m³|ug\/m3|µg\/m3|ug\/m³)$/.test(unit.trim())
 
-const tidy = (u: string | undefined) => (u ?? '').replace('ug/m3', 'µg/m³').replace('Mm-1', 'Mm⁻¹')
+const tidy = prettyUnit
 
 /** the unit of a ratio from its parts' units (already in the view's basis) */
 export function ratioUnit(num: string | undefined, den: string | undefined): string {

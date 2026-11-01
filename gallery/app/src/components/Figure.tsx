@@ -20,6 +20,7 @@ import { densities, num, rowsOf, summarize, uniq, where, INTERVAL_LABEL, type In
 import { BASELINE_COLOR, FONT, INK, SPECTRAL_REGION } from '@/lib/theme'
 import { useChartOptions, type OptionDef } from '@/lib/chartOptions'
 import { useColourScheme } from '@/lib/colourSchemes'
+import { TABLEAU } from '@/lib/palettes'
 
 /**
  * A chart from a description: the chart kind and which columns of a long
@@ -106,7 +107,7 @@ export const FORMAT: Record<FormatName, (v: unknown) => string> = {
   f2, f3, coef, pct: (v) => pct(v), percent: (v) => (typeof v === 'number' ? `${v.toFixed(0)} %` : '—'),
   int: (v) => (typeof v === 'number' ? Math.round(v).toLocaleString() : '—'), text: (v) => (v == null ? '—' : String(v)),
 }
-const PALETTE = ['#4e79a7', '#f28e2b', '#59a14f', '#e15759', '#76b7b2', '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac']
+const PALETTE = [TABLEAU.blue, TABLEAU.orange, TABLEAU.green, TABLEAU.red, TABLEAU.teal, TABLEAU.yellow, TABLEAU.purple, TABLEAU.pink, TABLEAU.brown, TABLEAU.grey]
 
 /** One colour per category: the figure's own map, then the bundle's, then the gallery's baselines, then a fixed palette. */
 function useColors(spec: Base) {

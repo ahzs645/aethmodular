@@ -3,17 +3,16 @@ import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { IntervalStrip, type IntervalBlock, type IntervalRow } from '@/components/IntervalStrip'
 import { fmt } from '@/lib/stats'
-import { INK } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
 import { boxStats, quantileSorted, spearman } from '@/lib/stats'
 import { useSearchParam } from '@/lib/url'
 import { useNarrowScreen } from '@/hooks/useMediaQuery'
 import { eta, maiaLine, useAeronetSites } from '@/lib/aeronetSites'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { seasonColor, siteColor } from '@/lib/siteColours'
 
 const MIN_N = 5
 const VIEWS = ['Site', 'Site × season'] as const
-const siteColour = (meta: MetaFile, name: string) => meta.sites.find((s) => s.name === name)?.color ?? INK.muted
 
 interface Group { key: string; label: string; site: string; code: string; color: string; etas: number[]; pm: number[]; aod: number[]; strong?: boolean }
 
@@ -56,17 +55,17 @@ export function EtaBySite({ rows, meta }: { rows: FilterRow[]; meta: MetaFile })
     const bySite = d3.groups(rows, (r) => r.site)
     const mark = (site: string, code: string) => (summary?.maia[code] ? `${site} ◎` : site)
     if (view === 'Site') {
-      const groups = bySite.map(([site, rs]) => group(site, mark(site, rs[0].code), rs, siteColour(meta, site))).filter((g): g is Group => g !== null)
+      const groups = bySite.map(([site, rs]) => group(site, mark(site, rs[0].code), rs, siteColor(meta, site))).filter((g): g is Group => g !== null)
       groups.sort((a, b) => (quantileSorted(a.etas, 0.5) || 0) - (quantileSorted(b.etas, 0.5) || 0))
       return [{ key: 'sites', rows: groups.map(toRow) }]
     }
     return bySite.map(([site, rs]) => {
-      const all = group(site, 'All seasons', rs, siteColour(meta, site), true)
+      const all = group(site, 'All seasons', rs, siteColor(meta, site), true)
       const seasons = d3.groups(rs, (r) => String(r.season ?? '')).filter(([s]) => s)
         .sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]))
-        .map(([s, srs]) => group(`${site}|${s}`, seasonOnly(s), srs, meta.seasons.find((x) => x.name === s)?.color ?? INK.muted))
+        .map(([s, srs]) => group(`${site}|${s}`, seasonOnly(s), srs, seasonColor(meta, s)))
         .filter((g): g is Group => g !== null)
-      return { key: site, title: nSites > 1 ? mark(site, rs[0]?.code ?? '') : undefined, color: siteColour(meta, site), rows: [all, ...seasons].filter((g): g is Group => g !== null).map(toRow) }
+      return { key: site, title: nSites > 1 ? mark(site, rs[0]?.code ?? '') : undefined, color: siteColor(meta, site), rows: [all, ...seasons].filter((g): g is Group => g !== null).map(toRow) }
     }).filter((b) => b.rows.length > 0).sort((a, b) => a.key.localeCompare(b.key))
   }, [rows, meta, view, summary, nSites])
 

@@ -8,7 +8,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { IQR_MIN_N, monthlyStats, type MonthStats } from '@/lib/stats'
-import { INK, FONT, withUnit } from '@/lib/theme'
+import { INK, FONT, withUnit, MONTHS } from '@/lib/theme'
 import type { FilterRow, MetaFile, SeasonMeta } from '@/lib/types'
 import { useChartOptions } from '@/lib/chartOptions'
 import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
@@ -16,7 +16,6 @@ import { MeasurementControl } from '@/components/AxisFieldPopover'
 import { useFitHeight } from '@/lib/chartFit'
 import { ExcludedNote } from '@/lib/markedRows'
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const STATS = ['Median', 'Mean'] as const
 const LAYOUTS = ['Grouped', 'Rings'] as const
 const MAX_RINGS = 8

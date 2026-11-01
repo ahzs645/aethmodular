@@ -11,6 +11,9 @@ import type { SectionPageProps } from '../../types'
 import { useCalibRuns } from '../../research/pages/spectralCommon'
 import { MlWaiting, PageIntro, provenance, rows, useMl } from '../common'
 import { ExcludedNote, FixedSetNote, useCountedFilter, useExclusionSplit } from '@/lib/markedRows'
+import { ANALYSIS_SEASON_COLOR } from '@/lib/seasons'
+import { TABLEAU } from '@/lib/palettes'
+import { BASELINE_COLOR } from '@/lib/theme'
 
 const NOTEBOOKS = 'research/ftir_ec_phase3/ftir_43_residual_learner_null_control, ftir_45_residual_increment_attribution, ftir_46_paired_increment_and_mass (ftir_53 §5 re-draws its mass term)'
 
@@ -43,8 +46,8 @@ const NULL_STAT: Record<string, [string, string]> = {
 
 const NO_ROWS: Row[] = []
 const SITE_NAME: Record<string, string> = { addis: 'Addis Ababa', etbi: 'Bishoftu', chts: 'Beijing', indh: 'Delhi', uspa: 'JPL' }
-const CONFIG_COLORS = { 'locked 800 + AIRSpec (rule k)': '#2C6E9E', 'winner 440 + AIRSpec k=8': '#e15759' }
-const SERIES_COLORS = { blocked: '#2C6E9E', forward: '#f28e2b', observed: '#e15759', 'null (median, 5–95 %)': '#7f7f7f', 'null (median to q95)': '#7f7f7f' }
+const CONFIG_COLORS = { 'locked 800 + AIRSpec (rule k)': BASELINE_COLOR.AIRSpec, 'winner 440 + AIRSpec k=8': TABLEAU.red }
+const SERIES_COLORS = { blocked: '#2C6E9E', forward: TABLEAU.orange, observed: TABLEAU.red, 'null (median, 5–95 %)': '#7f7f7f', 'null (median to q95)': '#7f7f7f' }
 
 /**
  * ftir_43, ftir_45, ftir_46: does a learner on the calibration residual find anything a no-chemistry null or the
@@ -222,7 +225,7 @@ export function Residual(_props: SectionPageProps) {
   </>
 }
 
-const SEASON_COLORS: Record<string, string> = { 'Dry (Oct-Feb)': '#4e79a7', 'Belg (Mar-May)': '#f28e2b', 'Kiremt (Jun-Sep)': '#59a14f' }
+const SEASON_COLORS = ANALYSIS_SEASON_COLOR
 const NULL_LINE = '#b03a8c'
 
 /**

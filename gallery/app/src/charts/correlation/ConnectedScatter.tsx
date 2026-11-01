@@ -10,7 +10,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { axesForUnits, pairDomain, type AxesOpts } from '@/lib/axes'
 import { fmt } from '@/lib/stats'
-import { INK, MARGIN, FONT, withUnit } from '@/lib/theme'
+import { INK, MARGIN, FONT, withUnit, MONTHS } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
 import { useChartGrouping } from '@/components/GroupingDialog'
@@ -20,7 +20,6 @@ import { useNarrowScreen } from '@/hooks/useMediaQuery'
 import { ChartAside } from '@/lib/singleView'
 import { ExcludedNote } from '@/lib/markedRows'
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const STEPS = ['Month of year', 'Year'] as const
 const PATHS_BY = ['Site', 'Group'] as const
 /** an SVG id from a site or band name (band labels carry '<', spaces and dots) */

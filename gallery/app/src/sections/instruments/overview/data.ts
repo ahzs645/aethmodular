@@ -4,22 +4,19 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import * as d3 from 'd3'
-import { themed } from '@/lib/theme'
+import { MONTHS, MONTH_LETTERS, AETH_CHANNEL_COLOR } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
 import { loadJson, useExport } from '@/lib/data'
 import { loadAethDaily, useAethSites, type AethDaily, type AethSite } from '../lib'
 import type { EpisodeColumns, HourlyFile } from './hourly'
 import { CHANNELS, toDays, type Channel, type Day, type Screen, type ScreenCount } from './stats'
+import { siteColor } from '@/lib/siteColours'
 
 export { CHANNELS, type Channel, type Day, type Screen }
 
-/**
- * Channel colours of research/ftir_hips_chem/scripts/plotting/timeseries.py (the notebooks'
- * wavelength_colors); IR's slate is lifted on the dark page. Read at render time (themed).
- */
-const CHANNEL_LIGHT: Record<Channel, string> = { UV: '#9B59B6', Blue: '#3498DB', Green: '#2ECC71', Red: '#E74C3C', IR: '#34495E' }
-export const channelColor = (c: Channel) => (c === 'IR' ? themed(CHANNEL_LIGHT.IR, '#a9bdd2') : CHANNEL_LIGHT[c])
+/** Channel colours: the notebooks' wavelength_colors, defined once in lib/theme (AETH_CHANNEL_COLOR). */
+export const channelColor = (c: Channel) => AETH_CHANNEL_COLOR[c]
 /** "IR (880 nm)" */
 export const channelName = (c: Channel, meta: MetaFile) => `${c} (${meta.wavelengths_nm[c] ?? '?'} nm)`
 /** the per-filter field export_aethalometer.py merges onto the rows for a channel */
@@ -135,7 +132,7 @@ export const SCREEN_TEXT: Record<Screen, string> = {
 }
 
 /** a site's colour from meta, as on every tab */
-export const siteColor = (meta: MetaFile, site: string) => meta.sites.find((s) => s.name === site)?.color ?? '#7b8794'
+export { siteColor }
 /** an instrument's colour: its site's, a step darker for a site's second daily file (the longer Jacros record) */
 export const instColor = (meta: MetaFile, inst: Instrument) =>
   inst.code === inst.siteCode ? siteColor(meta, inst.site) : d3.color(siteColor(meta, inst.site))?.darker(0.9).formatHex() ?? siteColor(meta, inst.site)
@@ -147,8 +144,7 @@ export const logTick = (v: number) => {
 }
 
 export const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-export const MONTH_LETTER = 'JFMAMJJASOND'.split('')
-export const MONTH_NAME = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+export { MONTH_LETTERS as MONTH_LETTER, MONTHS as MONTH_NAME }
 
 /** overview/index.json (gallery/data/export_aeth_overview.py) */
 export interface OverviewSite {

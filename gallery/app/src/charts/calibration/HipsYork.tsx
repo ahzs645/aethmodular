@@ -9,13 +9,13 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useMac } from '@/lib/mac'
 import { fmt } from '@/lib/stats'
-import { INK, MARGIN } from '@/lib/theme'
+import { MARGIN, BLANK_LINE_COLOR } from '@/lib/theme'
 import type { CalibRunsFile, YorkFit } from '@/lib/types'
 import { FixedSetNote } from '@/lib/markedRows'
 
 const VARIANTS = ['deployed', 'lot_lin', 'lot_quad'] as const
 const VARIANT_LABEL: Record<string, string> = { deployed: 'deployed blank line', lot_lin: 'lot blank, linear', lot_quad: 'lot blank, quadratic' }
-const VARIANT_COLOR: Record<string, string> = { get deployed() { return INK.text }, lot_lin: '#2b6cb0', lot_quad: '#c026d3' }
+const VARIANT_COLOR: Record<string, string> = { deployed: BLANK_LINE_COLOR.deployed, lot_lin: BLANK_LINE_COLOR.lot_lin, lot_quad: BLANK_LINE_COLOR.lot_quad }
 
 /**
  * HIPS instrument diagnostics: per-site weighted York (errors-in-variables)

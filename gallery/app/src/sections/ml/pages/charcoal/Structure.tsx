@@ -7,6 +7,7 @@ import { f2 } from '@/lib/format'
 import { num, type Row } from '@/lib/table'
 import type { SpectralExport } from '../../../research/pages/spectralCommon'
 import { provenance, rows } from '../../common'
+import { TABLEAU } from '@/lib/palettes'
 
 const NB = {
   c02: 'research/ftir_etad_char/char_02_addis_vs_charcoal.ipynb',
@@ -15,7 +16,7 @@ const NB = {
   c11: 'research/ftir_etad_char/char_11_normalization_alternatives.ipynb',
 }
 const pct0 = (v: unknown) => (typeof v === 'number' ? `${v.toFixed(0)} %` : '—')
-const PASS_COLORS = { 'Pass A · charcoal only': '#4e79a7', 'Pass B · charcoal + Addis': '#b07aa1' }
+const PASS_COLORS = { 'Pass A · charcoal only': TABLEAU.blue, 'Pass B · charcoal + Addis': TABLEAU.purple }
 
 export function Structure({ data }: { data: SpectralExport }) {
   const chosen = rows(data, 'chosen_k')

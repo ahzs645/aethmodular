@@ -2,16 +2,16 @@ import { useMemo } from 'react'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { fmt } from '@/lib/format'
-import { INK, themed } from '@/lib/theme'
+import { INK, AETH_CHANNEL_COLOR, AETH_SPOT_COLOR } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import { ExcludedNote } from '@/lib/markedRows'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { DailyPanels, qLine, type PanelSpec } from './DailyPanels'
 import { BROWN, CHANNELS, finite, instrumentColor, instrumentName, PURPLE, quantile, ratio, type Channel, type Day, type QualityIndex } from './data'
 
-const SPOT = { one: '#2c7fb8', two: '#d95f0e' }
+const SPOT = AETH_SPOT_COLOR
 /** ftir_49's channel colours */
-export const CHANNEL_COLOR: Record<Channel, string> = { get UV() { return themed('#7D3C98', '#b48ccf') }, Blue: '#2E86C1', Green: '#28B463', Red: '#C0392B', get IR() { return themed('#34495E', '#a9bdd2') } }
+export const CHANNEL_COLOR: Record<Channel, string> = AETH_CHANNEL_COLOR
 
 /**
  * The dual-spot chain day by day for one instrument and channel: attenuation on both spots (a sawtooth that

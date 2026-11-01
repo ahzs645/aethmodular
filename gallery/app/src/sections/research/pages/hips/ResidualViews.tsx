@@ -13,6 +13,7 @@ import { envelopeOf, type Envelope } from '../../common/optics'
 import { ols } from '@/lib/stats'
 import { line, point, shortSeason } from '../../common/ui'
 import { useMarkedPairs } from './marked'
+import { namedColor } from '@/lib/siteColours'
 
 const ENVELOPE_NB = 'research/ftir_hips_chem/addis_06_hips_ptfe_operating_envelope.ipynb'
 
@@ -45,7 +46,7 @@ function useMarkedEnv(site: string, mac: number): Envelope[] {
 
 /** addis_06 c14: the residual against loading, composition and optical depth, one panel each with its OLS line */
 export function ResidualCrossplots({ env, site, relative, mac, seasons, controls }: Common) {
-  const colorOf = (e: Envelope) => seasons.find((s) => s.name === e.row.season)?.color ?? INK.muted
+  const colorOf = (e: Envelope) => namedColor(seasons, e.row.season)
   const markedEnv = useMarkedEnv(site, mac)
   const xy = (es: Envelope[], p: (typeof PANELS)[number]) => es.flatMap((e) => { const x = p.value(e), y = residOf(e, relative); return finite(x) && finite(y) ? [{ e, x, y }] : [] })
   const panels = PANELS.map((p) => {
@@ -75,7 +76,7 @@ export function ResidualCrossplots({ env, site, relative, mac, seasons, controls
 export function ResidualSsa({ env, site, relative, mac, seasons, controls }: Common) {
   const [wl, setWl] = useSearchParam<string>('he.ssa', '675', SSA_BY_WAVELENGTH.map(([w]) => String(w)))
   const field = SSA_BY_WAVELENGTH.find(([w]) => String(w) === wl)?.[1] ?? SSA_BY_WAVELENGTH[1][1]
-  const colorOf = (e: Envelope) => seasons.find((s) => s.name === e.row.season)?.color ?? INK.muted
+  const colorOf = (e: Envelope) => namedColor(seasons, e.row.season)
   const ssaOf = (es: Envelope[]) => es.flatMap((e) => { const x = e.row[field], y = residOf(e, relative); return typeof x === 'number' && finite(x) && finite(y) ? [{ e, x, y }] : [] })
   const pts = ssaOf(env)
   const marked = ssaOf(useMarkedEnv(site, mac))

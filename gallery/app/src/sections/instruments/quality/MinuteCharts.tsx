@@ -19,6 +19,7 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { finite, localDate, quantile } from './data'
 import { CHANNEL_COLOR } from './DualSpot'
 import type { Hist, Hist2d, MinuteSite } from './minute'
+import { siteCodeColor } from '@/lib/siteColours'
 
 const SOURCE = 'gallery/data/export_aeth_quality_minute.py · Drive "Aethalometry Data/Raw" MA350 1-min CSVs (Time (UTC) → local)'
 /** the raw series pale, the pipeline's DEMA in ink (both theme colours), the rolling medians in category colours */
@@ -355,7 +356,7 @@ export function MinuteWindows({ sites, names, meta, rows }: { sites: Record<stri
   const pointsOf = (ids: Set<string>): CrossPoint[] => Object.entries(sites).flatMap(([code, s]) => s.windows.id.flatMap((id, i) => {
     const x = s.windows[`${ch}_9am`][i], y = s.windows[`${ch}_${alt}`][i]
     if (!ids.has(id) || !finite(x) || !finite(y)) return []
-    const color = code === 'USPA' ? meta.sites.find((m) => m.code === 'USPA')?.color ?? INK.accent : meta.sites.find((m) => m.code === 'ETAD')?.color ?? INK.warn
+    const color = code === 'USPA' ? siteCodeColor(meta, 'USPA', INK.accent) : siteCodeColor(meta, 'ETAD', INK.warn)
     return [{ x, y, color, id, tip: [id, s.windows.date[i], `${ch} BCc, 9am day ${fmt(x, 2)} · ${ALT_LABEL[alt]} ${fmt(y, 2)} µg/m³`, `window ${fmt(s.windows.hours[i], 1)} h`],
       rec: { id, source: 'Aethalometer matching window', date: s.windows.date[i], fields: [[`${ch} BCc, 9am day (µg/m³)`, x], [`${ch} BCc, ${ALT_LABEL[alt]} (µg/m³)`, y]] } }]
   }))

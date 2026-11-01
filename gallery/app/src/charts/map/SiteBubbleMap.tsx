@@ -14,6 +14,7 @@ import { useSearchParam } from '@/lib/url'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
 import { maiaLine, useAeronetSites, type AeronetSitesFile } from '@/lib/aeronetSites'
+import { siteCodeColor } from '@/lib/siteColours'
 
 const STATS = ['Median', 'Mean', 'Sample count'] as const
 const PROJECTIONS = ['Flat', 'Globe'] as const
@@ -104,7 +105,7 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
     const bySite = d3.group(rows, r => r.site)
     const source = isNetwork
       ? (network?.sites ?? []).map(s => ({ ...s, label: s.code,
-          color: isSpartan ? meta.sites.find(f => f.code === s.code)?.color ?? INK.accent : INK.accent,
+          color: isSpartan ? siteCodeColor(meta, s.code, INK.accent) : INK.accent,
           summary: s.stats[metric] ?? { n: 0, mean: null, median: null } }))
       : meta.sites.map(s => {
           const subset = bySite.get(s.name) ?? []

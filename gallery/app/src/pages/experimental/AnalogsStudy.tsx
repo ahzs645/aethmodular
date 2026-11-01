@@ -24,7 +24,7 @@ interface AnalogsData extends XpBase {
   improve_filters: Cols
 }
 const RULES_ALL = ['shape', 'shape + loading', 'loading only', 'shape + HIPS loading']
-const RULE_COLOR: Record<string, string> = { shape: '#2171b5', 'shape + loading': '#d94801', 'loading only': '#6a51a3', 'shape + HIPS loading': '#1b7837' }
+const RULE_COLOR: Record<string, string> = { shape: INK.accent, 'shape + loading': '#d94801', 'loading only': '#6a51a3', 'shape + HIPS loading': '#1b7837' }
 /** the rules this run has (older runs lack the HIPS-loading rule) */
 const rulesOf = (d: AnalogsData) => RULES_ALL.filter((r) => d.addis.some((x) => x.model === `local: ${r}`))
 const MODEL_COLOR: Record<string, string> = { get 'SPARTAN published'() { return INK.text }, 'full calibration (raw)': '#8a8f98', ...Object.fromEntries(RULES_ALL.map((r) => [`local: ${r}`, RULE_COLOR[r]])) }
@@ -147,7 +147,7 @@ function MatchCheck({ d }: { d: AnalogsData }) {
 function ImproveHolds({ d }: { d: AnalogsData }) {
   const [metric, setMetric] = useSearchParam<'rmse' | 'bias' | 'rel_bias'>('xa-improve.metric', 'rmse', ['rmse', 'bias', 'rel_bias'])
   const groups = ['heaviest tenth', 'other filters', 'all']
-  const color: Record<string, string> = { 'heaviest tenth': '#b2182b', 'other filters': '#2171b5', get all() { return INK.text } }
+  const color: Record<string, string> = { 'heaviest tenth': '#b2182b', 'other filters': INK.accent, get all() { return INK.text } }
   const lg = useLegend()
   const models = [...new Set(d.improve.map((r) => r.model as string))]
   const fmt = (v: number) => metric === 'rel_bias' ? `${Math.round(v * 100)} %` : f2(v)

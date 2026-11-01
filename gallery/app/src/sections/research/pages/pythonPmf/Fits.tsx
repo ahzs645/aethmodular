@@ -26,11 +26,12 @@ import {
   CasePick, FACTOR_COLOR, FACTORS, REPORT, addisCalendar, archivedFor, caseFilters, caseLabel, closest, factorName, tableRows, useProfiles,
   type CaseFilter, type PmfCase, type PythonPmfExport,
 } from './data'
+import { RESEARCH_SERIES } from '@/lib/palettes'
 
 /** the modelled windows; 2500–2300 cm⁻¹ (CO₂) is left out of every fit */
 const GAP = { lo: 2300, hi: 2500, label: 'not modelled 2300–2500 cm⁻¹', fill: INK.shade }
 const WINDOW: [number, number] = [4000, 1520]
-const COHORT_COLOR: Record<string, string> = { etad246: '#2c7fb8', etad102: '#d08c2c', etbi53: '#4f9d69' }
+const COHORT_COLOR: Record<string, string> = { etad246: RESEARCH_SERIES[0], etad102: RESEARCH_SERIES[1], etbi53: RESEARCH_SERIES[2] }
 const COHORT_LABEL: Record<string, string> = { etad246: 'ETAD 246', etad102: 'ETAD 102', etbi53: 'ETBI 53' }
 /** a share as a percentage with one decimal, as the report quotes them */
 const pct1 = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? `${(100 * v).toFixed(1)} %` : '—')

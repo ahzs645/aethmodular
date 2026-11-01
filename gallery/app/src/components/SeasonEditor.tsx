@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import type { SeasonMeta } from '@/lib/types'
 import { XIcon } from '@/components/Icons'
+import { MONTHS } from '@/lib/theme'
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 /** colours for custom seasons, in order of creation */
 export const CUSTOM_SEASON_COLORS = ['#6F86BA', '#67A96A', '#D99145', '#AA6B78', '#428EAF', '#B8860B', '#8A6FB0', '#5A9E9A']
 

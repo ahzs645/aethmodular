@@ -17,6 +17,8 @@ import type { FilterRow, MetaFile } from '@/lib/types'
 import { VOLUME } from '@/lib/viewFields'
 import type { OlsFit as Fit } from '@/lib/stats'
 import { num as cell } from '@/lib/table'
+import { RESEARCH_SERIES } from '@/lib/palettes'
+import { namedColor } from '@/lib/siteColours'
 
 /** a row's field as a finite number, or null (lib/table num on r[f]) */
 export const num = (r: Record<string, unknown> | undefined, f: string): number | null => cell(r?.[f])
@@ -43,9 +45,10 @@ export function useConcRows(rows: FilterRow[], meta: MetaFile): FilterRow[] {
 export const BASIS_NOTE = 'This page works in µg/m³ (the notebooks\' units), so it ignores mass per filter under Filters → units.'
 
 export const ADDIS = 'Addis Ababa'
-export const LOW = '#d08c2c', HIGH = '#2c7fb8', MID = '#4f9d69'
-/** a categorical ramp for series that are neither sites nor seasons */
-export const SERIES = ['#2c7fb8', '#d08c2c', '#4f9d69', '#b5446e', '#6a51a3', '#8c564b', '#e377c2', '#7f7f7f']
+/** a categorical ramp for series that are neither sites nor seasons (lib/palettes RESEARCH_SERIES) */
+export const SERIES = RESEARCH_SERIES
+/** a low / high / middle split: amber, blue and green from the same ramp */
+export const LOW = SERIES[1], HIGH = SERIES[0], MID = SERIES[2]
 
 /** the sites in view, Addis first when present (most of these notebooks are about Addis) */
 export function sitesOf(rows: FilterRow[]): string[] {
@@ -81,7 +84,7 @@ export function seasonsOf(rows: FilterRow[], meta: MetaFile): { name: string; co
   }
   const all = [...meta.seasons, ...Object.values(meta.season_conventions ?? {}).flat()]
   return [...firstMonth.keys()].sort((a, b) => firstMonth.get(a)! - firstMonth.get(b)!)
-    .map((name, i) => ({ name, color: all.find((s) => s.name === name)?.color ?? SERIES[i % SERIES.length] }))
+    .map((name, i) => ({ name, color: namedColor(all, name, SERIES[i % SERIES.length]) }))
 }
 
 /** the season's name without its site or month range (lib/seasons), as the research pages label seasons */

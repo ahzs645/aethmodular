@@ -13,6 +13,7 @@ import type { SpectralExport } from '../../../research/pages/spectralCommon'
 import { provenance, rows } from '../../common'
 import { baseFilterId } from '@/lib/filterId'
 import { ExcludedNote, useCountedFilter, useExclMode, useExclusionSplit } from '@/lib/markedRows'
+import { TABLEAU } from '@/lib/palettes'
 
 const NB = {
   c02: 'research/ftir_etad_char/char_02_addis_vs_charcoal.ipynb',
@@ -28,7 +29,7 @@ export function Matching({ data, meta }: { data: SpectralExport; meta: MetaFile 
     const dryFeb = meta.season_conventions?.dry_feb ?? meta.seasons
     const out: Record<string, string> = {}
     for (const name of SEASONS) { const c = dryFeb.find((s) => s.name.toLowerCase().startsWith(name.split(' ')[0].toLowerCase()))?.color; if (c) out[name] = c }
-    return { ...out, 'low-similarity': '#b2182b', normal: '#7b8794', 'unburned references (LOO)': '#59a14f', 'burned references (LOO)': '#e15759', 'Addis filters (final model)': '#7A4FA3' }
+    return { ...out, 'low-similarity': '#b2182b', normal: '#7b8794', 'unburned references (LOO)': TABLEAU.green, 'burned references (LOO)': TABLEAU.red, 'Addis filters (final model)': '#7A4FA3' }
   }, [meta])
   const ref = rows(data, 'analogue_reference')
   const addisRef = ref[0], heldOut = ref[1]

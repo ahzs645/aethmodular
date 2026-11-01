@@ -6,12 +6,11 @@ import { FacetGrid } from '@/components/FacetGrid'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { monthlyMeans } from '@/lib/stats'
-import { FONT, INK } from '@/lib/theme'
+import { FONT, INK, MONTH_LETTERS, VARIABLE_COLOR } from '@/lib/theme'
 import { loadDaily, type DailyWeather } from '@/lib/weather'
 import type { MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
 
-const MONTHS = 'JFMAMJJASOND'.split('')
 const MAX_SITES = 16
 // the site name is the facet's title row, above the svg
 const M = { top: 8, right: 30, bottom: 34, left: 34 }
@@ -80,11 +79,11 @@ export function MonthlyClimate({ meta, sites, id = 'weather-climate', title = 'M
           return (
             <svg width={pw} height={h} fontFamily={FONT.family}>
               <g transform={`translate(${M.left},${M.top})`}>
-                {yP.ticks(3).map((t) => <g key={t}><line x1={0} x2={iw} y1={yP(t)} y2={yP(t)} stroke={INK.grid} /><text x={-4} y={yP(t)} dy="0.32em" textAnchor="end" fontSize={9.5} fill="#4292c6">{t}</text></g>)}
-                {yT.ticks(3).map((t) => <text key={t} x={iw + 4} y={yT(t)} dy="0.32em" fontSize={9.5} fill="#c0392b">{t}°</text>)}
+                {yP.ticks(3).map((t) => <g key={t}><line x1={0} x2={iw} y1={yP(t)} y2={yP(t)} stroke={INK.grid} /><text x={-4} y={yP(t)} dy="0.32em" textAnchor="end" fontSize={9.5} fill={VARIABLE_COLOR.rain}>{t}</text></g>)}
+                {yT.ticks(3).map((t) => <text key={t} x={iw + 4} y={yT(t)} dy="0.32em" fontSize={9.5} fill={VARIABLE_COLOR.temperature}>{t}°</text>)}
                 {months.map((m) => (
                   <g key={m.m}>
-                    {m.p !== null && <rect x={x(m.m)} width={x.bandwidth()} y={yP(m.p)} height={ih - yP(m.p)} fill="#4292c6" fillOpacity={0.75} />}
+                    {m.p !== null && <rect x={x(m.m)} width={x.bandwidth()} y={yP(m.p)} height={ih - yP(m.p)} fill={VARIABLE_COLOR.rain} fillOpacity={0.75} />}
                     <rect x={x(m.m)} width={x.bandwidth()} height={ih + 22} fill="transparent"
                       onMouseEnter={(e) => tip.show(e, [`${site.name} · ${d3.timeFormat('%B')(new Date(2023, m.m - 1, 1))}`,
                         `precipitation ${fmt(m.p, 0)} mm/month`, `temperature ${fmt(m.t, 1)} °C`, `RH ${fmt(m.rh, 0)} %`,
@@ -92,12 +91,12 @@ export function MonthlyClimate({ meta, sites, id = 'weather-climate', title = 'M
                       onMouseLeave={tip.hide} />
                   </g>
                 ))}
-                <path d={line(months) ?? ''} fill="none" stroke="#c0392b" strokeWidth={1.8} pointerEvents="none" />
+                <path d={line(months) ?? ''} fill="none" stroke={VARIABLE_COLOR.temperature} strokeWidth={1.8} pointerEvents="none" />
                 {months.map((m) => {
                   const se = seasons.find((s) => s.months.includes(m.m))
                   return <g key={`s${m.m}`} pointerEvents="none">
                     <rect x={(x(m.m) ?? 0) - x.step() * x.paddingInner() / 2} width={x.step()} y={ih + 4} height={7} fill={se?.color ?? '#ddd'} />
-                    <text x={(x(m.m) ?? 0) + x.bandwidth() / 2} y={ih + 22} textAnchor="middle" fontSize={9.5} fill={INK.muted}>{MONTHS[m.m - 1]}</text>
+                    <text x={(x(m.m) ?? 0) + x.bandwidth() / 2} y={ih + 22} textAnchor="middle" fontSize={9.5} fill={INK.muted}>{MONTH_LETTERS[m.m - 1]}</text>
                   </g>
                 })}
               </g>

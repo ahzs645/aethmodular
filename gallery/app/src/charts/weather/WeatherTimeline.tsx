@@ -17,7 +17,7 @@ import { fidProps } from '@/lib/filterEdits'
 import { fmt } from '@/lib/stats'
 import { chemText } from '@/lib/format'
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
-import { INK, withUnit } from '@/lib/theme'
+import { INK, withUnit, VARIABLE_COLOR } from '@/lib/theme'
 import { loadDaily, type DailyWeather } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
@@ -26,6 +26,7 @@ import { wrapCategory } from '@/components/CategoryAxis'
 import { useSearchParam } from '@/lib/url'
 import { isPmfField, pickerName } from '@/lib/pmfGroups'
 import { toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
+import { namedColor } from '@/lib/siteColours'
 
 // each panel's title stands up beside its y axis, as on any plot: the unit on a line of its own
 // ("Precip." over "(mm/day)"), and a name too long for the panel's height wrapped onto more lines.
@@ -197,10 +198,10 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
                     : <AxisChoices options={choices} y={[k, (v) => replacePanel(k, v)]} noun="panels"><PanelTitle lines={titleLines.get(k)!} left={left} height={panelH} pick="y" /></AxisChoices>}
                   {k === 'temp' && <>
                     <path d={band(days) ?? ''} fill={INK.fit} opacity={0.12} />
-                    <path d={line(daily.t, yT)} fill="none" stroke="#c0392b" strokeWidth={1.2} />
+                    <path d={line(daily.t, yT)} fill="none" stroke={VARIABLE_COLOR.temperature} strokeWidth={1.2} />
                   </>}
-                  {k === 'prcp' && days.map(({ t, i }) => val(daily.p, i) ? <rect key={i} x={x(t)} width={Math.max(1, innerW / days.length)} y={yP(daily.p[i]!)} height={panelH - yP(daily.p[i]!)} fill="#4292c6" /> : null)}
-                  {k === 'rh' && <path d={line(daily.rh, yR)} fill="none" stroke="#2c7fb8" strokeWidth={1.1} />}
+                  {k === 'prcp' && days.map(({ t, i }) => val(daily.p, i) ? <rect key={i} x={x(t)} width={Math.max(1, innerW / days.length)} y={yP(daily.p[i]!)} height={panelH - yP(daily.p[i]!)} fill={VARIABLE_COLOR.rain} /> : null)}
+                  {k === 'rh' && <path d={line(daily.rh, yR)} fill="none" stroke={VARIABLE_COLOR.humidity} strokeWidth={1.1} />}
                   {k === 'blh' && <path d={line(daily.blh, yB)} fill="none" stroke="#7b6fb0" strokeWidth={1.1} />}
                   {k === 'ws' && <path d={line(daily.ws, yW)} fill="none" stroke="#4d9078" strokeWidth={1.1} />}
                   {isField(k) && <FieldPoints pts={ptsOf.get(fieldOf(k)) ?? EMPTY} field={fieldOf(k)} site={site?.name} x={x} width={innerW} height={panelH} seasons={meta.seasons} selected={hl.selected} tip={tip}
@@ -223,7 +224,7 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
           </svg>
         )}
         <Legend items={[...seasons.map((s) => ({ label: s.name.replace(`${site?.name} · `, ''), color: s.color, shape: 'band' as const })),
-          { label: 'daily mean temperature', color: '#c0392b', shape: 'line' }, { label: 'daily min–max', color: INK.fit, shape: 'band' }]} />
+          { label: 'daily mean temperature', color: VARIABLE_COLOR.temperature, shape: 'line' }, { label: 'daily min–max', color: INK.fit, shape: 'band' }]} />
         {tip.node}
       </div>
     </ChartFrame>
@@ -249,7 +250,7 @@ function FieldPoints({ pts, field, site, x, width, height, seasons, selected, ti
   selected: Set<string> | null; tip: ReturnType<typeof useTooltip>; tipOf: (p: FieldPt) => TipBody
 }) {
   const y = useMemo(() => fieldScale(pts, height), [pts, height])
-  const colorOf = (p: FieldPt) => seasons.find((s) => s.name === p.row.season)?.color ?? INK.text
+  const colorOf = (p: FieldPt) => namedColor(seasons, p.row.season, INK.text)
   const xy = useMemo(() => pts.map((p) => [x(p.t), y(p.v)] as const), [pts, x, y])
   const dots = useMemo(() => pts.map((p, i) => {
     const st = focusStyle(p.row.id, null, { r: 3, level: 'sparse' }, selected)

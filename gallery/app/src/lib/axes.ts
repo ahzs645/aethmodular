@@ -1,4 +1,5 @@
 import * as d3 from 'd3'
+import { prettyUnit } from './theme.ts'
 
 /**
  * One axis policy for every chart on the correlation tab, so the scatterplot,
@@ -29,7 +30,7 @@ export interface AxesOpts {
 }
 
 /** a unit as written in the exports or on screen, so 'ug/m3' and 'µg/m³' compare equal */
-const unitKey = (u: string) => u.replace(/\s+/g, '').replace(/^ug/i, 'µg').replace(/m3$/, 'm³').replace(/Mm-1$/, 'Mm⁻¹').toLowerCase()
+const unitKey = (u: string) => prettyUnit(u.replace(/\s+/g, '')).toLowerCase()
 /** a pair measured in the same unit (both unitless counts as the same); one with a unit and one without differ */
 export const sameUnits = (a?: string | null, b?: string | null) => (!a && !b) || (!!a && !!b && unitKey(a) === unitKey(b))
 

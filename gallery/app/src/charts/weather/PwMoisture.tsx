@@ -16,6 +16,7 @@ import { num } from '@/lib/table'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { ExcludedNote, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 import { markTip } from '@/lib/exclusionMode'
+import { siteColor } from '@/lib/siteColours'
 
 const PW = 'Precipitable water (AERONET)'
 const MEASURES = ['Dew point', 'Relative humidity'] as const
@@ -69,7 +70,7 @@ export function PwMoisture({ rows, meta, onePick }: { rows: FilterRow[]; meta: M
       out.push({ key, label, color, hollow, pts, rho: spearman(pts.map((p) => p.x), pts.map((p) => p.y), WEATHER_MIN_PAIRS), fit: isDew ? logFit(pts) : null })
     }
     for (const [site, rs] of d3.groups(rows.filter((r) => num(r[PW]) !== null), (r) => r.site)) {
-      const color = meta.sites.find((s) => s.name === site)?.color ?? INK.accent
+      const color = siteColor(meta, site, INK.accent)
       make(`${site}|era5`, `${site} · ERA5`, color, false, rs.flatMap((r) => {
         const x = num(r[isDew ? 'Dew point (ERA5)' : 'Relative humidity (ERA5)'])
         return x === null ? [] : [{ row: r, x, y: num(r[PW])! }]

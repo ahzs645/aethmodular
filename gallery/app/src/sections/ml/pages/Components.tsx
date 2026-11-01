@@ -8,20 +8,21 @@ import type { SectionPageProps } from '../../types'
 import { MlWaiting, PageIntro, provenance, rows, useMl } from '../common'
 import { COHORT_NAME, PROTOCOL_COLOR, protocolOf, ruleRows, SPECTRA_NAME, useCalib } from './components/calib'
 import { FixedSetNote } from '@/lib/markedRows'
+import { TABLEAU } from '@/lib/palettes'
 
 /** ftir_20's four rule × scheme combinations and the locked k, in the order the notebook's strip reads them */
 const RULE_COLOR: Record<string, string> = {
-  'interleaved 10-fold + within 5 % (app)': '#e15759',
-  'site-grouped 5-fold + first major minimum (phase 3)': '#4e79a7',
-  'site-grouped 5-fold + within 5 %': '#76b7b2',
-  'interleaved 10-fold + first major minimum': '#f28e2b',
-  'locked k in use': '#59a14f',
+  'interleaved 10-fold + within 5 % (app)': TABLEAU.red,
+  'site-grouped 5-fold + first major minimum (phase 3)': TABLEAU.blue,
+  'site-grouped 5-fold + within 5 %': TABLEAU.teal,
+  'interleaved 10-fold + first major minimum': TABLEAU.orange,
+  'locked k in use': TABLEAU.green,
 }
 const SCHEME_COLOR: Record<string, string> = {
-  'interleaved 10-fold': '#e15759', 'site-grouped 5-fold': '#4e79a7',
-  'interleaved · 10-fold': '#e15759', 'interleaved · 5-fold': '#ff9da7', 'site-grouped · 5-fold': '#4e79a7', 'site-grouped · 10-fold': '#76b7b2',
+  'interleaved 10-fold': TABLEAU.red, 'site-grouped 5-fold': TABLEAU.blue,
+  'interleaved · 10-fold': TABLEAU.red, 'interleaved · 5-fold': TABLEAU.pink, 'site-grouped · 5-fold': TABLEAU.blue, 'site-grouped · 10-fold': TABLEAU.teal,
 }
-const CUT_COLOR: Record<string, string> = { 'N = 400': '#59a14f', 'N = 800': '#4e79a7', 'N = 1600': '#b07aa1' }
+const CUT_COLOR: Record<string, string> = { 'N = 400': TABLEAU.green, 'N = 800': TABLEAU.blue, 'N = 1600': TABLEAU.purple }
 const CALIBRATION = '#tab=calibration'
 
 /**

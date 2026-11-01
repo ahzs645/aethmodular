@@ -10,7 +10,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { useSearchParam } from '@/lib/url'
-import { FONT, INK, inkOn, themed } from '@/lib/theme'
+import { FONT, INK, inkOn, PREPROCESSING_COLOR } from '@/lib/theme'
 import { coef, coefSigned, f2, signed } from '@/lib/format'
 import { useMac, type MacView } from '@/lib/mac'
 import { Scatter, runLine, sourceOf, useXp, type XpBase } from './shared'
@@ -25,7 +25,7 @@ interface AttributionData extends XpBase { grid: Cell[]; effects: Effect[]; publ
 const source = sourceOf('AttributionStudy')
 const OUTCOMES = ['Addis intercept', 'Addis slope', 'IMPROVE RMSE', 'IMPROVE RMSE heaviest tenth', 'IMPROVE bias'] as const
 type Outcome = typeof OUTCOMES[number]
-const PREP_COLOR: Record<string, string> = { get raw() { return themed('#525252', '#9aa3ad') }, spline: '#2171b5', vibes: '#e6550d' }
+const PREP_COLOR: Record<string, string> = { raw: PREPROCESSING_COLOR.raw, spline: PREPROCESSING_COLOR.spline, vibes: PREPROCESSING_COLOR.vibes }
 const rowKey = (c: Cell) => `${c.preprocessing} · ${c.window === 'full' ? '4000–500' : '4000–1425'}`
 const colKey = (c: Cell) => `${c.pool} · ${c['k rule']}`
 

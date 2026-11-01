@@ -6,7 +6,7 @@ import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { fmt } from '@/lib/format'
 import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
-import { INK } from '@/lib/theme'
+import { INK, BLANK_LINE_COLOR } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 
 import type { SectionPageProps } from '../../types'
@@ -119,7 +119,7 @@ export function BlankLines({ rows }: SectionPageProps) {
   const sitesHere = siteExposure(exps).sort((a, b) => b.outside - a.outside)
   const nameOf = (code: string) => siteOfCode.get(code)?.site ?? code
   const MARKS: { c: Exclude<Construction, 'deployed'>; color: string; shape: 'dot' | 'hollow' | 'square' }[] = [
-    { c: 'line_lin', color: '#2c7fb8', shape: 'hollow' }, { c: 'line_quad', color: '#2c7fb8', shape: 'dot' }, { c: 'lot_quad', color: INK.negative, shape: 'square' }]
+    { c: 'line_lin', color: BLANK_LINE_COLOR.line_lin, shape: 'hollow' }, { c: 'line_quad', color: BLANK_LINE_COLOR.line_quad, shape: 'dot' }, { c: 'lot_quad', color: BLANK_LINE_COLOR.lot_quad, shape: 'square' }]
   const expRows: IntervalRow[] = sitesHere.map((s, i) => ({
     key: s.code, label: nameOf(s.code), labelColor: siteOfCode.get(s.code)?.color, note: `n=${s.n}`,
     tip: [nameOf(s.code), `${s.n} samples on a fitted line (${s.nUnfit} on an unfitted one)`, `${pct(s.below)} % below, ${pct(s.above)} % above its own line's blank R1 range`,
@@ -212,7 +212,7 @@ export function BlankLines({ rows }: SectionPageProps) {
         {!expRows.length ? <Empty>No samples in view on a refitted line.</Empty> : <IntervalStrip blocks={[{ key: 'sites', rows: expRows }]} labelWidth={110} noteWidth={50} minPanelWidth={240}
           panels={[{ label: 'Median |ΔFabs| vs deployed line (Mm⁻¹)', domain: [0, Math.max(0.5, ...sitesHere.flatMap((s) => MARKS.map((m) => s.med[m.c])).filter(Number.isFinite)) * 1.1] },
             { label: 'Samples outside own line\'s blank R1 range (%)', domain: [0, Math.max(10, ...sitesHere.map((s) => 100 * Math.max(s.below, s.above))) * 1.1] }]} />}
-        <Key items={[{ label: 'per-line linear', color: '#2c7fb8', kind: 'hollow' }, { label: 'per-line quadratic', color: '#2c7fb8' }, { label: 'lot-pooled quadratic', color: INK.negative, kind: 'square' },
+        <Key items={[{ label: 'per-line linear', color: BLANK_LINE_COLOR.line_lin, kind: 'hollow' }, { label: 'per-line quadratic', color: BLANK_LINE_COLOR.line_quad }, { label: 'lot-pooled quadratic', color: BLANK_LINE_COLOR.lot_quad, kind: 'square' },
           { label: 'R1 below blank range', color: '#6a51a3' }, { label: 'R1 above blank range', color: '#d08c2c', kind: 'square' }]} />
         <ExcludedNote count={markedExps.filter((e) => e.line).length} />
         {agree.length > 0 && <>

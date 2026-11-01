@@ -4,14 +4,14 @@ import { Key } from '@/components/Key'
 import { useExport } from '@/lib/data'
 import { fmt } from '@/lib/format'
 import { FixedSetNote } from '@/lib/markedRows'
-import { IMPROVE_GREY } from '@/lib/theme'
+import { IMPROVE_GREY, SPARTAN_COLOR } from '@/lib/theme'
 import type { SectionPageProps } from '../../types'
 import { DataTable } from '../common/ui'
 
 const NB = 'research/spartan/spartan_vs_improve_comparison.ipynb'
 const FOLLOW = 'research/spartan/follow_up_mass_and_ratio_plots.ipynb · research/spartan/site_ratios_mass_space.ipynb'
 const COMMAND = 'uv run python gallery/data/export_research_spartan_improve.py'
-const SPARTAN = '#c0392b'
+const SPARTAN = SPARTAN_COLOR
 type Row = Record<string, string | number | null>
 interface Tables { generated: string; tables: Record<'parameter_map' | 'coverage' | 'distribution' | 'ratios' | 'fits' | 'analogs', Row[]> }
 const n = (v: unknown) => (typeof v === 'number' ? v : null)

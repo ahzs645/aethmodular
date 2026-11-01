@@ -3,6 +3,7 @@ import { styleBrush } from '@/lib/brush'
 import * as d3 from 'd3'
 import { INK } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import { siteColor } from '@/lib/siteColours'
 
 export type DateRange = [string, string] // ISO YYYY-MM-DD, inclusive
 
@@ -57,7 +58,7 @@ export function DateBrush({
       let acc = 0
       const parts = siteNames.map((s) => {
         const v = rec[s] ?? 0
-        const p = { site: s, y0: acc, y1: acc + v, color: meta.sites.find((m) => m.name === s)?.color ?? INK.muted }
+        const p = { site: s, y0: acc, y1: acc + v, color: siteColor(meta, s) }
         acc += v
         return p
       })
