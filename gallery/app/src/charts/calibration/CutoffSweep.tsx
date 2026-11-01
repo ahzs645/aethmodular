@@ -16,6 +16,7 @@ import { calibrationReadout, cutoffPosition, fittingCounts, cutoffConfig, type C
 import { AxisChoices } from '@/components/AxisChoices'
 import { ChartAside } from '@/lib/singleView'
 import { FixedSetNote } from '@/lib/markedRows'
+import { useFitHeight } from '@/lib/chartFit'
 
 /**
  * Cutoff sweep — the "try somewhat more and somewhat less" experiment from
@@ -73,6 +74,8 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
+  // in a tile or the one-chart view the two panels share the height, as 340 : 250 elsewhere
+  const fit = useFitHeight()
 
   const rankedCohorts = Object.keys(calib.default_cutoff)
   const { hidden, dim, props: legendProps } = useLegend()
@@ -165,7 +168,7 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
         {shown.flatMap((s) => s.pts).length === 0 ? (
           <Empty>No rows for {label(COHORT, cohort)} · {shortMode} · {siteName}.{mode !== 'site_heldout' ? ' Interleaved cross-validation covers spline-baselined spectra at every site (Colab batch, 2026-09-23); raw and 2nd-derivative spectra only at Addis and Bishoftu, on the 5-point cutoff ladder.' : ''}</Empty>
         ) : (
-          <AxisChoices {...o.axisChoices({ x: 'axis', y: 'metric' })}>{panel(shown, metric, 340, testLabel(metric))}</AxisChoices>
+          <AxisChoices {...o.axisChoices({ x: 'axis', y: 'metric' })}>{panel(shown, metric, fit === null ? 340 : Math.max(180, Math.round(fit * 0.58)), testLabel(metric))}</AxisChoices>
         )}
         <p style={{ ...cvPanelTitle, marginTop: 18, paddingTop: 12, borderTop: '1px solid var(--ink-border)' }}>
           Calibration set: IMPROVE cross-validation
@@ -183,7 +186,7 @@ export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; s
               : <>No {CV_LABELS[cvMetric]} is saved for {label(COHORT, cohort)} at these cutoffs. Missing RMSE is not replaced by the test-set RMSE.</>}
           </Empty>
         ) : (
-          <AxisChoices {...o.axisChoices({ x: 'axis', y: 'cvMetric' })}>{panel(cvShown, cvMetric, 250, CV_AXIS_LABELS[cvMetric])}</AxisChoices>
+          <AxisChoices {...o.axisChoices({ x: 'axis', y: 'cvMetric' })}>{panel(cvShown, cvMetric, fit === null ? 250 : Math.max(140, Math.round(fit * 0.42)), CV_AXIS_LABELS[cvMetric])}</AxisChoices>
         )}
         <Legend
           items={legendSeries.map((s) => ({ label: s.label, color: s.color, shape: s.dash ? ('dashed' as const) : ('line' as const) }))}

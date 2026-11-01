@@ -89,7 +89,7 @@ export function KSweep({ calib, selected, onSelect }: { calib: CalibFile; select
         {rows.length < 2 ? (
           <Empty>No PLS-factor sweep saved for {configLabel(selected, calib)} on Addis.</Empty>
         ) : (
-          <FacetGrid items={panels} minCell={250} maxCols={3} gap={12} render={(panel, cw) => {
+          <FacetGrid items={panels} minCell={250} maxCols={3} gap={12} render={(panel, cw, _i, cell) => {
             const keys = panel.keys.filter((k) => lg.show(k.label))
             const hot = panel.keys.some((k) => k.label === lg.hover) ? lg.hover : null
             const vals = keys.flatMap((k) => rows.map((r) => r[k.key]).filter((v): v is number => v !== null))
@@ -97,7 +97,7 @@ export function KSweep({ calib, selected, onSelect }: { calib: CalibFile; select
             const lo = panel.ref !== undefined ? Math.min(panel.ref, ext[0]) : Math.min(0, ext[0])
             const hi = panel.ref !== undefined ? Math.max(panel.ref, ext[1]) : Math.max(1, ext[1])
             return <>
-              <SweepPlot width={cw} minWidth={200} height={258} title={estimatorText(panel.title, method)} xLabel={METRIC.k} yLabel=""
+              <SweepPlot width={cw} minWidth={200} height={cell.height ?? 258} title={estimatorText(panel.title, method)} xLabel={METRIC.k} yLabel=""
                 xDomain={[1, d3.max(rows, (r) => r.k) ?? 30]} yDomain={d3.scaleLinear().domain([lo, hi]).nice().domain() as [number, number]}
                 reference={panel.ref} dim={(g) => (hot && hot !== g ? 0.15 : 1)}
                 xMarkers={autoK !== null ? [{ at: autoK, label: `rule: ${autoK}` }] : []}

@@ -17,6 +17,7 @@ import { seasonOnly } from '@/lib/seasons'
 import { AAOD675, HIPS_LOT_PERIODS, lotPeriodOf, scaleHeight, surfaceFabs } from '@/lib/aeronet'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
+import { fitInner, useFitHeight } from '@/lib/chartFit'
 
 const BY = ['Lot period', 'Year', 'Season'] as const
 type By = (typeof BY)[number]
@@ -32,6 +33,7 @@ const M = { top: 10, right: 18, bottom: 40, left: 62 }
 export function AeronetScaleHeightTime({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
+  const fit = useFitHeight()
   const tip = useTooltip(wrapRef)
   // the brush only: the dots read the hover themselves (components/ScatterLayer)
   const hl = useHighlightActions()
@@ -74,7 +76,7 @@ export function AeronetScaleHeightTime({ rows, meta }: { rows: FilterRow[]; meta
     }])
   }, [pts, by]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const iw = Math.max(260, width - M.left - M.right), ih = 260
+  const iw = Math.max(260, width - M.left - M.right), ih = fitInner(fit, M.top + M.bottom, 140) ?? 260
   const { x, y } = useMemo(() => ({
     x: d3.scaleTime().domain(d3.extent(pts, (p) => p.t) as [Date, Date]).range([0, iw]).nice(),
     y: d3.scaleLog().domain([Math.max(10, (d3.min(pts, (p) => p.h) ?? 100) * 0.8), (d3.max(pts, (p) => p.h) ?? 1000) * 1.25]).range([ih, 0]),

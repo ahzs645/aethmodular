@@ -17,6 +17,7 @@ import { PMF_GROUP } from '@/lib/pmfGroups'
 import { RATIO_GROUP } from '@/lib/viewFields'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { ExcludedNote } from '@/lib/markedRows'
+import { useFitHeight } from '@/lib/chartFit'
 
 const VIEWS = ['Network', 'Tree'] as const
 const THRESHOLDS = ['0.5', '0.6', '0.7', '0.8', '0.9']
@@ -75,7 +76,9 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
   const w = Math.max(280, width)
   const narrow = w < 560
   const short = (f: string) => (narrow && f.length > 18 ? `${f.slice(0, 17)}…` : f)
-  const netH = narrow ? 520 : NETWORK_HEIGHT
+  // in a tile or the one-chart view the network fills the height it is given
+  const fit = useFitHeight()
+  const netH = fit !== null ? Math.max(300, fit) : narrow ? 520 : NETWORK_HEIGHT
   const nw = narrow ? Math.max(w, 600) : w
   const k = Math.min(1, Math.max(0.45, nw / 700))
 

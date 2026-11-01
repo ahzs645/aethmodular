@@ -10,6 +10,7 @@ import { SSA_BY_WAVELENGTH } from '@/lib/aeronet'
 import { meanSe } from '@/lib/aeronetMath'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { colouring, num } from './shared'
+import { fitInner, useFitHeight } from '@/lib/chartFit'
 
 const M = { top: 12, right: 18, bottom: 44, left: 56 }
 const WAVELENGTHS = SSA_BY_WAVELENGTH.map(([w]) => w)
@@ -22,6 +23,7 @@ const WAVELENGTHS = SSA_BY_WAVELENGTH.map(([w]) => w)
 export function AeronetSsaSpectrum({ rows, meta }: { rows: FilterRow[]; meta: MetaFile }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
+  const fit = useFitHeight()
   const tip = useTooltip(wrapRef)
   const col = useMemo(() => colouring(rows, meta), [rows, meta])
   const lines = useMemo(() => {
@@ -32,7 +34,7 @@ export function AeronetSsaSpectrum({ rows, meta }: { rows: FilterRow[]; meta: Me
     }).filter((l) => l.n >= 3)
   }, [rows, col])
 
-  const iw = Math.max(240, Math.min(width - M.left - M.right, 560)), ih = 280
+  const iw = Math.max(240, Math.min(width - M.left - M.right, 560)), ih = fitInner(fit, M.top + M.bottom, 140) ?? 280
   const x = d3.scaleLinear().domain([400, 1060]).range([0, iw])
   const lo = d3.min(lines, (l) => d3.min(l.pts, (p) => (p.mean ?? 1) - (p.se ?? 0))) ?? 0.8
   const hi = d3.max(lines, (l) => d3.max(l.pts, (p) => (p.mean ?? 0) + (p.se ?? 0))) ?? 1

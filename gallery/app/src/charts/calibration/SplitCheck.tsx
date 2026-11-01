@@ -16,6 +16,7 @@ import { useMac } from '@/lib/mac'
 import { ChartAside } from '@/lib/singleView'
 import { ExcludedNote, useCountedFilter, useExclMode, useExclusionSplit } from '@/lib/markedRows'
 import { useEstimator } from '@/lib/regressionPrefs'
+import { useFitHeight } from '@/lib/chartFit'
 
 const SPLIT_LABEL: Record<string, string> = { all: 'all filters', early: 'early half', late: 'late half', odd: 'odd half', even: 'even half' }
 const SPLIT_COLOR: Record<string, string> = { get all() { return INK.text }, early: '#E67E22', late: '#3498DB', odd: '#27AE60', even: '#8e44ad' }
@@ -37,7 +38,7 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
-  const height = 300
+  const height = useFitHeight() ?? 300
 
   const gallery = useMac()
   const isFabs = run.ref_kind === 'fabs'
