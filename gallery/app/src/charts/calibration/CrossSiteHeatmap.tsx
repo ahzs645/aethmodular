@@ -1,10 +1,8 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
-import { ColorLegend } from '@/components/ColorLegend'
-import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip } from '@/hooks/useTooltip'
-import { INK, FONT, inkOn } from '@/lib/theme'
+import { HeatMatrix } from '@/components/HeatMatrix'
+import { INK } from '@/lib/theme'
 import type { CalibFile, CalibRow } from '@/lib/types'
 import { configKey, fmtFit, passes, sameConfig, score, shortConfig, type Config } from './common'
 import { METRIC } from '@/lib/labels'
@@ -24,10 +22,6 @@ type Cell = (typeof CELLS)[number]
  * quirk. Quote OFFSET_ADJUDICATION_2026-08-23 for the weighted numbers.
  */
 export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFile; selected: Config; onSelect: (c: Config) => void }) {
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(wrapRef)
-  const tip = useTooltip(wrapRef)
-
   const [cell, setCell] = useState<Cell>('Deming intercept')
   const [topN, setTopN] = useState('15')
   const [mode] = useState('site_heldout')
@@ -70,10 +64,12 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
     return d3.scaleQuantize<string>().domain([0, 1]).range(seqColours.stops)
   }, [cell, divColours.stops.join(), seqColours.stops.join()]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const labelW = 250
-  const cellW = Math.max(70, Math.min(140, (width - labelW - 20) / Math.max(1, targets.length)))
-  const rowH = 26
-  const innerH = rows.length * rowH
+  const rowItems = useMemo(() => rows.map((cfg) => {
+    const on = sameConfig(cfg, selected)
+    return { key: configKey(cfg), label: shortConfig(cfg), mono: true, color: on ? INK.text : INK.muted, weight: on ? 600 : 400 }
+  }), [rows, selected])
+  const colItems = useMemo(() => targets.map((t) => ({ key: t, label: calib.targets[t]?.site ?? t, color: calib.targets[t]?.color ?? INK.text })), [targets, calib.targets])
+  const selIdx = rows.findIndex((c) => sameConfig(c, selected))
 
   return (
     <ChartFrame
@@ -88,68 +84,24 @@ export function CrossSiteHeatmap({ calib, selected, onSelect }: { calib: CalibFi
         </>
       }
     >
-      <div ref={wrapRef} className="chart-wrap centered">
-        {rows.length === 0 || targets.length === 0 ? (
-          <Empty>No cross-site rows in the export.</Empty>
-        ) : (
-          // the cells (not cells + row labels) sit in the middle of the panel when there is room; left-aligned when not
-          <svg width={labelW + targets.length * cellW + 4} height={innerH + 40}
-            style={{ display: 'block', marginLeft: `max(0px, calc(50% - ${labelW + (targets.length * cellW) / 2}px))` }}>
-            <g transform={`translate(${labelW},30)`}>
-              {targets.map((t, j) => (
-                <text key={t} x={j * cellW + cellW / 2} y={-10} textAnchor="middle" fontSize={11.5} fontWeight={600} fill={calib.targets[t]?.color ?? INK.text} fontFamily={FONT.family}>
-                  {calib.targets[t]?.site ?? t}
-                </text>
-              ))}
-              {rows.map((cfg, i) => {
-                const isSel = sameConfig(cfg, selected)
-                return (
-                  <g key={configKey(cfg)} transform={`translate(0,${i * rowH})`} style={{ cursor: 'pointer' }} onClick={() => onSelect(cfg)}>
-                    <text x={-8} y={rowH / 2} dy="0.32em" textAnchor="end" fontSize={11} fill={isSel ? INK.text : INK.muted} fontWeight={isSel ? 600 : 400} fontFamily={FONT.mono}>
-                      {shortConfig(cfg)}
-                    </text>
-                    {targets.map((t, j) => {
-                      const r = byKey.get(`${configKey(cfg)}|${t}`)
-                      const v = valueOf(r)
-                      return (
-                        <g key={t}>
-                          <rect x={j * cellW} y={1} width={cellW - 2} height={rowH - 2} rx={2} fill={v === null ? INK.empty : color(v)} stroke={isSel ? INK.text : INK.panel} strokeWidth={isSel ? 1.2 : 1}
-                            onMouseEnter={(e) => r && tip.show(e, [
-                              `${shortConfig(cfg)} @ ${calib.targets[t]?.site ?? t}`,
-                              `${METRIC.k}: ${r.k}`,
-                              `Test set Deming ${fmtFit(r.dm, r.db)} · R² ${r.r2?.toFixed(3) ?? '—'}`,
-                              `${METRIC.cvR2}: ${r.ho?.toFixed(3) ?? '—'}`,
-                            ])}
-                            onMouseLeave={tip.hide}
-                          />
-                          {v !== null && (
-                            <text x={j * cellW + cellW / 2} y={rowH / 2} dy="0.32em" textAnchor="middle" fontSize={10.5} fontFamily={FONT.mono} fill={inkOn(color(v))} pointerEvents="none">
-                              {cell === 'R²' ? v.toFixed(2) : v.toFixed(2)}
-                            </text>
-                          )}
-                        </g>
-                      )
-                    })}
-                  </g>
-                )
-              })}
-            </g>
-          </svg>
-        )}
-        <div className="legend">
-          <ColorLegend
-            scale={color}
-            scheme={colours.scheme}
-            label={cell === 'Deming intercept' ? 'Test set Deming intercept (µg/m³)' : `Test set ${cell}`}
-            width={200}
-            ticks={cell === 'R²' ? 5 : 6}
-            format={(v) => (cell === 'Deming intercept' ? (v > 0 ? `+${v}` : String(v)) : String(v))}
-            note={cell === 'Deming intercept' ? 'white = 0 · clamped at ±6' : cell === 'Deming slope' ? 'white = slope 1' : undefined}
-          />
-          <span className="legend-note">grey cell = not evaluated at that site</span>
-        </div>
-        {tip.node}
-      </div>
+      {rows.length === 0 || targets.length === 0 ? (
+        <Empty>No cross-site rows in the export.</Empty>
+      ) : (
+        // the cells (not cells + row labels) sit in the middle of the panel when there is room
+        <HeatMatrix rows={rowItems} columns={colItems} center cellWidth={[70, 140]} cellHeight={26} gap={2} radius={2} maxLabelWidth={250}
+          colLabels="horizontal" colLabelSize={11.5} colLabelWeight={600} labelSize={10.5} color={color} format={(v) => v.toFixed(2)}
+          onRow={(i) => onSelect(rows[i])}
+          cell={(i, j) => {
+            const cfg = rows[i], t = targets[j], r = byKey.get(`${configKey(cfg)}|${t}`), v = valueOf(r)
+            return { value: v, outline: i === selIdx, stroke: INK.panel,
+              tip: r ? [`${shortConfig(cfg)} @ ${calib.targets[t]?.site ?? t}`, `${METRIC.k}: ${r.k}`, `Test set Deming ${fmtFit(r.dm, r.db)} · R² ${r.r2?.toFixed(3) ?? '—'}`, `${METRIC.cvR2}: ${r.ho?.toFixed(3) ?? '—'}`]
+                : [`${shortConfig(cfg)} @ ${calib.targets[t]?.site ?? t}`, 'not evaluated at that site'] }
+          }}
+          legend={{ scheme: colours.scheme, label: cell === 'Deming intercept' ? 'Test set Deming intercept (µg/m³)' : `Test set ${cell}`, width: 200, ticks: cell === 'R²' ? 5 : 6,
+            format: (v) => (cell === 'Deming intercept' ? (v > 0 ? `+${v}` : String(v)) : String(v)),
+            note: cell === 'Deming intercept' ? 'white = 0 · clamped at ±6' : cell === 'Deming slope' ? 'white = slope 1' : undefined }}
+          legendExtra={<span className="legend-note">grey cell = not evaluated at that site</span>} />
+      )}
       <FixedSetNote what="the explorer's saved readouts at every site, on its own test sets" />
     </ChartFrame>
   )

@@ -19,7 +19,8 @@ import { HitLayer } from '@/components/HitLayer'
 import { useFilterEdits } from '@/lib/filterEdits'
 import { RESTATES, isBookkeeping, sameProduct } from '@/fieldLineage'
 import { corrMatrix, fmt, regression } from '@/lib/stats'
-import { INK, FONT, inkOn } from '@/lib/theme'
+import { INK, FONT } from '@/lib/theme'
+import { HeatCell } from '@/components/HeatCell'
 import { useColourScheme } from '@/lib/colourSchemes'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { useFitHeight } from '@/lib/chartFit'
@@ -187,25 +188,12 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
                   const cy = i * cell
                   const rad = (cell / 2 - 1.5) * Math.sqrt(Math.abs(r))
                   return (
-                    <g
-                      key={`${i}-${j}`}
-                      onMouseEnter={(e) =>
-                        tip.show(e, [fa, `vs ${fb}`, `r = ${fmt(r, 3)} · R² = ${fmt(r * r, 3)}`, `n = ${Math.min(block.n[fa] ?? 0, block.n[fb] ?? 0)}`])
-                      }
-                      onMouseLeave={tip.hide}
-                    >
-                      <rect x={cx} y={cy} width={cell} height={cell} fill={encoding === 'Colour' ? color(r) : INK.panel} stroke={INK.panel} strokeWidth={1} />
+                    <HeatCell key={`${i}-${j}`} x={cx} y={cy} width={cell} height={cell} fill={encoding === 'Colour' ? color(r) : INK.panel} stroke={INK.panel}
+                      label={cell > 26 && encoding === 'Colour' ? r.toFixed(2) : null} fontSize={Math.min(10, cell / 3.4)}
+                      onEnter={(e) => tip.show(e, [fa, `vs ${fb}`, `r = ${fmt(r, 3)} · R² = ${fmt(r * r, 3)}`, `n = ${Math.min(block.n[fa] ?? 0, block.n[fb] ?? 0)}`])}
+                      onLeave={tip.hide}>
                       {encoding === 'Circle size' && <circle cx={cx + cell / 2} cy={cy + cell / 2} r={Math.max(1, rad)} fill={color(r)} />}
-                      {cell > 26 && encoding === 'Colour' && (
-                        <text
-                          x={cx + cell / 2} y={cy + cell / 2} dy="0.34em" textAnchor="middle"
-                          fontSize={Math.min(10, cell / 3.4)} fill={inkOn(color(r))}
-                          fontFamily={FONT.mono} pointerEvents="none"
-                        >
-                          {r.toFixed(2)}
-                        </text>
-                      )}
-                    </g>
+                    </HeatCell>
                   )
                 })
               )}

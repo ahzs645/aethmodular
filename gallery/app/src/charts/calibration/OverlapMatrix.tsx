@@ -1,11 +1,11 @@
 import { useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
-import { ColorLegend } from '@/components/ColorLegend'
+import { HeatMatrix } from '@/components/HeatMatrix'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { INK, FONT, inkOn } from '@/lib/theme'
+import { INK, FONT } from '@/lib/theme'
 import type { OverlapRow } from '@/lib/types'
 import { cohortColor } from './common'
 import { useColourScheme } from '@/lib/colourSchemes'
@@ -65,6 +65,7 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
   const colours = useColourScheme('cohort-overlap', 'sequential')
   const color = d3.scaleQuantize<string>().domain([0, 1]).range(colours.stops)
   const short = (n: string) => n.replace(' (', ' ').replace(')', '')
+  const shortNames = useMemo(() => names.map(short), [names]) // eslint-disable-line react-hooks/exhaustive-deps
   const vnames = useMemo(() => names.filter((n) => !lg.hidden.has(short(n))), [names, lg.hidden])
 
   // ---- chord layout: a symmetric matrix of shared members; the diagonal is
@@ -107,31 +108,16 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
         {names.length < 2 ? (
           <Empty>No overlap rows exported.</Empty>
         ) : view === 'Matrix' ? (
-          <svg width={labelW + size * names.length + 150} height={size * names.length + 150}>
-            <g transform={`translate(${labelW},140)`}>
-              {names.map((n, j) => (
-                <text key={n} transform={`translate(${j * size + size / 2},-8) rotate(-40)`} fontSize={10.5} fill={INK.text} fontFamily={FONT.family}>{short(n)}</text>
-              ))}
-              {names.map((a, i) => (
-                <g key={a} transform={`translate(0,${i * size})`}>
-                  <text x={-8} y={size / 2} dy="0.32em" textAnchor="end" fontSize={10.5} fill={INK.text} fontFamily={FONT.family}>{short(a)}</text>
-                  {names.map((b, j) => {
-                    const diag = i === j
-                    const v = diag ? sizes.get(a) ?? 0 : cell.get(`${a}|${b}`) ?? 0
-                    const frac = diag ? 1 : v / Math.max(1, Math.min(sizes.get(a) ?? 1, sizes.get(b) ?? 1))
-                    return (
-                      <g key={b} onMouseEnter={(e) => tip.show(e, diag ? [a, `${v} filters`] : [`${short(a)} ∩ ${short(b)}`, `${v} shared filters`, `${(frac * 100).toFixed(0)} % of the smaller cohort`])} onMouseLeave={tip.hide}>
-                        <rect x={j * size + 1} y={1} width={size - 2} height={size - 2} rx={3} fill={diag ? INK.empty : color(frac)} stroke={INK.panel} />
-                        <text x={j * size + size / 2} y={size / 2} dy="0.32em" textAnchor="middle" fontSize={10.5} fontFamily={FONT.mono} fill={inkOn(diag ? INK.empty : color(frac))} pointerEvents="none">
-                          {v}
-                        </text>
-                      </g>
-                    )
-                  })}
-                </g>
-              ))}
-            </g>
-          </svg>
+          <HeatMatrix rows={shortNames} columns={shortNames} center cellWidth={size} cellHeight="square" gap={2} radius={3} colLabels="rotate" colLabelSize={10.5} rowLabelSize={10.5}
+            labelSize={10.5} maxLabelWidth={labelW} color={color}
+            cell={(i, j) => {
+              const a = names[i], b = names[j], diag = i === j
+              const v = diag ? sizes.get(a) ?? 0 : cell.get(`${a}|${b}`) ?? 0
+              const frac = diag ? 1 : v / Math.max(1, Math.min(sizes.get(a) ?? 1, sizes.get(b) ?? 1))
+              return { value: frac, fill: diag ? INK.empty : color(frac), label: String(v), stroke: INK.panel,
+                tip: diag ? [a, `${v} filters`] : [`${short(a)} ∩ ${short(b)}`, `${v} shared filters`, `${(frac * 100).toFixed(0)} % of the smaller cohort`] }
+            }}
+            legend={{ scheme: colours.scheme, label: 'shared, as % of the smaller cohort', format: (v) => `${Math.round(v * 100)} %`, width: 160 }} />
         ) : (
           <svg width={width} height={2 * R + 190}>
             <g transform={`translate(${width / 2},${R + 95})`} fontFamily={FONT.family}>
@@ -182,11 +168,7 @@ export function OverlapMatrix({ rows }: { rows: OverlapRow[] }) {
             </g>
           </svg>
         )}
-        {view === 'Matrix' ? (
-          <div className="legend">
-            <ColorLegend scale={color} scheme={colours.scheme} label="shared, as % of the smaller cohort" format={(v) => `${Math.round(v * 100)} %`} width={160} />
-          </div>
-        ) : (
+        {view !== 'Matrix' && (
           <Legend
             items={names.map((n) => ({ label: short(n), color: colorForCohort(n) }))}
             {...lg.props}
