@@ -287,13 +287,25 @@ uv run python gallery/data/export_etad_ids.py                 # similarity/etad_
 
 Before adding a constant, picker or chart to a page, use the shared one
 (full list and what is still open: `docs/gallery-chart-standards.md` §4b):
-colours, regions and trace styles in `lib/theme.ts`; names and axis titles in
-`lib/labels.ts`; number formats in `lib/format.ts`; season names and the two
-Addis calendars in `lib/seasons.ts`; every data file through `lib/data.ts`
-(`useExport`, `loadJson`) and spectra through `lib/similarity.loadTraces`;
-`components/Pickers`, `Crossplot`, `Key`, `SpectralRegions`, `IntervalStrip`
-and `ExportState` for the recurring UI. URL keys must be unique across pages
-(development builds warn when two controls share one).
+colours, regions and trace styles in `lib/theme.ts`, site and season colours
+through `lib/siteColours.ts` (`siteColor`, `seasonColor`; never
+`meta.sites.find(...)?.color`) and categorical series from `lib/palettes.ts`;
+names and axis titles in `lib/labels.ts`; number formats in `lib/format.ts`;
+every statistic in `lib/stats.ts`; season names and the two Addis calendars in
+`lib/seasons.ts`; every data file through `lib/data.ts` (`useExport`,
+`loadJson`, `useLoaded` for any other load, never a hand-written `let live`
+effect) with `LoadState` / `ExportState` for loading and errors, and spectra
+through `lib/similarity.loadTraces`; label room from `lib/fitLabel.ts`;
+`components/Pickers`, `Controls` (`Select`, `Segmented`, `Toggle`, also
+importable from `ChartFrame`), `Crossplot`, `Key`, `SpectralRegions`,
+`IntervalStrip`, `Dialog` and `FindingsList` for the recurring UI. URL keys
+must be unique across pages (development builds warn when two controls share
+one); view settings live in `useChartOptions` or `useSearchParam`, and a moved
+key lists the old one in `legacy`.
+
+A mark that is not a filter point (a bar, a cell, a band) takes the gallery
+tooltip with `tip.bind(body)` and no native `<title>` beside it;
+`src/lib/tooltips.test.mjs` fails on a file with both.
 
 Any chart that draws filters as points (a crossplot, a timeline, a strip of
 dots) draws them through `components/ScatterLayer`: it gives the linked hover,
@@ -310,12 +322,21 @@ hover that names a trace or reads out every line, pin linked to the page
 through `highlight={useHighlight()}`), `SweepPlot` (a metric against k, a
 cutoff, a rank, a stage or a date: bands or whiskers, the agreement line,
 labelled markers, the chosen setting ringed, clipped points drawn hollow at
-the edge) and `IntervalStrip` (dot-interval rows). `FacetGrid` lays out small
+the edge) and `IntervalStrip` (dot-interval rows). Beside them: `ScatterPlot` for an
+x-y scatter of two different quantities (log, time or category axes),
+`HeatMatrix` (and `SiteMonthMatrix`) for every heat map, `BarRows` for
+labelled horizontal bars, and `StackedPanels` for panels stacked on one time
+axis. `FacetGrid` lays out small
 multiples (one panel per site or season); `Panels` lays out a composite
-(different charts in one frame, e.g. a crossplot beside its threshold sweep).
-Both share the panel chrome: a title row with a/b letters and a readout, ⤢ to
-open a panel larger, and in a Dashboard tile each panel's share of the height.
-Do not wrap panels in a hand-made `flexWrap` div with width arithmetic. Each takes a `children` render prop for the odd extra mark, so a
+(different charts in one frame, e.g. a crossplot beside its threshold sweep);
+`PanelGrid` is the research and meeting `Grid`.
+All three share the panel chrome (a title row with a/b letters and a readout, ⤢ to
+open a panel larger, and in a Dashboard tile each panel's share of the height)
+and the panel group (`components/PanelGroup`): `share` gives the charts inside
+one axis range, `legend` is drawn once, `show`/`order`/`pick` choose the
+panels, and a chart that lets the reader pick its panels uses `usePanelPick`
+with `PanelPicker`. Never compute a shared domain by hand, and
+do not wrap panels in a hand-made `flexWrap` div with width arithmetic. Each takes a `children` render prop for the odd extra mark, so a
 chart that needs one more line does not have to be rebuilt from scratch.
 
 ### Declaring a figure or a whole meeting
@@ -331,7 +352,7 @@ columns of a long table (one row per point) to use.
 
 Kinds: `crossplot`, `spectrum`, `sweep`, `intervals` (median and interval per
 row and series, summarised in the browser from repeated splits), `histogram`
-(densities on shared, optionally log, bins), `heatmap`, `table`, and `custom`
+(densities on shared, optionally log, bins), `heatmap`, `bars`, `table`, and `custom`
 for anything a description cannot say (linked charts, live refits): a
 component registered with `registerFigure(name, Component)`. `choose` adds a
 control that keeps the rows with the picked value of a column; `where`

@@ -416,6 +416,18 @@ do not work around it in your chart, copy it, or write a second version
 beside it. If two charts need the same new thing, it belongs in
 `components/` or `lib/`, not in either chart.
 
+The pieces most often re-written by hand, and where they live: site and
+season colours (`lib/siteColours`, never `meta.sites.find(...)?.color` or a
+typed Tableau hex), statistics (`lib/stats` only), loading (`lib/data`
+`useLoaded`/`useExport` with `LoadState`, never a `let live` effect), label
+gutters (`lib/fitLabel`, never characters × px), modals (`components/Dialog`),
+heat maps (`HeatMatrix`, `SiteMonthMatrix`), bar rows (`BarRows`), x-y
+scatters of two different quantities (`ScatterPlot`), panels on one time axis
+(`StackedPanels`), multi-panel figures (`Panels`, `FacetGrid` and `PanelGrid`,
+with the panel group's `share` for shared ranges and `usePanelPick` for the
+reader's panel choice). Tooltips on bars, cells and bands use `tip.bind`, never
+a native `<title>` beside it (`gallery/app/src/lib/tooltips.test.mjs`).
+
 **Points that stand for filters** (crossplots, timelines, strips, outliers)
 go through `components/ScatterLayer.tsx`. Give it the marks (memoised with
 `useMemo`, not depending on the hover), their positions (`xy`, memoised), the
@@ -579,7 +591,9 @@ Do:
 - Gallery charts (`gallery/app/src/charts/`): a new chart reads its height
   from `useFitHeight()` (`lib/chartFit`; null outside a Dashboard tile, so it
   keeps its own height elsewhere), keeps view settings in `useChartOptions` or
-  `useTileSetting` rather than bare `useState`, draws one `ChartFrame`, and
+  `useSearchParam` rather than bare `useState` (`useTileSetting` is now an
+  alias of `useSearchParam`; a moved key lists the old one in `legacy`), draws
+  one `ChartFrame`, and
   registers itself in `components/dashboard/registry.tsx` so the Dashboard's
   Add chart menu offers it. Run `npm run index:charts` after adding one.
 
