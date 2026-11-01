@@ -25,7 +25,7 @@ import { useColourScheme } from '@/lib/colourSchemes'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { NO_PMF, PMF_SOURCE } from '@/lib/pmfGroups'
 import { ChartSite, useChartLabel, useFitHeight } from '@/lib/chartFit'
-import { useSearchParam, useTileSetting } from '@/lib/url'
+import { useSearchParam } from '@/lib/url'
 import { GroupingPicker, useGroupings } from '@/components/GroupingDialog'
 import { NO_BAND_COLOR, applyGrouping, noBandLabel } from '@/lib/groupings'
 import { ChartAside } from '@/lib/singleView'
@@ -103,12 +103,12 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
   const { hidden, setHidden, dim, hover, setHover } = useLegend()
   // the reader's colour field, or Iron, or the first field, among the fields this view has now: the
   // chart can mount while a network's fields are still loading (empty), or keep a field the next network lacks
-  const [colorParam, setColorParam] = useTileSetting<string>('scatter.colorField', '')
+  const [colorParam, setColorParam] = useSearchParam<string>('scatter.colorField', '')
   const colorChoice = colorParam || null
   const setColorField = (f: string | null) => setColorParam(f ?? '')
   const hasPmf = !!meta.pmf_groups?.length && rows.some((r) => typeof r[PMF_SOURCE] === 'string')
   const colorField = [colorChoice, 'Iron', meta.fields[0]].find((f): f is string => !!f && (meta.fields.includes(f) || (f === PMF_COLOUR && hasPmf))) ?? ''
-  const [sizeField, setSizeField] = useTileSetting<string>('scatter.size', NO_SIZE)
+  const [sizeField, setSizeField] = useSearchParam<string>('scatter.size', NO_SIZE)
   const nSiteSet = useMemo(() => new Set(rows.map((r) => r.site)), [rows])
   const nSites = nSiteSet.size
   // the options and when each applies (lib/chartOptions). Fits are per panel, so the grouping

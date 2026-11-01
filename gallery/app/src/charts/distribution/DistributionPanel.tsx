@@ -15,7 +15,7 @@ import { useChartGrouping } from '@/components/GroupingDialog'
 import { MeasurementControl } from '@/components/AxisFieldPopover'
 import { CategoryAxis, categoryAxisHeight } from '@/components/CategoryAxis'
 import { useDashboardDetails } from '@/lib/dashboardDetails'
-import { useTileSetting } from '@/lib/url'
+import { useSearchParam } from '@/lib/url'
 import { ExcludedNote, toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 
 const MODES = ['Boxplot', 'Box + points', 'Violin', 'Beeswarm'] as const
@@ -47,9 +47,9 @@ export function DistributionPanel({ rows, meta, field }: { rows: FilterRow[]; me
   const hl = useHighlightActions()
   const height = useFitHeight() ?? 440
 
-  const [groupChoice, setGroupBy] = useTileSetting<(typeof GROUPS)[number]>('distribution.by', 'Site')
-  const [mode, setMode] = useTileSetting<(typeof MODES)[number]>('distribution.encoding', 'Boxplot')
-  const [comparison, setComparison] = useTileSetting<'Pooled' | 'Compare sites'>('distribution.compare', 'Compare sites')
+  const [groupChoice, setGroupBy] = useSearchParam<(typeof GROUPS)[number]>('distribution.by', 'Site')
+  const [mode, setMode] = useSearchParam<(typeof MODES)[number]>('distribution.encoding', 'Boxplot')
+  const [comparison, setComparison] = useSearchParam<'Pooled' | 'Compare sites'>('distribution.compare', 'Compare sites')
 
   // Group: the reader's grouping (components/GroupingDialog), its bands in order, on the filters that carry the field
   const measured = useMemo(() => rows.filter((r) => typeof r[field] === 'number' && Number.isFinite(r[field] as number)), [rows, field])

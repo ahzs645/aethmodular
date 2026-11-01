@@ -16,7 +16,7 @@ import { ScatterLayer } from '@/components/ScatterLayer'
 import { FONT, INK } from '@/lib/theme'
 import { Toggle } from '@/components/ChartFrame'
 import { styleBrush } from '@/lib/brush'
-import { useTileSetting } from '@/lib/url'
+import { useSearchParam } from '@/lib/url'
 import { ChartAside } from '@/lib/singleView'
 import { useCountedFilter, useExclMode, useMarkReason, type MarkPoint } from '@/lib/markedRows'
 
@@ -238,7 +238,7 @@ export function Crossplot({ points, marked, title, xLabel, yLabel, maxSide = 360
 
 /** the crossplot brush on/off, per tile; a chart drawing several crossplots holds one for all of them */
 export function useCrossplotBrush(): [boolean, (on: boolean) => void] {
-  const [setting, set] = useTileSetting<string>('crossplot.brush', '0')
+  const [setting, set] = useSearchParam<string>('crossplot.brush', '0')
   return [setting === '1', (on) => set(on ? '1' : '0')]
 }
 
