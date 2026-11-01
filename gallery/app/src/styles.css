@@ -644,6 +644,12 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 .panel-note { font-family: var(--mono); font-weight: 400; font-size: calc(11px * var(--text-scale)); color: var(--ink-muted); white-space: nowrap; }
 .panel-expand-inline { padding: 2px 4px; line-height: 0; color: var(--ink-muted); }
 .panel-expand-inline:hover { color: var(--ink-text); }
+.panel-expand-float { position: absolute; top: 0; right: 0; padding: 2px 4px; line-height: 0; color: var(--ink-muted); opacity: 0; transition: opacity 0.12s; }
+.panel-cell:hover > .panel-expand-float, .panel-expand-float:focus-visible { opacity: 1; }
+.panel-expand-float:hover { color: var(--ink-text); }
+@media (hover: none) { .panel-expand-float { opacity: 0.6; } }
+/* a panel group's own control row (components/PanelGroup): the hoisted fit grouping, Panel axes */
+.frame-controls.panel-group-controls { margin-bottom: 6px; padding-bottom: 0; border-bottom: 0; }
 .facet-legend .legend { padding: 0 0 4px; gap: 4px 12px; }
 
 /* SVG marks that should animate when the data behind them changes */

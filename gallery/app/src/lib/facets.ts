@@ -60,3 +60,68 @@ export function fitColumns(width: number, need: number, n: number, { gap = 12, m
   if (n <= 1 || need <= 0) return 1
   return Math.max(1, Math.min(n, max, Math.floor((width + gap) / (need + gap))))
 }
+
+/**
+ * Wrapped composite layout (components/Panels `wrap`, the research and meeting `Grid`): one row while every panel's
+ * `min` fits (panelRow), else equal columns as many as the widest `min` allows, the panels flowing into rows
+ * (what `repeat(auto-fit, minmax(min, 1fr))` did by hand). One column is a stack. `cols` is the column count,
+ * `rows` the row count; widths are whole pixels.
+ */
+export function panelWrap(width: number, panels: PanelSize[], gap = 24): { stacked: boolean; cols: number; rows: number; widths: number[] } {
+  const n = panels.length
+  const row = panelRow(width, panels, gap)
+  if (!row.stacked) return { stacked: false, cols: Math.max(1, n), rows: 1, widths: row.widths }
+  const need = Math.max(...panels.map((p) => p.min ?? 240))
+  const cols = Math.max(1, Math.min(n, Math.floor((width + gap) / (need + gap))))
+  if (cols <= 1) return { stacked: true, cols: 1, rows: n, widths: row.widths }
+  const cell = Math.floor((width - gap * (cols - 1)) / cols)
+  return { stacked: false, cols, rows: Math.ceil(n / cols), widths: panels.map((p) => Math.floor(Math.min(p.max ?? Infinity, cell))) }
+}
+
+/**
+ * Which panels a group draws, and in what order (components/Panels and FacetGrid `show` / `order`): the indices of
+ * `keys` to draw. `show` keeps only those keys (unknown keys are ignored; an empty list or none keeps every panel);
+ * `order` puts the keys it names first, in its order, and the rest after them in their own order.
+ */
+export function pickPanels(keys: readonly string[], show?: readonly string[] | null, order?: readonly string[] | null): number[] {
+  const keep = show && show.length ? new Set(show) : null
+  const idx = keys.map((_, i) => i).filter((i) => !keep || keep.has(keys[i]))
+  if (!order || !order.length) return idx
+  const rank = new Map(order.map((k, r) => [k, r] as const))
+  const at = (i: number) => rank.get(keys[i]) ?? order.length
+  return idx.map((i, pos) => ({ i, pos })).sort((a, b) => at(a.i) - at(b.i) || a.pos - b.pos).map((e) => e.i)
+}
+
+/** a numeric range [lo, hi] */
+export type Extent = [number, number]
+
+/** the union of ranges, ignoring missing or non-finite ones; null when none is left */
+export function unionExtent(extents: Iterable<Extent | null | undefined>): Extent | null {
+  let lo = Infinity, hi = -Infinity
+  for (const e of extents) {
+    if (!e || !Number.isFinite(e[0]) || !Number.isFinite(e[1])) continue
+    lo = Math.min(lo, e[0], e[1]); hi = Math.max(hi, e[0], e[1])
+  }
+  return lo <= hi ? [lo, hi] : null
+}
+
+/** the finite extent of some values, or null */
+export function extentOf(values: Iterable<number | null | undefined>): Extent | null {
+  let lo = Infinity, hi = -Infinity
+  for (const v of values) if (v != null && Number.isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v }
+  return lo <= hi ? [lo, hi] : null
+}
+
+/**
+ * Shared axis ranges for a panel group (components/PanelGroup): each registration is one chart's own data range on one
+ * axis, filed under its range group (lib/axes panelAxesKey: '' for Shared, the site for Per site, the panel for Own).
+ * Returns the union per `${group}|${axis}`, so every panel of a range group draws the same range.
+ */
+export function groupExtents(regs: Iterable<{ group: string; axis: string; extent: Extent }>): Map<string, Extent> {
+  const out = new Map<string, Extent>()
+  for (const r of regs) {
+    const k = `${r.group}|${r.axis}`, u = unionExtent([out.get(k), r.extent])
+    if (u) out.set(k, u)
+  }
+  return out
+}
