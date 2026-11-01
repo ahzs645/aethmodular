@@ -121,7 +121,7 @@ export const keyOf = (codes: readonly string[]): string => [...new Set(codes)].s
 export const codesOf = (key: string): string[] => (key ? key.split(',') : [])
 
 export interface LoadOptions {
-  /** keep the last key's data up while the next key loads (see `settle`) */
+  /** keep the last successful load up while the next key loads, and beside its error (see `settle`) */
   keep?: boolean
   /** other inputs that should reload the same key (a snapshot's loader from `useJsonLoader`) */
   deps?: DependencyList
