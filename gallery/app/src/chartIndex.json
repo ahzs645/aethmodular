@@ -898,7 +898,7 @@
   {
    "title": "Completed rank 70 · paired EC diagnostics",
    "id": "rank70-paired",
-   "component": "CompletedPairedViews",
+   "component": "PairedViews",
    "tab": "baseline",
    "file": "pages/BaselineComparisonPage.tsx"
   },
