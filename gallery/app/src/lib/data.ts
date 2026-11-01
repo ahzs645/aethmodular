@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, type DependencyList } from 'react'
 
 /**
  * Every exported file the gallery reads goes through here: one base path, one
@@ -74,20 +74,107 @@ export function useJsonLoader() {
  */
 export function useExport<T>(path: string | null, check?: (data: T) => string | null | undefined | void): { data: T | null; error: string; loading: boolean } {
   const loader = useJsonLoader()
-  const [state, setState] = useState<{ path: string; data: T | null; error: string } | null>(null)
+  // check is a pure validator of the same file, so the path stands for it
+  const { data, error, loading } = useLoaded<T>(path, () => loader<T>(path!).then((d) => {
+    const problem = check?.(d)
+    if (problem) throw new Error(`${path}: ${problem}`)
+    return d
+  }), { deps: [loader] })
+  return { data, error, loading }
+}
+
+/** The message of a failed load, as the loading panels print it (components/ExportState). */
+export const errorText = (e: unknown): string => String(e instanceof Error ? e.message : e)
+
+/** What a loading hook hands back. */
+export interface Loaded<T> {
+  /** the result once it has landed for the current key (or, with `keep`, the last one that did); null otherwise */
+  data: T | null
+  /** why the current key failed to load ('' while loading and on success) */
+  error: string
+  /** a load for the current key is in flight */
+  loading: boolean
+  /** the key `data` was loaded for: the current key, an older one while a `keep` load is in flight, or null */
+  key: string | null
+}
+
+/** One settled load: the key it was for, and its result or error. */
+export interface Settled<T> { key: string; data: T | null; error: string }
+
+/**
+ * What a loading hook shows for `key` given the last load that settled (pure, so it is node-tested).
+ * A load for another key is never shown, except with `keep`: then its data stays up (no error, loading)
+ * until the current key lands, so a chart does not blank between two picks. A null key loads nothing.
+ */
+export function settle<T>(last: Settled<T> | null, key: string | null, keep = false): Loaded<T> {
+  if (key === null) return { data: null, error: '', loading: false, key: null }
+  if (last && last.key === key) return { data: last.data, error: last.error, loading: false, key }
+  if (keep && last && last.data !== null) return { data: last.data, error: '', loading: true, key: last.key }
+  return { data: null, error: '', loading: true, key: null }
+}
+
+/** A list of codes as one request key: order and repeats do not matter. */
+export const keyOf = (codes: readonly string[]): string => [...new Set(codes)].sort().join(',')
+/** The codes of a `keyOf` key. */
+export const codesOf = (key: string): string[] => (key ? key.split(',') : [])
+
+export interface LoadOptions {
+  /** keep the last key's data up while the next key loads (see `settle`) */
+  keep?: boolean
+  /** other inputs that should reload the same key (a snapshot's loader from `useJsonLoader`) */
+  deps?: DependencyList
+}
+
+/**
+ * Anything asynchronous a component needs, run once per `key` and dropped if the component has moved on
+ * (another key, or unmounted) before it lands; the one place the gallery writes that "live" guard.
+ * `key` stands for every input of `load` (`null` loads nothing); `load` itself may be a fresh closure on
+ * every render. Put the files it reads through loadJson/loadBinary/loadDerived so they share the cache.
+ *
+ *   const runs = useLoaded(code, () => loadJson<Runs>(`runs/${code}.json`))
+ *   const files = useLoaded(keyOf(codes), () => Promise.all(...), { keep: true })
+ */
+export function useLoaded<T>(key: string | null, load: () => Promise<T>, { keep = false, deps = [] }: LoadOptions = {}): Loaded<T> {
+  const [last, setLast] = useState<Settled<T> | null>(null)
   useEffect(() => {
-    if (!path) return
+    if (key === null) return
     let live = true
-    loader<T>(path)
-      .then((d) => {
-        const problem = check?.(d)
-        if (live) setState({ path, data: problem ? null : d, error: problem ? `${path}: ${problem}` : '' })
-      })
-      .catch((e) => { if (live) setState({ path, data: null, error: String(e instanceof Error ? e.message : e) }) })
+    load().then(
+      (data) => { if (live) setLast({ key, data, error: '' }) },
+      (e) => { if (live) setLast({ key, data: null, error: errorText(e) }) })
     return () => { live = false }
-    // check is a pure validator of the same file
+    // key stands for load's inputs; deps adds what a key cannot name
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, loader])
-  const current = state && state.path === path ? state : null
-  return { data: current?.data ?? null, error: current?.error ?? '', loading: !!path && !current }
+  }, [key, ...deps])
+  return settle(last, key, keep)
+}
+
+/**
+ * A value derived from loaded files (an index, a decoded table, a relabelled export), built once per session
+ * under `key` in the shared cache (`loadDerived`) and handed to the component as `useLoaded` does.
+ */
+export function useDerived<T>(key: string | null, build: () => Promise<T>, options?: LoadOptions): Loaded<T> {
+  return useLoaded(key, () => loadDerived(key!, build), options)
+}
+
+/**
+ * One file (or value) per code, each appearing as it lands: `{ code: data }`, with null for a code whose
+ * load failed and no entry while it loads. Codes dropped from the list keep their entries (the record only
+ * grows), so switching back is instant. For the sites a page shows, one exported file each.
+ */
+export function useEach<T>(codes: readonly string[], load: (code: string) => Promise<T>, deps: DependencyList = []): Record<string, T | null> {
+  const [files, setFiles] = useState<Record<string, T | null>>({})
+  const key = keyOf(codes)
+  useEffect(() => {
+    let live = true
+    for (const code of codesOf(key)) {
+      load(code).then(
+        (d) => { if (live) setFiles((f) => (f[code] === d ? f : { ...f, [code]: d })) },
+        () => { if (live) setFiles((f) => (f[code] === null ? f : { ...f, [code]: null })) })
+    }
+    return () => { live = false }
+    // key stands for the codes; deps adds what it cannot name
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, ...deps])
+  return files
 }

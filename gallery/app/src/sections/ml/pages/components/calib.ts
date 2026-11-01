@@ -3,23 +3,14 @@
  * explorer's summary fits at the rule k under each cross-validation protocol, and its site-grouped sweeps) and
  * calibration_runs.json (per-preset CV curves and the Addis per-filter readouts with HIPS Fabs). Nothing is refitted.
  */
-import { useEffect, useState } from 'react'
-import { loadDerived, loadJson } from '@/lib/data'
+import { useCalibrationFile } from '@/lib/calibrationFiles'
 import type { Row } from '@/lib/table'
 import type { CalibFile, CalibRunsFile } from '@/lib/types'
 
-/** calibration.json through the gallery's cache key and relabelling (hooks/useGalleryData), so a download is shared */
+/** calibration.json through the gallery's cache key and relabelling as the Calibration tab (lib/calibrationFiles), so a download is shared */
 export function useCalib() {
-  const [state, setState] = useState<{ calib: CalibFile | null; error: string }>({ calib: null, error: '' })
-  useEffect(() => {
-    let live = true
-    loadDerived<CalibFile>('gallery:calibration', async () =>
-      JSON.parse(JSON.stringify(await loadJson('calibration.json')).replace(/\bPasadena\b/g, 'JPL')))
-      .then((calib) => { if (live) setState({ calib, error: '' }) })
-      .catch((e) => { if (live) setState({ calib: null, error: String(e instanceof Error ? e.message : e) }) })
-    return () => { live = false }
-  }, [])
-  return state
+  const { data, error } = useCalibrationFile()
+  return { calib: data, error }
 }
 
 /** the three explorer protocols (calibration.json `mo`), named as ftir_51 and the deck name them */

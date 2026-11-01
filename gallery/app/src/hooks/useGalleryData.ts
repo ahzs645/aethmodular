@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { loadDerived, loadJson } from '@/lib/data'
-import { normalizeSiteIdentity } from '@/lib/metricDefinition'
+import { loadJson } from '@/lib/data'
+import { loadCalibration, loadCalibrationRuns } from '@/lib/calibrationFiles'
 import type { CalibFile, CalibRunsFile, CensusFile, FiltersFile, MetaFile, PmfFile } from '@/lib/types'
 import { useTileLegend } from '@/lib/chartFit'
 
@@ -55,10 +55,8 @@ export function useGalleryData(includeCalibration: boolean | 'runs' = false) {
     if (!includeCalibration || !ready) return
     let live = true
     setCalibrationError('')
-    const get = <T,>(name: string) => loadDerived<T>(`gallery:${name}`, async () =>
-      normalizeSiteIdentity(await loadJson<T>(`${name}.json`)))
     const grid = includeCalibration === true
-    Promise.allSettled([grid ? get<CalibFile>('calibration') : Promise.resolve(null), get<CalibRunsFile>('calibration_runs')])
+    Promise.allSettled([grid ? loadCalibration() : Promise.resolve(null), loadCalibrationRuns()])
       .then(([calibration, runs]) => {
         if (!live) return
         setData(d => d ? { ...d,
