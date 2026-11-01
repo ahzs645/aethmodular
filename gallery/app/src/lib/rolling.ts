@@ -27,8 +27,21 @@ const mean = (vs: number[]) => vs.reduce((a, b) => a + b, 0) / vs.length
  * [t − days/2, t + days/2]. Null where the window holds fewer than `minN` finite values.
  */
 export function rollingByTime<T>(pts: readonly T[], dateOf: (p: T) => Date, valueOf: (p: T) => number, spec: RollSpec): { d: Date; v: number | null }[] {
-  const t = pts.map((p) => +dateOf(p)), v = pts.map(valueOf)
-  const span = spec.days * DAY, f = spec.stat === 'mean' ? mean : median
+  const f = spec.stat === 'mean' ? mean : median
+  return rollingBy(pts, dateOf, spec, (win) => {
+    const vs = win.map(valueOf).filter(Number.isFinite)
+    return vs.length >= spec.minN ? f(vs) : null
+  })
+}
+
+/**
+ * Any statistic over the same time windows as rollingByTime (a rolling correlation of pairs, a count): `stat`
+ * gets the points in each window, in order, and returns the value or null. Only `days` and `align` are read;
+ * a minimum count is the statistic's to apply.
+ */
+export function rollingBy<T, V>(pts: readonly T[], dateOf: (p: T) => Date, spec: Pick<RollSpec, 'days' | 'align'>, stat: (win: T[]) => V | null): { d: Date; v: V | null }[] {
+  const t = pts.map((p) => +dateOf(p))
+  const span = spec.days * DAY
   let lo = 0, hi = 0
   return pts.map((p, i) => {
     const [from, to] = spec.align === 'trailing' ? [t[i] - span, t[i]] : [t[i] - span / 2, t[i] + span / 2]
@@ -36,8 +49,7 @@ export function rollingByTime<T>(pts: readonly T[], dateOf: (p: T) => Date, valu
     while (lo < t.length && (spec.align === 'trailing' ? t[lo] <= from : t[lo] < from)) lo++
     if (hi < i + 1) hi = i + 1
     while (hi < t.length && t[hi] <= to) hi++
-    const win = v.slice(lo, hi).filter(Number.isFinite)
-    return { d: dateOf(p), v: win.length >= spec.minN ? f(win) : null }
+    return { d: dateOf(p), v: stat(pts.slice(lo, hi) as T[]) }
   })
 }
 

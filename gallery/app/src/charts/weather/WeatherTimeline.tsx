@@ -1,37 +1,31 @@
 import { useJsonLoader } from '@/lib/data'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { seasonOnly } from '@/lib/seasons'
 import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
-import { AxisTitle, XAxis, YAxis } from '@/components/Axes'
+import { AxisTitle } from '@/components/Axes'
 import type { AxisRole } from '@/components/AxisFieldPopover'
 import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { FieldSelect } from '@/components/FieldSelect'
 import { Legend } from '@/components/Legend'
-import { XIcon } from '@/components/Icons'
-import { useDimensions } from '@/hooks/useGalleryData'
-import { useTooltip, type TipBody } from '@/hooks/useTooltip'
-import { focusStyle, useHighlightActions } from '@/lib/highlight'
-import { ScatterLayer } from '@/components/ScatterLayer'
-import { fidProps } from '@/lib/filterEdits'
+import { PanelPicker } from '@/components/PanelPicker'
+import { DailyLanes, FieldLane, NO_POINTS, dailyDomain, dailyLine, dailyReadout, fieldDomain, fieldPoints, useSiteDaily, type Day } from '@/components/DailyLanes'
+import type { StackPanel } from '@/components/StackedPanels'
+import { useHighlightActions } from '@/lib/highlight'
 import { fmt } from '@/lib/stats'
 import { chemText } from '@/lib/format'
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import { INK, withUnit } from '@/lib/theme'
-import { loadDaily, type DailyWeather } from '@/lib/weather'
+import { loadDaily } from '@/lib/weather'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
-import { useFitHeight } from '@/lib/chartFit'
 import { wrapCategory } from '@/components/CategoryAxis'
-import { useSearchParam } from '@/lib/url'
+import { usePanelPick } from '@/lib/panelPick'
 import { isPmfField, pickerName } from '@/lib/pmfGroups'
-import { toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
 
 // each panel's title stands up beside its y axis, as on any plot: the unit on a line of its own
 // ("Precip." over "(mm/day)"), and a name too long for the panel's height wrapped onto more lines.
 // The left margin grows with the most lines any panel needs (TITLE_LINE each), past the tick labels (TICK_ROOM)
-const M = { top: 10, right: 20, bottom: 30 }
-const PANEL = 92, GAP = 16
 const TITLE_FONT = 11.5, TITLE_LINE = 13, TICK_ROOM = 44
 
 /** the daily weather a panel can show (lib/weather DailyWeather), by panel key */
@@ -43,7 +37,7 @@ const WEATHER: Record<string, { label: string; axis: string }> = {
   blh: { label: 'Boundary-layer height', axis: 'BLH (m)' },
 }
 /** the panels, top to bottom: weather keys, 'field' (the page's measurement) and 'f:<field>' for any other measurement */
-const DEFAULT_PANELS = 'temp|prcp|rh|blh|field'
+const DEFAULT_PANELS = ['temp', 'prcp', 'rh', 'blh', 'field']
 const ADD = 'Add a panel…'
 const weatherOption = (k: string) => `Weather · ${WEATHER[k].label}`
 
@@ -52,30 +46,20 @@ const weatherOption = (k: string) => `Weather · ${WEATHER[k].label}`
  * precipitation, relative humidity and boundary-layer height, above the chosen measurement
  * for each filter on the same time axis, with the site's seasons shaded. The view the Addis
  * notebooks built from the airport station (addis_03_meteorology), for any SPARTAN site.
+ * The lanes, cursor and season shading are components/DailyLanes (shared with the AERONET timeline);
+ * the choice and order of panels is lib/panelPick, kept in the link as `wt.panels`.
  */
 export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]; meta: MetaFile; field: string; site: { name: string; code: string } | null }) {
   const jsonLoader = useJsonLoader()
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const { width } = useDimensions(wrapRef)
-  const tip = useTooltip(wrapRef)
   // the brush only: the filter points read the hover themselves (components/ScatterLayer)
   const hl = useHighlightActions()
-  const [daily, setDaily] = useState<DailyWeather | null>(null)
-  const [error, setError] = useState('')
-  const [panelParam, setPanelParam] = useSearchParam<string>('wt.panels', DEFAULT_PANELS)
-  const [cursor, setCursor] = useState<number | null>(null)
-
-  useEffect(() => {
-    if (!site) return
-    let live = true
-    setDaily(null); setError('')
-    loadDaily(site.code, jsonLoader).then((d) => { if (live) setDaily(d) }).catch(() => { if (live) setError(`No daily weather exported for ${site.name}.`) })
-    return () => { live = false }
-  }, [site, jsonLoader])
+  const load = useCallback((code: string) => loadDaily(code, jsonLoader), [jsonLoader])
+  const { daily, error, domain, days } = useSiteDaily(rows, site, load, (name) => `No daily weather exported for ${name}.`)
 
   // the panels in the URL, in order, keeping only those this page can draw
-  const panels = useMemo(() => [...new Set(panelParam.split('|'))].filter((k) => k in WEATHER || k === 'field' || (k.startsWith('f:') && meta.fields.includes(k.slice(2)))), [panelParam, meta])
-  const setPanels = (ks: string[]) => setPanelParam(ks.join('|'))
+  const allPanels = useMemo(() => [...Object.keys(WEATHER), 'field', ...meta.fields.map((f) => `f:${f}`)], [meta])
+  const pick = usePanelPick('wt', allPanels, DEFAULT_PANELS)
+  const panels = pick.ids
   const fieldOf = (k: string) => (k === 'field' ? field : k.slice(2))
   const isField = (k: string) => k === 'field' || k.startsWith('f:')
   const panelLabel = (k: string) => (k in WEATHER ? WEATHER[k].label : fieldOf(k))
@@ -86,26 +70,14 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
     ...meta.field_groups.flatMap((g) => g.fields.filter((f) => meta.fields.includes(f))
       .map((f) => ({ key: `f:${f}`, group: g.label, label: f, unit: meta.field_units[f] }))),
   ], [meta])
-  // a panel already shown elsewhere trades places with the one being changed
-  const replacePanel = (k: string, v: string) => {
-    if (v === k) return
-    setPanels(panels.map((q) => (q === k ? v : q === v ? k : q)))
-  }
   const addPanel = (v: string) => {
     const w = Object.keys(WEATHER).find((k) => weatherOption(k) === v)
     const k = w ?? (v === field ? 'field' : `f:${v}`)
-    if (v !== ADD && !panels.includes(k)) setPanels([...panels, k])
+    if (v !== ADD && !panels.includes(k)) pick.add(k)
   }
   // each measurement panel's filters at this site
   const fieldKeys = panels.filter(isField).map(fieldOf).join('|')
-  const ptsOf = useMemo(() => new Map(fieldKeys.split('|').filter(Boolean).map((f) => [f, rows.filter((r) => r.site === site?.name && typeof r[f] === 'number')
-    .map((r) => ({ row: r, t: new Date(r.date), v: r[f] as number }))])), [rows, site, fieldKeys])
-  // the filters' own span (with a fortnight either side), so the date brush and site pick decide the window
-  const domain = useMemo<[Date, Date] | null>(() => {
-    const ds = rows.filter((r) => r.site === site?.name).map((r) => new Date(r.date).getTime())
-    if (!ds.length) return null
-    return [new Date(Math.min(...ds) - 14 * 864e5), new Date(Math.max(...ds) + 14 * 864e5)]
-  }, [rows, site])
+  const ptsOf = useMemo(() => new Map(fieldKeys.split('|').filter(Boolean).map((f) => [f, fieldPoints(rows, site?.name, f)])), [rows, site, fieldKeys])
   // the PMF source shares of this site's filters (only where the PMF solution covers the site: lib/pmfGroups withPmf),
   // so hovering the boundary-layer height (or any weather panel) says which sources the filters of those days carry
   const pmfDays = useMemo(() => rows.filter((r) => r.site === site?.name).flatMap((r) => {
@@ -122,157 +94,66 @@ export function WeatherTimeline({ rows, meta, field, site }: { rows: FilterRow[]
     const when = own || !off ? '' : ` (${Math.abs(off)} d ${off < 0 ? 'before' : 'after'})`
     return [`PMF sources${own ? '' : ` · ${p.id}`}${when}:`, ...p.shares.filter(([, v]) => v >= 0.05).slice(0, 4).map(([k, v]) => `· ${pickerName(k)} ${Math.round(v * 100)} %`)]
   }
-  const days = useMemo(() => {
-    if (!daily || !domain) return []
-    return daily.date.map((d, i) => ({ t: new Date(d), i })).filter((x) => x.t >= domain[0] && x.t <= domain[1])
-  }, [daily, domain])
 
-  // in a fitted dashboard tile the panels share its height
-  const fit = useFitHeight()
-  const panelH = fit === null ? PANEL : Math.max(40, (fit - M.top - M.bottom - (panels.length - 1) * GAP) / Math.max(1, panels.length))
   const title = (k: string) => (k in WEATHER ? WEATHER[k].axis : withUnit(fieldOf(k), meta.field_units))
-  // each panel's title as the lines it stands up in: the name wrapped to the panel's height, then its unit
-  const titleLines = new Map(panels.map((k) => [k, axisLines(title(k), panelH - 4)]))
-  const left = TICK_ROOM + 8 + TITLE_LINE * Math.max(1, ...[...titleLines.values()].map((l) => l.length))
-  const innerW = Math.max(240, width - left - M.right)
-  const height = M.top + M.bottom + panels.length * panelH + (panels.length - 1) * GAP
-  // the same scale until the data or the size change, so the filter points survive the cursor's re-renders
-  const x = useMemo(() => d3.scaleTime().domain(domain ?? [new Date(), new Date()]).range([0, innerW]), [domain, innerW])
-  const top = (k: string) => M.top + panels.indexOf(k as never) * (panelH + GAP)
+  // the left margin fits the most lines any panel's title needs at its height (in a tile the panels share the tile's height)
+  const left = (hs: readonly number[]) => TICK_ROOM + 8 + TITLE_LINE * Math.max(1, ...panels.map((k, i) => axisLines(title(k), hs[i] - 4).length))
   const val = (arr: (number | null)[] | undefined, i: number) => (arr?.[i] ?? null)
-  const ext = (arrs: ((number | null)[] | undefined)[], zero = false) => {
-    const vs = days.flatMap(({ i }) => arrs.map((a) => val(a, i))).filter((v): v is number => v !== null)
-    const lo = zero ? 0 : (d3.min(vs) ?? 0), hi = d3.max(vs) ?? 1
-    return d3.scaleLinear().domain([lo, hi === lo ? lo + 1 : hi]).range([panelH, 0]).nice()
+  const seasons = useMemo(() => (site ? seasonsForSite(meta, site.name) : []), [meta, site])
+
+  const draw = (k: string): Pick<StackPanel<d3.ScaleTime<number, number>>, 'y' | 'children' | 'pointer'> => {
+    if (!daily) return { y: { domain: [0, 1] } }
+    const line = (arr: (number | null)[], color: string) => ({ x, y }: { x: d3.ScaleTime<number, number>; y: d3.ScaleLinear<number, number> }) =>
+      <path d={dailyLine(days, arr, x, y)} fill="none" stroke={color} strokeWidth={1.1} />
+    if (k === 'temp') return { y: { domain: dailyDomain(days, [daily.tmin, daily.tmax]), nice: true }, children: ({ x, y }) => {
+      const band = d3.area<Day>().defined(({ i }) => val(daily.tmin, i) !== null && val(daily.tmax, i) !== null)
+        .x(({ t }) => x(t)).y0(({ i }) => y(daily.tmin[i]!)).y1(({ i }) => y(daily.tmax[i]!))
+      return <>
+        <path d={band(days) ?? ''} fill={INK.fit} opacity={0.12} />
+        <path d={dailyLine(days, daily.t, x, y)} fill="none" stroke="#c0392b" strokeWidth={1.2} />
+      </>
+    } }
+    if (k === 'prcp') return { y: { domain: dailyDomain(days, [daily.p], { lo: 0 }), nice: true }, children: ({ x, y, width, height }) =>
+      days.map(({ t, i }) => val(daily.p, i) ? <rect key={i} x={x(t)} width={Math.max(1, width / days.length)} y={y(daily.p[i]!)} height={height - y(daily.p[i]!)} fill="#4292c6" /> : null) }
+    if (k === 'rh') return { y: { domain: [0, 100] }, children: line(daily.rh, '#2c7fb8') }
+    if (k === 'blh') return { y: { domain: dailyDomain(days, [daily.blh], { lo: 0 }), nice: true }, children: line(daily.blh, '#7b6fb0') }
+    if (k === 'ws') return { y: { domain: dailyDomain(days, [daily.ws], { lo: 0 }), nice: true }, children: line(daily.ws, '#4d9078') }
+    const f = fieldOf(k), pts = ptsOf.get(f) ?? NO_POINTS
+    return { y: { domain: fieldDomain(pts), nice: true }, pointer: false, children: ({ x, y, width, height, tip }) =>
+      <FieldLane pts={pts} field={f} site={site?.name} x={x} y={y} width={width} height={height} seasons={meta.seasons} selected={hl.selected} tip={tip}
+        tipOf={(p) => { const di = daily.date.indexOf(String(p.row.date).slice(0, 10))
+          return [p.row.id, `${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`, `${f}: ${fmt(p.v)}`,
+            ...(di >= 0 ? [`BLH ${fmt(daily.blh[di], 0)} m`] : []), ...sourcesAt(p.t, p.row.id), 'click for details · right-click to exclude'] }} /> }
   }
-  const yT = ext([daily?.tmin, daily?.tmax]), yP = ext([daily?.p], true), yR = d3.scaleLinear().domain([0, 100]).range([panelH, 0])
-  const yB = ext([daily?.blh], true), yW = ext([daily?.ws], true)
-  const yF = (f: string) => fieldScale(ptsOf.get(f) ?? [], panelH)
-  const yOf = (k: string) => (k === 'temp' ? yT : k === 'prcp' ? yP : k === 'rh' ? yR : k === 'blh' ? yB : k === 'ws' ? yW : yF(fieldOf(k)))
-  const line = (arr: (number | null)[] | undefined, y: d3.ScaleLinear<number, number>) =>
-    d3.line<{ t: Date; i: number }>().defined(({ i }) => val(arr, i) !== null).x(({ t }) => x(t)).y(({ i }) => y(val(arr, i)!))(days) ?? ''
-  const band = d3.area<{ t: Date; i: number }>().defined(({ i }) => val(daily?.tmin, i) !== null && val(daily?.tmax, i) !== null)
-    .x(({ t }) => x(t)).y0(({ i }) => yT(daily!.tmin[i]!)).y1(({ i }) => yT(daily!.tmax[i]!))
-
-  // season shading: one rect per run of days in the same local season
-  const seasons = site ? seasonsForSite(meta, site.name) : []
-  const runs = useMemo(() => {
-    const out: { a: Date; b: Date; color: string; name: string }[] = []
-    for (const { t } of days) {
-      const se = seasons.find((s) => s.months.includes(t.getUTCMonth() + 1))
-      const last = out[out.length - 1]
-      if (se && last && last.name === se.name) last.b = t
-      else if (se) out.push({ a: t, b: t, color: se.color, name: se.name })
-    }
-    return out
-  }, [days, seasons])
-
-  const at = cursor === null ? null : days[d3.bisector((d: { t: Date }) => d.t).center(days, x.invert(cursor))]
+  const lanes: StackPanel<d3.ScaleTime<number, number>>[] = panels.map((k) => ({
+    key: k, ...draw(k),
+    title: ({ height, left }) => k === 'field'
+      ? <PanelTitle lines={axisLines(title(k), height - 4)} left={left} height={height} pick="field" />
+      : <AxisChoices options={choices} y={[k, (v) => pick.replace(k, v)]} noun="panels"><PanelTitle lines={axisLines(title(k), height - 4)} left={left} height={height} pick="y" /></AxisChoices>,
+  }))
+  const readout = dailyReadout(days, (d) => !daily ? [] : [d3.utcFormat('%d %b %Y')(d.t), `T ${fmt(daily.t[d.i], 1)} °C (${fmt(daily.tmin[d.i], 1)} – ${fmt(daily.tmax[d.i], 1)})`,
+    `precip ${fmt(daily.p[d.i], 1)} mm`, `RH ${fmt(daily.rh[d.i], 0)} %`, `wind ${fmt(daily.ws[d.i], 1)} m/s`, `BLH ${fmt(daily.blh[d.i], 0)} m`, ...sourcesAt(d.t)])
   const shownWeather = new Set(panels.filter((k) => k in WEATHER))
 
   return (
     <ChartFrame id="weather-timeline" title={`${site ? `${site.name} · ` : ''}weather timeline`}
       subtitle="Daily ERA5 at the site (local standard day): temperature range and mean, precipitation, relative humidity and boundary-layer height, above the chosen measurement for each filter. Add a panel for wind or any other measurement the filters have; remove one with its ×, or click a panel's axis title to swap it for another. Seasons are the site's local calendar."
       provenance="addis_03_meteorology (station data) generalised to every SPARTAN site · ERA5 via Open-Meteo, Copernicus Climate Change Service"
-      controls={<>
-        <span className="control" style={{ flexWrap: 'wrap', gap: 4 }}>Panels
-          {panels.map((k) => <span key={k} className="chip" style={{ display: 'inline-flex', alignItems: 'center', gap: 2, cursor: 'default', padding: '1px 3px 1px 9px' }}>
-            {panelLabel(k)}
-            <button type="button" className="btn quiet x-btn" onClick={() => setPanels(panels.filter((q) => q !== k))} aria-label={`Remove the ${panelLabel(k)} panel`} title="Remove this panel"><XIcon /></button>
-          </span>)}
-        </span>
-        <FieldSelect label="Add" value={ADD} meta={meta} ratios={false} onChange={addPanel}
-          extraOptions={Object.keys(WEATHER).filter((k) => !shownWeather.has(k)).map(weatherOption)} title="Add a weather or measurement panel to the timeline" />
-      </>}>
-      <div ref={wrapRef} className="chart-wrap">
+      controls={<PanelPicker pick={pick} labelOf={panelLabel}
+        adder={<FieldSelect label="Add" value={ADD} meta={meta} ratios={false} onChange={addPanel}
+          extraOptions={Object.keys(WEATHER).filter((k) => !shownWeather.has(k)).map(weatherOption)} title="Add a weather or measurement panel to the timeline" />} />}>
+      <div className="chart-wrap">
         {error ? <Empty>{error}</Empty> : !site || !domain ? <Empty>No filters at this site in the current subset.</Empty> : !daily ? <Empty>Loading the daily weather…</Empty> : !panels.length ? <Empty>No panels: add one from the options.</Empty> : (
-          <svg width={width} height={height} onMouseLeave={() => { setCursor(null); tip.hide() }}>
-            <g transform={`translate(${left},0)`}>
-              {panels.map((k) => (
-                <g key={k} transform={`translate(0,${top(k)})`}>
-                  {runs.map((r, i) => <rect key={i} x={x(r.a)} width={Math.max(1, x(r.b) - x(r.a) + innerW / Math.max(1, days.length))} height={panelH} fill={r.color} opacity={0.1} />)}
-                  <YAxis scale={yOf(k)} x={0} gridWidth={innerW} tickCount={3} />
-                  {k === 'field'
-                    ? <PanelTitle lines={titleLines.get(k)!} left={left} height={panelH} pick="field" />
-                    : <AxisChoices options={choices} y={[k, (v) => replacePanel(k, v)]} noun="panels"><PanelTitle lines={titleLines.get(k)!} left={left} height={panelH} pick="y" /></AxisChoices>}
-                  {k === 'temp' && <>
-                    <path d={band(days) ?? ''} fill={INK.fit} opacity={0.12} />
-                    <path d={line(daily.t, yT)} fill="none" stroke="#c0392b" strokeWidth={1.2} />
-                  </>}
-                  {k === 'prcp' && days.map(({ t, i }) => val(daily.p, i) ? <rect key={i} x={x(t)} width={Math.max(1, innerW / days.length)} y={yP(daily.p[i]!)} height={panelH - yP(daily.p[i]!)} fill="#4292c6" /> : null)}
-                  {k === 'rh' && <path d={line(daily.rh, yR)} fill="none" stroke="#2c7fb8" strokeWidth={1.1} />}
-                  {k === 'blh' && <path d={line(daily.blh, yB)} fill="none" stroke="#7b6fb0" strokeWidth={1.1} />}
-                  {k === 'ws' && <path d={line(daily.ws, yW)} fill="none" stroke="#4d9078" strokeWidth={1.1} />}
-                  {isField(k) && <FieldPoints pts={ptsOf.get(fieldOf(k)) ?? EMPTY} field={fieldOf(k)} site={site?.name} x={x} width={innerW} height={panelH} seasons={meta.seasons} selected={hl.selected} tip={tip}
-                    tipOf={(p) => { const di = daily.date.indexOf(String(p.row.date).slice(0, 10))
-                      return [p.row.id, `${p.row.date} · ${seasonOnly(String(p.row.season ?? ''))}`, `${fieldOf(k)}: ${fmt(p.v)}`,
-                        ...(di >= 0 ? [`BLH ${fmt(daily.blh[di], 0)} m`] : []), ...sourcesAt(p.t, p.row.id), 'click for details · right-click to exclude'] }} />}
-                  {!isField(k) && <rect width={innerW} height={panelH} fill="transparent"
-                    onMouseMove={(e) => {
-                      const mx = d3.pointer(e)[0]
-                      setCursor(mx)
-                      const d = days[d3.bisector((q: { t: Date }) => q.t).center(days, x.invert(mx))]
-                      if (d) tip.show(e, [d3.utcFormat('%d %b %Y')(d.t), `T ${fmt(daily.t[d.i], 1)} °C (${fmt(daily.tmin[d.i], 1)} – ${fmt(daily.tmax[d.i], 1)})`,
-                        `precip ${fmt(daily.p[d.i], 1)} mm`, `RH ${fmt(daily.rh[d.i], 0)} %`, `wind ${fmt(daily.ws[d.i], 1)} m/s`, `BLH ${fmt(daily.blh[d.i], 0)} m`, ...sourcesAt(d.t)])
-                    }} />}
-                </g>
-              ))}
-              {at && <line x1={x(at.t)} x2={x(at.t)} y1={M.top} y2={height - M.bottom} stroke={INK.text} strokeOpacity={0.35} strokeDasharray="3 3" pointerEvents="none" />}
-              <XAxis scale={x} y={height - M.bottom} tickCount={8} format={d3.utcFormat("%b %Y")} />
-            </g>
-          </svg>
+          <DailyLanes domain={domain} lanes={lanes} seasons={seasons} readout={readout} left={left} top={10} gap={16} />
         )}
         <Legend items={[...seasons.map((s) => ({ label: s.name.replace(`${site?.name} · `, ''), color: s.color, shape: 'band' as const })),
           { label: 'daily mean temperature', color: '#c0392b', shape: 'line' }, { label: 'daily min–max', color: INK.fit, shape: 'band' }]} />
-        {tip.node}
       </div>
     </ChartFrame>
   )
 }
 
 /** a title split for standing up beside a panel `room` px tall: the name wrapped to fit, then the unit "(…)" on its own line */
-type FieldPt = { row: FilterRow; t: Date; v: number }
-const EMPTY: FieldPt[] = []
-/** a measurement panel's y: from 0 (or below) to just over its largest value */
-const fieldScale = (pts: FieldPt[], h: number) =>
-  d3.scaleLinear().domain([Math.min(0, d3.min(pts, (p) => p.v) ?? 0), (d3.max(pts, (p) => p.v) ?? 1) * 1.05]).range([h, 0]).nice()
-
-/**
- * A measurement panel's filters, coloured by season (components/ScatterLayer): drawn once per data, size or brush, so
- * the date cursor does not redraw them; the nearest filter answers a hover, a click opens its record.
- */
-function FieldPoints({ pts, field, site, x, width, height, seasons, selected, tip, tipOf }: {
-  pts: FieldPt[]
-  /** the panel's measurement and site, for the excluded filters' marks (Filters → excluded: Mark) */
-  field: string; site: string | undefined
-  x: d3.ScaleTime<number, number>; width: number; height: number; seasons: MetaFile['seasons']
-  selected: Set<string> | null; tip: ReturnType<typeof useTooltip>; tipOf: (p: FieldPt) => TipBody
-}) {
-  const y = useMemo(() => fieldScale(pts, height), [pts, height])
-  const colorOf = (p: FieldPt) => seasons.find((s) => s.name === p.row.season)?.color ?? INK.text
-  const xy = useMemo(() => pts.map((p) => [x(p.t), y(p.v)] as const), [pts, x, y])
-  const dots = useMemo(() => pts.map((p, i) => {
-    const st = focusStyle(p.row.id, null, { r: 3, level: 'sparse' }, selected)
-    return <circle key={p.row.id} cx={xy[i][0]} cy={xy[i][1]} r={st.r} fill={colorOf(p)}
-      fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} data-dot={st.dot} {...fidProps(p.row.id)} />
-  }), [pts, xy, selected, seasons]) // eslint-disable-line react-hooks/exhaustive-deps
-  const focused = (p: FieldPt) => focusStyle(p.row.id, p.row.id, { r: 3, level: 'sparse' })
-  const markedAll = useMarkedRows()
-  const markReason = useMarkReason()
-  const marks = useMemo(() => {
-    const [d0, d1] = x.domain(), [v0, v1] = y.domain()
-    return toMarks(markedAll.filter((r) => r.site === site), (r) => {
-      const v = r[field], t = new Date(r.date)
-      return typeof v === 'number' && t >= d0 && t <= d1 && v >= v0 && v <= v1 ? [x(t), y(v)] : null
-    }, markReason, (r) => [`${field}: ${fmt(r[field] as number)}`])
-  }, [markedAll, site, field, x, y, markReason])
-  return (
-    <ScatterLayer items={pts} xy={xy} idOf={(p) => p.row.id} dots={dots} width={width} height={height} tip={tip} tipOf={tipOf} marks={marks}
-      focusR={(p) => focused(p).r}
-      focus={(p, [cx, cy]) => { const st = focused(p); return <circle cx={cx} cy={cy} r={st.r} fill={colorOf(p)} fillOpacity={st.opacity} stroke={st.stroke} strokeWidth={st.strokeWidth} /> }} />
-  )
-}
-
 function axisLines(text: string, room: number): string[] {
   const unit = text.endsWith(')') ? text.lastIndexOf(' (') : -1
   // wrapCategory counts 6 px a character at 11 px; the title is a little larger

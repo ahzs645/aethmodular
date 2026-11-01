@@ -39,3 +39,12 @@ test('labels and typed day counts', () => {
   assert.equal(clampDays('x', 45), 45)
   assert.equal(clampDays('99999', 45), 3650)
 })
+
+test('rollingBy hands any statistic the same windows as rollingByTime', async () => {
+  const { rollingBy } = await import('./rolling.ts')
+  const p = pts([1, 2, 3, 4, 5])
+  const sizes = rollingBy(p, (x) => x.d, { days: 3, align: 'trailing' }, (win) => win.length).map((r) => r.v)
+  assert.deepEqual(sizes, [1, 2, 3, 3, 3])
+  const sums = rollingBy(p, (x) => x.d, { days: 3, align: 'trailing' }, (win) => (win.length >= 2 ? win.reduce((a, q) => a + q.v, 0) : null)).map((r) => r.v)
+  assert.deepEqual(sums, [null, 3, 6, 9, 12])
+})
