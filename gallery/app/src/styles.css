@@ -568,7 +568,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .swatch.square { border-radius: 2px; }
 .swatch.band { width: 14px; border-radius: 1px; opacity: 0.35; }
 .swatch.line { width: 16px; height: 2px; border-radius: 0; }
-.swatch.dashed { width: 16px; height: 0; border-top: 2px dashed currentColor; background: none !important; }
+.swatch.dashed { width: 16px; height: 0; border-radius: 0; border-top: 2px dashed currentColor; background: none !important; }
 .swatch.ring { box-sizing: border-box; border: 1.5px solid currentColor; background: none !important; }
 .swatch.diamond { width: 8px; height: 8px; border-radius: 1px; margin: 0 1px; transform: rotate(45deg); }
 .swatch.hollow-diamond { width: 8px; height: 8px; border-radius: 1px; margin: 0 1px; transform: rotate(45deg); box-sizing: border-box; border: 1.3px solid currentColor; background: var(--ink-panel) !important; }

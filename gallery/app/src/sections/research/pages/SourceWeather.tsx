@@ -47,7 +47,7 @@ function Matrix({ rows, cols, cell }: { rows: string[]; cols: string[]; cell: (r
   const colours = useColourScheme('sw-matrix', 'diverging')
   const color = d3.scaleQuantize<string>().domain([-1, 1]).range(colours.stops)
   const values = rows.map((r) => cols.map((c) => cell(r, c)))
-  return <HeatMatrix rows={rows} columns={cols} color={color} cellWidth={[34, 70]} gap={2} colLabels="rotate" colLabelAngle={-50} rowLabelSize={11.5}
+  return <HeatMatrix rows={rows} columns={cols} color={color} cellWidth={[34, 70]} gap={2} colLabels="rotate" colLabelAngle={-50} rowLabelSize={11.5} cellLabels="always"
     cell={(i, j) => ({ value: values[i][j].rho, label: values[i][j].rho === null ? null : fmt(values[i][j].rho, 2),
       tip: [`${rows[i]} × ${cols[j]}`, `Spearman ρ ${fmt(values[i][j].rho, 3)}`, `n ${values[i][j].n}`] })}
     legend={{ scheme: colours.scheme, label: 'Spearman ρ', format: (v) => fmt(v, 1) }} />

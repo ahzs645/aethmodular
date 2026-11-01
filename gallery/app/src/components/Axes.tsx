@@ -32,7 +32,13 @@ const labelWidth = (text: string) => textWidth(text, 11) + 12
  * rotated labels are left as they are.
  */
 function fittedTicks(scale: AnyScale, count: number, format: ((v: any) => string) | undefined, rotate: number) {
-  const all = ticksOf(scale, count)
+  let all = ticksOf(scale, count)
+  // a log axis over two or more decades labels the decades only (0.1, 1, 10), not every minor tick between
+  if ('base' in scale && typeof scale.base === 'function') {
+    const b = (scale as unknown as { base(): number }).base()
+    const decades = all.filter(({ v }) => { const e = Math.log(Math.abs(v)) / Math.log(b); return Math.abs(e - Math.round(e)) < 1e-9 })
+    if (decades.length >= 3) all = decades
+  }
   if ('bandwidth' in scale || rotate || all.length < 3) return all
   const text = (v: any) => (format ? format(v) : String(v))
   const fits = (t: { v: any; pos: number }[]) => t.every((a, i) => i === 0 || a.pos - t[i - 1].pos >= (labelWidth(text(a.v)) + labelWidth(text(t[i - 1].v))) / 2)

@@ -110,13 +110,14 @@ export function BarRows(p: BarRowsProps) {
   const valueOf = (r: BarRow) => (r.valueLabel !== undefined ? r.valueLabel : p.valueLabels === false ? null : fmtV(total(r) ?? 0))
   const tail = (r: BarRow) => [valueOf(r), r.note].filter(Boolean).join('  ')
   const tailW = Math.max(0, ...rows.map((r) => { const t = tail(r); return t ? textWidth(t, 10.5, 400, FONT.mono) + 8 : 0 }))
-  const pw = Math.max(120, width - labelW - tailW - 8)
-
   const domain = useMemo<[number, number]>(() => {
     if (p.domain) return p.domain
     const vals = rows.flatMap((r) => [total(r) ?? 0, ...(r.marks ?? []).map((m) => m.value)])
     return [Math.min(0, d3.min(vals) ?? 0), p.max ?? (Math.max(0, d3.max(vals) ?? 0) || 1)]
   }, [rows, p.domain, p.max])
+  // room past the axis end for half its last tick label (centred on the end), when no value labels take it
+  const endW = p.axis === false ? 0 : textWidth((p.axis?.format ?? fmtV)(domain[1]), 11) / 2 + 2
+  const pw = Math.max(120, width - labelW - Math.max(tailW, endW) - 8)
   const x = useMemo(() => { const s = d3.scaleLinear().domain(domain).range([0, pw]); return p.domain ? s : s.nice() }, [domain, pw, p.domain])
 
   const headH = p.groupLabels ? 22 : 0

@@ -128,7 +128,7 @@ export function SiteBandPattern({rows,cohort}:{rows:BaselinePair[];cohort:Baseli
       ariaLabel="Site by training loading quartile heatmap of paired absolute error difference"
       cell={(i,j)=>{const c=cells[i][j];return c.n?{value:c.delta,fill:c.n<5?INK.grid:color(c.delta!),stroke:INK.panel,
         tip:[`${c.site} / ${c.band}`,`${c.n} physical filters`,`ΔMAE ${f(c.delta,3)} µg/filter`,...(c.n<5?['Shown gray: fewer than five filters']:[])]}:undefined}}
-      legend={{scale:color,scheme:colours.scheme,label:'ΔMAE, µg/filter',width:220,format:v=>f(v,2),note:'negative: VIBES closer · positive: AIRSpec closer'}}
+      legend={{scale:color,scheme:colours.scheme,label:'ΔMAE, µg/filter (− VIBES closer · + AIRSpec closer)',width:220,format:v=>f(v,2)}}
       legendItems={[{label:'fewer than 5 filters',color:INK.grid,kind:'square'}]}/>
     <ExplainOnly><Note>Color saturates beyond ±{f(bound,2)} µg/filter, the 90th percentile of displayed cell magnitudes; hover gives exact values and counts. The quartiles use measured TOR EC, so they cannot route an Addis prediction without independent EC. The separate CLI notebook evaluates an exploratory spectrum-only router; this heatmap is not that model.</Note></ExplainOnly>
     <FixedSetNote what="the frozen paired IMPROVE test filters of this benchmark" />
