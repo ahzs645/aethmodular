@@ -3,6 +3,7 @@ import * as d3 from 'd3'
 import { SidebarControls } from '@/lib/pageSidebar'
 import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
 import { Segmented } from '@/components/ChartFrame'
+import { ExportState } from '@/components/ExportState'
 import { Scatterplot } from '@/charts/correlation/Scatterplot'
 import { AeronetTimeline } from '@/charts/aeronet/AeronetTimeline'
 import { AeronetSiteTable, ScaleHeightStrip } from '@/charts/aeronet/AeronetSites'
@@ -104,7 +105,7 @@ export function AeronetPage({ rows: rows15, picked, onPick, meta, field, axes, s
   )
 
   if (level === '20' && !lev20) {
-    return <div className="panel"><div className="weather-head"><p className="frame-empty">Loading the Level 2.0 AERONET…</p><SidebarControls title="AERONET">{levelControl}</SidebarControls></div></div>
+    return <><ExportState what="the Level 2.0 AERONET" /><SidebarControls title="AERONET">{levelControl}</SidebarControls></>
   }
   if (sites.length === 0) {
     return <div className="panel">

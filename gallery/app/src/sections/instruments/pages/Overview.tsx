@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Empty, Note, Segmented, Select } from '@/components/ChartFrame'
+import { Note, Segmented, Select } from '@/components/ChartFrame'
+import { ExportState } from '@/components/ExportState'
 import { SidebarControls } from '@/lib/pageSidebar'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
@@ -75,7 +76,7 @@ export function Overview({ rows, meta, picked, onPick }: SectionPageProps) {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } : undefined
 
-  if (!instruments) return <div className="panel"><Empty>Loading the aethalometer instruments…</Empty></div>
+  if (!instruments) return <ExportState what="the aethalometer instruments" />
   if (!sites.length) {
     const names = [...new Set(instruments.map((i) => i.site))].join(', ')
     return <div className="panel"><p className="frame-empty">No site in view has an aethalometer. The MA350 daily records cover {names}: pick one or more of them in the Filters panel.</p></div>

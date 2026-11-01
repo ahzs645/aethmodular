@@ -1,4 +1,5 @@
-import { Empty, Segmented } from '@/components/ChartFrame'
+import { Segmented } from '@/components/ChartFrame'
+import { ExportState } from '@/components/ExportState'
 import { PageToc } from '@/components/PageToc'
 import { SidebarControls } from '@/lib/pageSidebar'
 import { usePrefs } from '@/lib/prefs'
@@ -66,8 +67,8 @@ export function Quality({ rows, meta, picked }: SectionPageProps) {
       </div>
     </div>}
   </>
-  if (index.error) return <>{head}<div className="panel"><Empty>The quality export is missing ({index.error}). Run uv run python gallery/data/export_aeth_quality.py.</Empty></div></>
-  if (!index.data || !all) return <>{head}<div className="panel"><Empty>Loading the daily bins and their QC columns…</Empty></div></>
+  if (index.error || !index.data || !all) return <>{head}<ExportState what="the daily bins and their QC columns" error={index.error}
+    failed={<>The quality export is missing ({index.error}). Run uv run python gallery/data/export_aeth_quality.py.</>} /></>
   const q = index.data
 
   return (

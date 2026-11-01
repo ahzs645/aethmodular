@@ -5,8 +5,7 @@
  * ("Temperature (ERA5)" …), so every chart can plot them; the Weather tab also reads the
  * daily series, the wind roses and the station comparison from here.
  */
-import { useEffect, useState } from 'react'
-import { loadJson, useExport } from './data.ts'
+import { codesOf, keyOf, loadJson, useExport, useLoaded } from './data.ts'
 
 export interface WeatherFile {
   source: string
@@ -32,22 +31,13 @@ export interface WeatherIndex extends Omit<WeatherFile, 'rows' | 'windows'> { si
  */
 export function useWeather(codes: readonly string[]): WeatherFile | null {
   const index = useExport<WeatherIndex>('weather/index.json').data
-  const key = index ? [...new Set(codes)].filter((c) => index.sites[c]).sort().join(',') : ''
-  const [state, setState] = useState<{ key: string; data: WeatherFile } | null>(null)
-  useEffect(() => {
-    if (!index) return
-    let live = true
-    const want = key ? key.split(',') : []
-    Promise.all(want.map((c) => loadJson<Pick<WeatherFile, 'rows' | 'windows'>>(`weather/filters/${c}.json`)))
-      .then((parts) => {
-        if (!live) return
-        const { sites: _sites, ...rest } = index
-        setState({ key, data: { ...rest, rows: Object.assign({}, ...parts.map((p) => p.rows)), windows: Object.assign({}, ...parts.map((p) => p.windows)) } })
-      })
-      .catch(() => { /* weather is optional; the rows go without it */ })
-    return () => { live = false }
-  }, [index, key])
-  return state?.data ?? null
+  const key = index ? keyOf(codes.filter((c) => index.sites[c])) : null
+  // weather is optional: a failed load leaves the rows without it
+  return useLoaded(key, () => Promise.all(codesOf(key!).map((c) => loadJson<Pick<WeatherFile, 'rows' | 'windows'>>(`weather/filters/${c}.json`)))
+    .then((parts): WeatherFile => {
+      const { sites: _sites, ...rest } = index!
+      return { ...rest, rows: Object.assign({}, ...parts.map((p) => p.rows)), windows: Object.assign({}, ...parts.map((p) => p.windows)) }
+    }), { keep: true }).data
 }
 
 export interface RoseFile {

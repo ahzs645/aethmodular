@@ -6,24 +6,15 @@
  * with λ ∝ MAC², lib/mac), and the explorer's score |intercept| + 5·|slope − 1| and its slope guardrail are
  * recomputed from it.
  */
-import { useEffect, useState } from 'react'
-import { loadDerived, loadJson } from '@/lib/data'
+import { useCalibrationFile } from '@/lib/calibrationFiles'
 import { COHORT_SHORT, PREPROCESSING, label } from '@/lib/labels'
 import type { Row } from '@/lib/table'
 import type { CalibFile, CalibRow } from '@/lib/types'
 
-/** calibration.json through the gallery's cache key and relabelling (hooks/useGalleryData), so the Calibration tab's download is reused */
+/** calibration.json through the gallery's cache key and relabelling (lib/calibrationFiles), so the Calibration tab's download is reused */
 export function useCalib() {
-  const [state, setState] = useState<{ calib: CalibFile | null; error: string }>({ calib: null, error: '' })
-  useEffect(() => {
-    let live = true
-    loadDerived<CalibFile>('gallery:calibration', async () =>
-      JSON.parse(JSON.stringify(await loadJson('calibration.json')).replace(/\bPasadena\b/g, 'JPL')))
-      .then((calib) => { if (live) setState({ calib, error: '' }) })
-      .catch((e) => { if (live) setState({ calib: null, error: String(e instanceof Error ? e.message : e) }) })
-    return () => { live = false }
-  }, [])
-  return state
+  const { data, error } = useCalibrationFile()
+  return { calib: data, error }
 }
 
 /** ftir_55's objective weight: one unit of slope costs as much as five µg/m³ of intercept */

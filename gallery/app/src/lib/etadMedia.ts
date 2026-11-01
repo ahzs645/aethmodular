@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useLoaded } from '@/lib/data'
 import { loadEtadIds } from '@/lib/similarity'
 
 /**
@@ -16,12 +16,5 @@ export const mediaKey = (v: unknown) => { const n = Number(v); return Number.isF
 
 /** the MediaId → SPARTAN id map, loaded only when `on` (a table with a MediaId column); null until then */
 export function useEtadByMedia(on: boolean): Map<string, string> | null {
-  const [map, setMap] = useState<Map<string, string> | null>(null)
-  useEffect(() => {
-    if (!on) return
-    let live = true
-    load().then((m) => { if (live) setMap(m) })
-    return () => { live = false }
-  }, [on])
-  return on ? map : null
+  return useLoaded(on ? 'etad-by-media' : null, load).data
 }

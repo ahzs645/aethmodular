@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { ChartFrame, Empty, Note, Segmented, Select } from '@/components/ChartFrame'
+import { LoadState } from '@/components/ExportState'
 import { Crossplot, type CrossLine, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { IntervalStrip, type IntervalMark, type IntervalRow } from '@/components/IntervalStrip'
@@ -107,7 +108,8 @@ export function MassLead({ rows: viewRows, meta }: SectionPageProps) {
   if (!runs || !optics || !results) {
     const error = runsError || opticsError
     return <ChartFrame id="mass-lead" title="The mass lead" provenance={FTIR46} exportable={false}>
-      <Empty>{error ? <>Could not load {runsError ? 'the explorer readouts (calibration_runs.json)' : <>the HIPS optics export (run <code>{OPTICS_COMMAND}</code>)</>}: {error}.</> : 'Loading the explorer readouts and the HIPS optics…'}</Empty>
+      <LoadState what="the explorer readouts and the HIPS optics" error={error}
+        failed={<>Could not load {runsError ? 'the explorer readouts (calibration_runs.json)' : <>the HIPS optics export (run <code>{OPTICS_COMMAND}</code>)</>}: {error}.</>} />
     </ChartFrame>
   }
   const p = presets.find((x) => x.key === preset)

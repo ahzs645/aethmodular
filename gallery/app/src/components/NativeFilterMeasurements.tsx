@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useLoaded } from '@/lib/data'
 import { baseFilterId } from '@/lib/highlight'
-import { loadSpartanIndex, loadNativeSite, loadNativeTraces, vibesProvenance, type NativeSite, type NativeTraces, type SpartanIndex } from '@/lib/spartan'
+import { loadSpartanIndex, loadNativeSite, loadNativeTraces, vibesProvenance } from '@/lib/spartan'
 import { SpectrumModal, SpectrumPlot } from '@/components/FilterSpectrumPlot'
 import { useAddisStatus, useFilterSpectrum } from '@/lib/filterSpectrum'
 import { BASELINE_COLOR, INK } from '@/lib/theme'
@@ -22,25 +23,17 @@ const fmtDate = (d: string) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString
 export function NativeFilterMeasurements({ id }: { id: string }) {
   const base = baseFilterId(id)
   const code = /^[A-Z]{4}-\d{4}$/.test(base) ? base.slice(0, 4) : null
-  const [state, setState] = useState<{ code: string; index: SpartanIndex | null; data: NativeSite | null; error: string } | null>(null)
   const [choice, setChoice] = useState<{ base: string; analysis: string } | null>(null)
-  const [trace, setTrace] = useState<{ key: string; traces: NativeTraces | null; error: string } | null>(null)
   // any combination of the traces, drawn together; at least one stays on. The spline-corrected
   // spectrum by default (raw where a filter has no AIRSpec trace)
   const [picked, setPicked] = useState<TraceKey[]>(['airspec'])
   const [expanded, setExpanded] = useState(false)
-  useEffect(() => {
-    if (!code) return
-    let live = true
-    loadSpartanIndex().then(async index => {
-      const site = index.sites.find(s => s.code === code)
-      return { index, data: site ? await loadNativeSite(site) : null }
-    }).then(({ index, data }) => { if (live) setState({ code, index, data, error: '' }) })
-      .catch(e => { if (live) setState({ code, index: null, data: null, error: String(e) }) })
-    return () => { live = false }
-  }, [code])
-  const native = state?.code === code ? state.data : null
-  const vibesInfo = state?.index?.baselines?.vibes ?? null
+  const state = useLoaded(code, () => loadSpartanIndex().then(async index => {
+    const site = index.sites.find(s => s.code === code)
+    return { index, data: site ? await loadNativeSite(site) : null }
+  }))
+  const native = state.data?.data ?? null
+  const vibesInfo = state.data?.index.baselines?.vibes ?? null
   // An archive entry is one physical filter (no entry mixes PM2.5, PM10 and blanks), so a PM2.5
   // filter shows its PM2.5 scans; a filter held only as PM10 (ETAD-0248) shows its own PM10 scan,
   // labelled. Blanks are never drawn here.
@@ -50,17 +43,10 @@ export function NativeFilterMeasurements({ id }: { id: string }) {
   const pm10 = !pm25.length && analyses.length > 0
   const analysis = analyses.find(a => choice?.base === base && a.analysis_id === choice.analysis) ?? analyses[0]
   const key = `${base}:${analysis?.analysis_id ?? ''}:${entry?.file ?? ''}`
-  useEffect(() => {
-    if (!analysis || !entry) return
-    let live = true
-    loadNativeTraces(entry.file, analysis, vibesInfo?.grid).then(traces => { if (live) setTrace({ key, traces, error: '' }) })
-      .catch(e => { if (live) setTrace({ key, traces: null, error: String(e) }) })
-    return () => { live = false }
-  }, [key, vibesInfo]) // eslint-disable-line react-hooks/exhaustive-deps
+  const current = useLoaded(analysis && entry ? key : null, () => loadNativeTraces(entry!.file, analysis!, vibesInfo?.grid), { deps: [vibesInfo] })
   if (!code) return null
-  const error = state?.code === code ? state.error : ''
-  const current = trace?.key === key ? trace : null
-  const t = current?.traces
+  const error = state.error
+  const t = current.data
   // Until the network VIBES run is exported, an Addis filter in the frozen runs shows that run's
   // VIBES trace (10 cm⁻¹ bins), fetched only when VIBES is ticked; elsewhere VIBES is offered only
   // where the export has it (never for a filter without one, e.g. IMPROVE)
@@ -111,13 +97,13 @@ export function NativeFilterMeasurements({ id }: { id: string }) {
         {' · '}QC {analysis.qc || '—'}{pm10 && <> · <strong>PM10 filter</strong></>}</span>}
     </div>
     {error ? <p role="alert">The spectrum could not be loaded: {error}</p>
-      : !native ? <p className="ftir-meta">{state?.code === code ? 'No native spectrum for this site in this export.' : 'Loading…'}</p>
+      : !native ? <p className="ftir-meta">{state.data ? 'No native spectrum for this site in this export.' : 'Loading…'}</p>
       : !analysis ? <p className="ftir-meta">{entry
         ? 'The native FTIR archive holds this filter only as a blank scan, so there is no sample spectrum to draw.'
         : 'This filter is not in the native FTIR archive, so there is no spectrum to draw; its measurements come from the public data.'}</p>
       : <>
         {pm10 && <p className="ftir-meta">The archive holds this filter as PM10, not PM2.5: its own spectrum is shown, but it sits outside every PM2.5 comparison.</p>}
-        {current?.error ? <p role="alert">Spectrum could not be loaded: {current.error}</p> : t ? <>{traces}{plot()}</> : <p className="ftir-meta">Loading this filter’s spectrum…</p>}
+        {current.error ? <p role="alert">Spectrum could not be loaded: {current.error}</p> : t ? <>{traces}{plot()}</> : <p className="ftir-meta">Loading this filter’s spectrum…</p>}
         {provenance && shown.includes('vibes') && <p className="ftir-meta" title={provenance.detail}>{provenance.line}</p>}
         {expanded && t && <SpectrumModal id={id} title="FTIR spectrum" onClose={() => setExpanded(false)}>
           {traces}{plot(true)}
@@ -134,17 +120,12 @@ export function NativeFilterMeasurements({ id }: { id: string }) {
 export function HipsReadings({ id }: { id: string }) {
   const base = baseFilterId(id)
   const code = /^[A-Z]{4}-\d{4}$/.test(base) ? base.slice(0, 4) : null
-  const [state, setState] = useState<{ code: string; data: NativeSite | null } | null>(null)
-  useEffect(() => {
-    if (!code) return
-    let live = true
-    loadSpartanIndex().then(async index => {
-      const site = index.sites.find(s => s.code === code)
-      return site ? loadNativeSite(site) : null
-    }).then(data => { if (live) setState({ code, data }) }).catch(() => { if (live) setState({ code, data: null }) })
-    return () => { live = false }
-  }, [code])
-  const hips = (state?.code === code ? state.data?.hips[base] : null)?.filter(r => r.filter_type === 'PM2.5') ?? []
+  // nothing renders when the filter has none, or the archive cannot be read
+  const site = useLoaded(code, () => loadSpartanIndex().then(async index => {
+    const s = index.sites.find(x => x.code === code)
+    return s ? loadNativeSite(s) : null
+  })).data
+  const hips = site?.hips[base]?.filter(r => r.filter_type === 'PM2.5') ?? []
   if (!hips.length) return null
   return <DrawerScroll label="HIPS instrument readings"><table className="placement hips-readings">
     <thead>

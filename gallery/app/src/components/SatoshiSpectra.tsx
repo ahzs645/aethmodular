@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { CountPicker, clampCount } from '@/components/Pickers'
 import { ChartFrame, Empty, Toggle } from '@/components/ChartFrame'
+import { LoadState } from '@/components/ExportState'
 import { SpectraTraces } from '@/components/SimilaritySpectra'
+import { useLoaded } from '@/lib/data'
 import { useSearchParam } from '@/lib/url'
 import { usePageChoice } from '@/lib/pageChoices'
 import { useHighlightActions } from '@/lib/highlight'
 import { baselineName } from '@/lib/labels'
-import { Traces, fetchBinary, loadEtadIds, loadSimilarityMeta, siteName, type SimilarityMeta } from '@/lib/similarity'
+import { loadEtadIds, loadSimilarityMeta, loadTraces, siteName } from '@/lib/similarity'
 import { addisTargetSpectra, rankedAnalogSpectra, type AddisSpectrumIds, type AnalogBaseline, type AnalogRegion } from '@/lib/satoshiSpectra'
 
 const TOP_N = ['50', '100', '250', '500'] as const
@@ -22,36 +24,21 @@ export function SatoshiSpectra({ membership, groups, region }: { membership: Col
   const [topRaw, setTopN] = useSearchParam<string>('satSpecN', '500')
   const topN = clampCount(topRaw, 500, 500)
   const [test, setTest] = useSearchParam<'on' | 'off'>('satSpecTest', 'on', ['on', 'off'])
-  const [meta, setMeta] = useState<SimilarityMeta | null>(null)
-  const [ids, setIds] = useState<AddisSpectrumIds | null>(null)
-  const [error, setError] = useState('')
-  const [loaded, setLoaded] = useState<{ baseline: AnalogBaseline; traces: Traces } | null>(null)
+  const base = useLoaded('satoshi-spectra:meta', () => Promise.all([loadSimilarityMeta(), loadEtadIds<AddisSpectrumIds>()]).then(([meta, ids]) => {
+    if (!ids.status) throw new Error('etad_ids.json has no Addis status')
+    return { meta, ids }
+  }))
+  const meta = base.data?.meta ?? null, ids = base.data?.ids ?? null
   const hl = useHighlightActions()
-
-  useEffect(() => {
-    let live = true
-    Promise.all([loadSimilarityMeta(), loadEtadIds<AddisSpectrumIds>()]).then(([meta, ids]) => {
-      if (!ids.status) throw new Error('etad_ids.json has no Addis status')
-      if (live) { setMeta(meta); setIds(ids) }
-    }).catch(e => { if (live) setError(String(e)) })
-    return () => { live = false }
-  }, [])
 
   const activeMeta = useMemo(() => {
     if (!meta) return null
     const grid = meta.method_grids?.[baseline]
     return grid ? { ...meta, ...grid } : meta
   }, [meta, baseline])
-  useEffect(() => {
-    if (!activeMeta) return
-    let live = true
-    setError('')
-    fetchBinary(`traces_${baseline}.bin`).then(buffer => {
-      const traces = new Traces(buffer, activeMeta.filters.sample_id.length, activeMeta.bin_wn.length)
-      if (live) setLoaded({ baseline, traces })
-    }).catch(e => { if (live) setError(String(e)) })
-    return () => { live = false }
-  }, [activeMeta, baseline])
+  // spectra through lib/similarity (grid checked against the filter table), shared with the other pages
+  const loaded = useLoaded(meta ? baseline : null, () => loadTraces(baseline))
+  const error = base.error || loaded.error
 
   const selection = useMemo(() => {
     if (!activeMeta || !ids) return null
@@ -76,14 +63,14 @@ export function SatoshiSpectra({ membership, groups, region }: { membership: Col
       note: 'Saved analog ranks from the meeting analysis, compared with the median Addis spectrum. Displayed spectra are 8-channel means; neither ranks nor calibrations are refitted here.' })
   }
 
-  if (error || !activeMeta || !selection || !loaded || loaded.baseline !== baseline) return <ChartFrame id="satoshi-spectra" title="Spectra" exportable={false}>
-    <Empty>{error ? `Could not load spectra: ${error}` : 'Loading per-filter spectra…'}</Empty>
+  if (error || !activeMeta || !selection || !loaded.data) return <ChartFrame id="satoshi-spectra" title="Spectra" exportable={false}>
+    <LoadState what="per-filter spectra" error={error} failed={`Could not load spectra: ${error}`} />
   </ChartFrame>
   if (selection.missing.length) return <ChartFrame id="satoshi-spectra" title="Spectra" exportable={false}>
     <Empty>{selection.missing.length} saved analogs are missing from the spectral export. Re-export the matching spectra to show the complete ranked cohort.</Empty>
   </ChartFrame>
   return <SpectraTraces id="satoshi-spectra" source="gallery/app/src/components/SatoshiSpectra.tsx"
-    meta={activeMeta} traces={loaded.traces} target={selection.target} targetFilters={selection.filters}
+    meta={activeMeta} traces={loaded.data.traces} target={selection.target} targetFilters={selection.filters}
     targetLabel={`${group} · frozen Addis test set`} topFilters={selection.shown} compare={null}
     mask={region === 'oct1' ? 'oct1' : 'no_co2_max3600'} hoverFilter={null} pinned={pinned >= 0 ? pinned : null}
     onPin={onPin} method={baselineLabel(baseline)} regionParam="satSpecIgnored" scoreLabel="r to median Addis spectrum"

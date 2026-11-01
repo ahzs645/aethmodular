@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { ChartFrame, Empty, Note, Segmented, Toggle } from '@/components/ChartFrame'
+import { LoadState } from '@/components/ExportState'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
@@ -82,7 +83,7 @@ export function BlankLines({ rows }: SectionPageProps) {
 
   if (error || !optics) return (
     <ChartFrame id="bl-missing" title="Blank lines per deployed line" provenance={NB47}>
-      <Empty>{error ? <>The raw HIPS optics export is missing ({error}). Run <code>{OPTICS_COMMAND}</code> from the repo root.</> : 'Loading the HIPS optics…'}</Empty>
+      <LoadState what="the HIPS optics" error={error} failed={<>The raw HIPS optics export is missing ({error}). Run <code>{OPTICS_COMMAND}</code> from the repo root.</>} />
     </ChartFrame>
   )
 

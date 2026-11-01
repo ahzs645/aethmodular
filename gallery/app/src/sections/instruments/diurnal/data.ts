@@ -6,8 +6,7 @@
  * page can bin days by whichever season calendar is active, and filter them by date.
  */
 import * as d3 from 'd3'
-import { useEffect, useState } from 'react'
-import { loadJson, useExport } from '@/lib/data'
+import { loadJson, useExport, useLoaded } from '@/lib/data'
 import { seasonOfDate } from '@/lib/seasons'
 import type { SeasonMeta } from '@/lib/types'
 import { AETH_CHANNEL_COLOR } from '@/lib/theme'
@@ -89,14 +88,8 @@ export const useBrc = () => useExport<BrcFile>(`${DIURNAL_DIR}/brc_test.json`)
 
 /** one site's file (null while loading or when the site has none) */
 export function useSiteFile<T>(part: 'aeronet' | 'aeth', code: string | null): T | null {
-  const [state, setState] = useState<{ code: string; data: T } | null>(null)
-  useEffect(() => {
-    if (!code) return
-    let live = true
-    loadJson<T>(`${DIURNAL_DIR}/${part}/${code}.json`).then((data) => { if (live) setState({ code, data }) }).catch(() => { /* none for this site */ })
-    return () => { live = false }
-  }, [part, code])
-  return state && state.code === code ? state.data : null
+  // a missing file is "none for this site": data stays null
+  return useLoaded(code === null ? null : `${part}/${code}`, () => loadJson<T>(`${DIURNAL_DIR}/${part}/${code}.json`)).data
 }
 
 const DAY = 86_400_000

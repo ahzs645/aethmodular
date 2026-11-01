@@ -3,8 +3,8 @@
  * and the instruments' own apportionment (gallery/data/export_aeth_sources.py), plus the PMF solution's
  * µg/m³ contributions for the K_F dominance the rows do not carry.
  */
-import { useEffect, useMemo, useState } from 'react'
-import { useExport } from '@/lib/data'
+import { useMemo } from 'react'
+import { useExport, useLoaded } from '@/lib/data'
 import type { MetaFile, PmfFile } from '@/lib/types'
 import { loadAethDaily, type AethDaily } from '../lib'
 
@@ -31,22 +31,11 @@ export function siteOf(code: string, meta: MetaFile): { name: string; color: str
 /** the daily bins of these site codes, in the order given (a site with no file is left out) */
 export function useDailySites(codes: readonly string[], meta: MetaFile): DailySite[] | null {
   const key = codes.join(',')
-  const [state, setState] = useState<{ key: string; sites: DailySite[] } | null>(null)
-  useEffect(() => {
-    let live = true
-    const want = key ? key.split(',') : []
-    Promise.all(want.map((c) => loadAethDaily(c).then((daily) => ({ c, daily })).catch(() => null)))
-      .then((parts) => {
-        if (!live) return
-        const sites = parts.flatMap((p) => {
-          const s = p && siteOf(p.c, meta)
-          return p && s ? [{ code: p.c, name: s.name, color: s.color, daily: p.daily }] : []
-        })
-        setState({ key, sites })
-      })
-    return () => { live = false }
-  }, [key, meta])
-  return state?.key === key ? state.sites : null
+  return useLoaded(key, () => Promise.all(codes.map((c) => loadAethDaily(c).then((daily) => ({ c, daily })).catch(() => null)))
+    .then((parts) => parts.flatMap((p) => {
+      const s = p && siteOf(p.c, meta)
+      return p && s ? [{ code: p.c, name: s.name, color: s.color, daily: p.daily }] : []
+    })), { deps: [meta] }).data
 }
 
 /**

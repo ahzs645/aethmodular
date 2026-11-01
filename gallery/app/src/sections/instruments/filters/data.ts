@@ -4,9 +4,9 @@
  * smoothed channels and spot attenuation come from gallery/data/export_aeth_filters.py
  * (aethalometer/filters_extra/), loaded here for the sites in view only.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import * as d3 from 'd3'
-import { loadJson, useExport } from '@/lib/data'
+import { codesOf, keyOf, loadJson, useExport, useLoaded } from '@/lib/data'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { num } from '@/lib/table'
 import { seasonColor, siteColor } from '@/lib/siteColours'
@@ -34,22 +34,15 @@ export interface ExtraIndex {
 /** filters_extra for the sites in view: id -> field -> value, with the index (σ, wavelengths) */
 export function useAethExtra(codes: readonly string[]): { index: ExtraIndex | null; values: Map<string, Record<string, number | null>> } {
   const index = useExport<ExtraIndex>('aethalometer/filters_extra/index.json').data
-  const key = index ? [...new Set(codes)].filter((c) => index.sites[c]).sort().join(',') : ''
-  const [state, setState] = useState<{ key: string; values: Map<string, Record<string, number | null>> } | null>(null)
-  useEffect(() => {
-    if (!index) return
-    let live = true
-    Promise.all((key ? key.split(',') : []).map((c) => loadJson<{ rows: Record<string, (number | null)[]> }>(`aethalometer/filters_extra/${c}.json`)))
-      .then((parts) => {
-        if (!live) return
-        const values = new Map<string, Record<string, number | null>>()
-        for (const p of parts) for (const [id, vs] of Object.entries(p.rows)) values.set(id, Object.fromEntries(index.fields.map((f, i) => [f, vs[i]])))
-        setState({ key, values })
-      })
-      .catch(() => { /* optional: the page draws without ATN and the smoothed channels */ })
-    return () => { live = false }
-  }, [index, key])
-  return { index: index ?? null, values: state?.key === key ? state.values : NO_EXTRA }
+  const key = index ? keyOf(codes.filter((c) => index.sites[c])) : null
+  // optional: the page draws without ATN and the smoothed channels
+  const { data } = useLoaded(key, () => Promise.all(codesOf(key!).map((c) => loadJson<{ rows: Record<string, (number | null)[]> }>(`aethalometer/filters_extra/${c}.json`)))
+    .then((parts) => {
+      const values = new Map<string, Record<string, number | null>>()
+      for (const p of parts) for (const [id, vs] of Object.entries(p.rows)) values.set(id, Object.fromEntries(index!.fields.map((f, i) => [f, vs[i]])))
+      return values
+    }))
+  return { index: index ?? null, values: data ?? NO_EXTRA }
 }
 const NO_EXTRA = new Map<string, Record<string, number | null>>()
 

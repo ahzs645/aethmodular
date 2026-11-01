@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Select } from '@/components/ChartFrame'
+import { LoadState } from '@/components/ExportState'
 import { FieldSelect } from '@/components/FieldSelect'
 import { AreaHeader } from '@/components/AreaHeader'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -37,7 +38,7 @@ export function DataAvailabilityPage() {
   const { data, error } = useExport<NotebookAvailability>('availability.json', d => d.schema_version === 1 ? null : 'Unsupported availability data version')
   return <>
     <AreaHeader area="Data availability" pages={AVAILABILITY_VIEWS} value={view} onPage={setView} />
-    {view === 'Filter explorer' ? <FilterAvailabilityExplorer /> : error ? <Empty>{error}</Empty> : !data ? <Empty>Loading notebook coverage analyses…</Empty> : view === 'Study overlap' ? <StudyAvailability data={data} /> : view === 'Prior comparison' ? <PriorCoverage data={data} /> : view === 'AERONET photometer' ? <AeronetAvailability data={data.aeronet} /> : <NetworkAvailability data={data} />}
+    {view === 'Filter explorer' ? <FilterAvailabilityExplorer /> : error || !data ? <LoadState what="notebook coverage analyses" error={error} /> : view === 'Study overlap' ? <StudyAvailability data={data} /> : view === 'Prior comparison' ? <PriorCoverage data={data} /> : view === 'AERONET photometer' ? <AeronetAvailability data={data.aeronet} /> : <NetworkAvailability data={data} />}
     {data && <AvailabilitySources data={data} />}
   </>
 }
@@ -77,7 +78,7 @@ function FilterAvailabilityExplorer() {
       <Select label="Sampling" value={status} options={['All', 'Recent samples', 'No recent samples', 'No samples']} onChange={setStatus} />
       <label className="control">Search sites <input className="select" type="search" value={query} onChange={e => setQuery(e.target.value)} /></label>
     </>}>
-      {error ? <Empty>{error}</Empty> : !inventory ? <Empty>Loading site inventory…</Empty> : <>
+      {error || !inventory ? <LoadState what="site inventory" error={error} /> : <>
         <div className="availability-summary"><span><strong>{sites.length}</strong> sites in inventory</span><span><strong>{sites.filter(s => samplingStatus(s.date_max, cutoff, asOf) === 'No recent samples').length}</strong> without a sample since {cutoff}</span><span><strong>{sites.reduce((sum, s) => sum + s.n_filters, 0).toLocaleString()}</strong> exported records</span></div>
         <SamplingSpans sites={shown} selected={selected?.code ?? ''} onSelect={setSite} cutoff={cutoff} />
         <div className="chart-scroll availability-inventory"><table className="census-table availability-table"><thead><tr><th>Site · select to inspect</th><th>Exported filters</th><th>First sample</th><th>Last sample</th><th>Sampling</th></tr></thead><tbody>{shown.map(s => <tr key={s.code} className={s.code === selected?.code ? 'active' : ''}><td><button type="button" className="pill-link" aria-pressed={s.code === selected?.code} onClick={() => setSite(s.code)}>{s.name} · {s.code}</button></td><td>{s.n_filters.toLocaleString()}</td><td>{s.date_min || '—'}</td><td>{s.date_max || '—'}</td><td>{samplingStatus(s.date_max, cutoff, asOf)}</td></tr>)}</tbody></table></div>

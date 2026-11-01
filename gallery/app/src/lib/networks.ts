@@ -11,8 +11,8 @@
  * Network rows use the FilterRow shape, so every chart works unchanged. Only the focus
  * sites have local season calendars (siteSeasons.ts); networks use shared month bins.
  */
-import { useEffect, useMemo, useState } from 'react'
-import { loadJson } from './data'
+import { useMemo } from 'react'
+import { loadJson, useLoaded } from './data'
 import { loadSpartanFilters } from './spartan'
 import type { PublicSiteStatus } from './spartanPublic'
 import type { SpartanSource } from './spartanSource'
@@ -189,24 +189,11 @@ async function loadBoth(picked: string[], spartanSites: string[] | 'all', source
 export function useNetworkData(network: Network, improveSites: string[], spartanSites: string[] | 'all', source: SpartanSource = 'bundled', revision = 0) {
   const skey = spartanSites === 'all' ? '*' : [...spartanSites].sort().join(',')
   const key = `${network}:${hasSpartan(network) ? `${skey}:${source}:${source === 'live' ? revision : ''}` : ''}:${hasImprove(network) ? [...improveSites].sort().join(',') : ''}`
-  const [state, setState] = useState<{ key: string; data: NetworkData | null; error: string } | null>(null)
-  useEffect(() => {
-    if (network === 'focus') return
-    let live = true
-    ;(network === 'both' ? loadBoth(improveSites, spartanSites, source, revision) : network === 'spartan' ? loadSpartan(spartanSites, source, revision) : loadImprove(improveSites))
-      .then((data) => { if (live) setState({ key, data, error: '' }) })
-      .catch((e) => { if (live) setState({ key, data: null, error: String(e instanceof Error ? e.message : e) }) })
-    return () => { live = false }
-    // key captures network and the picked sites
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key])
-  // keep showing the previous IMPROVE pick while another site loads, so charts do not blank between clicks
-  const [last, setLast] = useState<{ network: Network; data: NetworkData } | null>(null)
-  const current = state?.key === key ? state.data : null
-  useEffect(() => { if (current) setLast({ network, data: current }) }, [current, network])
-  return useMemo(() => ({
-    data: current ?? (last?.network === network ? last.data : null),
-    loading: network !== 'focus' && state?.key !== key,
-    error: state?.key === key ? state.error : '',
-  }), [current, last, network, source, state, key])
+  // key captures network and the picked sites
+  const loaded = useLoaded(network === 'focus' ? null : key, () =>
+    network === 'both' ? loadBoth(improveSites, spartanSites, source, revision) : network === 'spartan' ? loadSpartan(spartanSites, source, revision) : loadImprove(improveSites),
+  { keep: true })
+  // keep showing the previous pick of the same network while another site loads, so charts do not blank between clicks
+  const data = loaded.key?.startsWith(`${network}:`) ? loaded.data : null
+  return useMemo(() => ({ data, loading: loaded.loading, error: loaded.error }), [data, loaded.loading, loaded.error])
 }

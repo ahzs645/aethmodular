@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { ColorLegend } from '@/components/ColorLegend'
+import { LoadState } from '@/components/ExportState'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
 import { FONT, INK, inkOn, MONTHS } from '@/lib/theme'
+import { useLoaded } from '@/lib/data'
 import { useSearchParam } from '@/lib/url'
 import { levelLabel, loadDailyAeronet, type AeronetLevel, type DailyAeronet } from '@/lib/aeronet'
 import { monthlyMeans } from '@/lib/stats'
@@ -22,6 +24,7 @@ const QUANTITIES = [
 type QKey = (typeof QUANTITIES)[number]['key']
 /** a month with fewer days than this is drawn faint: its mean rests on a handful of clear days */
 const FEW = 5
+const NONE: Record<string, DailyAeronet | null> = {}
 
 /**
  * AERONET's own climatology at each picked site: the mean of its daily values by calendar month, over every
@@ -34,14 +37,10 @@ export function AeronetClimatology({ sites, level }: { sites: { name: string; co
   const tip = useTooltip(wrapRef)
   const [qKey, setQ] = useSearchParam<QKey>('aeronet.clim', 'aod500', QUANTITIES.map((q) => q.key))
   const q = QUANTITIES.find((x) => x.key === qKey) ?? QUANTITIES[0]
-  const [data, setData] = useState<Record<string, DailyAeronet | null>>({})
   const key = `${level}:${sites.map((s) => s.code).join(',')}`
-  useEffect(() => {
-    let live = true
-    Promise.all(sites.map((s) => loadDailyAeronet(s.code, level).then((d) => [s.code, d] as const).catch(() => [s.code, null] as const)))
-      .then((pairs) => { if (live) setData(Object.fromEntries(pairs)) })
-    return () => { live = false }
-  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
+  // the last picks' months stay up while the next ones load
+  const data = useLoaded(key, () => Promise.all(sites.map((s) => loadDailyAeronet(s.code, level).then((d) => [s.code, d] as const).catch(() => [s.code, null] as const)))
+    .then((pairs): Record<string, DailyAeronet | null> => Object.fromEntries(pairs)), { keep: true }).data ?? NONE
 
   const grid = useMemo(() => sites.map((s) => {
     const d = data[s.code]
@@ -62,7 +61,7 @@ export function AeronetClimatology({ sites, level }: { sites: { name: string; co
       provenance="addis_04_aeronet_daily (monthly cycle) for every SPARTAN site with a station · NASA AERONET Version 3 daily means"
       controls={<Select label="Quantity" value={q.key} options={QUANTITIES.map((x) => x.key)} optionLabel={(k) => QUANTITIES.find((x) => x.key === k)?.label ?? k} onChange={(v) => setQ(v as QKey)} />}>
       <div ref={wrapRef} className="chart-wrap">
-        {loading ? <Empty>Loading the daily AERONET…</Empty> : grid.length === 0 ? <Empty>No picked site has daily {q.label} in this export.</Empty> : (
+        {loading ? <LoadState what="the daily AERONET" /> : grid.length === 0 ? <Empty>No picked site has daily {q.label} in this export.</Empty> : (
           <svg width={labelW + cellW * 12 + 4} height={head + grid.length * cellH + 4} fontFamily={FONT.family}>
             {MONTHS.map((m, i) => <text key={m} x={labelW + i * cellW + cellW / 2} y={14} textAnchor="middle" fontSize={10.5} fill={INK.muted}>{cellW < 28 ? m[0] : m}</text>)}
             {grid.map((g, j) => (

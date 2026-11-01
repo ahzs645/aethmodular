@@ -4,12 +4,13 @@ import type { Feature, FeatureCollection } from 'geojson'
 import { MapDonutMarker, useMap } from '@pgmaps/geo-toolkit/map'
 import { DonutRingMap, type DonutRingItem } from '@pgmaps/geo-toolkit/visualizations/react'
 import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
+import { LoadState } from '@/components/ExportState'
 import { GeoMap, asReactMouse, type GeoMapHandle } from '@/components/GeoMap'
 import { useSearchParam } from '@/lib/url'
 import { Legend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
-import { useJsonLoader } from '@/lib/data'
+import { useExport } from '@/lib/data'
 import { useFitHeight } from '@/lib/chartFit'
 import { fmt } from '@/lib/stats'
 import { FONT, INK } from '@/lib/theme'
@@ -61,14 +62,12 @@ function ZoomWatch({ onZoom }: { onZoom: (zoom: number) => void }) {
  * (the public ReconstrPM25 product), averaged over every filter with its mass balance.
  */
 export function SpartanCompositionMap() {
-  const loadJson = useJsonLoader()
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const fitted = useFitHeight()
   const tip = useTooltip(wrapRef)
-  const [data, setData] = useState<CompositionFile | null>(null)
-  const [world, setWorld] = useState<FeatureCollection | null>(null)
-  const [error, setError] = useState('')
+  const { data, error } = useExport<CompositionFile>('spartan_composition.json')
+  const world = useExport<FeatureCollection>('world.geojson').data
   const [hover, setHover] = useState<string | null>(null)
   // Map: a pannable world (geo-toolkit) with each donut on its site; Figure: SPARTAN's network figure, donuts in a ring
   const [view, setView] = useSearchParam<(typeof VIEWS)[number]>('spartanview', 'Map', VIEWS)
@@ -78,12 +77,6 @@ export function SpartanCompositionMap() {
   const [zoom, setZoom] = useState<number | null>(null)
   const colours = useColourScheme('spartan-composition-map', 'categorical', 'SPARTAN composition')
   const sliceColour = useMemo(() => categoricalScale(colours.name, data?.slices.map(s => s.key) ?? [], colours.reverse), [data, colours.name, colours.reverse])
-  useEffect(() => {
-    let live = true
-    loadJson<CompositionFile>('spartan_composition.json').then((d) => { if (live) setData(d) }).catch((e) => { if (live) setError(String(e)) })
-    loadJson<FeatureCollection>('world.geojson').then((w) => { if (live) setWorld(w) }).catch(() => {})
-    return () => { live = false }
-  }, [])
 
   // per site: the mean of each slice over its filters (so the slices still sum to the mean PM2.5)
   const sites = useMemo(() => {
@@ -151,8 +144,8 @@ export function SpartanCompositionMap() {
         {view === 'Map' && <Segmented label="Nearby sites" value={nearby} options={NEARBY} onChange={setNearby} />}{colours.picker}</>}
       tip={<>Water is not published by SPARTAN: it is what remains of SPARTAN's &lsquo;Residual Matter with OC&rsquo; balance once the other slices are taken out (median 2% of PM2.5). Sodium and chloride split SPARTAN&rsquo;s sea salt (2.54 × sea-salt sodium). Older filters without FTIR OC keep that mass in the residual, as in SPARTAN&rsquo;s balance. Blue and grey dots mark data recency here, not SPARTAN&rsquo;s operating status.</>}>
       <div ref={wrapRef} className="chart-wrap" data-export-fixed-colours={sliceColour.range().join(' ')}>
-        {error ? <Empty>Could not load the composition ({error}). Run <code>uv run python gallery/data/export_spartan_composition.py</code>.</Empty>
-          : !sites.length ? <Empty>Loading SPARTAN composition…</Empty> : view === 'Map' ? <>
+        {error || !sites.length ? <LoadState what="SPARTAN composition" error={error}
+          failed={<>Could not load the composition ({error}). Run <code>uv run python gallery/data/export_spartan_composition.py</code>.</>} /> : view === 'Map' ? <>
           <GeoMap ref={mapRef} height={fitted ?? 520} frame={points} frameOptions={{ pad: 0.05, minSpan: 60 }} frameKey="network"
             label={`SPARTAN PM2.5 composition at ${sites.length} sites`}>
             <ZoomWatch onZoom={setZoom} />
@@ -188,7 +181,7 @@ export function SpartanCompositionMap() {
             { label: 'No public sample in 2 years', color: RETIRED, shape: 'dot' as const },
           ]} onHover={setHover} highlighted={hover} />
           <Note>{sites.length} sites, {total.toLocaleString()} filters. Donut area grows with mean PM2.5 (a fixed size in the Figure view); zoom in for the site names. {nearby === 'Grouped' ? <>A donut with a count badge is that many sites whose donuts would overlap at this zoom, drawn as their mean (each site counted once); click it or zoom in to split it.</> : null} A site whose mean slice is negative (Abu Dhabi&rsquo;s residual) draws it as zero; the tooltip keeps the value.</Note>
-        </> : !land ? <Empty>Loading SPARTAN composition…</Empty> : <>
+        </> : !land ? <LoadState what="SPARTAN composition" /> : <>
           {/* SPARTAN's own figure: geo-toolkit's DonutRingMap, drawn with d3 as one SVG */}
           <DonutRingMap width={width || 900} height={fitted ?? undefined} land={land} items={ringItems}
             colors={data?.slices.map((sl) => sliceColour(sl.key)) ?? []}

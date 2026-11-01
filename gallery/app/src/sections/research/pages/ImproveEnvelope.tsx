@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
+import { LoadState } from '@/components/ExportState'
 import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { SweepPlot } from '@/components/SweepPlot'
@@ -91,7 +92,7 @@ export function ImproveEnvelope({ rows, meta }: SectionPageProps) {
 
   if (error || !data) return (
     <ChartFrame id="ie-missing" title="Addis against IMPROVE in loading space" provenance={NB.first}>
-      <Empty>{error ? <>The IMPROVE summaries are not here ({error}). They need the IMPROVE FED exports, which the repo does not hold: where they are available (AETHMODULAR_IMPROVE_DIR, or the Davis Data Drive folder), run <code>{COMMAND}</code> from the repo root.</> : 'Loading the IMPROVE summaries…'}</Empty>
+      <LoadState what="the IMPROVE summaries" error={error} failed={<>The IMPROVE summaries are not here ({error}). They need the IMPROVE FED exports, which the repo does not hold: where they are available (AETHMODULAR_IMPROVE_DIR, or the Davis Data Drive folder), run <code>{COMMAND}</code> from the repo root.</>} />
     </ChartFrame>
   )
   const b = data.bounds

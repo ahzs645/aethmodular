@@ -7,6 +7,7 @@
 import { useMemo } from 'react'
 import type { ScaleTime } from 'd3'
 import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
+import { LoadState } from '@/components/ExportState'
 import { FacetGrid } from '@/components/FacetGrid'
 import { Figure } from '@/components/Figure'
 import { Key } from '@/components/Key'
@@ -76,7 +77,7 @@ export function Profiles({ data, c, setCase }: { data: PythonPmfExport; c: PmfCa
         <CasePick data={data} value={c} onChange={setCase} />
         <Segmented label="Scale" value={scale} options={['sum', 'peak'] as const} onChange={setScale} optionLabel={(o) => (o === 'sum' ? '‰ of profile' : 'Own peak = 1')} />
       </>}>
-      {!prof ? <Empty>{error ? `Could not load the profiles: ${error}` : 'Loading the profiles…'}</Empty> : <>
+      {!prof ? <LoadState what="the profiles" error={error} /> : <>
         <FacetGrid items={panels} minCell={320} maxCols={2} title={(p) => factorName(p.k)} note={(p) => closest(p.m)}
           render={(p, w) => <SpectrumPlot series={p.series} bands={p.bands} window={WINDOW} width={w} height={190} regions={[GAP]} hover="readout"
             yLabel={scale === 'peak' ? 'Relative to peak' : '‰ per channel'} includeZero readoutFormat={(v) => fmt(v, 3)} />} />
@@ -215,7 +216,7 @@ export function Residuals({ data, c, setCase }: { data: PythonPmfExport; c: PmfC
       subtitle="Top: the mean scaled residual (X − GH)/U at each channel over the case's filters. Bottom: the share of filters whose input is negative at that channel. The fit undershoots most where the input goes negative (above 3500 cm⁻¹ and 1700–2300 cm⁻¹): the model cannot follow a signed baseline. The table is the package's summary by broad region."
       provenance={<>Reproduces {REPORT} §4 (spectral-region diagnostics). Data: python_pmf/results/{c.folder}/{c.key}/k05/feature_residuals.csv and analysis/spectral_region_residuals.csv.</>}
       controls={<CasePick data={data} value={c} onChange={setCase} />}>
-      {!plots ? <Empty>{error ? `Could not load the residuals: ${error}` : 'Loading the residuals…'}</Empty> : <>
+      {!plots ? <LoadState what="the residuals" error={error} /> : <>
         <SpectrumPlot series={plots.mean} window={WINDOW} height={200} regions={[GAP]} zeroLine hover="readout" yLabel="mean (X − GH)/U" readoutFormat={(v) => fmt(v, 2)} />
         <SpectrumPlot series={plots.neg} window={WINDOW} height={150} regions={[GAP]} hover="readout" yLabel="% filters X < 0" includeZero readoutFormat={(v) => `${fmt(v, 0)} %`} />
       </>}

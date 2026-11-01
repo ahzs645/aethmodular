@@ -13,8 +13,8 @@ import { Crossplot, sharedCrossDomains, type CrossPoint } from '@/components/Cro
 import { Key as SharedKey } from '@/components/Key'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { BandCell, FitCell } from '@/components/TableCells'
-import { ExportState } from '@/components/ExportState'
-import { useExport } from '@/lib/data'
+import { ExportState, LoadState } from '@/components/ExportState'
+import { useExport, useLoaded } from '@/lib/data'
 import { FullRangeVibesStatus } from '@/components/FullRangeVibesStatus'
 import { MeetingCalibrationDetails } from '@/components/MeetingCalibrationDetails'
 import { SeasonalComposition } from '@/components/SeasonalComposition'
@@ -35,7 +35,7 @@ import { coef, coefSigned, f2, fmt, signed } from '@/lib/format'
 import { ALL_ADDIS, ANALYSIS_CALENDAR_NOTE, inSeasonGroup, isAllAddis, seasonPhrase, shortSeason } from '@/lib/seasons'
 import { ColorLegend } from '@/components/ColorLegend'
 import { CV_PROTOCOL_SHORT, PREPROCESSING, baselineName, ecAxis } from '@/lib/labels'
-import { Traces, loadTraces } from '@/lib/similarity'
+import { loadTraces } from '@/lib/similarity'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { withUnit } from '@/lib/theme'
@@ -492,22 +492,12 @@ interface SimMeta { bin_wn: number[]; filters: { sample_id: string[] }; rank_cap
  * variant reads the full-range rank-70 file and is drawn from 1425 cm⁻¹ down.
  */
 function useTraces(method: string | null) {
-  const [state, setState] = useState<{ method: string; meta: SimMeta; traces: Traces; index: Map<string, number> } | null>(null)
-  const [error, setError] = useState('')
-  useEffect(() => {
-    if (method === null) return
-    let live = true
-    const file = method.endsWith('-r70') ? 'VIBES-full-r70' : method.startsWith('VIBES-full') ? 'VIBES-full' : method
-    loadTraces(file)
-      .then((t) => {
-        if (!live) return
-        const meta: SimMeta = { bin_wn: t.wn, filters: t.meta.filters, rank_cap: t.run?.rank_cap, background_rank: t.run?.background_rank, presentation_status: t.run?.presentation_status }
-        setState({ method, meta, traces: t.traces, index: t.index })
-      })
-      .catch((e) => { if (live) setError(String(e)) })
-    return () => { live = false }
-  }, [method])
-  return { value: state && state.method === method ? state : null, error }
+  const file = method === null ? null : method.endsWith('-r70') ? 'VIBES-full-r70' : method.startsWith('VIBES-full') ? 'VIBES-full' : method
+  const { data, error } = useLoaded(method, () => loadTraces(file!).then((t) => {
+    const meta: SimMeta = { bin_wn: t.wn, filters: t.meta.filters, rank_cap: t.run?.rank_cap, background_rank: t.run?.background_rank, presentation_status: t.run?.presentation_status }
+    return { method: method!, meta, traces: t.traces, index: t.index }
+  }))
+  return { value: data, error }
 }
 
 /**
@@ -637,8 +627,7 @@ function SpectraPanel({ data, method, group }: { data: MeetingData; method: stri
 
   const toSid = (key: string | null) => (key == null ? null : key.startsWith('improve:') ? key : etadOf.get(key) ?? null)
 
-  if (tr.error) return <Empty>Could not load the per-filter spectra: {tr.error}</Empty>
-  if (!tr.value) return <div><Empty>Loading per-filter spectra…</Empty></div>
+  if (!tr.value) return <div><LoadState what="per-filter spectra" error={tr.error} failed={<>Could not load the per-filter spectra: {tr.error}</>} /></div>
   const { meta, traces, index } = tr.value
   const wn = meta.bin_wn
   const wnFloor = method.includes('full-cut') ? 1425 : 0

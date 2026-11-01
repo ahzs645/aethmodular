@@ -2,12 +2,12 @@
  * What the Overview's charts share: the instruments (sites.json), their daily files as days under
  * the page's screen and span, and the channel and method colours. The arithmetic is in ./stats.ts.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import * as d3 from 'd3'
 import { MONTHS, MONTH_LETTERS, AETH_CHANNEL_COLOR } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
-import { loadJson, useExport } from '@/lib/data'
+import { loadJson, useEach, useExport } from '@/lib/data'
 import { loadAethDaily, useAethSites, type AethDaily, type AethSite } from '../lib'
 import type { EpisodeColumns, HourlyFile } from './hourly'
 import { CHANNELS, toDays, type Channel, type Day, type Screen, type ScreenCount } from './stats'
@@ -60,17 +60,7 @@ export function useInstruments(meta: MetaFile): Instrument[] | null {
 
 /** The daily files of these instruments, loaded as they are asked for (null: failed). */
 export function useDailyFiles(codes: readonly string[]): Record<string, AethDaily | null> {
-  const [files, setFiles] = useState<Record<string, AethDaily | null>>({})
-  const key = [...codes].sort().join(',')
-  useEffect(() => {
-    let live = true
-    for (const code of key ? key.split(',') : []) {
-      loadAethDaily(code).then((d) => { if (live) setFiles((f) => (f[code] === d ? f : { ...f, [code]: d })) })
-        .catch(() => { if (live) setFiles((f) => ({ ...f, [code]: null })) })
-    }
-    return () => { live = false }
-  }, [key])
-  return files
+  return useEach(codes, loadAethDaily)
 }
 
 /** 'filters': the days inside the site's filters in view (±1 day); 'record': the instrument's whole file */
@@ -171,15 +161,5 @@ export const loadTraces = (code: string) => loadJson<TraceFile>(`aethalometer/ov
 
 /** one exported file per site code, loaded as asked for (null: failed) */
 export function useSiteFiles<T>(codes: readonly string[], load: (code: string) => Promise<T>): Record<string, T | null> {
-  const [files, setFiles] = useState<Record<string, T | null>>({})
-  const key = [...new Set(codes)].sort().join(',')
-  useEffect(() => {
-    let live = true
-    for (const code of key ? key.split(',') : []) {
-      load(code).then((d) => { if (live) setFiles((f) => (f[code] === d ? f : { ...f, [code]: d })) })
-        .catch(() => { if (live) setFiles((f) => ({ ...f, [code]: null })) })
-    }
-    return () => { live = false }
-  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
-  return files
+  return useEach(codes, load)
 }

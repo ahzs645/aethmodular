@@ -4,8 +4,8 @@
  * flow-fix periods and thresholds from research/ftir_hips_chem/scripts/config.py, and the small helpers the
  * charts share. Bins are 24 h, labelled at their (local) start; times are kept as UTC dates of the local clock.
  */
-import { useEffect, useMemo, useState } from 'react'
-import { loadJson, useExport } from '@/lib/data'
+import { useMemo } from 'react'
+import { loadJson, useExport, useLoaded } from '@/lib/data'
 import type { MetaFile } from '@/lib/types'
 import { themed } from '@/lib/theme'
 import { isFiniteNumber as finite, orNull, quantile as statsQuantile } from '@/lib/stats'
@@ -99,17 +99,11 @@ function join(daily: AethDaily, quality: QualityFile | null): Day[] {
 
 /** every instrument's joined days, loaded once (null while loading); a site whose files are missing is left out */
 export function useAllDays(): Record<string, Day[]> | null {
-  const [state, setState] = useState<Record<string, Day[]> | null>(null)
-  useEffect(() => {
-    let live = true
-    Promise.all(INSTRUMENTS.map((code) => Promise.all([
-      loadAethDaily(fileCode(code)),
-      loadJson<QualityFile>(`aethalometer/quality/${fileCode(code)}.json`).catch(() => null),
-    ]).then(([d, q]) => [code, join(d, q)] as const).catch(() => null)))
-      .then((parts) => { if (live) setState(Object.fromEntries(parts.filter((p): p is readonly [typeof INSTRUMENTS[number], Day[]] => p !== null))) })
-    return () => { live = false }
-  }, [])
-  return state
+  return useLoaded('instruments:all-days', () => Promise.all(INSTRUMENTS.map((code) => Promise.all([
+    loadAethDaily(fileCode(code)),
+    loadJson<QualityFile>(`aethalometer/quality/${fileCode(code)}.json`).catch(() => null),
+  ]).then(([d, q]) => [code, join(d, q)] as const).catch(() => null)))
+    .then((parts) => Object.fromEntries(parts.filter((p): p is readonly [typeof INSTRUMENTS[number], Day[]] => p !== null)))).data
 }
 
 /** flow_periods.classify_flow_period on an ISO date: before ≤ before_end, after ≥ after_start, else the gap */

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import { MapMarker, MarkerContent, type LngLatPoint } from '@pgmaps/geo-toolkit/map'
+import { LoadState } from '@/components/ExportState'
 import { GeoMap, type GeoMapHandle } from '@/components/GeoMap'
 import { SitePicker } from '@/components/SitePicker'
-import { useJsonLoader } from '@/lib/data'
+import { useExport } from '@/lib/data'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented, Select } from '@/components/ChartFrame'
 import { SizeLegend } from '@/components/ColorLegend'
@@ -60,7 +61,6 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
   /** a click on a site's bubble (the Dashboard opens that site's own page) */
   onSite?: (code: string) => void
 }) {
-  const loadJson = useJsonLoader()
   const wrapRef = useRef<HTMLDivElement>(null)
   const tip = useTooltip(wrapRef)
   const fitted = useFitHeight()
@@ -71,13 +71,15 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
   const [savedScope, setScope] = useSearchParam<(typeof LEGACY_SCOPES)[number]>('mapscope', 'Selected sites', LEGACY_SCOPES)
   const scope: (typeof SCOPES)[number] = (SCOPES as readonly string[]).includes(savedScope) ? savedScope as (typeof SCOPES)[number] : 'Selected sites'
   const [improveField, setImproveField] = useSearchParam<string>('mapfield', 'EC (TOR)')
-  const [improve, setImprove] = useState<NetworkMap | null>(null)
-  const [spartanBase, setSpartan] = useState<NetworkMap | null>(null)
+  // each network's site summaries, loaded when its scope is first picked
+  const improveFile = useExport<NetworkMap>(scope === 'All IMPROVE sites' ? 'improve_map.json' : null)
+  const spartanFile = useExport<NetworkMap>(scope === 'All SPARTAN sites' ? 'spartan_map.json' : null)
+  const improve = improveFile.data, spartanBase = spartanFile.data
   // the AERONET column quantities per site, and the MAIA target areas (both optional)
   const aeronet = useAeronetSites().data
   const spartan = useMemo(() => (spartanBase ? withAeronet(spartanBase, aeronet) : null), [spartanBase, aeronet])
   const [spartanField, setSpartanField] = useSearchParam<string>('mapspartanfield', 'PM2.5 mass')
-  const [error, setError] = useState('')
+  const error = (scope === 'All IMPROVE sites' ? improveFile : spartanFile).error
   const lg = useLegend()
   const isImprove = scope === 'All IMPROVE sites'
   const isSpartan = scope === 'All SPARTAN sites'
@@ -91,15 +93,6 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
   const fmtQ = (v: number | null | undefined) => fmt(v, aeronetQ?.digits)
   const unlocated = network?.sites.filter(s => s.lat == null || s.lon == null) ?? []
 
-  useEffect(() => {
-    if (!isNetwork || network) return
-    let live = true
-    setError('')
-    loadJson<any>(`${isImprove ? 'improve' : 'spartan'}_map.json`)
-      .then((d) => { if (live) (isImprove ? setImprove : setSpartan)(d) })
-      .catch(e => { if (live) setError(String(e)) })
-    return () => { live = false }
-  }, [isImprove, isNetwork, network, loadJson])
 
   const sites = useMemo(() => {
     const bySite = d3.group(rows, r => r.site)
@@ -152,7 +145,8 @@ export function SiteBubbleMap({ rows, meta, field, onSite }: {
     >
       <div className={sidePanel ? 'map-with-sites' : undefined}>
       <div ref={wrapRef} className="chart-wrap">
-      {isNetwork && !network ? <Empty>{error ? <>Could not load site summaries ({error}). Run <code>uv run python gallery/data/export_{isImprove ? 'improve' : 'spartan'}_map.py</code> and reopen the map.</> : 'Loading network sites…'}</Empty> : <>
+      {isNetwork && !network ? <LoadState what="network sites" error={error}
+        failed={<>Could not load site summaries ({error}). Run <code>uv run python gallery/data/export_{isImprove ? 'improve' : 'spartan'}_map.py</code> and reopen the map.</>} /> : <>
         <GeoMap ref={geo} height={height} globe={projection === 'Globe'} frame={home} frameOptions={homeOptions}
           frameKey={`${scope}|${fitted === null ? 'page' : 'tile'}|${network ? 'loaded' : ''}`} label={`Bubble map: ${scope}, ${stat.toLowerCase()}`}>
           {/* biggest first, so a small bubble stays clickable on top of a large neighbour */}

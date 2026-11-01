@@ -5,13 +5,14 @@
  * (calibration_runs.json), and the intro panel that says what each page reproduces,
  * where every table was read from, and what a Drive re-run would add.
  */
-import { useEffect, useState, type ReactNode } from 'react'
-import { ChartFrame, Empty } from '@/components/ChartFrame'
-import { loadDerived, loadJson, useExport } from '@/lib/data'
+import { type ReactNode } from 'react'
+import { ChartFrame } from '@/components/ChartFrame'
+import { ExportState } from '@/components/ExportState'
+import { useCalibrationRuns } from '@/lib/calibrationFiles'
+import { useExport } from '@/lib/data'
 import { Markdown } from '@/lib/markdown'
 import { usePrefs } from '@/lib/prefs'
 import { rowsOf, type Row, type Table } from '@/lib/table'
-import type { CalibRunsFile } from '@/lib/types'
 
 export interface SpectralSource { table: string; rows: number; notebook: string; read: string; path: string; cell?: string }
 export interface SpectralMissing { table: string; what: string; needs: string; run: string; after?: string | null }
@@ -38,18 +39,10 @@ export function useSpectral(key: string, folder = 'research/spectral') {
 /** A table of the export as rows (empty when the export lacks it). */
 export const rows = (data: SpectralExport | null, name: string): Row[] => rowsOf(data?.tables[name])
 
-/** The explorer readouts, through the same cache key and relabelling as the Calibration tab (hooks/useGalleryData). */
+/** The explorer readouts, through the same loader as the Calibration tab (lib/calibrationFiles). */
 export function useCalibRuns() {
-  const [state, setState] = useState<{ runs: CalibRunsFile | null; error: string }>({ runs: null, error: '' })
-  useEffect(() => {
-    let live = true
-    loadDerived<CalibRunsFile>('gallery:calibration_runs', async () =>
-      JSON.parse(JSON.stringify(await loadJson('calibration_runs.json')).replace(/\bPasadena\b/g, 'JPL')))
-      .then((runs) => { if (live) setState({ runs, error: '' }) })
-      .catch((e) => { if (live) setState({ runs: null, error: String(e instanceof Error ? e.message : e) }) })
-    return () => { live = false }
-  }, [])
-  return state
+  const { data, error } = useCalibrationRuns()
+  return { runs: data, error }
 }
 
 /** The provenance line: the notebooks a chart stands in for, and where its numbers were read. */
@@ -63,9 +56,9 @@ export function provenance(data: SpectralExport | null, tables: string[], extra?
   </>
 }
 
-/** Loading and error states for a page that needs its export (and optionally the explorer readouts). */
+/** Loading and error states for a page that needs its export (and optionally the explorer readouts): components/ExportState with the exporter's command. */
 export function Waiting({ error, what = 'the page data', exporter = EXPORTER }: { error?: string; what?: string; exporter?: string }) {
-  return <section className="panel"><Empty>{error ? <>Could not load {what}: {error}. Run <code>uv run --locked --no-sync python {exporter}</code>.</> : `Loading ${what}…`}</Empty></section>
+  return <ExportState what={what} error={error} command={`uv run --locked --no-sync python ${exporter}`} />
 }
 
 /**

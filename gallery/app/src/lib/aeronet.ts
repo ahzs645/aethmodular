@@ -5,8 +5,7 @@
  * as it does the weather, so every chart can plot them; the AERONET tab also reads the daily series
  * and the station list from here.
  */
-import { useEffect, useState } from 'react'
-import { loadJson, useExport } from './data.ts'
+import { codesOf, keyOf, loadJson, useExport, useLoaded } from './data.ts'
 import type { FilterRow } from './types.ts'
 
 export interface AeronetFile {
@@ -63,23 +62,15 @@ export const stationsPath = (level: AeronetLevel) => `${levelDir(level)}/station
  */
 export function useAeronet(codes: readonly string[], level: AeronetLevel = '15'): AeronetFile | null {
   const index = useExport<AeronetIndex>(`${levelDir(level)}/index.json`).data
-  const key = index ? [...new Set(codes)].filter((c) => index.sites[c]).sort().join(',') : ''
-  const [state, setState] = useState<{ key: string; level: AeronetLevel; data: AeronetFile } | null>(null)
-  useEffect(() => {
-    if (!index) return
-    let live = true
-    const want = key ? key.split(',') : []
-    Promise.all(want.map((c) => loadJson<Pick<AeronetFile, 'rows' | 'counts'>>(`${levelDir(level)}/filters/${c}.json`)))
-      .then((parts) => {
-        if (!live) return
-        const { sites: _sites, ...rest } = index
-        setState({ key, level, data: { ...rest, rows: Object.assign({}, ...parts.map((p) => p.rows)), counts: Object.assign({}, ...parts.map((p) => p.counts)) } })
-      })
-      .catch(() => { /* AERONET is optional; the rows go without it */ })
-    return () => { live = false }
-  }, [index, key, level])
-  // while another level loads, nothing rather than the other level's values
-  return state && state.level === level ? state.data : null
+  const key = index ? `${level}|${keyOf(codes.filter((c) => index.sites[c]))}` : null
+  // AERONET is optional: a failed load leaves the rows without it
+  const loaded = useLoaded(key, () => Promise.all(codesOf(key!.split('|')[1]).map((c) => loadJson<Pick<AeronetFile, 'rows' | 'counts'>>(`${levelDir(level)}/filters/${c}.json`)))
+    .then((parts): AeronetFile => {
+      const { sites: _sites, ...rest } = index!
+      return { ...rest, rows: Object.assign({}, ...parts.map((p) => p.rows)), counts: Object.assign({}, ...parts.map((p) => p.counts)) }
+    }), { keep: true })
+  // the previous sites stay while new ones load, but never another level's values
+  return loaded.key?.startsWith(`${level}|`) ? loaded.data : null
 }
 
 /**

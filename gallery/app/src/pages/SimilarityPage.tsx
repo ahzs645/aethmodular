@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { BaselinePicker, CountPicker, clampCount } from '@/components/Pickers'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, ExplainOnly, Note, Segmented, Select, Toggle } from '@/components/ChartFrame'
+import { ExportState, LoadState } from '@/components/ExportState'
 import { PageToc } from '@/components/PageToc'
 import { SidebarControls } from '@/lib/pageSidebar'
 import { useSidePanelOpen } from '@/hooks/useSidePanel'
@@ -10,6 +11,7 @@ import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { downloadCsv } from '@/lib/export'
+import { useLoaded } from '@/lib/data'
 import { useSearchParam } from '@/lib/url'
 import { baseFilterId, type FilterRecord, useHighlightActions } from '@/lib/highlight'
 import { FONT, INK } from '@/lib/theme'
@@ -21,7 +23,7 @@ import { ANALYSIS_CALENDAR_NOTE } from '@/lib/seasons'
 import { baselineName } from '@/lib/labels'
 import { useColourScheme } from '@/lib/colourSchemes'
 import {
-  PairMatrix, loadSimilarityMeta, TopLists, Traces, calendarOf, fetchBinary, groupColor, groupIndex, groupKey, groupLabel, siteName, siteWhere,
+  PairMatrix, loadSimilarityMeta, loadTraces, TopLists, calendarOf, fetchBinary, groupColor, groupIndex, groupKey, groupLabel, siteName, siteWhere,
   type SimilarityMeta,
 } from '@/lib/similarity'
 
@@ -34,21 +36,10 @@ const TEST_COLOR = '#9a6b2f'
 const splitName = (s: string) => (s === 'test' ? 'outer test site' : s === 'external' ? 'Addis target' : 'training site')
 
 /** Fetch and decode one exported binary; `null` until the named file has arrived. */
-function useBinary<T>(name: string | null, decode: (b: ArrayBuffer) => T): { value: T | null; error: string } {
-  const [state, setState] = useState<{ name: string; value: T } | null>(null)
-  const [error, setError] = useState('')
-  useEffect(() => {
-    if (!name) return
-    let live = true
-    setError('')
-    fetchBinary(name)
-      .then((b) => { if (live) setState({ name, value: decode(b) }) })
-      .catch((e) => { if (live) setError(String(e)) })
-    return () => { live = false }
-    // decode is derived from the same inputs as name
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name])
-  return { value: state && state.name === name ? state.value : null, error }
+function useBinary<T>(name: string, decode: (b: ArrayBuffer) => T): { value: T | null; error: string } {
+  // decode is derived from the same inputs as name
+  const { data, error } = useLoaded(name, async () => decode(await fetchBinary(name)))
+  return { value: data, error }
 }
 
 interface Ranked { g: number; r: number }
@@ -59,15 +50,8 @@ interface Ranked { g: number; r: number }
  * under the same signed-Pearson metric the analog selections use.
  */
 export function SimilarityPage() {
-  const [meta, setMeta] = useState<SimilarityMeta | null>(null)
-  const [error, setError] = useState('')
-  useEffect(() => {
-    let live = true
-    loadSimilarityMeta().then((d) => { if (live) setMeta(d) }).catch((e) => { if (live) setError(String(e)) })
-    return () => { live = false }
-  }, [])
-  if (error) return <ChartFrame title="Spectral similarity" exportable={false}><Empty>Could not load the similarity export: {error}. Run <code>uv run --locked --no-sync python gallery/data/export_similarity.py</code> and reload.</Empty></ChartFrame>
-  if (!meta) return <p>Loading the spectral similarity export…</p>
+  const { data: meta, error } = useLoaded('similarity-meta', loadSimilarityMeta)
+  if (!meta) return <ExportState title="Spectral similarity" what="the spectral similarity export" error={error} command="uv run --locked --no-sync python gallery/data/export_similarity.py" />
   return <SimilarityView meta={meta} />
 }
 
@@ -109,7 +93,9 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
   const F = meta.filters.site.length
   const pairs = useBinary(`pairs_${method}_${mask}.bin`, (b) => new PairMatrix(new Int16Array(b), G, meta.scale))
   const tops = useBinary(`top_${method}_${mask}.bin`, (b) => new TopLists(b, G, meta.top_k, meta.scale))
-  const traces = useBinary(`traces_${method}.bin`, (b) => new Traces(b, F, activeMeta.bin_wn.length))
+  // spectra through lib/similarity (grid checked against the filter table), shared with the drawer and the other pages
+  const traceSet = useLoaded(method, () => loadTraces(method))
+  const traces = { value: traceSet.data?.traces ?? null, error: traceSet.error }
   const loadError = pairs.error || tops.error || traces.error
 
   const selfR = pairs.value?.get(target, target) ?? null
@@ -309,7 +295,7 @@ function GroupRanking({ meta, ranked, target, selfR, compare, onCompare, onTarge
         title)}>CSV</button></>}
     >
       <div ref={ref} className="chart-wrap">
-        {loading ? <Empty>Loading scores…</Empty> : rows.length === 0 ? <Empty>No group passes these filters.</Empty> : (
+        {loading ? <LoadState what="scores" /> : rows.length === 0 ? <Empty>No group passes these filters.</Empty> : (
           <IntervalStrip labelWidth={labelW} rowHeight={rowH} noteWidth={nW} minPanelWidth={160}
             panels={[{ label: 'Mean Pearson r', domain: x.domain() as [number, number], stems: true, format: (v) => v.toFixed(3),
               marker: selfR != null && x(selfR) >= 0 && x(selfR) <= innerW ? { value: selfR, label: `target within-group r ${selfR.toFixed(3)}` } : undefined }]}
@@ -361,7 +347,7 @@ function SeasonMatrix({ meta, pairs, target, columns }: { meta: SimilarityMeta; 
       provenance="export_similarity.py · pairs_{method}_{mask}.bin"
     >
       <div ref={ref} className="chart-wrap" style={{ overflowX: 'auto' }}>
-        {!pairs || columns.length === 0 ? <Empty>{pairs ? 'No columns to show.' : 'Loading scores…'}</Empty> : (
+        {!pairs ? <LoadState what="scores" /> : columns.length === 0 ? <Empty>No columns to show.</Empty> : (
           <svg width={Math.max(width, labelW + cw * columns.length + 10)} height={top + rowGroups.length * ch + 8}>
             <g fontFamily={FONT.family}>
               {columns.map((c, j) => (
@@ -423,7 +409,7 @@ function TopComposition({ meta, rows, available, targetLabel }: { meta: Similari
       provenance="export_similarity.py · top_{method}_{mask}.bin"
     >
       <div ref={ref} className="chart-wrap">
-        {total === 0 ? <Empty>Loading…</Empty> : (
+        {total === 0 ? <LoadState /> : (
           <svg width={width} height={shown.length * rowH + 30}>
             <g transform={`translate(${labelW},6)`} fontFamily={FONT.family}>
               {shown.map((s, i) => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
@@ -8,7 +8,7 @@ import { Key } from '@/components/Key'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useColourScheme } from '@/lib/colourSchemes'
-import { loadJson } from '@/lib/data'
+import { loadJson, useEach } from '@/lib/data'
 import { seasonOnly } from '@/lib/seasons'
 import { fmt, signed } from '@/lib/format'
 import { FONT, INK } from '@/lib/theme'
@@ -53,18 +53,9 @@ export function spectralOf(file: SurfaceFile, seasons: readonly SeasonMeta[]): S
 
 /** several sites' surface files at once (the cross-site charts); each appears as it arrives */
 export function useSurfaceFiles(codes: readonly string[]): Record<string, SurfaceFile> {
-  const key = codes.join(',')
-  const [files, setFiles] = useState<Record<string, SurfaceFile>>({})
-  useEffect(() => {
-    let live = true
-    for (const code of key ? key.split(',') : []) {
-      loadJson<SurfaceFile>(`${DIURNAL_DIR}/aeth/${code}.json`)
-        .then((f) => { if (live) setFiles((s) => (s[code] ? s : { ...s, [code]: f })) })
-        .catch(() => { /* none for this site */ })
-    }
-    return () => { live = false }
-  }, [key])
-  return files
+  const files = useEach(codes, (code) => loadJson<SurfaceFile>(`${DIURNAL_DIR}/aeth/${code}.json`))
+  // a site with no file is left out
+  return useMemo(() => Object.fromEntries(Object.entries(files).filter(([, f]) => f !== null)) as Record<string, SurfaceFile>, [files])
 }
 
 interface SiteProps { spectral: Spectral; site: SiteMeta; split: DaySplit | null; shade: readonly number[] }
