@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { AxisSwap, OrientedPlotLayer, useAxisSwap, XAxis, YAxis } from '@/components/Axes'
@@ -57,6 +57,18 @@ export function AeronetTyping({ rows, meta }: { rows: FilterRow[]; meta: MetaFil
 
   const xDom: [number, number] = [Math.min(-0.2, d3.min(pts, (p) => p.x) ?? 0), Math.max(2.6, d3.max(pts, (p) => p.x) ?? 2.5)]
   const yDom: [number, number] = [Math.min(0, d3.min(pts, (p) => p.y) ?? 0), Math.max(3, d3.max(pts, (p) => p.y) ?? 3)]
+
+  // the share table's natural width: it sits beside the plane only when it fits whole, else it stacks under it
+  const [tableW, setTableW] = useState(0)
+  const tableObs = useRef<ResizeObserver | null>(null)
+  const tableRef = useCallback((el: HTMLTableElement | null) => {
+    tableObs.current?.disconnect(); tableObs.current = null
+    if (!el) return
+    const take = () => { const w = Math.ceil(el.getBoundingClientRect().width); if (w > 0) setTableW((v) => (v === w ? v : w)) }
+    take()
+    tableObs.current = new ResizeObserver(take)
+    tableObs.current.observe(el)
+  }, [])
 
   const legendKeys = col.order(pts.map((p) => p.row))
   return (
@@ -120,8 +132,8 @@ export function AeronetTyping({ rows, meta }: { rows: FilterRow[]; meta: MetaFil
                 </svg>
               )
             } },
-            ...(cazorla && shares.length > 0 ? [{ key: 'shares', title: `Class shares by ${col.by === 'site' ? 'site' : 'season'}`, min: 300, basis: 420, expandable: false, render: () => (
-                  <div style={{ overflowX: 'auto', maxWidth: '100%' }}><table className="aeronet-share-table" style={{ width: 'max-content', fontSize: 11.5, borderCollapse: 'collapse', fontFamily: FONT.family, color: INK.text }}>
+            ...(cazorla && shares.length > 0 ? [{ key: 'shares', title: `Class shares by ${col.by === 'site' ? 'site' : 'season'}`, min: Math.max(300, tableW), basis: Math.max(420, tableW), max: tableW || undefined, expandable: false, fit: false, render: () => (
+                  <div style={{ overflowX: 'auto', maxWidth: '100%' }}><table ref={tableRef} className="aeronet-share-table" style={{ width: 'max-content', fontSize: 11.5, borderCollapse: 'collapse', fontFamily: FONT.family, color: INK.text }}>
                     <thead><tr><th style={{ textAlign: 'left', padding: '2px 6px' }}>{col.by === 'site' ? 'Site' : 'Season'}</th><th style={{ padding: '2px 6px' }}>n</th>
                       {CAZORLA_CLASSES.map((c) => <th key={c} style={{ padding: '2px 4px', fontWeight: 500, color: INK.muted, maxWidth: 64 }}>{c}</th>)}</tr></thead>
                     <tbody>{shares.map((s) => (

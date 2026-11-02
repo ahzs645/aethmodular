@@ -318,8 +318,10 @@ export function SingleFit({ children }: { children: ReactNode }) {
         const wrap = legend.parentElement
         if (!wrap || legend.parentElement?.closest('.legend')) continue
         // A map's SVGs are just its markers: its canvas occupies the full plot width.
-        // Measure every drawing surface so moving a legend cannot collapse that map.
-        const plots = [...wrap.querySelectorAll('svg, canvas, img')].filter((s) => !legend.contains(s) && !s.parentElement?.closest('svg, .legend'))
+        // Measure every drawing surface so moving a legend cannot collapse that map. A composite's panels
+        // (components/Panels) count whole, an HTML table in one too: the row measures its own width, so beside
+        // a legend in an auto column it would size itself past the window (Aerosol typing's class-share table)
+        const plots = [...wrap.querySelectorAll('svg, canvas, img, table, .panel-cell')].filter((s) => !legend.contains(s) && !s.parentElement?.closest('svg, .legend'))
         if (!plots.length) continue
         const rects = plots.map((p) => p.getBoundingClientRect())
         const span = Math.max(...rects.map((r) => r.right)) - Math.min(...rects.map((r) => r.left))

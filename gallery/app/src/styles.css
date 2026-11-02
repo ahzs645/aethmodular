@@ -1880,6 +1880,8 @@ html[data-single='1'] .app-header { margin-bottom: 0; background: color-mix(in s
 /* the page takes the card's colour, so the chart reads as it did on its card */
 html[data-single='1'] body { background: var(--ink-panel); }
 html[data-single='1'] [data-single-active]:not(.focused) { background: none; border: 0; border-radius: 0; padding: 0; }
+/* a section that boxes a group of charts (Calibration's configuration-section) is page chrome: one chart shows bare */
+html[data-single='1'] .configuration-section[data-single-path] { border: 0; border-radius: 0; padding: 0; margin-bottom: 0; }
 /* beside an open dock on a wide screen, not under it */
 @media (min-width: 901px) {
   html[data-single='1'][data-dock='open'] [data-single-root] { padding-left: calc(min(380px, 100vw - 36px) + 22px); }

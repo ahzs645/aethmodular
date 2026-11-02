@@ -53,6 +53,9 @@ export interface PanelDef extends PanelSize {
   expandable?: boolean
   /** the panel's site, for Panel axes: Per site (panels of one site share a range) */
   site?: string
+  /** false: the panel draws at its own height (a table) under a fitted height, and the other panels share the fit
+   * (default true); the host's fitting takes the panel's height off theirs */
+  fit?: boolean
   render: (p: PanelRender) => ReactNode
 }
 
@@ -115,8 +118,10 @@ export function Panels({ panels, gap = 24, letters = true, minHeight = 140, alig
   // one panel needs no letter
   if (n < 2) letters = false
   const headed = (p: PanelDef) => !!(p.title || p.note || letters)
-  const height = (p: PanelDef) => fit === null ? null
-    : Math.max(minHeight, (fit - gap * (lay.rows - 1)) / Math.max(1, lay.rows) - (headed(p) ? PANEL_TITLE_H : 0))
+  // stacked, a panel at its own height (`fit: false`) takes no share of the rows
+  const rows = lay.stacked ? drawn.filter((p) => p.fit !== false).length : lay.rows
+  const height = (p: PanelDef) => fit === null || p.fit === false ? null
+    : Math.max(minHeight, (fit - gap * (rows - 1)) / Math.max(1, rows) - (headed(p) ? PANEL_TITLE_H : 0))
   const at = open === null ? -1 : drawn.findIndex((p) => p.key === open)
   const shown = at >= 0 ? drawn[at] : null
   const big = typeof window === 'undefined' ? 900 : Math.max(320, Math.min(1100, window.innerWidth - 160))
