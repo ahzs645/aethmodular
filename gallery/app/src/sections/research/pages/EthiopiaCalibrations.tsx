@@ -19,7 +19,7 @@ import { AdamaSpectra, BandProfile, DerivativeSpectra, EtadSpectra, SpectraMissi
  * paired views of the per-spectrum EC (07 [11], 09 [12] C, 10 [12] B; ethiopia/Paired). Their per-spectrum
  * ETAD EC tables are tracked, so every calibration's Addis EC is drawn per filter and against HIPS.
  * The notebooks used HIPS Fabs/10; the HIPS axis and the saved slopes follow the MAC set under
- * Filters → units (lib/mac: x rescales, slopes scale by MAC/10, intercepts and R² stay).
+ * Plot → units (lib/mac: x rescales, slopes scale by MAC/10, intercepts and R² stay).
  * Also: SPARTAN's lot-251 biomass tool calibration at Addis (July07, spartan_ec 02; ethiopia/Smoke, joined to
  * the gallery's Addis rows), the Adama TOR set (June 02/03/08/15, spartan_ec 03/05/07; ethiopia/Adama) and
  * 08's residual diagnostics (ethiopia/Residuals).
@@ -55,7 +55,7 @@ export function EthiopiaCalibrations({ rows: galleryRows }: SectionPageProps) {
   return <>
     <PageIntro id="ethiopia-intro" title="Ethiopia (ETAD) EC under the June 2026 calibrations — which samples, how many components, which lots" data={data}
       notebooks="research/ftir_ec_calibration_2026_06_25/01_adama_spectra, 02_adama_tor_vs_ftir, 03_adama_char_soot, 04_ethiopia_etad_spectra, 06_calibration_variants_components [12], [21], 07_ethiopia_variant_ec, 08_adama_hips_crossplots, 09_ethiopia_component_ec, 10_ethiopia_ec_both_lots, 12_dedicated_ethiopia_calibration, 13_chase_origin_and_biomass [9], 15_downstream_recommended_calibration; research/spartan_ec_2026_06_16/02_biomass_calibration_comparison, 03_adama_han_char_soot, 05_calibration_optimization, 07_calibration_optimization_story, 08_outlier_removal_explainer; research/July07/regular_before_cal0_vs_smoke_hips, regular_vs_smoke_ec_vs_hips">
-      <p>All of these apply PLS calibrations trained on IMPROVE to the 319 ETAD spectra (19 filters scanned twice, so one point per spectrum, as the notebooks do). None has an Ethiopian thermal EC reference: they are judged by agreement with HIPS Fabs/MAC (the notebooks: MAC 10; here the MAC set under Filters → units, now {m.mac}) and by physical sense. Notebook 07 left the HIPS comparison as a to-do; the crossplots here add it from the HIPS Fabs carried in notebook 15's table.</p>
+      <p>All of these apply PLS calibrations trained on IMPROVE to the 319 ETAD spectra (19 filters scanned twice, so one point per spectrum, as the notebooks do). None has an Ethiopian thermal EC reference: they are judged by agreement with HIPS Fabs/MAC (the notebooks: MAC 10; here the MAC set under Plot → units, now {m.mac}) and by physical sense. Notebook 07 left the HIPS comparison as a to-do; the crossplots here add it from the HIPS Fabs carried in notebook 15's table.</p>
       <FixedSetNote subject="each saved-table chart (the variants' HIPS fits, training-set medians, progression, mean spectra, Adama and cleaning figures)" what="the notebooks' saved statistics (the charts of the 319 ETAD spectra and of the gallery's Addis rows follow it)" />
       <p>A naming hazard runs through the July07 and spartan_ec notebooks: their "regular CAL-0" is the 906-filter IMPROVE set (the set the gallery's "Biomass-smoke (906)" calibration preset trains on), while their "smoke" or "biomass tool" calibration is a different model, the coefficients SPARTAN's calibration tool exported for filter lot 251. The page names them that way. The only thermal EC in Ethiopia is the five Adama quartz filters, read against every calibration below.</p>
     </PageIntro>
@@ -72,7 +72,7 @@ export function EthiopiaCalibrations({ rows: galleryRows }: SectionPageProps) {
     <Figure kind="crossplot" id="ethiopia-hips" data={points} x="HIPS" y="EC" idColumn="id" choose={[{ column: 'which', label: 'Calibration', default: '15 · recommended — NEW lot-248+251, flag-filtered, k10' }]}
       xLabel={`HIPS Fabs / ${m.mac} (µg/m³)`} yLabel="Predicted FTIR EC (µg/m³)" maxSide={460} errorRatio={m.lambda}
       title="Each calibration against HIPS — the old set is steep and offset, the lot-248+251 mirror moves toward 1:1"
-      subtitle={`ETAD spectra with a HIPS Fabs, against Fabs ÷ ${m.mac} (the MAC set under Filters → units; the notebooks used 10). The notebooks fitted OLS (08's table below; 15: 2.27x − 5.25 old, about 1.2x − 2.2 new, at MAC 10); the line here is the gallery's estimator on the same points, Deming with the explorer's λ at this MAC (${f2(m.lambda)}).`}
+      subtitle={`ETAD spectra with a HIPS Fabs, against Fabs ÷ ${m.mac} (the MAC set under Plot → units; the notebooks used 10). The notebooks fitted OLS (08's table below; 15: 2.27x − 5.25 old, about 1.2x − 2.2 new, at MAC 10); the line here is the gallery's estimator on the same points, Deming with the explorer's λ at this MAC (${f2(m.lambda)}).`}
       provenance={provenance(data, ['per_filter'])} />
 
     <Figure kind="table" id="ethiopia-variant-fits" data={atMac(rows(data, 'variant_hips_fits'))}
@@ -93,7 +93,7 @@ export function EthiopiaCalibrations({ rows: galleryRows }: SectionPageProps) {
       panels={[{ value: 'slope', label: `Slope vs HIPS Fabs/${m.mac} (OLS)`, reference: 1 }, { value: 'intercept', label: 'Intercept (µg/m³)', reference: 0 }]}
       aggregate={{ stat: 'median', interval: 'none' }} labelWidth={330}
       title="Notebook 12 — the dedicated data is the win, not the fancy selection"
-      subtitle="From the 906-filter set to the full 13,012-filter lot-248+251 mirror the intercept goes from −5.25 to about −2.3 and the slope from 2.27 to about 1.2 (at MAC 10; the slopes drawn follow the MAC set under Filters → units); a PCA Addis neighbourhood adds little; Weakley's second derivative with band selection pulls the intercept to about −1 but flattens the slope, so the remaining offset is method or MAC, not spectral."
+      subtitle="From the 906-filter set to the full 13,012-filter lot-248+251 mirror the intercept goes from −5.25 to about −2.3 and the slope from 2.27 to about 1.2 (at MAC 10; the slopes drawn follow the MAC set under Plot → units); a PCA Addis neighbourhood adds little; Weakley's second derivative with band selection pulls the intercept to about −1 but flattens the slope, so the remaining offset is method or MAC, not spectral."
       provenance={provenance(data, ['dedicated_progression'])} />
 
     {spectra ? <><EtadSpectra data={data} /><BandProfile data={data} /></> : <SpectraMissing data={data} />}

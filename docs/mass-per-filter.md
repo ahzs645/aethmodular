@@ -1,6 +1,6 @@
 # Mass per filter: sampled volumes and their limits
 
-The gallery's **Filters → units → Mass per filter** switch (and the poster's per-filter panels)
+The gallery's **Plot → units → Mass per filter** switch (and the poster's per-filter panels)
 turn every µg/m³ value into µg on the filter: concentration × the filter's sampled volume.
 This is the quantity FTIR sees. A spectrum knows what sits on the filter, not how much air
 went through it.

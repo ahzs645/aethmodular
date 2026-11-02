@@ -76,7 +76,7 @@ const METHODS: Method[] = ['AIRSpec', 'VIBES']
 const colorsFor = (completed: boolean): Record<Method, string> => ({ AIRSpec: baselineColor('AIRSpec'), VIBES: baselineColor('VIBES', completed ? 70 : null) })
 
 /**
- * `mac` is the reader's MAC (Filters → units; config.MAC_VALUE until changed) and `demingLambda` the
+ * `mac` is the reader's MAC (Plot → units; config.MAC_VALUE until changed) and `demingLambda` the
  * explorer's lambda* (calibration.json, at MAC 10) scaled to it by MAC² (lib/mac): passed in, not restated here.
  */
 export function BaselineExternalPilot({ mac, demingLambda, completed = false }: { mac: number; demingLambda: number; completed?: boolean }) {

@@ -275,7 +275,7 @@ export const BUILT_IN_GROUPINGS: BuiltInGrouping[] = [
   nb('fabs-quintiles', 'HIPS Fabs quintiles', 'HIPS Fabs', 'quintiles', [], [], 'research/ftir_ec_phase3/scripts/theory_test_suite.py (loading_bins, run_ftir_37)'),
   nb('fabs-deciles', 'HIPS Fabs deciles', 'HIPS Fabs', 'deciles', [], [], 'research/ftir_hips_chem/improve_high_fabs_comparison.ipynb (fit per Fabs decile)'),
   nb('pm-deciles', 'PM2.5 mass deciles', 'PM2.5 mass', 'deciles', [], [], 'research/ftir_hips_chem/decision_workbook_20261022.ipynb (loading deciles)',
-    'the workbook used µg per filter; here µg/m³ (switch Filters → units to mass per filter)'),
+    'the workbook used µg per filter; here µg/m³ (switch Plot → units to mass per filter)'),
   // aethalometer sources
   nb('aae-class', 'AAE source class (aethalometer)', 'AAE UV-IR (aethalometer)', 'cutoffs', [0.9, 1.5],
     ['Fossil fuel (AAE < 0.9)', 'Mixed (0.9 to 1.5)', 'Biomass (AAE ≥ 1.5)'],

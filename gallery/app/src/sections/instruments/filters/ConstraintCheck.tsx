@@ -37,7 +37,7 @@ export function ConstraintCheck({ pairs, marked = [], sites, ch, sigma }: {
   const yOf = (p: Pair) => (abs === 'HIPS' ? p.fabs : p.batn)
   const yLabel = abs === 'HIPS' ? 'HIPS Fabs (Mm⁻¹)' : `b_ATN ${ch} = BCc${bcTag(pairs)} × σ_ATN (Mm⁻¹)`
   const reference = abs === 'HIPS' ? 10 : sigma
-  // the MAC set under Filters → units, beside SPARTAN's 10 when it differs
+  // the MAC set under Plot → units, beside SPARTAN's 10 when it differs
   const { mac } = useMac()
   const readerMac = abs === 'HIPS' && mac !== 10 ? mac : null
   const per = useMemo(() => sites.map((s) => {
@@ -49,7 +49,7 @@ export function ConstraintCheck({ pairs, marked = [], sites, ch, sigma }: {
   const lines = (m: MacMethods): CrossLine[] => [
     ...METHODS.map((d, i) => ({ slope: d.slope(m), intercept: d.intercept(m), color: colourOf(i), label: d.label, dash: d.dash, method: 'ols' as const, stats: null })),
     ...(reference ? [{ slope: reference, intercept: 0, color: INK.muted, label: 'reference', dash: '2 3', method: 'ols' as const, stats: null }] : []),
-    ...(readerMac ? [{ slope: readerMac, intercept: 0, color: INK.accent, label: `MAC ${readerMac} (Filters)`, dash: '6 3', method: 'ols' as const, stats: null }] : []),
+    ...(readerMac ? [{ slope: readerMac, intercept: 0, color: INK.accent, label: `MAC ${readerMac} (Plot)`, dash: '6 3', method: 'ols' as const, stats: null }] : []),
   ]
   const points = (own: Pair[], color: string): CrossPoint[] => own.map((p) => ({
     x: p.ec!, y: yOf(p)!, color, id: p.id,
@@ -76,7 +76,7 @@ export function ConstraintCheck({ pairs, marked = [], sites, ch, sigma }: {
         )} />
         <Key items={[...METHODS.map((d, i) => ({ label: d.label, color: colourOf(i), kind: d.dash ? 'dash' as const : 'line' as const })),
           ...(reference ? [{ label: abs === 'HIPS' ? 'MAC 10 m²/g' : `σ_ATN ${ch} = ${fmt(reference, 2)} m²/g`, color: INK.muted, kind: 'dash' as const }] : []),
-          ...(readerMac ? [{ label: `MAC ${readerMac} m²/g (Filters → units)`, color: INK.accent, kind: 'dash' as const }] : [])]} />
+          ...(readerMac ? [{ label: `MAC ${readerMac} m²/g (Plot → units)`, color: INK.accent, kind: 'dash' as const }] : [])]} />
         <ExcludedNote count={per.reduce((a, x) => a + x.markedOwn.length, 0)} drawn />
         <Note explain>The notebook's verdict is about the intercept, not the fit: a positive M3 intercept is absorption that does not scale with EC
           (dust, brown carbon, a filter or loading artefact). M1 is pulled up by low-EC filters, whose ratios are the noisiest.</Note>

@@ -82,7 +82,7 @@ export function SplitCheck({ run, runs }: { run: CalibRun; runs: CalibRunsFile }
     <ChartFrame
       id="split-check"
       title={`Blind-half check — does the readout move between halves at ${target?.site ?? run.target}?`}
-      subtitle={`One fitted model, scored on the early and late halves of the test set and on the odd and even (interleaved) halves, all with the same n (each half takes half of the fixed test set and half of the rest, in date order). The axes follow the points: the distance between them is the finding. Dotted lines mark slope 1 and intercept 0 when they are in range.${isFabs ? ` Against HIPS Fabs ÷ ${gallery.label} (Filters → units).` : ''} Rebuilt here from each filter's prediction, so the halves follow Filters → excluded; with every filter counted they are the explorer's saved split check.`}
+      subtitle={`One fitted model, scored on the early and late halves of the test set and on the odd and even (interleaved) halves, all with the same n (each half takes half of the fixed test set and half of the rest, in date order). The axes follow the points: the distance between them is the finding. Dotted lines mark slope 1 and intercept 0 when they are in range.${isFabs ? ` Against HIPS Fabs ÷ ${gallery.label} (Plot → units).` : ''} Rebuilt here from each filter's prediction, so the halves follow Filters → excluded; with every filter counted they are the explorer's saved split check.`}
       provenance="calibration_explorer /api/run eval (per-filter predictions) · split_check rebuilt in the browser (charts/calibration/runFit) · Target readout tab"
     >
       <div ref={wrapRef} className="chart-wrap">

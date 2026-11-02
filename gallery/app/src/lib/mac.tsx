@@ -4,7 +4,7 @@ import { EXPORT_MAC, macView, type MacView } from './macMath'
 export * from './macMath'
 
 /**
- * The MAC every chart uses, from one place. The reader sets it under Filters → units (App's `mac`);
+ * The MAC every chart uses, from one place. The reader sets it under Plot → units (App's `mac`);
  * App provides it here, so a page or chart reads `useMac()` instead of threading meta.mac_value.
  * Meeting pages shown "As presented" get the export's MAC (lib/presentation).
  *

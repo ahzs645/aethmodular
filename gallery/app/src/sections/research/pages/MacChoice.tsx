@@ -33,8 +33,6 @@ const TARGET_OF: Record<string, string> = { ETAD: 'addis', CHTS: 'chts', ETBI: '
 /** the explorer saved Deming and OLS fits only: the Regression fits setting draws those of its choices */
 const SAVED_FITS: readonly Estimator[] = ['deming', 'ols']
 type EvalSet = 'fixed' | 'all'
-/** the 1:1 chart's MAC: the one set under Filters, or a quick comparison */
-const MACS = ['gallery', '6', '10', '17'] as const
 
 /** the page's choices from the Filters panel: its calibration sites (Addis when none is picked), its filters, its fits */
 interface MacView { targets: string[]; fallback: boolean; set: EvalSet; fits: Estimator[]; unsaved: Estimator[] }
@@ -43,7 +41,7 @@ interface MacView { targets: string[]; fallback: boolean; set: EvalSet; fits: Es
  * ftir_16 and ftir_19: MAC 6 or 10. HIPS enters every crossplot as x = Fabs/MAC, so the MAC rescales
  * x: each calibration keeps its intercept and R² and its slope scales by MAC/10 (lib/mac). The explorer
  * saved every preset's fits at MAC 6, 10 and 17 (calibration_runs.json), which obey that exactly, so the
- * page draws any MAC: the one set under Filters by default. ftir_19's six setups are refitted here from
+ * page draws any MAC: the one set under Plot → units by default. ftir_19's six setups are refitted here from
  * its per-filter table; ftir_16's IMPROVE bridge says which MAC the network supports.
  */
 export function MacChoice({ picked, rows: viewRows, meta }: SectionPageProps) {
@@ -160,8 +158,8 @@ const refitNote = (nOut: number) => (nOut > 0
  */
 function MacOneToOne({ runs, view }: { runs: CalibRunsFile; view: MacView }) {
   const gallery = useMac()
-  const [macText, setMac] = useSearchParam<(typeof MACS)[number]>('mac-sweep.mac', 'gallery', MACS)
-  const mac = macText === 'gallery' ? gallery.mac : Number(macText)
+  // the gallery's MAC (Plot → units), never a per-chart choice: the lines (gallery.slope) and the points share it
+  const mac = gallery.mac
   const lg = useLegend()
   const counts = useCountedFilter()
   const colours = useColourScheme('mac-sweep', 'categorical', 'Tableau 10')
@@ -203,9 +201,9 @@ function MacOneToOne({ runs, view }: { runs: CalibRunsFile; view: MacView }) {
   const allOnly = panels.filter((pn) => pn.set !== view.set).map((pn) => siteName(runs, pn.t))
   return (
     <ChartFrame id="mac-sweep" title={`Every calibration at MAC ${mac} — on the 1:1 plane`}
-      subtitle={`FTIR EC against HIPS Fabs ÷ ${mac}, with each calibration's fit on ${setLabel(setFor(first, view.set), first, panels[0]?.nCounted)}, for the sites picked in the Filters panel. A calibration self-consistent at this MAC follows the dashed 1:1 line. Switch the MAC (Filters follows the MAC set under Filters → units, now ${gallery.mac}): x rescales, so every line rotates about its own intercept, which never moves. The MAC decides which calibration is self-consistent (slope 1), never the offset. Fits follow Regression fits in the Filters panel (Deming dashed long, OLS solid); point at a calibration in the legend to see its filters.`}
+      subtitle={`FTIR EC against HIPS Fabs ÷ ${mac}, with each calibration's fit on ${setLabel(setFor(first, view.set), first, panels[0]?.nCounted)}, for the sites picked in the Filters panel. A calibration self-consistent at this MAC follows the dashed 1:1 line. Change the MAC under Plot → units: x rescales, so every line rotates about its own intercept, which never moves. The MAC decides which calibration is self-consistent (slope 1), never the offset. Fits follow Regression fits in the Filters panel (Deming dashed long, OLS solid); point at a calibration in the legend to see its filters.`}
       provenance={<>Stands in for ftir_19 (MAC fix across every setup) on the gallery's explorer presets and sites. Fits: <code>calibration_runs.json</code> runs[].metrics at MAC 10 (<code>gallery/data/export_calibration_runs.py</code>), refitted here from runs[].eval on the filters that count (common/explorerFit: on the explorer's own set, its saved rows), slopes re-expressed at the chosen MAC (lib/mac).</>}
-      controls={<><Segmented label="MAC (m²/g)" value={macText} options={MACS} onChange={setMac} optionLabel={(o) => (o === 'gallery' ? `Filters (${gallery.mac})` : o)} />{colours.picker}</>}>
+      controls={colours.picker}>
       <FacetGrid items={panels} minCell={300} maxCols={3} render={(pn) => <div>
         {(panels.length > 1 || pn.set !== view.set) && <p className="facet-title">{siteName(runs, pn.t)}{pn.set !== view.set ? ' · all pairs' : ''}</p>}
         <Crossplot title="" points={pn.points} xLabel={`HIPS Fabs / ${mac} (µg/m³)`} yLabel="FTIR EC (µg/m³)" fit={false} grouping="none" extraLines={pn.lines} domain={pn.domain} maxSide={460} />
@@ -249,7 +247,7 @@ function MacPivot({ runs, view }: { runs: CalibRunsFile; view: MacView }) {
   const lo = Math.min(0, ...ints) - 0.5
   return (
     <ChartFrame id="mac-pivot" title="One calibration, two MACs — the line pivots on its intercept"
-      subtitle={`${siteName(runs, target)}, ${setLabel(set, run, m10?.n)}. Filled points: x = Fabs/10; hollow: the same filters at Fabs/${alt} (${gallery.mac !== 10 ? 'the MAC set under Filters' : 'MAC 6, until another MAC is set under Filters'}; the cloud stretches by 10/${alt}). Both fits are drawn back to x = 0, where they meet: the axes run below zero so the shared intercept is visible. Dashed grey is 1:1, where a self-consistent calibration and MAC pairing would lie. Site, filters and fits follow the Filters panel.`}
+      subtitle={`${siteName(runs, target)}, ${setLabel(set, run, m10?.n)}. Filled points: x = Fabs/10; hollow: the same filters at Fabs/${alt} (${gallery.mac !== 10 ? 'the MAC set under Plot → units' : 'MAC 6, until another MAC is set under Plot → units'}; the cloud stretches by 10/${alt}). Both fits are drawn back to x = 0, where they meet: the axes run below zero so the shared intercept is visible. Dashed grey is 1:1, where a self-consistent calibration and MAC pairing would lie. Site, filters and fits follow the Filters panel.`}
       provenance={<>Stands in for ftir_19 §2 and ftir_31 §1.11 (the pivot redone with Deming). Points: <code>calibration_runs.json</code> (explorer eval); fits: its saved MAC 10 metrics, refitted here on the filters that count (common/explorerFit; on the explorer's own set, the saved rows, whose MAC 6 rows the pivot reproduces).</>}
       controls={o.controls()}>
       {run ? <>
@@ -273,7 +271,7 @@ const SWEEP_MACS = d3.range(4, 20.01, 0.25)
 /**
  * ftir_19's six setups refitted in the browser from its per-filter table (addis_predictions_all_setups.csv):
  * OLS of each setup's EC on Fabs/MAC over the fixed 190-filter cohort, as the notebook did, at MAC 10 and at
- * the MAC set under Filters. At MAC 10 and 6 the refit reproduces the notebook's table to its printed digits.
+ * the MAC set under Plot → units. At MAC 10 and 6 the refit reproduces the notebook's table to its printed digits.
  * The sweep shows how far each setup's RMSE against Fabs/MAC moves as the MAC does, and where its slope is 1.
  */
 function SetupsAtMac({ rows: filters, saved, provenance: prov }: { rows: Row[]; saved: Row[]; provenance: React.ReactNode }) {
@@ -321,7 +319,7 @@ function SetupsAtMac({ rows: filters, saved, provenance: prov }: { rows: Row[]; 
       return { x: m, y: v, tip: [s.name, `MAC ${fmt(m, 2)}`, `${key === 'rmse' ? 'RMSE' : 'slope'} ${f2(v)}`] } }) }))
   return (
     <ChartFrame id="mac-ftir19" title={`ftir_19's six setups at MAC ${mac} — refitted from its per-filter predictions`}
-      subtitle={`OLS of each setup's Addis EC on HIPS Fabs ÷ MAC (ftir_19's fit), on ${o.values.cohort === 'fixed' ? 'the fixed 190-filter cohort' : 'every filter with Fabs'}${split.nOut ? ` less the ${split.nOut} excluded (Filters → excluded)` : ''}. The MAC is the one set under Filters → units; at MAC 10 and 6, on the notebook's filters (Filters → excluded: Include, nothing excluded by hand), this reproduces its table. Intercept and R² do not depend on the MAC; the slope scales with it, so each setup has one MAC at which it is self-consistent (slope 1, last column). RMSE against Fabs/MAC moves only as a re-expression of that slope, so R² cannot arbitrate the MAC. Includes the deployed SPARTAN calibration, which the explorer presets do not.`}
+      subtitle={`OLS of each setup's Addis EC on HIPS Fabs ÷ MAC (ftir_19's fit), on ${o.values.cohort === 'fixed' ? 'the fixed 190-filter cohort' : 'every filter with Fabs'}${split.nOut ? ` less the ${split.nOut} excluded (Filters → excluded)` : ''}. The MAC is the one set under Plot → units; at MAC 10 and 6, on the notebook's filters (Filters → excluded: Include, nothing excluded by hand), this reproduces its table. Intercept and R² do not depend on the MAC; the slope scales with it, so each setup has one MAC at which it is self-consistent (slope 1, last column). RMSE against Fabs/MAC moves only as a re-expression of that slope, so R² cannot arbitrate the MAC. Includes the deployed SPARTAN calibration, which the explorer presets do not.`}
       provenance={prov} controls={<>{o.controls()}{o.values.view !== 'table' && colours.picker}</>}>
       {o.values.view === 'table'
         ? <div style={{ overflowX: 'auto' }}><table className="census-table">
@@ -379,7 +377,7 @@ function ImpliedMac({ rows: all, scenarios, provenance: prov }: { rows: FilterRo
   const agree = summary.map((x) => `${String(x.s.scenario).replace(/ \(.*\)$/, '')} ${f2(x.median)} (IQR ${f2(x.p25)}–${f2(x.p75)}; ftir_16 ${f2(x.s.implied_MAC_median)}, ${f2(x.s.implied_MAC_p25)}–${f2(x.s.implied_MAC_p75)})`).join('; ')
   return (
     <ChartFrame id="mac-implied" title="Implied MAC per Addis filter — under Adama's OC/EC, every filter needs a MAC far above 10"
-      subtitle={`Per Addis filter, MAC = HIPS Fabs × r / FTIR OC for Adama's TOR OC/EC r = ${f2(chosen.ratio)} (ftir_16 §3), ${addis.length} filters in view (${set === 'ftir16' ? 'those ftir_16 joined: with ChemSpec EC, FTIR OC and Fabs' : 'every Addis filter with FTIR OC and Fabs'}); values above 80 m²/g pile into the last bin, as in the notebook. Median (IQR) here, against ftir_16's table on its 175: ${agree}. ${set === 'ftir16' && addis.length === 175 ? 'Same filters, so the same numbers to rounding.' : 'A different set of filters, so the numbers differ.'} The MAC set under Filters (${mac}) is drawn with MAC 6 and 10; the implied MAC does not depend on it.`}
+      subtitle={`Per Addis filter, MAC = HIPS Fabs × r / FTIR OC for Adama's TOR OC/EC r = ${f2(chosen.ratio)} (ftir_16 §3), ${addis.length} filters in view (${set === 'ftir16' ? 'those ftir_16 joined: with ChemSpec EC, FTIR OC and Fabs' : 'every Addis filter with FTIR OC and Fabs'}); values above 80 m²/g pile into the last bin, as in the notebook. Median (IQR) here, against ftir_16's table on its 175: ${agree}. ${set === 'ftir16' && addis.length === 175 ? 'Same filters, so the same numbers to rounding.' : 'A different set of filters, so the numbers differ.'} The MAC set under Plot → units (${mac}) is drawn with MAC 6 and 10; the implied MAC does not depend on it.`}
       provenance={prov} controls={o.controls()}>
       <SweepPlot series={[histogramSeries({ id: 'implied', label: 'Addis filters', color: MAC10, edges, counts,
         tip: (i, c) => [`MAC ${fmt(edges[i], 1)}–${fmt(edges[i + 1], 1)}${i === 39 ? ' (and above)' : ''}`, `${c} filters`] })]}

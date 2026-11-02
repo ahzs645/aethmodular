@@ -28,7 +28,7 @@ const VARIANT_COLOR: Record<string, string> = { deployed: BLANK_LINE_COLOR.deplo
  *
  * The fits are against Fabs / MAC at the export's MAC (hips.york.mac). Rescaling x and its errors by
  * one factor rescales the York slope and its SE by the inverse and leaves the intercept, so the slope
- * follows the MAC set under Filters (lib/mac) without a refit.
+ * follows the MAC set under Plot → units (lib/mac) without a refit.
  */
 export function HipsYork({ runs }: { runs: CalibRunsFile }) {
   const { showCI } = useRegressions()

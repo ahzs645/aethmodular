@@ -35,7 +35,7 @@ block the code base stay in [open-items.md](open-items.md). The settled claims a
 ### How much of the Addis slope is the MAC?
 - **Why (Sean):** HIPS BC = Fabs / MAC with MAC = 10, a convention rather than a value measured in
   Addis. MAC is known to vary by site.
-- **What we have:** the gallery's Filters → units → MAC choice.
+- **What we have:** the gallery's Plot → units → MAC choice.
   - A different MAC scales the slope of any fit against HIPS BC.
   - The intercept is unchanged for OLS. With the gallery's Deming fit it moves slightly, because
     the error ratio stays fixed (MAC 10 to 15 at Addis: −6.76 to −6.99).

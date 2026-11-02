@@ -58,7 +58,7 @@ export function AgreementTimeline({ pairs, marked = [], sites, ch }: {
 
   return (
     <ChartFrame id="aeth-filters-timeline" title="Through time — the aethalometer, HIPS and FTIR EC on each filter"
-      subtitle={`Each filter's aethalometer ${ch} BCc${bcTag(pairs)} (window mean), HIPS BC (Fabs ÷ ${mac}, the MAC set under Filters → units; the AAARpos notebook used 10) and FTIR EC, in µg/m³ or each divided by its own median at the site. Lines break where filters are more than 45 days apart. The means over the filters with all three are under each site.`}
+      subtitle={`Each filter's aethalometer ${ch} BCc${bcTag(pairs)} (window mean), HIPS BC (Fabs ÷ ${mac}, the MAC set under Plot → units; the AAARpos notebook used 10) and FTIR EC, in µg/m³ or each divided by its own median at the site. Lines break where filters are more than 45 days apart. The means over the filters with all three are under each site.`}
       provenance="AAARpos.ipynb (method agreement time series) · ETAD_Aug13.ipynb §9, §11 · ETAD_comprehensive_absorption_analysis.ipynb §9 (normalised FTIR EC vs BCc)"
       controls={<Segmented label="Scale" value={scale} options={SCALES} onChange={setScale} optionLabel={(k) => (k === 'absolute' ? 'µg/m³' : '÷ own median')} />}>
       {per.length === 0 ? <Empty>No filter in view has the aethalometer at {ch}.</Empty> : per.map(({ s, series, marks, nAll, means, ticks, xDomain }) => (

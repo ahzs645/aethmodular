@@ -63,7 +63,7 @@ const qMark = (q: Q, color: string, wide = false) => ({ mid: q.p50, lo: wide ? q
  * windows the exporter screened IMPROVE with, and everything on the IMPROVE side, stay as saved.
  */
 export function ImproveEnvelope({ rows, meta }: SectionPageProps) {
-  // the fAbs / EC panel's reference is the MAC the reader set under Filters → units (lib/mac), not the export's
+  // the fAbs / EC panel's reference is the MAC the reader set under Plot → units (lib/mac), not the export's
   const { mac } = useMac()
   const { data, error } = useExport<Envelope>('research/improve_envelope/envelope.json')
   const { rows: optics } = useOptics()

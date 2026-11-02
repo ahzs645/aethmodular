@@ -76,7 +76,7 @@ export function ChannelAgreement({ rows, sites, extra, wavelengths, ch, onChanne
   const any = blocks.some((b) => b.rows.some((r) => r.marks.some((m) => m.length)))
   return (
     <ChartFrame id="aeth-filters-channels" title="Agreement by channel — which aethalometer wavelength tracks the filters"
-      subtitle={`For each MA350 channel, over the filters with both values: r² of its BCc against HIPS Fabs (filled)${hasAtn ? ' and of its spot attenuation ATN1 (hollow)' : ''}, r² against FTIR EC, and its BCc ÷ HIPS BC (Fabs ÷ ${mac}, the MAC set under Filters → units; median and IQR, 1 = agreement). HIPS reads at ${HIPS_NM} nm, so the nearest channel is ${NEAREST_TO_HIPS} (625 nm), not the UV the notebook expected. At least ${MIN_N} filters per value. Click a channel to use it everywhere on this page.`}
+      subtitle={`For each MA350 channel, over the filters with both values: r² of its BCc against HIPS Fabs (filled)${hasAtn ? ' and of its spot attenuation ATN1 (hollow)' : ''}, r² against FTIR EC, and its BCc ÷ HIPS BC (Fabs ÷ ${mac}, the MAC set under Plot → units; median and IQR, 1 = agreement). HIPS reads at ${HIPS_NM} nm, so the nearest channel is ${NEAREST_TO_HIPS} (625 nm), not the UV the notebook expected. At least ${MIN_N} filters per value. Click a channel to use it everywhere on this page.`}
       provenance="HIPS_vs_Aethalometer_Optical_Comparison.ipynb §6–9 (ATN vs BCc against HIPS, R² by wavelength) · ETAD_Aug13.ipynb §12 (Red 625 nm vs IR 880 nm against HIPS)">
       {any ? <>
         <IntervalStrip blocks={blocks} panels={panels} labelWidth={130} noteWidth={44} minPanelWidth={160} />

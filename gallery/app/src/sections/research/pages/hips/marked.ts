@@ -12,7 +12,7 @@ import { useOptics } from '../../common/optics'
 import { useConcRows } from '../../common/ui'
 import type { Paired } from './TauViews'
 
-/** the row fields these views read; Filters → units: mass per filter turns them into µg/filter */
+/** the row fields these views read; Plot → units: mass per filter turns them into µg/filter */
 const CONC_FIELDS = ['EC (FTIR)', 'OC (FTIR)', 'OM (FTIR)', 'PM2.5 mass', 'Iron']
 
 /** the excluded filters in view with a (non-blank) optics row; empty unless Filters → excluded is Mark */

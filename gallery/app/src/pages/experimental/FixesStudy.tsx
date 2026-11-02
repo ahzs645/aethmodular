@@ -63,7 +63,7 @@ function SeasonSlopes({ d }: { d: FixesData }) {
   return (
     <ChartFrame id="xq-season" source={source('SeasonSlopes')} provenance={runLine(d)}
       title="February: Dry or Belg? — the Addis seasonal slopes under both calendars"
-      subtitle={`Deming fits of FTIR EC against HIPS BC per season, for SPARTAN's published EC and the full spline and raw calibrations, with 95 % bootstrap intervals for the slope. Slopes are at ${mac.label} (set under Filters; the run fitted at MAC 10, and another MAC scales the slope by MAC/10 and leaves the intercept). The question is whether Dry and Belg stay low against Kiremt when February moves. On the right: filters per season, historical → site calendar.`}
+      subtitle={`Deming fits of FTIR EC against HIPS BC per season, for SPARTAN's published EC and the full spline and raw calibrations, with 95 % bootstrap intervals for the slope. Slopes are at ${mac.label} (set under Plot → units; the run fitted at MAC 10, and another MAC scales the slope by MAC/10 and leaves the intercept). The question is whether Dry and Belg stay low against Kiremt when February moves. On the right: filters per season, historical → site calendar.`}
       controls={<Segmented label="Read" value={what} options={['slope', 'intercept'] as const} onChange={setWhat} />}>
       <IntervalStrip blocks={blocks} labelWidth={120} rowHeight={26} noteWidth={78}
         panels={[{ label: what === 'slope' ? 'Deming slope vs HIPS BC' : 'Deming intercept (µg/m³)', reference: what === 'slope' ? 1 : 0 }]} />

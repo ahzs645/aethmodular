@@ -106,7 +106,7 @@ export function ModelForm(_props: SectionPageProps) {
         executed notebooks' tables or the CSVs they wrote; the search is redrawn from <code>calibration.json</code>,
         which the Calibration tab already loads, and ftir_08's transfer crossplot and its metrics from the
         notebook's per-filter predictions. Slopes against HIPS Fabs/10 are re-expressed at the MAC set under
-        Filters → units (now {mac.label}); an Addis RMSE or a residual rank against Fabs/10 cannot be, and says MAC 10.</p>
+        Plot → units (now {mac.label}); an Addis RMSE or a residual rank against Fabs/10 cannot be, and says MAC 10.</p>
       <p>Already drawn elsewhere: the full specification curve and the slope–intercept trap on the{' '}
         <a href="#tab=calibration">Calibration tab</a> (Specification curve; Slope vs intercept), and VIP profiles of the gallery's own calibrations on the{' '}
         <a href="#tab=meeting&meeting=meeting-20261028">28 Oct meeting page</a> (§8, What each calibration reads as EC) and{' '}

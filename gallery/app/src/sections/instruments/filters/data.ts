@@ -75,7 +75,7 @@ export interface Pair {
   /** spot attenuation over the window (tape loading, not a concentration) */
   atn: number | null
   fabs: number | null
-  /** HIPS Fabs ÷ the MAC set under Filters → units (µg/m³); at 10 it is SPARTAN's public BC */
+  /** HIPS Fabs ÷ the MAC set under Plot → units (µg/m³); at 10 it is SPARTAN's public BC */
   hipsBc: number | null
   ec: number | null
   iron: number | null
@@ -86,7 +86,7 @@ export function buildPairs(rows: FilterRow[], meta: MetaFile, extra: Map<string,
   const mac = meta.mac_value || 10
   return rows.flatMap((r) => {
     const x = extra.get(r.id)
-    // every pair value in µg/m³: under mass per filter (Filters → units) the µg/m³ fields arrive × the sampled
+    // every pair value in µg/m³: under mass per filter (Plot → units) the µg/m³ fields arrive × the sampled
     // volume, but HIPS Fabs (Mm⁻¹) and the extra smoothed channels do not, so the ratios and MACs would mix units
     const vol = num(r['Sampled volume'])
     const conc = (f: string) => { const v = num(r[f]); return v === null || meta.field_units[f] !== 'µg/filter' ? v : vol && vol > 0 ? v / vol : null }
@@ -156,9 +156,9 @@ export const MAC_DEFS: MacDef[] = [
   { key: 'hipsOverBc', label: 'HIPS Fabs ÷ aethalometer BCc', short: 'HIPS ÷ aeth BC', num: (p) => p.fabs, den: (p) => p.bc, reference: () => 10, refLabel: 'MAC 10 m²/g' },
   { key: 'aethOverEc', label: 'aethalometer b_ATN ÷ FTIR EC', short: 'b_ATN ÷ EC', num: (p) => p.batn, den: (p) => p.ec, reference: (s) => s, refLabel: 'σ_ATN of the channel (BCc = EC)' },
 ]
-/** the MAC set under Filters → units, as a second line beside a HIPS definition's 10 (none while it is 10) */
+/** the MAC set under Plot → units, as a second line beside a HIPS definition's 10 (none while it is 10) */
 export const macMarker = (d: MacDef, mac: number): { value: number; label: string } | undefined =>
-  d.key !== 'aethOverEc' && mac !== 10 ? { value: mac, label: `MAC ${mac} (Filters)` } : undefined
+  d.key !== 'aethOverEc' && mac !== 10 ? { value: mac, label: `MAC ${mac} (Plot)` } : undefined
 export const macOf = (d: MacDef, p: Pair): number | null => {
   const a = d.num(p), b = d.den(p)
   return a === null || b === null || b <= 0 ? null : a / b

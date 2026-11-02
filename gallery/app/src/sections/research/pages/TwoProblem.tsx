@@ -49,7 +49,7 @@ const fitRow = (name: string, xs: number[], ys: number[], extra: Record<string, 
  * HIPS agrees better with the aethalometer.
  */
 export function TwoProblem({ rows: viewRows, meta }: SectionPageProps) {
-  // Fabs against EC: both in µg/m³ whatever the basis (common/ui useConcRows), at the MAC set under Filters → units
+  // Fabs against EC: both in µg/m³ whatever the basis (common/ui useConcRows), at the MAC set under Plot → units
   const rows = useConcRows(viewRows, meta)
   const { mac } = useMac()
   const [site, setSite, sites] = useSite(rows, 'tp')

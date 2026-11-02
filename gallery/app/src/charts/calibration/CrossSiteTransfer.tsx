@@ -75,9 +75,8 @@ export function CrossSiteTransfer({ runs, galleryRows, sourceRows, galleryMeta }
     const present = [...new Set(runs.runs.map((r) => r.target))]
     return [...SITE_ORDER.filter((s) => present.includes(s)), ...present.filter((s) => !SITE_ORDER.includes(s)).sort()]
   }, [runs.runs])
-  // the MAC: the one set under Filters (lib/mac) by default, or one the explorer saved fits at
+  // the MAC: the gallery's one, set under Plot → units (lib/mac); no per-chart choice
   const gallery = useMac()
-  const macs = useMemo(() => [...new Set(runs.runs.flatMap((r) => r.metrics.map((m) => m.MAC)).filter((v): v is number => v !== null))].sort((a, b) => a - b), [runs.runs])
   // the options and when each applies (lib/chartOptions): the MAC converts HIPS Fabs, so it is
   // offered only for a calibration referenced to Fabs (and only with more than one MAC)
   // the calibration as three pickers (cohort, its size, the spectra); each offers only what the exported
@@ -93,11 +92,10 @@ export function CrossSiteTransfer({ runs, galleryRows, sourceRows, galleryMeta }
       choices: [...new Set(presets.map((p) => p.spectra))].map((sp) => ({ value: sp,
         label: (c) => { const q = presets.find((p) => p.cohort === c.cohort && sizeOf(p) === c.size && p.spectra === sp); const n = q && noteOf(q); return label(PREPROCESSING, sp) + (n ? ` (${n})` : '') },
         when: (c) => presets.some((p) => p.cohort === c.cohort && sizeOf(p) === c.size && p.spectra === sp) })) },
-    { key: 'mac', label: 'MAC', choices: [{ value: 'gallery', label: `Filters (${gallery.mac})` }, ...macs.map((m) => ({ value: String(m), label: String(m) }))], default: 'gallery', hidden: 'gallery',
-      when: (c) => runs.runs.some((r) => r.ref_kind === 'fabs' && presets.some((p) => p.key === r.preset && p.cohort === c.cohort && sizeOf(p) === c.size && p.spectra === c.spectra)), title: 'Converts HIPS Fabs to BC for calibrations referenced to Fabs. Filters: the MAC set under Filters → units; or one the explorer saved fits at' },
   ])
   const presetKey = presets.find((p) => p.cohort === o.values.cohort && sizeOf(p) === o.values.size && p.spectra === o.values.spectra)?.key ?? start?.key ?? ''
-  const mac = o.values.mac === 'gallery' ? gallery.mac : Number(o.values.mac)
+  // the MAC is the gallery's one (Plot → units), never a per-chart choice
+  const mac = gallery.mac
   // the fits' MAC context: the saved row at this MAC, or the export's re-expressed (lib/mac); λ ∝ MAC²
   const at: MacAt = { mac, exportMac: runs.mac_value, lambda10: gallery.lambda10 }
   const setPresetKey = (k: string) => { const p = presets.find((q) => q.key === k); if (p) { o.set('cohort', p.cohort); o.set('size', sizeOf(p)); o.set('spectra', p.spectra) } }
@@ -265,7 +263,7 @@ function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, gallery
     <ChartFrame
       id="cross-site-multiples"
       title={`Every site under one calibration — ${presetLabel}`}
-      subtitle="One panel per SPARTAN site: by default the calibration's predicted FTIR EC against HIPS Fabs ÷ MAC, with the 1:1 line (dashed) and the Deming fit on that site's filters (each site is a test set the model never saw), refitted here from each filter's prediction at the MAC set under Filters → units (λ scales with MAC²), on the filters that count under Filters → excluded. With every filter counted it is the explorer's saved fit. Click an axis title for another readout or any gallery measurement these filters carry."
+      subtitle="One panel per SPARTAN site: by default the calibration's predicted FTIR EC against HIPS Fabs ÷ MAC, with the 1:1 line (dashed) and the Deming fit on that site's filters (each site is a test set the model never saw), refitted here from each filter's prediction at the MAC set under Plot → units (λ scales with MAC²), on the filters that count under Filters → excluded. With every filter counted it is the explorer's saved fit. Click an axis title for another readout or any gallery measurement these filters carry."
       provenance="calibration_explorer /api/run eval for each target (per-filter predictions) · test set 'all' · fits rebuilt in the browser (charts/calibration/runFit)"
       tip={TRANSFER_TIP}
       controls={<>{controls}{siteRuns.length > 1 && <PanelAxesControl dims={['site']} />}</>}

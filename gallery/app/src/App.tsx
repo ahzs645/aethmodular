@@ -7,7 +7,7 @@ import { useSpartanSource } from '@/lib/spartanSource'
 import { SpartanDataProvider } from '@/components/SpartanDataSettings'
 import { HighlightProvider, baseFilterId, type FilterRecord, useHighlightActions } from '@/lib/highlight'
 import { NO_PMF, PMF_GROUP, PMF_SOURCE, isPmfField, pmfGroups, pmfKeyByDate, pmfLabel, pmfShareFields, withPmf, type PmfScheme } from '@/lib/pmfGroups'
-import { PrefsProvider } from '@/lib/prefs'
+import { PrefsProvider, usePrefs } from '@/lib/prefs'
 import { PanelAxesProvider } from '@/lib/panelAxes'
 import { listParam, listToParam, readParams, writeParams } from '@/lib/url'
 import { useShared } from '@/lib/stable'
@@ -30,7 +30,7 @@ import { HeaderMore } from '@/components/HeaderMore'
 import { currentView, isEmbed, viewUrl } from '@/lib/views'
 import { useExport } from '@/lib/data'
 import { customSeasonMeta, customSeasonsParam, parseCustomSeasons } from '@/components/SeasonEditor'
-import { SideDock, SubsetBar, type SubsetActions, type SubsetCaps, type SubsetState } from '@/components/SubsetBar'
+import { MacControl, Row, SideDock, SubsetBar, type SubsetActions, type SubsetCaps, type SubsetState } from '@/components/SubsetBar'
 import { ExportSitesProvider } from '@/lib/exportSites'
 import { SampleDrawer } from '@/components/SampleDrawer'
 import { RecordDrawer } from '@/components/RecordDrawer'
@@ -48,7 +48,7 @@ import { exclModeParam, exclusionReason, exportIn, parseExclMode, type ExclMode 
 import { MarkedRowsProvider } from '@/lib/markedRows'
 import { GroupDrawer } from '@/components/GroupDrawer'
 import { HIDDEN_DUPLICATES } from '@/fieldLineage'
-import { PageSidebarProvider, PageSidebarSlot, SidebarControls, usePageSidebarNote } from '@/lib/pageSidebar'
+import { PageSidebarProvider, PageSidebarSlot, SidebarControls, usePageSidebarNote, usePageTab } from '@/lib/pageSidebar'
 import { RATIO_GROUP, RATIO_PRESETS, VOLUME, parseRatios, ratioKey, ratiosParam, viewRows, viewUnits, type Basis, type RatioDef } from '@/lib/viewFields'
 import { RatiosProvider } from '@/components/RatioDialog'
 import { GroupingsProvider } from '@/components/GroupingDialog'
@@ -72,7 +72,7 @@ import instruments from '@/sections/instruments'
 import research from '@/sections/research'
 import ml from '@/sections/ml'
 import { defaultPage } from '@/sections/types'
-import { useHeaderHeight, useSidePanelOpen } from '@/hooks/useSidePanel'
+import { useHeaderHeight, useSidePanelOpen, useSidePanelView } from '@/hooks/useSidePanel'
 import { EQUIVALENTS } from '@/lib/fieldEquivalents'
 import { ChartBuilderPage } from '@/pages/ChartBuilderPage'
 import { useChartBuilderEnabled } from '@/lib/chartBuilderPrefs'
@@ -299,7 +299,7 @@ const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates:
 const CAPS: Record<Exclude<TabKey, 'investigations' | 'availability' | 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks' | 'experimental' | 'ml'>, SubsetCaps> = {
   correlation: { ...FILTERS, fields: 'pair', networks: true, fits: true },
   // each tile picks its own fields
-  dashboard: { ...FILTERS, fields: 'none', networks: true, fits: true },
+  dashboard: { ...FILTERS, fields: 'none', networks: true, fits: true, mac: true },
   builder: { ...FILTERS, fields: 'none', networks: true },
   distribution: { ...FILTERS, networks: true },
   evolution: { ...FILTERS, networks: true },
@@ -331,6 +331,7 @@ const CAPS: Record<Exclude<TabKey, 'investigations' | 'availability' | 'census' 
     excluded: false,
     dates: false,
     fields: 'none',
+    mac: true,
     datasetLabel: 'Addis evaluation filters',
     pmf: true,
     note: 'Seasons apply to the per-filter section (crossplot, residuals, dated series), refitted on the chosen filters. The grid charts above are fitted on every season.',
@@ -1492,8 +1493,13 @@ export default function App() {
       {(NETWORK_TABS as readonly string[]).includes(tab) && <BrushBar onKeep={keepFilters} onDrop={dropFilters} />}
       <Shell nav={nav} dash={tab === 'dashboard'} onDash={toggleDash} wide={tab === 'builder' || tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental'} editsBadge={!subset}>
         {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
-        {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting' || tab === 'experimental' || tab === 'similarity')
-          && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} label={tab === 'similarity' ? 'Target' : 'Samples'} />)}
+        {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting' || tab === 'experimental' || tab === 'similarity' || tab === 'ml')
+          && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} label={tab === 'similarity' ? 'Target' : 'Samples'}
+            // the tabs whose charts read HIPS BC get the MAC on a Plot tab, as the Samples-panel tabs do
+            mac={tab === 'ml' || tab === 'experimental' || tab === 'meeting' ? {
+              value: viewOpts.mac, exportMac, onMac: setMac,
+              note: tab === 'meeting' && presentation === 'presented' ? `As presented draws the export's MAC (${exportMac}); switch the meeting figures to Exploring to use this one.` : undefined,
+            } : undefined} />)}
         {netData.error && (NETWORK_TABS as readonly string[]).includes(tab) && <div className="network-data-error" role="alert"><strong>The selected network data could not be loaded.</strong> {netData.error}
           <button className="btn" type="button" onClick={() => setNetwork('focus')}>Open bundled focus sites</button></div>}
         {tab === HUB_TAB && <InvestigationsPage areas={HUB_AREAS} onOpen={(t, p) => openTab(t, undefined, p ?? AREAS.find((a) => a.tab === t)?.pages[0]?.key)} />}
@@ -1678,21 +1684,44 @@ function TocToggle() {
  * `label` names it for what it holds (the Similarity tab's is its Target); the page's tab note (SidebarControls `tabNote`)
  * sits under the name on the edge tab.
  */
-function PageSidebar({ fits, label = 'Samples' }: { fits: boolean; label?: string }) {
+function PageSidebar({ fits, label = 'Samples', mac }: {
+  fits: boolean; label?: string
+  /** the gallery's MAC: given, the sidebar has a Plot tab (the fits and the MAC) beside the page's own controls */
+  mac?: { value: number; exportMac: number; onMac: (mac: number | null) => void; note?: string }
+}) {
   const [open, setOpen] = useSidePanelOpen()
+  const [chosenView, setView] = useSidePanelView()
   const top = useHeaderHeight()
   const note = usePageSidebarNote()
-  const noun = label.toLowerCase()
+  const { explain } = usePrefs()
+  // the page half only while the open page has controls for it; without a Plot tab it is the whole sidebar, as before
+  const hasPage = !mac || !!usePageTab()
+  const view: 'page' | 'plot' = !mac ? 'page' : !hasPage || chosenView === 'plot' ? 'plot' : 'page'
+  const toggle = (v: 'page' | 'plot') => { if (open && view === v) setOpen(false); else { setView(v === 'plot' ? 'plot' : 'page'); setOpen(true) } }
+  const name = view === 'plot' ? 'Plot' : label
+  const noun = name.toLowerCase()
+  const edge = (v: 'page' | 'plot', text: string, tip: string, count?: string | null) =>
+    <button key={v} className={`subset-tab${mac && open && view === v ? ' active' : ''}`} type="button" role={mac ? 'tab' : undefined} aria-selected={mac ? view === v : undefined}
+      aria-expanded={open && view === v} onClick={() => toggle(v)} title={`${open && view === v ? 'Hide' : 'Show'} the ${tip}`}>
+      <span className="subset-tab-label">{text}</span>
+      {count && <span className="subset-tab-count">{count}</span>}
+    </button>
   return <>
-    <SideDock open={open} top={top} onClose={() => setOpen(false)} tab={<button className="subset-tab" type="button" aria-expanded={open} onClick={() => setOpen(!open)}
-      title={`${open ? 'Hide' : 'Show'} the ${noun}${note ? ` (${note})` : ''}`}>
-      <span className="subset-tab-label">{label}</span>
-      {note && <span className="subset-tab-count">{note}</span>}
-    </button>}>
-      <aside className="panel subset subset-panel" aria-label={label}>
-        <header className="subset-head"><strong>{label}</strong><span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet x-btn" onClick={() => setOpen(false)} aria-label={`Close ${noun}`} title="Close"><XIcon /></button></span></header>
-        <PageSidebarSlot />
-        {fits && <RegressionControls />}
+    <SideDock open={open} top={top} onClose={() => setOpen(false)} tab={!mac ? edge('page', label, `${label.toLowerCase()}${note ? ` (${note})` : ''}`, note)
+      : <div className="side-dock-tabs" role="tablist" aria-label="Side panel" aria-orientation="vertical">
+        {hasPage && edge('page', label, `${label.toLowerCase()}${note ? ` (${note})` : ''}`, note)}
+        {edge('plot', 'Plot', `plot options: ${fits ? 'fits and ' : ''}the MAC`)}
+      </div>}>
+      <aside className="panel subset subset-panel" aria-label={name}>
+        <header className="subset-head"><strong>{view === 'plot' ? 'Plot options' : label}</strong><span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet x-btn" onClick={() => setOpen(false)} aria-label={`Close ${noun}`} title="Close"><XIcon /></button></span></header>
+        {/* kept mounted on either half so the page's controls keep their state */}
+        <div hidden={view !== 'page'}><PageSidebarSlot /></div>
+        {fits && view === (mac ? 'plot' : 'page') && <RegressionControls />}
+        {mac && view === 'plot' && <Row label="units">
+          <MacControl mac={mac.value} exportMac={mac.exportMac} onMac={mac.onMac} />
+          {mac.note && <span className="method-note" style={{ display: 'block' }}>{mac.note}</span>}
+          {explain && <span className="row-note">MAC scales the slope of a fit against HIPS BC; the intercept barely moves (exactly unchanged for OLS)</span>}
+        </Row>}
       </aside>
     </SideDock>
   </>

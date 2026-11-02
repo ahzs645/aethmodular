@@ -154,7 +154,7 @@ and [historical inventory](cleanup-history.md#current-automated-cleanup-inventor
 
 ### Export ftir_36's per-filter di-PLS predictions, for its bootstrap intervals at any MAC
 
-The gallery's MAC setting (Filters → units) moves RMSE and mean residual against Fabs/MAC as well
+The gallery's MAC setting (Plot → units) moves RMSE and mean residual against Fabs/MAC as well
 as slopes. Each evaluation set's HIPS BC mean and variance are solved in the browser from the
 saved fits (`gallery/app/src/lib/macMath.ts`, checked against the explorer's MAC 6 and 17 readouts
 in `lib/mac.test.mjs`). The blind-half splits use their RMSEs saved at three MACs. ftir_39's

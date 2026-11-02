@@ -233,7 +233,7 @@ function MeetingView({ data, galleryRows, galleryMeta, viewRows, viewMeta, versi
  * Seasons stitched), behind their axis titles (components/AxisChoices). By default the
  * calibration's FTIR EC against HIPS Fabs / MAC; any gallery measurement, ratio or weather field
  * of the same Addis filter can take either axis. The gallery's MAC and mass-per-filter choices
- * apply (Filters → units).
+ * apply (Plot → units).
  */
 const PRED = 'FTIR EC, this calibration'
 const RESID = 'FTIR EC − HIPS BC'

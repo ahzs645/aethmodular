@@ -30,7 +30,7 @@ const CALIBRATION = '#tab=calibration'
  * ftir_23). The notebooks' decision and verdict tables come from gallery/data/ml_pages/components.py; the
  * site-grouped curves and the rule k under each protocol are drawn from calibration.json and calibration_runs.json,
  * which the Calibration tab already loads. RMSECV is in µg per filter against IMPROVE TOR and does not depend on the
- * MAC; only the Addis slopes do, and they follow the MAC set under Filters → units.
+ * MAC; only the Addis slopes do, and they follow the MAC set under Plot → units.
  */
 export function Components(_props: SectionPageProps) {
   const { data, error } = useMl('components')
@@ -72,7 +72,7 @@ export function Components(_props: SectionPageProps) {
       <FixedSetNote subject="this page" what="the notebooks' tables on their own filter sets (IMPROVE cohorts, the fixed Addis test set)" />
       <p>Two choices decide k together: the cross-validation scheme (site-grouped 5-fold, whole IMPROVE sites held out, or the Calibration app's
         interleaved 10-fold, every 10th filter) and the stopping rule (the first major minimum within one standard error, or the first k within
-        5 % of the minimum). The notebooks' tables are drawn as they ran, at MAC 10; the Addis slopes follow the MAC set under Filters → units
+        5 % of the minimum). The notebooks' tables are drawn as they ran, at MAC 10; the Addis slopes follow the MAC set under Plot → units
         (now {m.mac}). RMSECV is against IMPROVE TOR in µg per filter and does not depend on the MAC. One calibration's curve with its ±1 SE band,
         and what each k does at Addis, are on the <a href={CALIBRATION}>Calibration tab</a> (cross-validation curve and PLS-factor sweep). The June 2026 calibrations' component counts (ftir_ec_calibration_2026_06_25 05/06/09, CAL-0…CAL-7) are on the <a href="#tab=ml&amp;aep=june">June 2026 variants</a> page.</p>
     </PageIntro>

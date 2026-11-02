@@ -14,7 +14,7 @@ import { PageIntro, presetName, provenance, rows, useCalibRuns, useSpectral, Wai
 
 const PROVISIONAL = 'ocec800_airspec', RAW = 'ocec800_raw'
 const SERIES = { prov: 'provisional (Lowest-OC/EC 800 × spline baseline)', raw: 'raw-spectra model (MAC 6 branch)', dep: 'deployed SPARTAN EC' }
-/** the HIPS series at the MAC set under Filters → units */
+/** the HIPS series at the MAC set under Plot → units */
 const hipsSeries = (mac: number) => `HIPS Fabs / ${mac}`
 const finite = (v: number | null | undefined): v is number => v != null && Number.isFinite(v)
 const runAt = (runs: CalibRunsFile, preset: string): CalibRun | undefined => runs.runs.find((r) => r.preset === preset && r.target === 'addis')
@@ -103,7 +103,7 @@ export function ProvisionalSeries(props: SectionPageProps) {
     <Figure kind="intervals" id="provisional-seasons" data={view.perFilter} row="season" series="series"
       panels={[{ value: 'value', label: 'µg/m³ (median and IQR over dated filters)', reference: 0 }]} labelWidth={110}
       title="Season by season — the provisional series, the raw-model envelope, deployed EC and HIPS"
-      subtitle={`Dry (Oct–Feb), Belg (Mar–May), Kiremt (Jun–Sep): the explorer's Ethiopian calendar, February in Dry. The provisional series keeps the Kiremt ≈ 2 × Dry ordering at about half the deployed level; the raw-spectra model is the upper envelope (the unresolved MAC-6 branch). HIPS Fabs / ${mac} (the MAC set under Filters → units) is the optical axis the calibration disagrees with by a near-constant offset.`}
+      subtitle={`Dry (Oct–Feb), Belg (Mar–May), Kiremt (Jun–Sep): the explorer's Ethiopian calendar, February in Dry. The provisional series keeps the Kiremt ≈ 2 × Dry ordering at about half the deployed level; the raw-spectra model is the upper envelope (the unresolved MAC-6 branch). HIPS Fabs / ${mac} (the MAC set under Plot → units) is the optical axis the calibration disagrees with by a near-constant offset.`}
       provenance={<>Stands in for ftir_29 §3 and Figure 3. Per filter: <code>calibration_runs.json</code> (explorer eval of the two locked Lowest-OC/EC 800 presets at Addis).</>}
       aside={<ExcludedNote count={view.marked} />} />
 
@@ -116,7 +116,7 @@ export function ProvisionalSeries(props: SectionPageProps) {
     <Figure kind="intervals" id="provisional-offset" data={offsets} row="model"
       panels={[{ value: 'c_median', lo: 'c_lo', hi: 'c_hi', label: `HIPS-axis offset c = −intercept/slope (µg/m³ at MAC ${mac}; median and 95 % interval)`, reference: 0 }]} labelWidth={170}
       title={`The offset is a number with an interval — ${f2(offset?.c_median)} µg/m³ for the corrected model at MAC ${mac}`}
-      subtitle={`Site-cluster bootstrap draws from ftir_15 (B = 200 per model), no refitting. The offset is where the fit meets the HIPS axis, so it is fixed in Fabs units: ${f2(offset?.['c_lo95_Mm-1'])}–${f2(offset?.['c_hi95_Mm-1'])} Mm⁻¹ (95 %) for the corrected model, divided here by the MAC set under Filters → units (the notebook quoted µg/m³ at MAC 10). An interval that excludes zero is an offset, not noise.`}
+      subtitle={`Site-cluster bootstrap draws from ftir_15 (B = 200 per model), no refitting. The offset is where the fit meets the HIPS axis, so it is fixed in Fabs units: ${f2(offset?.['c_lo95_Mm-1'])}–${f2(offset?.['c_hi95_Mm-1'])} Mm⁻¹ (95 %) for the corrected model, divided here by the MAC set under Plot → units (the notebook quoted µg/m³ at MAC 10). An interval that excludes zero is an offset, not noise.`}
       provenance={provenance(data, ['offset_ci'])} />
 
     <Figure kind="intervals" id="provisional-kiremt" data={ratios} row="row" block="block"

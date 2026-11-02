@@ -5,7 +5,7 @@ import { Segmented } from '@/components/ChartFrame'
  * Meeting pages communicate a result, so by default they show it as presented: the exported
  * figures at MAC 10 in µg/m³, the saved fits, and none of the exclusions made elsewhere in the
  * gallery. Exploring lets the page follow the gallery (hand exclusions, the MAC and units under
- * Filters → units, ratios) wherever a chart draws the gallery's filters; a figure read from the meeting's
+ * Plot → units, ratios) wherever a chart draws the gallery's filters; a figure read from the meeting's
  * own export (spec meetings, saved fits and tables) has nothing to follow and stays at MAC 10. Either way the page's own controls (baseline, axes, fit method,
  * hover and pin) keep working. Outside a meeting page there is no provider: everything explores.
  *
@@ -26,7 +26,7 @@ export function PresentationSwitch({ ignored = 0, viewChanged = false }: { ignor
   const c = useContext(Ctx)
   if (!c) return null
   const presented = c.mode === 'presented'
-  const held = [ignored ? `${ignored} filter${ignored === 1 ? '' : 's'} excluded elsewhere` : '', viewChanged ? 'the MAC and units set under Filters' : ''].filter(Boolean)
+  const held = [ignored ? `${ignored} filter${ignored === 1 ? '' : 's'} excluded elsewhere` : '', viewChanged ? 'the MAC and units set under Plot' : ''].filter(Boolean)
   return <>
     <Segmented label="Show" value={presented ? 'As presented' : 'Exploring'} options={['As presented', 'Exploring'] as const}
       onChange={(v) => c.set(v === 'As presented' ? 'presented' : 'exploring')}

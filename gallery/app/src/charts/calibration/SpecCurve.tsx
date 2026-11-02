@@ -182,7 +182,7 @@ export function SpecCurve({
     setFilters(initialFilters())
   }, [srcKey])
 
-  // the search at the MAC set under Filters (lib/mac): the export's slopes are against Fabs/10, so each is
+  // the search at the MAC set under Plot → units (lib/mac): the export's slopes are against Fabs/10, so each is
   // re-expressed (× MAC/10; intercepts, R² and held-out R² do not move), and the saved pass bit, which
   // judged the slope at MAC 10, is rebuilt from the saved guardrails' own rule where the export carries
   // its inputs (lib/guardrails: that rule reproduces the bit exactly). RMSE against HIPS is rebuilt per search
@@ -207,7 +207,7 @@ export function SpecCurve({
   const hasRmse = !!(atMac.spec && atMac.spec !== 'missing' && parts.some((p) => p.file.extra?.rmse))
   const rmseNote = !hasRmse ? '' : atMac.rmseMoved ? ' RMSE against HIPS is recomputed at this MAC from the test set\'s HIPS BC mean and variance, solved from the saved fits.'
     : ' RMSE against HIPS is left out where a search lacks the fits to solve its test set\'s HIPS BC mean and variance.'
-  const macNote = atMac.okRebuilt === null ? '' : ` Slopes are re-expressed at ${gallery.label} (Filters → units; slope × MAC/10, intercepts unchanged)${atMac.okRebuilt
+  const macNote = atMac.okRebuilt === null ? '' : ` Slopes are re-expressed at ${gallery.label} (Plot → units; slope × MAC/10, intercepts unchanged)${atMac.okRebuilt
     ? ', and the saved guardrails are re-judged on them.'
     : '; this export lacks the inputs to re-judge the saved guardrails, so their pass bit still judges the slope at MAC 10.'}${rmseNote}`
 

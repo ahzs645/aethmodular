@@ -80,7 +80,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
   pmfLabelOfDate?: (date: string | null | undefined) => string
 }) {
   const { methods } = useRegressions()
-  // the grid at the MAC set under Filters (lib/mac): slopes re-expressed before the estimator projection,
+  // the grid at the MAC set under Plot → units (lib/mac): slopes re-expressed before the estimator projection,
   // so the slope box and the guardrails judge the slope the reader sees
   const gallery = useMac()
   const atMac = useMemo(() => (calib ? calibAtMac(calib, gallery.mac) : null), [calib, gallery.mac])

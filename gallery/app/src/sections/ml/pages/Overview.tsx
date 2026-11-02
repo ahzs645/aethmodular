@@ -31,7 +31,7 @@ export function Overview(_props: SectionPageProps) {
       <p>Everything here needs a model fitted on spectra (PLS calibrations, component selection, cross-validation,
         residual learners, other model forms, bootstraps of refits), so it is precomputed: the pages draw the
         notebooks’ numbers and refit nothing. Where a result is against HIPS Fabs/MAC and the export carries its
-        inputs, it still follows the MAC set under Filters → units. Analyses the browser can recompute from the
+        inputs, it still follows the MAC set under Plot → units. Analyses the browser can recompute from the
         filters stay on the chart tabs and under Research.</p>
     </PageIntro>
     <ChartFrame id="ml-map" title="Where each model-fitting result lives"

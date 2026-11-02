@@ -23,7 +23,7 @@ const kOf = (label: unknown) => Number(/k=(\d+)/.exec(String(label))?.[1] ?? NaN
  * Protocols end to end, transfer and bootstrap uncertainty (ftir_21, ftir_22, ftir_15, ftir_11, ftir_13, ftir_17,
  * ftir_18; ftir_31 §1.1/1.2/1.6/1.7/2.2/2.6 redraw ftir_21/22). The notebooks' tables come from
  * gallery/data/ml_pages/protocols.py, at MAC 10 on the fixed 190 Addis filters (ftir_18: the 239 pairs). Slopes
- * against HIPS follow the MAC set under Filters → units (slope × MAC/10); RMSE follows it through the evaluation
+ * against HIPS follow the MAC set under Plot → units (slope × MAC/10); RMSE follows it through the evaluation
  * set's HIPS BC mean and variance, which calibration_runs.json's per-filter Fabs give exactly (lib/mac rmseAtMac);
  * intercepts do not move. A residual correlation or spread needs the per-filter residuals and stays at MAC 10.
  * Filters → excluded acts on the AIRSpec crossplot only (its per-filter predictions, by filter id); the tables are
@@ -137,7 +137,7 @@ export function Protocols(_props: SectionPageProps) {
       <p>The Calibration app protocol fits on every cohort filter with k from interleaved 10-fold CV (first k within 5 % of the minimum); the
         site-held-out protocol fits on the training side of a site-disjoint 80/20 split with k from site-grouped 5-fold CV (first major minimum).
         Same cohorts, spectra and PLS maths. Every Addis number here is an OLS fit of predictions on HIPS: slopes are re-expressed at the MAC set under
-        Filters → units (now {m.mac}), RMSE through the Addis filters' HIPS mean and variance, intercepts unchanged.
+        Plot → units (now {m.mac}), RMSE through the Addis filters' HIPS mean and variance, intercepts unchanged.
         Drawn elsewhere: the cohort-size sweep at every N under each protocol (<a href="#tab=calibration">Calibration tab</a>), the MAC pivot
         (ftir_22 [18]; <a href="#tab=research&amp;aep=mac-choice">MAC 6 vs 10</a>), ftir_51's protocol swing (<a href="#tab=research&amp;aep=generalise">Does it generalise</a>)
         and the provisional offset's bootstrap (<a href="#tab=research&amp;aep=provisional-ec">Provisional Addis EC</a>).</p>

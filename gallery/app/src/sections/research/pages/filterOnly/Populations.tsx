@@ -127,7 +127,7 @@ export function DenominatorSensitivity({ points, s, meta }: { points: FPoint[]; 
         <SweepPlot series={rSeries} xScale="linear" xDomain={[0.8, 5.2]} xLabel="Minimum EC / reported MDL" yLabel="HIPS / FTIR EC (m²/g)" include={[0]} height={250}
           yMarkers={[{ at: s.mac, label: `your MAC ${fmt(s.mac, 1)}`, color: INK.muted }]} />
       </Grid>
-      <Note>Bands are the interquartile range of the ratio. The dashed marker is the reader's MAC (Filters → units): ratios above it mean HIPS BC exceeds FTIR EC at that MAC.</Note>
+      <Note>Bands are the interquartile range of the ratio. The dashed marker is the reader's MAC (Plot → units): ratios above it mean HIPS BC exceeds FTIR EC at that MAC.</Note>
       <FoExcludedNote s={s} any />
     </ChartFrame>
   )

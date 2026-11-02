@@ -14,7 +14,7 @@ const ci = (r: Row, v: string, se: string): Row => {
  * ftir_53, the committee backup figures: does the Addis diagnosis generalise? The same locked
  * calibrations applied unchanged to five SPARTAN sites, Bishoftu's replication, and the two
  * deck lessons restated precisely. Every number is the executed notebook's table, at HIPS Fabs/10;
- * slopes (and their SEs) follow the MAC set under Filters → units. That is exact for OLS, and for York
+ * slopes (and their SEs) follow the MAC set under Plot → units. That is exact for OLS, and for York
  * too, since σx = σFabs/MAC rescales with x (lib/mac); intercepts do not move.
  */
 export function Generalise(_props: SectionPageProps) {
@@ -33,7 +33,7 @@ export function Generalise(_props: SectionPageProps) {
   return <>
     <PageIntro id="generalise-intro" title="Does the diagnosis generalise? — one calibration, five sites, and the deck's lessons stated precisely" data={data}
       notebooks="research/ftir_ec_phase3/ftir_53_committee_backup_figures (from ftir_47, ftir_51, ftir_46 and the locked reconstruction confirmation); ftir_31 and ftir_51 for the deck panels the gallery already draws">
-      <p>The deck's Addis slides argue from one site. These are its backup: the calibrations applied unchanged to five SPARTAN sites fail in a site-specific way, so the work is diagnosis, not tuning. Reference axis HIPS Fabs/10 in the notebook; the slopes here are re-expressed at the MAC set under Filters → units (now {m.mac}). The other deck figures (ftir_31, ftir_51: setup crossplots, k sweep, analog distributions, lot crossplots) are already on the Calibration tab and the meeting pages.</p>
+      <p>The deck's Addis slides argue from one site. These are its backup: the calibrations applied unchanged to five SPARTAN sites fail in a site-specific way, so the work is diagnosis, not tuning. Reference axis HIPS Fabs/10 in the notebook; the slopes here are re-expressed at the MAC set under Plot → units (now {m.mac}). The other deck figures (ftir_31, ftir_51: setup crossplots, k sweep, analog distributions, lot crossplots) are already on the Calibration tab and the meeting pages.</p>
       <FixedSetNote subject="this page" what="ftir_53's saved tables (every figure on this page)" />
     </PageIntro>
 

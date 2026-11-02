@@ -88,7 +88,7 @@ export function LoadingCheck({ c, data, setPick }: { c: Charcoal; data: Spectral
   return (
     <ChartFrame id="ch-loading" controls={<>{setPick}<Segmented label="Absorption" value={axis} options={['fabs', 'bc'] as const} onChange={setAxis} optionLabel={(o) => (o === 'fabs' ? 'HIPS Fabs' : `Fabs / MAC (${m.mac})`)} /></>}
       title={`Not the loading: within the ${c.dryName} season the low-similarity filters carry the same Fabs (p ${pText(tests[0].u?.p ?? NaN)}) and EC (p ${pText(tests[1].u?.p ?? NaN)}) as the rest`}
-      subtitle={`Thin deposits give noisier spectra, and noise lowers correlation with any reference, so low loading could fake the anomaly. Left: r_char against the gallery's FTIR EC; right: against HIPS ${axis === 'fabs' ? 'Fabs' : `BC at the MAC set under Filters → units (${m.mac})`}. A gallery row's own EC and Fabs are used; newer filters take the notebook's Fabs and have no EC. Spearman ρ does not depend on the MAC.`}
+      subtitle={`Thin deposits give noisier spectra, and noise lowers correlation with any reference, so low loading could fake the anomaly. Left: r_char against the gallery's FTIR EC; right: against HIPS ${axis === 'fabs' ? 'Fabs' : `BC at the MAC set under Plot → units (${m.mac})`}. A gallery row's own EC and Fabs are used; newer filters take the notebook's Fabs and have no EC. Spearman ρ does not depend on the MAC.`}
       provenance={<>{NB.c06} [20], §5. {provenance(data, ['per_filter', 'loading_within_dry', 'competing'])}</>}>
       {!c.scored.length ? <Empty>No scored Addis filters in view.</Empty> : <Grid>
         {ecPts.length >= 3 ? <Crossplot points={ecPts.map((s) => scorePoint(s, s.ec!, s.rChar, c.colorOf(s.season), 'EC', 'r_char', !s.low))}

@@ -63,10 +63,9 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
 
   const { hidden, dim, hover: legendHover, props: legendProps } = useLegend()
 
-  // the MAC: the one set under Filters (lib/mac) by default, or one the explorer saved fits at
+  // the MAC: the gallery's one, set under Plot → units (lib/mac); no per-chart choice
   const gallery = useMac()
   const lambda10 = lambdaProp ?? gallery.lambda10
-  const macs = useMemo(() => [...new Set(run.metrics.map((m) => m.MAC).filter((v): v is number => v !== null))].sort((a, b) => a - b), [run.metrics])
   const isFabs = run.ref_kind === 'fabs'
   // the deployed SPARTAN EC: the run's own column (Addis fixed set) or the gallery's EC (FTIR) for the filter
   const byId = useMemo(() => new Map(galleryRows.map((r) => [r.id, r])), [galleryRows])
@@ -76,21 +75,19 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
   const hasDeployed = run.eval.pred.some((_, i) => deployed(i) !== null)
   const hasFixed = run.eval.fixed.some(Boolean)
   // the options and when each applies (lib/chartOptions): on the deployed-EC axis only the fixed
-  // filters carry a value, so the test-set switch is moot, and the MAC (which converts Fabs) is unused
+  // filters carry a value, so the test-set switch is moot
   const o = useChartOptions('run-crossplot', [
     // the crossplot's x (the HIPS reference or the deployed SPARTAN EC), picked from its axis title
     { key: 'x', axis: 'x', label: 'Crossplot x', choices: XMODES.map((v) => ({ value: v, label: v === 'reference' ? 'HIPS reference (Fabs ÷ MAC)' : 'Deployed SPARTAN EC' })), default: 'reference', hidden: 'reference', when: (c) => !!c.hasDeployed },
     { key: 'set', label: 'Test set', choices: SETS, default: 'fixed', hidden: 'fixed', when: (c) => !!c.hasFixed && c.x !== 'deployed EC',
       title: 'fixed = the filters with a deployed EC (Addis fixed-190); all = every filter with a reference' },
-    { key: 'mac', label: 'MAC', choices: [{ value: 'gallery', label: `Filters (${gallery.mac})` }, ...macs.map((m) => ({ value: String(m), label: String(m) }))], default: 'gallery', hidden: 'gallery',
-      when: (c) => !!c.isFabs && c.x !== 'deployed EC', title: 'Filters: the MAC set under Filters → units; or one the explorer saved fits at' },
     // only groups that are not seasons take the set's colours: no picker when every group is a season
     { key: 'colours', node: () => groupColours.others.length > 0 ? colours.picker : null },
     { key: 'n', node: () => <span className="control">n = {pts.length}{nOut ? ` (${nOut} excluded)` : ''}{run.extrap_pct !== null ? ` · score OOD ${run.extrap_pct}%` : ''}{run.q_residual_pct !== null ? ` · Q OOD ${run.q_residual_pct}%` : ''}</span> },
   ], { hasDeployed, hasFixed, isFabs })
   const xmode = o.values.x as (typeof XMODES)[number]
   const evalSet = o.values.set as (typeof SETS)[number]
-  const mac = o.values.mac === 'gallery' ? gallery.mac : Number(o.values.mac)
+  const mac = gallery.mac
   const useDeployed = xmode === 'deployed EC' && hasDeployed
   const colours = useColourScheme('run-crossplot', 'categorical', 'Tableau 10')
   const groupColours = useMemo(() => groupColorFn(meta, run.eval.group, colours.name, colours.reverse), [meta, run.eval.group, colours.name, colours.reverse])

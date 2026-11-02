@@ -23,7 +23,7 @@ export const num = (r: Record<string, unknown> | undefined, f: string): number |
 export const has = (r: Record<string, unknown>, ...fs: string[]) => fs.every((f) => num(r, f) !== null)
 
 /**
- * The rows in µg/m³ whatever the reader's basis. Under mass per filter (Filters → units, lib/viewFields) every
+ * The rows in µg/m³ whatever the reader's basis. Under mass per filter (Plot → units, lib/viewFields) every
  * µg/m³ field arrives × the filter's sampled volume but HIPS Fabs (Mm⁻¹) does not, so a page that sets Fabs or
  * Fabs/MAC against EC, or works out loadings itself, would mix the two. Those pages are notebook reproductions
  * in µg/m³; they take their rows through this and say so (BASIS_NOTE).
@@ -40,7 +40,7 @@ export function useConcRows(rows: FilterRow[], meta: MetaFile): FilterRow[] {
     })
   }, [rows, meta])
 }
-export const BASIS_NOTE = 'This page works in µg/m³ (the notebooks\' units), so it ignores mass per filter under Filters → units.'
+export const BASIS_NOTE = 'This page works in µg/m³ (the notebooks\' units), so it ignores mass per filter under Plot → units.'
 
 export const ADDIS = 'Addis Ababa'
 /** a categorical ramp for series that are neither sites nor seasons (lib/palettes RESEARCH_SERIES) */

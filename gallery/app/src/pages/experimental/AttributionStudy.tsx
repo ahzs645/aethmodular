@@ -99,7 +99,7 @@ function GridHeat({ d }: { d: AttributionData }) {
               `Addis vs HIPS: ${fitSummary({ slope: c['Addis slope'], intercept: c['Addis intercept'] }, { sep: ', ', signedIntercept: true, unit: 'µg/m³' })} (n ${c['Addis n']})`] }
         }}
         legend={{ scale: colour, label: out, scheme: diverging ? div.scheme : seq.scheme, format: (v) => out.includes('RMSE') ? f2(v) : out === 'Addis slope' ? coef(v) : signed(v) }} />
-      <Note>IMPROVE: every filter predicted by a model trained without its site fold (the common test set); Addis: models fitted on all of IMPROVE, against HIPS BC; slopes at {label} (set under Filters; the run used MAC 10, and the MAC moves only the slopes).</Note>
+      <Note>IMPROVE: every filter predicted by a model trained without its site fold (the common test set); Addis: models fitted on all of IMPROVE, against HIPS BC; slopes at {label} (set under Plot → units; the run used MAC 10, and the MAC moves only the slopes).</Note>
       <FixedSetNote what="the run's grid, each cell scored on the run's own IMPROVE and Addis filters" />
     </ChartFrame>
   )

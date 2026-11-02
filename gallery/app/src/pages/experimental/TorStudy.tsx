@@ -200,7 +200,7 @@ function PilotPosition({ d }: { d: TorData }) {
 /**
  * What the loading plane measures. EC is the study's axis (TOR at IMPROVE and Adama, published FTIR at SPARTAN); HIPS BC
  * and weighed PM2.5 put the same filters on the plane by absorption and by mass. Neither is measured on the Adama pilot.
- * HIPS BC is at the MAC set under Filters (lib/mac): the run's own column (Fabs / 10) rescaled, or, for runs that did not
+ * HIPS BC is at the MAC set under Plot → units (lib/mac): the run's own column (Fabs / 10) rescaled, or, for runs that did not
  * export it, the SPARTAN filters' HIPS Fabs from spartan_reference.json ÷ MAC.
  */
 type PlaneMeasure = 'EC' | 'HIPS' | 'PM2.5'
@@ -275,7 +275,7 @@ function LoadingPlane({ d }: { d: TorData }) {
   return (
     <ChartFrame id="xd-plane" source={source('LoadingPlane')} provenance={runLine(d)}
       title={`Loading = concentration × volume — ${ec ? 'why the pilot filters are light, and what would fix it' : `the same plane by ${M.label}`}`}
-      subtitle={`Each filter by ${M.label} concentration (across) and sampled volume (up); grey diagonals are equal ${M.short} per filter. The orange band is SPARTAN Addis's middle half of ${M.short} per filter${ec ? ': a pilot filter must land in it to load the spectrum as SPARTAN Addis does' : ''}. Measure puts the same filters on the plane by EC, by HIPS absorption (BC at the MAC set under Filters, now ${mac.mac}; SPARTAN filters only, ${exported ? 'from this run' : 'their HIPS Fabs joined by filter id'}) or by weighed PM2.5 mass. Points: Site medians shows one point per site instead (its median concentration and volume; hollow IMPROVE circles are urban sites). Click a legend item to hide that population, or point at one to fade the others. Volume needed (EC only) draws an arrow for how much more air the Adama sampler would need at Adama's own EC concentration. Click a filter to open its record; right-click to exclude it.`}
+      subtitle={`Each filter by ${M.label} concentration (across) and sampled volume (up); grey diagonals are equal ${M.short} per filter. The orange band is SPARTAN Addis's middle half of ${M.short} per filter${ec ? ': a pilot filter must land in it to load the spectrum as SPARTAN Addis does' : ''}. Measure puts the same filters on the plane by EC, by HIPS absorption (BC at the MAC set under Plot → units, now ${mac.mac}; SPARTAN filters only, ${exported ? 'from this run' : 'their HIPS Fabs joined by filter id'}) or by weighed PM2.5 mass. Points: Site medians shows one point per site instead (its median concentration and volume; hollow IMPROVE circles are urban sites). Click a legend item to hide that population, or point at one to fade the others. Volume needed (EC only) draws an arrow for how much more air the Adama sampler would need at Adama's own EC concentration. Click a filter to open its record; right-click to exclude it.`}
       controls={<>
         <Segmented label="Measure" value={measure} options={measures} onChange={setMeasure} optionLabel={(o) => ({ EC: 'EC', HIPS: 'HIPS BC', 'PM2.5': 'PM2.5' }[o])} />
         <Segmented label="Points" value={level} options={['filter', 'site'] as const} onChange={setLevel} optionLabel={(o) => (o === 'filter' ? 'Each filter' : 'Site medians')} />
@@ -332,7 +332,7 @@ function SeasonPanel({ d }: { d: TorData }) {
   return (
     <ChartFrame id="xd-season" source={source('SeasonPanel')} provenance={runLine(d)}
       title="Season — when the Addis disagreement happens, and when the pilot was sampled"
-      subtitle={`SPARTAN Addis by season (site calendar, February in Belg): published FTIR EC ÷ HIPS BC at ${mac.label} (set under Filters; median with 25–75 %), and the Deming fit against HIPS. The run used MAC 10; another MAC scales the ratio and slope by MAC/10 and leaves the intercept. The seasons differ, and the Adama pilot was sampled entirely in one of them (green). Pairs meant to test the calibration at Addis need to cover every season, or at least the one the question is about.`}>
+      subtitle={`SPARTAN Addis by season (site calendar, February in Belg): published FTIR EC ÷ HIPS BC at ${mac.label} (set under Plot → units; median with 25–75 %), and the Deming fit against HIPS. The run used MAC 10; another MAC scales the ratio and slope by MAC/10 and leaves the intercept. The seasons differ, and the Adama pilot was sampled entirely in one of them (green). Pairs meant to test the calibration at Addis need to cover every season, or at least the one the question is about.`}>
       <Forest rows={rows} labelWidth={230} panels={[{ key: 'ratio', label: 'published FTIR ÷ HIPS BC', ref: 1, fmt: f2 }, { key: 'slope', label: 'Deming slope vs HIPS', ref: 1, fmt: coef }, { key: 'intercept', label: 'Deming intercept (µg/m³)', ref: 0, fmt: coefSigned }]} />
       <FixedSetNote what="the run's saved season medians and Deming fits on its SPARTAN Addis filters" />
     </ChartFrame>
