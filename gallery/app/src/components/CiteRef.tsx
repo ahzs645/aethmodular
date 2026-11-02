@@ -73,13 +73,3 @@ export function CiteRef({ n, source }: { n: number; source: SeasonSource }) {
     </Popover>
   )
 }
-
-/** "(i)" after a site's references: the caveats on its calendar as a whole. */
-export function CalendarNoteRef({ note, site }: { note: string; site: string }) {
-  return (
-    <Popover label="(i)" ariaLabel={`About ${site || 'this'} calendar`} className="cite-ref agency">
-      <span className="cite-pop-title">{site ? `${site}: about this calendar` : 'About this calendar'}</span>
-      <span>{note}</span>
-    </Popover>
-  )
-}

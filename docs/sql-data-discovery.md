@@ -1,5 +1,10 @@
 # Catalog and profile accessible SQL data
 
+For quick live reads through the no-admin private tunnel, see
+[AQRC CLI access](aqrc-cli-access.md). That helper supports bounded catalog,
+table, column and preview reads; the survey below remains necessary for broader
+inventories, keys and profiles with verified receipts.
+
 [`scripts/diagnostics/inspect_sql_access.ps1`](../scripts/diagnostics/inspect_sql_access.ps1)
 surveys the SQL Server databases available to the existing Davis login. It is
 broader than the SPARTAN search: it inventories visible tables, views, external

@@ -10,7 +10,7 @@ import { DateBrush, type DateRange } from '@/components/DateBrush'
 import { FieldSelect, prettyUnit } from '@/components/FieldSelect'
 import { Segmented, SwapButton, Toggle } from '@/components/ChartFrame'
 import type { SsrHide } from '@/lib/ssrFilters'
-import { AXES_MODES, PANEL_AXES, sameUnits, type AxesOpts } from '@/lib/axes'
+import { AXES_MODES, BASIC_PANEL_AXES, PANEL_AXES, collapsePanelAxes, sameUnits, type AxesOpts } from '@/lib/axes'
 import { fmt } from '@/lib/stats'
 import { usePrefs } from '@/lib/prefs'
 import { useHighlightActions } from '@/lib/highlight'
@@ -29,7 +29,7 @@ import { defaultRuleFor, type DynRule } from '@/lib/dynamicSeasons'
 import { DEFAULT_RAIN_RULE, type RainRule } from '@/lib/rainSeasons'
 import { XIcon } from '@/components/Icons'
 import { EXCL_MODES, type ExclMode } from '@/lib/exclusionMode'
-import { CalendarNoteRef, CiteRef } from '@/components/CiteRef'
+import { CiteRef } from '@/components/CiteRef'
 import { ScrubField } from '@/components/ScrubField'
 import { SiteFocusControl, useFocusedSite, useSiteFocusOffered } from '@/lib/siteFocus'
 import { siteColor } from '@/lib/siteColours'
@@ -325,6 +325,8 @@ export function SubsetBar({
 
   // the Plot tab: how the filters in view are drawn
   // x and y in different units: the crossplots drop the 1:1 line and float each axis (lib/axes axesForUnits)
+  // Per site only differs from Shared with several sites in view
+  const multiSite = s.siteItems.filter((it) => it.selected).length > 1
   const unitsDiffer = caps.fields === 'pair' && !sameUnits(meta.field_units?.[s.xField], meta.field_units?.[s.yField])
   const plotOptions = (
     <>
@@ -354,10 +356,12 @@ export function SubsetBar({
               title="Data: 0 always visible, negatives kept · From 0,0: both axes start at zero (default) · Show intercept: keep all points and mark fitted intercepts with compact margins"
             />
             <Toggle label="Log axes" checked={s.axes.log} onChange={(v) => a.onAxes({ ...s.axes, log: v })} />
-            {/* one site: Per site is Shared, and the only multi-panel view left (its seasons) offers Shared / Own on the chart */}
-            {s.siteItems.filter((it) => it.selected).length > 1 && <Segmented label="Panel axes" value={(s.axes.panels ?? 'Shared') as any} options={PANEL_AXES as any}
+            {/* always offered: one site still draws several panels (per season, split-fit's ≤ / >, before / after). With one
+                site Per site amounts to Shared, so it offers Shared / Own and shows the setting as what it amounts to. */}
+            <Segmented label="Panel axes" value={(multiSite ? s.axes.panels ?? 'Shared' : collapsePanelAxes(s.axes.panels ?? 'Shared', 'season')) as any}
+              options={(multiSite ? PANEL_AXES : BASIC_PANEL_AXES) as any}
               onChange={(v: string) => a.onAxes({ ...s.axes, panels: v as AxesOpts['panels'] })}
-              title="Several panels: Shared gives every panel the same range, so slopes and levels compare by eye · Per site (per-season layout): the seasons of one site share a range · Own zooms each panel to its own data. With the 1:1 line on, each panel stays square with equal x and y spans." />}
+              title="Several panels: Shared gives every panel the same range, so slopes and levels compare by eye · Per site (per-season layout): the seasons of one site share a range · Own zooms each panel to its own data. With the 1:1 line on, each panel stays square with equal x and y spans." />
             {explain && <span className="row-note">applies to the scatterplot, hexbin and connected scatter together</span>}
           </Row>
         </>
@@ -554,7 +558,6 @@ export function SubsetBar({
                               })() : g.site}
                               {cal?.sources?.length ? <span className="cite-refs">
                                 {cal.sources.map((src) => <CiteRef key={src.url} n={citeNo.get(src.url)!} source={src} />)}
-                                {cal.note && <CalendarNoteRef note={cal.note} site={g.site ?? ''} />}
                               </span> : null}
                               {rule ? <span className="season-edited" title={cal?.weather === 'unavailable'
                                 ? "This site has no daily weather, so no filter has a dynamic season: they are all under No weather"

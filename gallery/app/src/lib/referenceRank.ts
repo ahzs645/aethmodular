@@ -126,7 +126,8 @@ export interface ActiveRankSite extends RankedSite { network: 'IMPROVE' | 'SPART
 export interface NetworkRankSite extends RankedSite { network: 'IMPROVE' | 'SPARTAN'; rank: number; active?: boolean; color?: string }
 
 /** One mark per network + site code, even when that site is also selected in the gallery.
- * Together: rank all medians. Reference: keep the notebook's IMPROVE ordering and insert SPARTAN into it.
+ * Together: rank all medians, one column per site (ties ordered by network, then code).
+ * Reference: keep the notebook's IMPROVE ordering and insert SPARTAN into it.
  * A single network always ranks against itself. Names are labels, never site identities. */
 export function rankNetworks(improve: readonly RankedSite[], spartan: readonly RankedSite[], networks: RankNetworks,
   order: 'together' | 'reference' = 'together'): NetworkRankSite[] {
@@ -136,7 +137,12 @@ export function rankNetworks(improve: readonly RankedSite[], spartan: readonly R
   const all = [...im.map(s => ({ ...s, network: 'IMPROVE' as const })), ...sp.map(s => ({ ...s, network: 'SPARTAN' as const }))]
     .sort((a, b) => a.p50 - b.p50 || a.network.localeCompare(b.network) || a.code.localeCompare(b.code))
   const reference = networks === 'both' && order === 'reference'
-  return all.map(s => ({ ...s, rank: 1 + placeAmong(reference ? im : all, s.p50) }))
+  // Background sites take consecutive columns. Ranking each one with placeAmong gave tied medians the same
+  // column and left the next one empty (IMPROVE EC is exported to 4 decimals, so ties are common).
+  // Notebook placement still sends a SPARTAN site to the IMPROVE column its median would enter.
+  const imColumn = new Map(im.map((s, i) => [s.code, i]))
+  return all.map((s, i) => ({ ...s, rank: 1 + (!reference ? i
+    : s.network === 'IMPROVE' ? imColumn.get(s.code)! : placeAmong(im, s.p50)) }))
 }
 
 /** Active Samples sites remain visible against any background, without a second mark for the same site.

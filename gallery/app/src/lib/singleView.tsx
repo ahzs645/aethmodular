@@ -104,6 +104,17 @@ function mark(root: Element, el: HTMLElement) {
   }
 }
 
+/** whether `mark` still holds for `el`: anything mounted beside its path since (a chart whose code or data arrived
+ * after the one in view, each lazy chart having its own Suspense) is not hidden yet */
+function marked(root: Element, el: HTMLElement) {
+  if (!el.hasAttribute('data-single-active')) return false
+  for (let n: HTMLElement | null = el; n && n !== root; n = n.parentElement) {
+    if (n.hasAttribute('data-single-hidden') || (n !== el && !n.hasAttribute('data-single-path'))) return false
+    for (const sib of n.parentElement?.children ?? []) if (sib !== n && !sib.matches(KEEP) && !sib.hasAttribute('data-single-hidden')) return false
+  }
+  return true
+}
+
 export function SingleViewProvider({ on: wanted, setOn, available, page, children }: { on: boolean; setOn: (v: boolean) => void; available: boolean; page: string; children: ReactNode }) {
   const on = wanted && available
   const [frames, setFrames] = useState<HTMLElement[]>([])
@@ -112,6 +123,9 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
   const [slotWidth, setSlotWidth] = useState(0)
   const want = useRef<HTMLElement | null>(null)
   const at = useRef(0)
+  // the chart in view was chosen (a step, the picker, the link's chart, the search) rather than defaulted to the
+  // first: until then the view follows the page's first chart, whichever chart happened to draw first
+  const pinned = useRef(false)
   const [side, setSide] = useSearchParam<ControlsSide>('side', 'right', ['right', 'left', 'top'])
   // the link's chart (`chart=`, or a `focus=` link's): opened once its frame has drawn
   const asked = useRef<string | null>(null)
@@ -134,7 +148,7 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
     else asked.current = null
     shown.current = page
     if (sought.current && !onPage(sought.current.t, page)) sought.current = null
-    want.current = null; at.current = 0; setIndex(0)
+    want.current = null; at.current = 0; pinned.current = false; setIndex(0)
   }, [page])
 
   useEffect(() => {
@@ -149,7 +163,7 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
       const list = framesIn(root)
       if (asked.current) {
         const found = list.find((f) => f.dataset.frameKey === asked.current)
-        if (found) { want.current = found; asked.current = null }
+        if (found) { want.current = found; asked.current = null; pinned.current = true }
       }
       let picked: HTMLElement | null = null
       const s = sought.current
@@ -158,13 +172,16 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
         // the frame that holds it (a chart's id can sit on a frame inside another)
         const hit = findChart(s.t)
         const frame = hit ? list.find((f) => f === hit || f.contains(hit)) : undefined
-        if (frame && frame !== want.current) { want.current = frame; picked = frame; asked.current = null }
+        if (frame && frame !== want.current) { want.current = frame; picked = frame; asked.current = null; pinned.current = true }
       }
-      let i = want.current ? list.indexOf(want.current) : -1
+      // a tab's charts load one by one (each its own lazy chunk): until one is chosen, the view stays on the first
+      // in page order, not on whichever drew first
+      let i = want.current && pinned.current ? list.indexOf(want.current) : -1
       if (i < 0) i = Math.max(0, Math.min(at.current, list.length - 1))
       const el = list[i] ?? null
-      // the page re-rendered without moving: nothing to redo (attributes are not observed, so no loop)
-      if (!(el && el.hasAttribute('data-single-active') && el === want.current)) {
+      // the page re-rendered without moving and nothing new mounted beside it: nothing to redo
+      // (attributes are not observed, so no loop)
+      if (!(el && el === want.current && marked(root, el))) {
         clearMarks()
         if (el) mark(root, el)
       }
@@ -198,6 +215,7 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
     if (new URL(window.location.href).searchParams.has('focus')) { setQuery('focus', null); window.dispatchEvent(new Event('gallery-focus')) }
     // the reader's own step wins over a chart the search is still holding in view
     sought.current = null
+    pinned.current = true
     clearMarks()
     mark(root, list[i])
     want.current = list[i]
@@ -490,6 +508,15 @@ export function SingleViewStats() {
 
 /** ChartFrame's stats box while its chart is the one in view (and not being exported), else null */
 export const AsideSlotCtx = createContext<HTMLElement | null>(null)
+
+/** a Dashboard tile's ⓘ box (components/ChartFrame TileCorner), where the chart's fit statistics go instead of above the plot; else null */
+export const TileStatsCtx = createContext<HTMLElement | null>(null)
+/** where a Dashboard tile's fit statistics go (the tile's ⋯ menu): behind its ⓘ, in a column beside the plot, or above the plot */
+export type TileFitMode = 'corner' | 'beside' | 'plot'
+export const TILE_FIT_MODES: readonly TileFitMode[] = ['corner', 'beside', 'plot']
+/** a tile corner box's width; RegressionOverlay draws a tile's fit statistics at TILE_CORNER_INNER (less the box's padding) */
+export const TILE_CORNER_WIDTH = 340
+export const TILE_CORNER_INNER = TILE_CORNER_WIDTH - 26
 
 /** true when the chart keeps its fit statistics above the plot in this view too (lib/chartDisplay StatsPlace) */
 export const StatsInPlotCtx = createContext(false)

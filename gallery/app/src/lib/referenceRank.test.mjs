@@ -86,7 +86,15 @@ test('network modes rank their own unique sites, including when an IMPROVE site 
 test('the original notebook placement remains available, with ties and both ends handled', () => {
   const ranked = rankNetworks([site('A', 2), site('B', 4)], [site('ETAD', 1), site('INDH', 2), site('CHTS', 8)], 'both', 'reference')
   assert.deepEqual(ranked.filter(s => s.network === 'SPARTAN').map(s => [s.code, s.rank]), [['ETAD', 1], ['INDH', 1], ['CHTS', 3]])
-  assert.deepEqual(rankNetworks([site('A', 2)], [site('ETAD', 2), site('INDH', 3)], 'both').map(s => s.rank), [1, 1, 3])
+  assert.deepEqual(rankNetworks([site('A', 2)], [site('ETAD', 2), site('INDH', 3)], 'both').map(s => s.rank), [1, 2, 3])
+})
+
+test('tied background medians take consecutive columns, so the axis has no empty ranks', () => {
+  const im = [site('A', 1), site('B', 2), site('C', 2), site('D', 3)]
+  const ranks = mode => rankNetworks(im, [site('ETAD', 2)], 'both', mode).map(s => [s.network, s.code, s.rank])
+  assert.deepEqual(ranks('reference'), [['IMPROVE', 'A', 1], ['IMPROVE', 'B', 2], ['IMPROVE', 'C', 3], ['SPARTAN', 'ETAD', 2], ['IMPROVE', 'D', 4]])
+  assert.deepEqual(ranks('together'), [['IMPROVE', 'A', 1], ['IMPROVE', 'B', 2], ['IMPROVE', 'C', 3], ['SPARTAN', 'ETAD', 4], ['IMPROVE', 'D', 5]])
+  assert.deepEqual(rankNetworks(im, [], 'improve').map(s => s.rank), [1, 2, 3, 4])
 })
 
 test('every notebook ratio uses the corrected carbon mapping and has exported IMPROVE quantiles', () => {

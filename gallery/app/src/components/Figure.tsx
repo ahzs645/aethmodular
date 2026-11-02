@@ -3,6 +3,7 @@ import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { mediaKey, useEtadByMedia } from '@/lib/etadMedia'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
+import { useHighlightActions } from '@/lib/highlight'
 import { PanelAxesControl } from '@/lib/panelAxes'
 import type { PanelDim } from '@/lib/axes'
 import { FacetGrid } from '@/components/FacetGrid'
@@ -189,13 +190,15 @@ function CrossplotFigure({ spec, rows, marked = [] }: { spec: Extract<FigureSpec
   const groups = spec.color ? uniq(rows, spec.color) : []
   // a MediaId column joins the gallery's Addis filters through etad_ids.json, so the points follow Filters → excluded
   const byMedia = useEtadByMedia(spec.idColumn === 'MediaId')
+  // a point that maps to a gallery filter opens it in the sample drawer on click, as the other crossplots do
+  const { openSample } = useHighlightActions()
   const toPoints = (rs: Row[]): CrossPoint[] => rs.flatMap((r) => {
     const x = num(r[spec.x]), y = num(r[spec.y])
     if (x == null || y == null) return []
     const raw = spec.idColumn ? String(r[spec.idColumn]) : undefined
     const etad = byMedia && raw !== undefined ? byMedia.get(mediaKey(raw)) : undefined
     const idv = etad ?? raw
-    return [{ x, y, color: spec.color ? color(r[spec.color]) : INK.text, id: idv,
+    return [{ x, y, color: spec.color ? color(r[spec.color]) : INK.text, id: idv, open: etad ? () => openSample(etad) : undefined,
       tip: [...(etad ? [`${etad} · MediaId ${mediaKey(raw)}`] : idv ? [idv] : []), ...(spec.tipColumns ?? (spec.color ? [spec.color] : [])).map((c) => `${c}: ${r[c] ?? '—'}`), `${spec.xLabel}: ${f2(x)}`, `${spec.yLabel}: ${f2(y)}`] }]
   })
   const facets = facetsOf(rows, spec.facet)

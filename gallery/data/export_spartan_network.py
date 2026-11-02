@@ -162,6 +162,83 @@ def write_asset(out, stem, body, kind='json'):
     return 'spartan_network/' + rel
 
 
+def add_registry_flags(records):
+    """Add canonical exclusions without discarding source flags or measurements."""
+    result = list(records)
+    for site, spec in SITES.items():
+        positions = [i for i, row in enumerate(records) if row['code'] == spec['code']]
+        if not positions:
+            continue
+        frame = pd.DataFrame([dict(position=i, id=records[i]['id'],
+                                   date=pd.Timestamp(records[i]['date']).normalize()) for i in positions])
+        for row in apply_exclusion_flags(frame, site).to_dict('records'):
+            if row['is_excluded']:
+                old = records[row['position']]
+                reason = old.get('exclusion_reason') or ''
+                if row['exclusion_reason'] not in reason:
+                    reason = '; '.join(filter(None, [reason, row['exclusion_reason']]))
+                result[row['position']] = dict(old, excluded=True, exclusion_reason=reason)
+    return result
+
+
+def refresh_exclusions(data):
+    """Re-export flags from saved chemistry without needing native scan bundles.
+
+    Only exclusion fields change. Existing source provenance and native assets
+    remain intact; a separate update receipt identifies this operation.
+    """
+    index_path = data / 'spartan_network/index.json'
+    index = json.loads(index_path.read_text())
+    original_index_sha = hashlib.sha256(index_path.read_bytes()).hexdigest()
+    registry = ROOT / 'research/ftir_hips_chem/scripts/outliers.py'
+    provenance = dict(generated=datetime.now(timezone.utc).isoformat(),
+                      registry_sha256=hashlib.sha256(registry.read_bytes()).hexdigest())
+    plans, changed = [], {}
+    # Validate and prepare every input before replacing any existing file.
+    for name in ['filters.json', 'spartan_reference.json']:
+        path = data / name
+        payload = json.loads(path.read_text())
+        updated = add_registry_flags(payload['rows'])
+        ids = [a['id'] for a, b in zip(payload['rows'], updated) if a != b]
+        if ids:
+            payload['rows'] = updated
+            if 'n_excluded' in payload:
+                payload['n_excluded'] = sum(bool(r.get('excluded')) for r in updated)
+            payload['exclusion_update'] = dict(provenance, input_sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+            plans.append((path, payload))
+            changed[name] = ids
+    shards = []
+    for site in index['sites']:
+        path = (data / site['filters']).resolve()
+        if not path.is_relative_to(data.resolve()):
+            raise ValueError('Filter asset path escapes data directory')
+        body = path.read_bytes()
+        signature = path.name.rsplit('-', 1)[-1].split('.')[0]
+        if hashlib.sha256(body).hexdigest()[:16] != signature:
+            raise ValueError(f'Filter asset checksum mismatch: {site["code"]}')
+        payload = json.loads(gzip.decompress(body))
+        updated = add_registry_flags(payload['rows'])
+        ids = [a['id'] for a, b in zip(payload['rows'], updated) if a != b]
+        if ids:
+            payload['rows'] = updated
+            payload['exclusion_update'] = dict(provenance, input_sha256=hashlib.sha256(body).hexdigest())
+            shards.append((site, payload))
+            changed[site['code']] = ids
+    for path, payload in plans:
+        temporary = path.with_suffix('.json.tmp')
+        temporary.write_bytes(json_bytes(payload))
+        temporary.replace(path)
+    for site, payload in shards:
+        site['filters'] = write_asset(data / 'spartan_network', f'sites/{site["code"]}', json_bytes(payload))
+    if shards:
+        index['exclusion_update'] = dict(provenance, input_sha256=original_index_sha)
+        temporary = index_path.with_suffix('.json.tmp')
+        temporary.write_bytes(json_bytes(index))
+        temporary.replace(index_path)
+    print(json.dumps(dict(changed=changed, registry_sha256=provenance['registry_sha256'])))
+    return changed
+
+
 def build(ftir, hips, data, baselines_dir=BASELINES, step=DEFAULT_STEP):
     baselines, vibes_grid = load_baselines(baselines_dir)
     ftir_receipt = verify_bundle(ftir)
@@ -279,12 +356,7 @@ def build(ftir, hips, data, baselines_dir=BASELINES, step=DEFAULT_STEP):
         for r in rows.values():
             r['site'] = name
         # Canonical flags also cover native-only filters; never erase an existing flag.
-        if rows:
-            flagged = apply_exclusion_flags(pd.DataFrame([{'id': k, 'date': pd.Timestamp(r['date'])} for k, r in rows.items()]), focus.get(code, code))
-            for r in flagged.to_dict('records'):
-                if r['is_excluded']:
-                    rows[r['id']].update(excluded=True, exclusion_reason=r['exclusion_reason'])
-        records = sorted(rows.values(), key=lambda r: (r['date'], r['id']))
+        records = sorted(add_registry_flags(list(rows.values())), key=lambda r: (r['date'], r['id']))
         file = write_asset(out, f'sites/{code}', json_bytes(dict(schema_version=1, code=code, rows=records)))
         dates = sorted(r['date'] for r in records if r['date'])
         sites.append(dict(code=code, name=name, location=display_site_name(code, m.get('name'), ns.get('Description'), name),
@@ -331,7 +403,11 @@ def main():
     ap.add_argument('--data-dir', type=Path, default=ROOT / 'gallery/app/public/data')
     ap.add_argument('--baselines', type=Path, default=BASELINES, help='network_baselines run folder (absent: raw only)')
     ap.add_argument('--step', type=float, default=DEFAULT_STEP, help='absorbance step for stored traces (1e-8 default; 1e-7 is ~25%% smaller)')
+    ap.add_argument('--refresh-exclusions', action='store_true', help='refresh only canonical flags in existing filter/reference/network snapshots')
     args = ap.parse_args()
+    if args.refresh_exclusions:
+        refresh_exclusions(args.data_dir)
+        return
     if not args.ftir_bundle or not args.hips_bundle:
         ap.error('Set both native bundle paths in .env or pass --ftir-bundle and --hips-bundle')
     build(Path(args.ftir_bundle).expanduser(), Path(args.hips_bundle).expanduser(), args.data_dir, args.baselines, args.step)

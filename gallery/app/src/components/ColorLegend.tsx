@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import * as d3 from 'd3'
 import { INK, FONT } from '@/lib/theme'
-import { adaptive } from '@/lib/format'
+import { adaptive, tickLabels } from '@/lib/format'
 import { labelGutter } from '@/lib/fitLabel'
 import { SchemePopover, type SchemeChoice } from '@/components/ColourSchemePicker'
 
@@ -45,11 +45,12 @@ export function ColorLegend({
   const dom = scale.domain()
   const lo = dom[0]
   const hi = dom[dom.length - 1]
-  const fmtV = format ?? adaptive
   const n = 40
   const stops = d3.range(n + 1).map((i) => scale(lo + ((hi - lo) * i) / n))
   const x = d3.scaleLinear().domain([lo, hi]).range([0, width])
   const tickVals = x.ticks(ticks).filter((t) => t >= lo && t <= hi)
+  // enough decimals to tell the ticks apart (a trace metal in µg/m³ ramps 0.001 to 0.004)
+  const fmtV = format ?? tickLabels(tickVals)
   const h = 10
   const svgH = h + 20
   // room for the end tick labels, which are centred on the ramp's edges

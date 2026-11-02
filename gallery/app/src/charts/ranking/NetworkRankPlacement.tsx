@@ -170,6 +170,8 @@ export function NetworkRankPlacement({ rows, meta, field: selectedField, improve
   const loadError = (needsImprove && error) || (needsSpartan && indexError) || (allSpartan && sp.error)
   const blocked = !quantity || massClash || loading || !!loadError
   const selected = shown.filter(s => s.active)
+  // "Sites / filters in view" with only active SPARTAN sites leaves no SPARTAN background to compare against
+  const noSpartanBackground = needsSpartan && !allSpartan && spartan.length > 0 && spartan.every(s => active.some(a => a.network === 'SPARTAN' && a.code === s.code))
   const missingActive = [...activeInfo].filter(([code]) => !active.some(s => s.code === code)).map(([, s]) => s.name)
   const star = d3.symbol(d3.symbolStar, 130)() ?? ''
 
@@ -226,6 +228,7 @@ export function NetworkRankPlacement({ rows, meta, field: selectedField, improve
           ]} {...lg.props} note={needsSpartan ? scopeText : 'IMPROVE uses fixed exported site quantiles.'} />
           <Legend items={active.map(s => ({ label: s.name, color: s.color, shape: 'diamond' as const, detail: `active · n=${s.n}` }))}
             note="Active Samples sites stay visible in every comparison mode and keep their Samples colours." />
+          {noSpartanBackground && <p className="chart-note">No other SPARTAN sites in the background: every SPARTAN site in view is an active star. Set SPARTAN sites to All sites to rank against the rest of the SPARTAN network.</p>}
           {missingActive.length > 0 && <p className="chart-note">Active sites without a valid {field} value under this filter population: {missingActive.join(', ')}.</p>}
           {o.values.scale === 'Log' && !log && <p className="chart-note">Using a linear scale because a displayed lower quartile is zero or negative.</p>}
         </>}

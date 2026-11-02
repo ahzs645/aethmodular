@@ -568,6 +568,24 @@ For method-code evidence see `research/spartan_ec_2026_06_16/README.md` and
 `docs/open-items.md` and `research/ftir_ec_phase3/ftir_25_intercept_invariant.md`.
 The current claim limits are in `docs/current-research-summary.md`.
 
+## AQRC / Davis database access
+
+For bounded live database reads, start with [docs/aqrc-cli-access.md](docs/aqrc-cli-access.md)
+and `$aqrc-cli-access` when installed. Reuse the current private CLI connection
+before asking for Windows interaction or preparing a new bundle. Supported
+commands include `capabilities`, `probe`, `databases`, `tables`, `views`,
+`synonyms`, `objects`, `columns`, `preview`, guarded `query` and filter `notes`.
+Queries are single SELECT statements validated by Microsoft's ScriptDom parser;
+writes, EXEC, hints, ad hoc external sources and shell commands stay blocked.
+Check the remote protocol/capabilities before using new commands: local source
+edits do not upgrade a running Windows helper. Keep bridge tokens and
+Windows SQL configuration private. `prepare` creates a new token and is for
+first setup or deliberate rotation, not routine reconnection. The guide records
+verified setup, the authorized Process-scoped policy wrapper, lifetimes and
+coverage limits. Historical approval is not blanket authorization for future
+policy changes. Full profiles, binary scans and large exports still use the
+reviewed Davis survey/export scripts and verified receipts.
+
 ## Agent rules
 
 For site-specific seasonal reporting, use [docs/site-seasonality.md](docs/site-seasonality.md).

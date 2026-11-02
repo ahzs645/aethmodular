@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { AutoThemeIcon, ExplainIcon, MoonIcon, SunIcon, TextSizeIcon, XIcon } from '@/components/Icons'
 import { useFloatingMenu } from '@/hooks/useFloatingMenu'
@@ -32,14 +32,13 @@ function visibleChart(): VisibleChart | null {
 
 /** A click changes all charts. Right-click (or the visible menu button) offers explicit scope. */
 export function DisplayControls() {
-  const { density, setDensity, explain, setExplain } = usePrefs()
+  const { density, setDensity, explain, setExplain, notes, setNotes } = usePrefs()
   const theme = useThemePref()
   const prefs = useChartDisplayPrefs()
   const single = useSingleView()
   const sourceLabel = useSpartanSourceLabel()
   const builderEnabled = useChartBuilderEnabled()
   const nav = useHeaderNav()
-  const placement = single.on ? single.side : prefs.controlsSide
   const [open, setOpen] = useState(false)
   const [panel, setPanel] = useState<'display' | 'data' | 'interface'>('display')
   const [target, setTarget] = useState<VisibleChart | null>(null)
@@ -96,15 +95,9 @@ export function DisplayControls() {
   return <span className="display-controls" ref={root}
     onContextMenu={event => { event.preventDefault(); showMenu(event.target instanceof HTMLElement ? event.target.closest('button') ?? trigger.current! : trigger.current!) }}
     onKeyDown={event => { if (event.key === 'ContextMenu' || event.shiftKey && event.key === 'F10') { event.preventDefault(); showMenu(document.activeElement as HTMLElement) } }}>
-    {/* in the single-chart view the placement is the view's own (side= in the link), so a shared link keeps it */}
-    <button type="button" className={`btn quiet icon-btn${placement !== 'top' ? ' on' : ''}`} aria-label="Options placement"
-      onClick={() => { const next = DISPLAY_SIDES[(DISPLAY_SIDES.indexOf(placement) + 1) % DISPLAY_SIDES.length]; if (single.on) single.setSide(next); else apply({ controlsSide: next }) }}
-      title={single.on ? `Options: ${SIDE_LABEL[placement].toLowerCase()} in the one-chart view (kept in the link). Click to cycle.` : `Options: ${SIDE_LABEL[placement].toLowerCase()} for all charts. Click to cycle; right-click for settings and this chart only.`}>
-      <OptionsPlacementIcon side={placement} />
-    </button>
     <button type="button" ref={trigger} className={`btn quiet icon-btn display-menu-trigger${open ? ' on' : ''}`} aria-label="Display and data settings"
       aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? menuId : undefined}
-      title="Display and data settings: text size, theme, interface and SPARTAN live data" onClick={event => open ? close() : showMenu(event.currentTarget)}>
+      title="Display and data settings: options placement, text size, theme, interface and SPARTAN live data" onClick={event => open ? close() : showMenu(event.currentTarget)}>
       <TextSizeIcon />{sourceLabel && <span className="spartan-source-label">{sourceLabel}</span>}
     </button>
     {EXPLAIN_AVAILABLE && <button type="button" className={`btn quiet icon-btn${explain ? ' on' : ''}`} aria-pressed={explain} aria-label="Explain"
@@ -119,14 +112,19 @@ export function DisplayControls() {
       <div className="seg" role="group" aria-label="Settings section">
         <button type="button" className={panel === 'display' ? 'active' : ''} aria-pressed={panel === 'display'} onClick={() => setPanel('display')}>Display</button>
         <button type="button" className={panel === 'data' ? 'active' : ''} aria-pressed={panel === 'data'} onClick={() => setPanel('data')}>SPARTAN data</button>
-        {CHART_BUILDER_AVAILABLE && <button type="button" className={panel === 'interface' ? 'active' : ''} aria-pressed={panel === 'interface'} onClick={() => setPanel('interface')}>Interface</button>}
+        <button type="button" className={panel === 'interface' ? 'active' : ''} aria-pressed={panel === 'interface'} onClick={() => setPanel('interface')}>Interface</button>
       </div>
       {panel === 'interface' ? <>
+        <DisplayChoice label="Chart notes (ⓘ beside titles)" value={notes ? 'on' : 'off'} choices={[{ value: 'off', label: 'Off' }, { value: 'on', label: 'On' }]}
+          onChange={value => setNotes(value === 'on')} />
+        <p>Shows the ⓘ next to chart titles that opens notes on that chart. Applies to every chart.</p>
+        {CHART_BUILDER_AVAILABLE && <>
         <DisplayChoice label="Free-form chart builder" value={builderEnabled ? 'on' : 'off'} choices={[{ value: 'off', label: 'Off' }, { value: 'on', label: 'On' }]}
           onChange={value => setChartBuilderEnabled(value === 'on')} />
         <p>Explore combinations of measures and site or season facets with Graphic Walker. Adds Chart builder to the Charts menu.</p>
         {builderEnabled && <button type="button" className="btn" onClick={() => { close(); nav?.goTo({ tab: 'builder' }) }}>Open chart builder</button>}
-        <p className="display-footnote">Optional and remembered in this browser. The builder loads when opened. Download a draft to keep or share its chart definitions.</p>
+        </>}
+        <p className="display-footnote">Optional and remembered in this browser.{CHART_BUILDER_AVAILABLE && ' The builder loads when opened. Download a draft to keep or share its chart definitions.'}</p>
       </> : panel === 'data' ? <SpartanDataSettings /> : <>
       <fieldset className="display-scope"><legend>Apply changes to</legend>
         <div className="seg"><button type="button" className={scope === 'all' ? 'active' : ''} aria-pressed={scope === 'all'} onClick={() => setScope('all')}>All charts</button>
@@ -134,8 +132,11 @@ export function DisplayControls() {
         <p>{scope === 'chart' ? target?.title : 'Every chart, including charts on other tabs.'}</p>
         {target ? <p className="display-target">Most visible: <strong>{target.title}</strong></p> : <p>No chart is visible.</p>}
       </fieldset>
-      <DisplayChoice label="Options placement" value={settings.controlsSide} choices={DISPLAY_SIDES.map(value => ({ value, label: SIDE_LABEL[value] }))}
-        onChange={controlsSide => apply({ controlsSide }, scope === 'chart')} />
+      {/* in the one-chart view the placement is the view's own (side= in the link), so a shared link keeps it */}
+      <DisplayChoice label={single.on ? 'Options placement, one-chart view' : 'Options placement'} value={single.on ? single.side : settings.controlsSide}
+        choices={DISPLAY_SIDES.map(value => ({ value, label: <><OptionsPlacementIcon side={value} />{SIDE_LABEL[value]}</> }))}
+        onChange={controlsSide => single.on ? single.setSide(controlsSide) : apply({ controlsSide }, scope === 'chart')}
+        note={single.on ? 'Kept in the link; applies to this view whichever scope is chosen.' : undefined} />
       <DisplayChoice label="Fit statistics, one-chart view" value={settings.statsPlace} choices={[{ value: 'options', label: 'With the options' }, { value: 'plot', label: 'Above the plot' }]}
         onChange={statsPlace => apply({ statsPlace }, scope === 'chart')} />
       <DisplayChoice label="Text size" value={settings.density} choices={[{ value: 'compact', label: 'Compact' }, { value: 'readable', label: 'Readable' }]}
@@ -151,10 +152,10 @@ export function DisplayControls() {
   </span>
 }
 
-function DisplayChoice<T extends string>({ label, value, choices, onChange }: { label: string; value: T; choices: { value: T; label: string }[]; onChange: (value: T) => void }) {
+function DisplayChoice<T extends string>({ label, value, choices, onChange, note }: { label: string; value: T; choices: { value: T; label: ReactNode }[]; onChange: (value: T) => void; note?: string }) {
   return <fieldset className="display-choice"><legend>{label}</legend><div className="seg">{choices.map(choice =>
     <button key={choice.value} type="button" className={choice.value === value ? 'active' : ''} aria-pressed={choice.value === value} onClick={() => onChange(choice.value)}>{choice.label}</button>,
-  )}</div></fieldset>
+  )}</div>{note && <p>{note}</p>}</fieldset>
 }
 
 function OptionsPlacementIcon({ side }: { side: ChartDisplay['controlsSide'] }) {

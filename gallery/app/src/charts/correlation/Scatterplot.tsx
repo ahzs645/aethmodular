@@ -455,10 +455,14 @@ export function Scatterplot({ rows, meta, xField, yField, axes: axesIn, id = 'sc
           )}
           {sScale && <SizeLegend scale={sScale} label={unitOf(sizeField)} />}
           {sScale && nNoSize > 0 && <span className="legend-note">{nNoSize} points without {sizeField} drawn smallest</span>}
+          {/* the site list goes inside the same .legend as the ramp, on its own line: two sibling .legend blocks
+              both take the one grid cell beside the plot (lib/singleView [data-legend-beside]) and overprint */}
+          {colorBy === 'Value' && !pmfColouring && (
+            <div style={{ width: '100%' }}>
+              <Legend items={legend} hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} onHover={setHover} highlighted={hover} note="click a site to drop it; colour is the value above" />
+            </div>
+          )}
         </div>
-        {colorBy === 'Value' && !pmfColouring && (
-          <Legend items={legend} hidden={hidden} onToggle={(l) => setHidden((h) => toggleIn(h, l))} onHover={setHover} highlighted={hover} note="click a site to drop it; colour is the value above" />
-        )}
         <ExcludedNote fields={[xField, yField]} drawn />
         {layout === 'Per group' && grp && (() => {
           const n = drawable.filter((r) => grp.labelOf(r) === null).length

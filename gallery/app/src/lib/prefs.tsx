@@ -10,19 +10,25 @@ import { CHART_DISPLAY_CSS } from './chartDisplayStyles'
  * --text-scale, and chart text by its font-size attribute) for a projector or a tired reader.
  */
 export type Density = 'compact' | 'readable'
+/** `notes` is the flag behind the ⓘ beside chart titles (InfoTip, "Notes on this chart"): off by
+ * default so titles stay clean; the Display and data menu's Interface section turns it on. */
 interface Prefs {
   explain: boolean
   setExplain: (v: boolean) => void
   density: Density
   setDensity: (v: Density) => void
+  notes: boolean
+  setNotes: (v: boolean) => void
 }
 
-const Ctx = createContext<Prefs>({ explain: false, setExplain: () => {}, density: 'compact', setDensity: () => {} })
+const Ctx = createContext<Prefs>({ explain: false, setExplain: () => {}, density: 'compact', setDensity: () => {}, notes: false, setNotes: () => {} })
 /** Builds for readers outside the group (gallery/share/publish_pages.py, build_share.py) set
  * VITE_HIDE_EXPLAIN=1: the header toggle disappears and explanations stay off. Local dev keeps it. */
 export const EXPLAIN_AVAILABLE = import.meta.env.VITE_HIDE_EXPLAIN !== '1'
 const KEY = 'aeth-gallery:explain'
 const DENSITY_KEY = 'aeth-gallery:density'
+const NOTES_KEY = 'aeth-gallery:chart-notes'
+const readNotes = (): boolean => { try { return localStorage.getItem(NOTES_KEY) === '1' } catch { return false } }
 const readDensity = (): Density => { try { return localStorage.getItem(DENSITY_KEY) === 'readable' ? 'readable' : 'compact' } catch { return 'compact' } }
 
 export function PrefsProvider({ children }: { children: ReactNode }) {
@@ -47,7 +53,11 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     document.documentElement.dataset.density = density
     try { localStorage.setItem(DENSITY_KEY, density) } catch { /* the choice still holds for the session */ }
   }, [density])
-  const value = useMemo(() => ({ explain: EXPLAIN_AVAILABLE && explain, setExplain: setExplainState, density, setDensity }), [explain, density])
+  const [notes, setNotes] = useState<boolean>(readNotes)
+  useEffect(() => {
+    try { localStorage.setItem(NOTES_KEY, notes ? '1' : '0') } catch { /* the choice still holds for the session */ }
+  }, [notes])
+  const value = useMemo(() => ({ explain: EXPLAIN_AVAILABLE && explain, setExplain: setExplainState, density, setDensity, notes, setNotes }), [explain, density, notes])
   return <Ctx.Provider value={value}><style>{CHART_DISPLAY_CSS}</style>{children}</Ctx.Provider>
 }
 

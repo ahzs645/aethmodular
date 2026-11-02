@@ -20,6 +20,11 @@ import { useColourScheme } from '@/lib/colourSchemes'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { fidsProps, useFilterEdits } from '@/lib/filterEdits'
 import { useFitHeight } from '@/lib/chartFit'
+import { useSearchParam } from '@/lib/url'
+import { ScrubField } from '@/components/ScrubField'
+
+const RADIUS_MIN = 6
+const RADIUS_MAX = 30
 import { ExcludedNote } from '@/lib/markedRows'
 import { seasonColor, siteColor } from '@/lib/siteColours'
 
@@ -51,15 +56,20 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
   const colours = useColourScheme('hexbin', 'sequential')
   // fits per band of the reader's grouping (components/GroupingDialog) instead of the gallery's fit grouping
   const { grp, picker, missingNote } = useChartGrouping('hexbin', pairedRows, () => o.set('byGroup', true))
+  // the hexagons' radius in px, dragged or typed (the old 8 / 11 / 14 / 18 / 24 choices and links to them still read)
+  const [radiusParam, setRadiusParam] = useSearchParam<string>('hexbin.radius', '14')
+  const radius = Math.min(RADIUS_MAX, Math.max(RADIUS_MIN, Math.round(Number(radiusParam)) || 14))
   const o = useChartOptions('hexbin', [
-    { key: 'radius', label: 'Hex radius', choices: ['8', '11', '14', '18', '24'], default: '14', style: 'select' },
+    { key: 'radius', node: () => <span className="control" title="The hexagons' radius: drag sideways or click to type">
+      Hex radius
+      <ScrubField label="Hex radius" value={radius} onChange={(v) => setRadiusParam(String(v))} min={RADIUS_MIN} max={RADIUS_MAX} step={1} unit="px" width={84} />
+    </span> },
     { key: 'groupPicker', node: () => picker },
     { key: 'byGroup', label: 'Fit per group', toggle: true, default: false, when: (c) => (c.estimators as number) > 0 && !!c.hasGroup,
       title: 'One fit per band of a grouping (high vs low iron, rain classes …), drawn over the same hexes' },
     fitGroupingOption({ bind: [chosenGrouping, setGrouping as (v: never) => void], when: (c) => (c.estimators as number) > 0 && !c.byGroup, offerSite: (c) => !c.oneSite,
       hiddenNote: (c) => ((c.estimators as number) > 0 && c.byGroup ? 'one fit per band' : null) }),
   ], { estimators: methods.length, oneSite, hasGroup: !!grp })
-  const radius = o.values.radius as string
   const grouping = o.values.grouping as FitGrouping
   const perBand = !!o.values.byGroup && !!grp
   // several fits drawn: per site or season (the gallery's grouping), or per band of the grouping
@@ -114,7 +124,7 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
     const hb = d3Hexbin<Pt>()
       .x((d) => x(d[0]))
       .y((d) => y(d[1]))
-      .radius(Number(radius))
+      .radius(radius)
       .extent([[0, 0], [innerW, innerH]])
     return hb(points.filter((p) => inDomain(domain, p[0], p[1]))).map((b) => Object.assign(b, { path: hb.hexagon() }))
   }, [points, x, y, radius, innerW, innerH, domain])

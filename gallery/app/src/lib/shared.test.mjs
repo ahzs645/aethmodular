@@ -1,9 +1,19 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { fmt, fixed, f2, f3, signed, pct, percent, trim, adaptive, sci, fitLine, fitSummary } from './format.ts'
+import { fmt, fixed, f2, f3, signed, pct, percent, trim, adaptive, tickLabels, sci, fitLine, fitSummary } from './format.ts'
 import { ALL_ADDIS, inSeasonGroup, isAllAddis, normalizeSeasonName, seasonOfMonth, seasonPhrase, shortSeason } from './seasons.ts'
 import { BASELINE_COLOR, baselineColor } from './theme.ts'
 import { baselineName, ecAxis } from './labels.ts'
+
+test('ramp tick labels add decimals only when adaptive would print ticks alike', () => {
+  const tiny = [-0.001, 0, 0.001, 0.002]
+  assert.deepEqual(tiny.map(tickLabels(tiny)), ['-0.001', '0.000', '0.001', '0.002'])
+  const usual = [0, 0.5, 1, 1.5]
+  assert.deepEqual(usual.map(tickLabels(usual)), ['0.00', '0.50', '1.00', '1.50'])
+  assert.deepEqual([-0.0001].map(tickLabels([-0.0001, 0.0001])), ['-0.0001'])
+  assert.equal(tickLabels([0, 1e-8, 2e-8])(2e-8), '2.0e-8')
+  assert.equal(tickLabels([-0.001, 0])(-0.0004), '0.000')
+})
 
 test('formatters print a dash for missing values and keep their digit defaults', () => {
   for (const missing of [null, undefined, '', NaN, Infinity, 'x']) {
@@ -99,6 +109,9 @@ test('the dark theme is CSS over light marks: paint pairs, inline colours, dot s
   assert.ok(css.includes('[style^="color: rgb(31, 41, 51)"]'), 'inline HTML colour as the browser serialises it')
   assert.match(css, /\[data-dot="dense"\]:not\(\[data-print\] \*\)\{fill-opacity:0\.6\}/)
   assert.ok(!css.includes('[data-dot="dimmed"]'), 'dimmed is the same in both themes')
+  // a bare <text> (no fill of its own or inherited) takes the dark text ink instead of the browser's black
+  assert.ok(css.includes(`:where(:root[data-theme="dark"] svg text:not([fill], [fill] *, [style*="fill"], [data-print] *), .panel[data-chart-theme="dark"] svg text:not([fill], [fill] *, [style*="fill"], [data-print] *)){fill:${INK_DARK.text}}`))
+  assert.ok(css.includes(`{fill:${INK_LIGHT.text}}`), 'a chart set to light on the dark page keeps the light ink')
   assert.deepEqual(pairRules('red', '#000000'), [], 'only hex pairs become rules')
   paintPair('#0a0b0c', '#0a0b0c')
   assert.equal(darkTwin('#0a0b0c'), null, 'a colour that does not change is not a pair')

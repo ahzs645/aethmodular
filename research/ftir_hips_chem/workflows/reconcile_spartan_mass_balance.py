@@ -98,13 +98,29 @@ def reconcile() -> dict:
     source_hashes[str(earlier_path.relative_to(drive))] = hashlib.sha256(earlier_path.read_bytes()).hexdigest()
     archival = pd.concat(history, ignore_index=True)
     archival.to_csv(OUT / "archived_missing_filter_components.csv", index=False)
+    # Review releases independently; absent values remain absent. Old releases
+    # do not expose the same wet/dry component parameter set.
+    review = []
+    for (fid, release), rows in archival.groupby(["Filter_ID", "release_source"]):
+        values = wide_table(rows).loc[fid]
+        flags = sorted({str(flag).strip() for cell in rows.Flag.dropna()
+                        for flag in str(cell).split(";") if str(flag).strip()})
+        review.append({"FilterId": fid, "date": str(rows.date.iloc[0].date()),
+                       "release_source": release, "pm_ugm3": values.get("Filter PM2.5 mass"),
+                       "legacy_residual_ugm3": values.get("Residual Matter"),
+                       "separate_OC_reported": pd.notna(values.get("OC PM2.5")),
+                       "source_flags": ";".join(flags),
+                       "reported_parameters": ";".join(sorted(values.dropna().index)),
+                       "source_relative_path": rows.source_relative_path.iloc[0],
+                       "current_stack_status": "pending_release_definition_reconciliation"})
+    pd.DataFrame(review).to_csv(OUT / "jpl_historical_balance_review.csv", index=False)
     pd.DataFrame(summary).to_csv(OUT / "release_comparison_summary.csv", index=False)
     pd.DataFrame(comparisons).to_csv(OUT / "release_comparison_pairs.csv", index=False)
     flag_rows = archival[archival.Parameter_Name.eq("Residual Matter")]
     flags = Counter(code.strip() for cell in flag_rows.Flag.dropna() for code in str(cell).split(";") if code.strip())
     result = {"checked": datetime.now(timezone.utc).isoformat(), "units": "ug/m3 after explicit nanogram conversion",
               "historical_physical_filters": int(archival.Filter_ID.nunique()),
-              "historical_versions": dict(archival.groupby("release_source").Filter_ID.nunique()),
+              "historical_versions": {str(k): int(v) for k, v in archival.groupby("release_source").Filter_ID.nunique().items()},
               "residual_row_flags_by_version": dict(flags),
               "flag_definitions": {"SGP": "Screen or Grid Pattern", "VIH": "Visible Inhomogeneous Deposition", "SUS": "Suspect or Compromised Data"},
               "method_reference": REFERENCE_URL, "source_sha256": source_hashes, "comparisons": summary,

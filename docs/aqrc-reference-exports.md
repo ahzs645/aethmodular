@@ -1,5 +1,9 @@
 # Davis reference exports
 
+For connection checks and small live reads, use the
+[AQRC CLI runbook](aqrc-cli-access.md). Full reference exports still run the
+reviewed Windows exporter; the bounded CLI has no bulk-export command.
+
 `research/ftir_ec_phase3/scripts/export_aqrc_reference_data.ps1` defines
 `Invoke-AqrcReferenceExport`. It exports the small reference datasets identified
 in the October 2026 SQL survey, plus the parameter names actually stored in

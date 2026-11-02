@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, type ReactNode } from 'react'
 import * as d3 from 'd3'
 import { useChartOptions } from '@/lib/chartOptions'
-import { ChartFrame, Empty } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { wrapCategory } from '@/components/CategoryAxis'
 import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
@@ -530,8 +530,8 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
         onAdd={(f) => (isOwnSet ? sets.save({ ...(chosenSet as ComponentSetDef), fields: insertInOrder(setFields, f, basisFields) }) : editShowing(insertInOrder(showing.fields, f, basisFields)))}
         onDrop={() => { if (isOwnSet) { sets.save({ ...(chosenSet as ComponentSetDef), fields: showing.fields }); lg.setHidden(new Set()) } else editShowing() }} />}
       {editor.node}
-      {reconOn && recon && recon.missing > 0 && rows.length > 0 && <p className="chart-note">{recon.missing.toLocaleString()} of {allRows.length.toLocaleString()} filters in view have no SPARTAN mass balance (no reconstruction published for them) and are left out, so the PM2.5 read against a stack is over the same filters.</p>}
-      {showDominance && <p className="chart-note">{dominated(rows)} of {rows.length} filters have one {itemNoun.replace(/s$/, '')} above {o.values.above} % of the filter's {totalNoun} total (the count under each bar is that bar's).</p>}
+      {reconOn && recon && recon.missing > 0 && rows.length > 0 && <Note>SPARTAN reconstructions are available for {recon.rows.length.toLocaleString()} of {allRows.length.toLocaleString()} filters in view. The remaining {recon.missing.toLocaleString()} have no compatible reconstruction in the loaded release and are omitted from this stack and its PM₂.₅ comparison. Choose Measured species under Components to inspect the available measurements.</Note>}
+      {showDominance && <Note>{dominated(rows)} of {rows.length} filters have one {itemNoun.replace(/s$/, '')} above {o.values.above} % of the filter's {totalNoun} total (the count under each bar is that bar's).</Note>}
       {overTime && stripKey.length > 0 && <Legend items={stripKey.map((s) => ({ label: seasonOnly(s.name), color: s.color, shape: 'square' as const }))}
         note={`top strip: ${strip ? strip.title ?? strip.value : meta.season_convention === 'rain_rule' ? "the rain rule, from this year's rain" : 'the selected season calendar'}`} />}
       {notes}

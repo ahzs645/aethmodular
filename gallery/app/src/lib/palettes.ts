@@ -76,11 +76,19 @@ export const TABLEAU = {
 export const RESEARCH_SERIES: readonly string[] = ['#2c7fb8', '#d08c2c', '#4f9d69', '#b5446e', '#6a51a3', '#8c564b', '#e377c2', '#7f7f7f']
 
 /** SPARTAN's October 2026 network composition figure, matched by eye. Shared by the map and
- * chemistry charts; these colours are fixed in both themes. */
+ * chemistry charts; these colours are fixed in both themes, except the two that vanish on the dark
+ * panel (SPARTAN_COMPOSITION_DARK). */
 export const SPARTAN_COMPOSITION_COLOURS: Readonly<Record<string, string>> = {
   bc: '#1a1a1a', teo: '#8c8c8c', dust: '#f9e81b', na: '#2f4ea0', cl: '#2aa198', k: '#b48ad8',
   no3: '#f47c20', nh4: '#ee5fa7', so4: '#ec2227', water: '#6dd0f5', oc: '#2e6b3c', rm: '#4cb847',
 }
+/**
+ * The dark page's twins of BC's near-black and OC's dark green (1 Nov 2026: the EC bar and the Carbon
+ * subtotals were near-invisible there). Each clears the dark-twin floor (L* > 50), keeps the white labels
+ * inkOnFill picks for the light colour readable on it (about 4.2:1), and BC stays darker than TEO's grey.
+ * Exports keep the figure's colours.
+ */
+const SPARTAN_COMPOSITION_DARK: Readonly<Record<string, string>> = { '#1a1a1a': '#7a7a7a', '#2e6b3c': '#3a8c4f' }
 const SPARTAN_ALIASES: Record<string, readonly string[]> = {
   bc: ['Black Carbon', 'BC', 'BC PM2.5', 'HIPS BC', 'BC (public HIPS)', 'BC (public SSR estimate)', 'Equivalent BC (SSR)', 'EC (FTIR)', 'EC (ChemSpec FTIR)', 'EC (TOR)'],
   teo: ['TEO', 'Trace Element Oxides', 'Trace elements', 'Trace metals'], dust: ['Fine Soil', 'Dust', 'Crustal elements'],
@@ -144,7 +152,7 @@ export const PALETTES: Readonly<Record<PaletteKind, readonly Palette[]>> = {
     { name: 'Greys', colours: ['#252525', '#636363', '#bdbdbd', '#f7f7f7', '#bdbdbd', '#636363', '#252525'], source: 'ColorBrewer Greys, mirrored about zero', greyscale: true },
   ],
   categorical: [
-    { name: 'SPARTAN composition', colours: Object.values(SPARTAN_COMPOSITION_COLOURS), named: SPARTAN_NAMED, source: "SPARTAN's October 2026 network composition figure", note: 'fixed component colours; additional species use Gallery colours' },
+    { name: 'SPARTAN composition', colours: Object.values(SPARTAN_COMPOSITION_COLOURS), named: SPARTAN_NAMED, dark: SPARTAN_COMPOSITION_DARK, source: "SPARTAN's October 2026 network composition figure", note: 'fixed component colours; additional species use Gallery colours' },
     // the original Stacked bars range
     { name: 'Gallery', colours: [...schemeTableau10, ...schemeSet3], familyColours: ['#5b6470', '#2171b5', '#b2182b', '#0f766e'], source: 'Tableau 10 followed by ColorBrewer Set3' },
     { name: 'FTIR functional groups', colours: Object.values(FTIR_GROUP_COLOURS), named: FTIR_GROUP_NAMED, source: 'IMPROVE functional-group figure, Atmos. Environ. 2017, Fig. 7 (sampled from the published image)', note: 'fixed group colours; other labels use Gallery colours' },

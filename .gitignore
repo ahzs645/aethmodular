@@ -153,6 +153,7 @@ artifacts/
 # Local Git worktrees for reproducible OpenResearch runs and UI development.
 # Their source histories remain in their own Git repositories.
 /.local-checkouts/
+/scripts/diagnostics/lib/ScriptDom/
 research/**/output/
 output.png
 

@@ -1,4 +1,4 @@
-import { DOT_OPACITY, onPaintPair, paintPairs } from './theme.ts'
+import { DOT_OPACITY, INK_DARK, INK_LIGHT, onPaintPair, paintPairs } from './theme.ts'
 
 /**
  * The dark theme as one stylesheet, so a theme switch recolours the page without redrawing a chart.
@@ -44,8 +44,23 @@ export function dotRules(): string[] {
   })
 }
 
+/**
+ * SVG text with no fill of its own, and none inherited from a [fill] ancestor, is drawn black by the
+ * browser: on the dark page that is unreadable. It takes the text ink instead (INK_DARK.text, and the
+ * light step in a chart set to light), so a label or value written as a bare <text> follows the theme.
+ * Everything sits in :where(), so any fill a chart or styles.css gives the text still wins, and the
+ * light-chart rule comes second to override at the same (zero) specificity. Exports stay as drawn.
+ */
+export function textRules(): string[] {
+  const bare = (scope: string) => `${scope} svg text:not([fill], [fill] *, [style*="fill"], [data-print] *)`
+  return [
+    `:where(${bare(DARK)}, ${bare(CHART_DARK)}){fill:${INK_DARK.text}}`,
+    `:where(${bare(CHART_LIGHT)}){fill:${INK_LIGHT.text}}`,
+  ]
+}
+
 /** the whole stylesheet for the pairs registered so far (node tests read it) */
-export const themeCss = () => [...[...paintPairs()].flatMap(([l, d]) => pairRules(l, d)), ...dotRules()].join('\n')
+export const themeCss = () => [...[...paintPairs()].flatMap(([l, d]) => pairRules(l, d)), ...dotRules(), ...textRules()].join('\n')
 
 if (typeof document !== 'undefined') {
   const style = document.createElement('style')

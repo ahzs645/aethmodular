@@ -1,6 +1,6 @@
 import { estimatorText, useEstimator } from '@/lib/regressionPrefs'
 import { createPortal } from 'react-dom'
-import { createContext, useId, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { createContext, useCallback, useId, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ExportButton } from '@/components/ExportDialog'
 import { EXPLAIN_AVAILABLE, usePrefs } from '@/lib/prefs'
 import { setSingleChartDisplay, useChartDisplayPrefs } from '@/lib/chartDisplayPrefs'
@@ -8,12 +8,14 @@ import { chartInkStyle } from '@/lib/chartDisplayStyles'
 import { useSystemDark } from '@/lib/colorTheme'
 import { useParamScope } from '@/lib/url'
 import { useFloatingMenu } from '@/hooks/useFloatingMenu'
-import { AsideSlotCtx, ChartAside, SingleViewNav, SingleViewStats, StatsInPlotCtx, useSingleView } from '@/lib/singleView'
+import { AsideSlotCtx, TILE_CORNER_WIDTH, TILE_FIT_MODES, TileStatsCtx, type TileFitMode, ChartAside, SingleViewNav, SingleViewStats, StatsInPlotCtx, useSingleView } from '@/lib/singleView'
 import type { StatsPlace } from '@/lib/chartDisplay'
 import { useExportRender } from '@/lib/exportRender'
+import { FrameSlotProvider, useFrameSlot } from '@/lib/frameControls'
 
 // the option controls live in Controls.tsx; re-exported so the many imports from ChartFrame keep working
 export { Select, Segmented, Toggle, sentence } from '@/components/Controls'
+import { Segmented } from '@/components/Controls'
 
 /**
  * What a frame's host adds to it. A Dashboard tile draws the frame compact: no header
@@ -31,6 +33,10 @@ export interface FrameExtras {
   subtitle?: ReactNode
   /** arranging: a bar with the name to drag the tile by (pages/DashboardPage) */
   editBar?: ReactNode
+  /** where the chart's fit statistics go (a choice in the ⋯ menu, shown when the chart has a fit); absent: behind the ⓘ */
+  fitStats?: { mode: TileFitMode; set: (mode: TileFitMode) => void }
+  /** more for the tile's ⓘ box, after the chart's tip, e.g. a field standing in for one the sites never measured */
+  info?: ReactNode
 }
 export const FrameExtrasContext = createContext<FrameExtras | null>(null)
 
@@ -91,6 +97,9 @@ export function ChartFrame({
   const hasInfo = !!(rest || subtitle || provenance || about)
   const [refCopied, setRefCopied] = useState(false)
   const compact = !!extras?.compact
+  // controls the chart's layout hoists into this options row (a panel group's Panel axes, lib/frameControls)
+  const hoist = useFrameSlot()
+  if (hoist.claimed || controls) controls = <>{controls}{hoist.slot}</>
   const allControls = (controls || extras?.controls) ? <>{extras?.controls}{controls}</> : null
   // a paste-able pointer for development: which chart, where its code lives, and the exact view
   const copyRef = () => {
@@ -128,17 +137,32 @@ export function ChartFrame({
   const focusKey = anchor ?? slug(short)
   const [focused, setFocused] = useFocus(focusKey)
   const [exportAsk, setExportAsk] = useState(0)
-  if (compact) return (
+  // a tile's corner (TileCorner): its notes (ChartAside, Note) fold behind a ⚠; its fit statistics (RegressionOverlay)
+  // go behind the ⓘ with its tip, in a column beside the plot, or above the plot (the tile's ⋯ menu: extras.fitStats).
+  // While an export copies the tile, both go back in the chart, as on a page
+  const [noteBox, setNoteBox] = useState<HTMLElement | null>(null)
+  const [statsBox, setStatsBox] = useState<HTMLElement | null>(null)
+  const [sideBox, setSideBox] = useState<HTMLElement | null>(null)
+  const tileExporting = !!exportRender && exportRender.panel === ref.current
+  const fitMode = extras?.fitStats?.mode ?? 'corner'
+  const tileNotes = compact && !tileExporting ? noteBox : null
+  const tileStats = !compact || tileExporting ? null : fitMode === 'corner' ? statsBox : fitMode === 'beside' ? sideBox : null
+  if (compact) return (<FrameSlotProvider value={hoist.value}>
     <section className="panel compact" ref={ref} id={anchor} {...displayAttrs}>
-      <TileMenu name={short} extras={extras!} about={hasInfo ? <>{rest && <p>{rest}</p>}{about && <div className="frame-about">{about}</div>}{subtitle && <p className="subtitle">{subtitle}</p>}{provenance && <p className="provenance">{provenance}</p>}</> : null}
-        tip={tip} controls={side === 'top' ? allControls : null} export={exportable ? <ExportButton panelRef={ref} title={short} /> : null} onCopyRef={copyRef} copied={refCopied} />
+      {/* "About this chart" in the ⋯ menu follows Explain like every other explanation: off by default */}
+      <TileMenu name={short} extras={extras!} about={info && hasInfo ? <>{rest && <p>{rest}</p>}{about && <div className="frame-about">{about}</div>}{subtitle && <p className="subtitle">{subtitle}</p>}{provenance && <p className="provenance">{provenance}</p>}</> : null}
+        tip={tip} onNoteBox={setNoteBox} onStatsBox={setStatsBox} controls={side === 'top' ? allControls : null} export={exportable ? <ExportButton panelRef={ref} title={short} /> : null} onCopyRef={copyRef} copied={refCopied} />
       {info && hasInfo && <div className="compact-explanation"><strong>{short}</strong>{about}{subtitle && <p className="subtitle">{subtitle}</p>}{provenance && <p className="provenance">{provenance}</p>}</div>}
       <div className={`frame-body controls-${side}`}>
         {side !== 'top' && allControls && <div className="frame-controls">{allControls}</div>}
-        <div className="frame-chart">{children}</div>
+        {/* the same elements in every fit mode, so switching does not remount the chart; the column is empty unless beside */}
+        <div className={`tile-chart-row${fitMode === 'beside' ? ' fit-beside' : ''}`}>
+          <div className="frame-chart"><AsideSlotCtx.Provider value={tileNotes}><TileStatsCtx.Provider value={tileStats}>{children}</TileStatsCtx.Provider></AsideSlotCtx.Provider></div>
+          <div ref={setSideBox} className="tile-fit-side" data-export="skip" />
+        </div>
       </div>
     </section>
-  )
+  </FrameSlotProvider>)
   // single-chart view with its options in a column: the title bar heads that column, so the plot takes the panel's full height
   const headInColumn = inView && !!controls && side !== 'top' && !focused
   const head = (
@@ -178,7 +202,7 @@ export function ChartFrame({
       </div>
     </header>
   )
-  return (<>
+  return (<FrameSlotProvider value={hoist.value}>
     {focused && <div className="focus-scrim" onClick={() => setFocused(false)} />}
     <section className={`panel${focused ? ' focused' : ''}`} ref={ref} id={anchor} {...(pageOnly ? {} : { 'data-frame': '', 'data-frame-title': short, 'data-frame-key': focusKey })} {...displayAttrs}>{/* data-frame: a chart the single-chart view steps through (lib/singleView) */}
       {!headInColumn && head}
@@ -191,7 +215,7 @@ export function ChartFrame({
         <div className="frame-chart"><AsideSlotCtx.Provider value={asideSlot}><StatsInPlotCtx.Provider value={stats === 'plot'}>{children}</StatsInPlotCtx.Provider></AsideSlotCtx.Provider></div>
       </div>
     </section>
-  </>)
+  </FrameSlotProvider>)
 }
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48)
@@ -350,8 +374,10 @@ function RefMenu({ onCopyRef, refCopied, link }: { onCopyRef: () => void; refCop
  * "About this chart", then the chart's options. A click in another tile or Esc closes it;
  * clicks in a picker's or the export dialog's own popup (drawn outside the tile) do not.
  */
-function TileMenu({ name, extras, about, tip, controls, export: exportNode, onCopyRef, copied }: {
-  name: string; extras: FrameExtras; about: ReactNode; tip?: ReactNode; controls: ReactNode; export: ReactNode; onCopyRef: () => void; copied: boolean
+function TileMenu({ name, extras, about, tip, onNoteBox, onStatsBox, controls, export: exportNode, onCopyRef, copied }: {
+  name: string; extras: FrameExtras; about: ReactNode; tip?: ReactNode
+  onNoteBox: (el: HTMLElement | null) => void; onStatsBox: (el: HTMLElement | null) => void
+  controls: ReactNode; export: ReactNode; onCopyRef: () => void; copied: boolean
 }) {
   const [open, setOpen] = useState(false)
   // the menu is fixed to the window, placed from the ⋯ button: the tile's panel scrolls (overflow),
@@ -383,8 +409,11 @@ function TileMenu({ name, extras, about, tip, controls, export: exportNode, onCo
     }
   }, [open])
   const close = () => setOpen(false)
+  // the fit statistics choice only for a chart that draws a fit (in the plot, or in the ⓘ box or column)
+  const [hasFit, setHasFit] = useState(false)
   const toggle = (btn: HTMLElement) => {
     if (open) { setOpen(false); return }
+    setHasFit(!!root.current?.closest('section')?.querySelector('.regression-summary, .fit-stack'))
     const r = btn.getBoundingClientRect(), W = window.innerWidth, H = window.innerHeight
     const width = Math.min(380, W - 16)
     const left = Math.max(8, Math.min(r.right - width, W - width - 8))
@@ -397,7 +426,8 @@ function TileMenu({ name, extras, about, tip, controls, export: exportNode, onCo
   return (
     <div ref={root} className={`tile-head${open ? ' open' : ''}`}>
       {extras.editBar}
-      {tip && <FloatingInfoTip>{tip}</FloatingInfoTip>}
+      <TileCorner kind="notes" onBox={onNoteBox} />
+      <TileCorner kind="info" onBox={onStatsBox}>{tip || extras.info ? <>{tip}{extras.info}</> : null}</TileCorner>
       <button type="button" className="tile-menu-btn" aria-expanded={open} aria-label={`${name}: menu`} title={name}
         onClick={(e) => toggle(e.currentTarget)}>⋯</button>
       {open && <div className="tile-menu" role="dialog" aria-label={name} style={place}>
@@ -407,6 +437,11 @@ function TileMenu({ name, extras, about, tip, controls, export: exportNode, onCo
           {exportNode}
           <button type="button" className="btn quiet" onClick={onCopyRef} title="Copy a reference to this chart (title, source file, view URL)">{copied ? 'Copied' : 'Ref'}</button>
         </div>
+        {extras.fitStats && hasFit && <span className="tile-legend-mode">
+          <Segmented label="Fit statistics" value={extras.fitStats.mode} options={[...TILE_FIT_MODES]} onChange={extras.fitStats.set}
+            optionLabel={(m) => ({ corner: 'ⓘ', beside: 'Beside', plot: 'In plot' }[m as TileFitMode])}
+            title="ⓘ: behind the button in the corner · Beside: a column next to the plot · In plot: the box above the axes" />
+        </span>}
         {about && <details className="tile-about"><summary>About this chart</summary>{about}</details>}
         {controls && <div className="frame-controls">{controls}</div>}
       </div>}
@@ -445,10 +480,14 @@ export function SwapButton({ onClick, title }: { onClick: () => void; title?: st
 
 /**
  * An ⓘ that reveals a note on hover or keyboard focus. The body stays open
- * while the pointer is over it, so links inside remain clickable.
+ * while the pointer is over it, so links inside remain clickable. Off unless the
+ * viewer turns on Chart notes (Display and data → Interface).
  */
 export function InfoTip({ children, label = 'Notes on this chart' }: { children: ReactNode; label?: string }) {
   const tip = useFloatingTip('start')
+  // hidden unless the viewer turns on "Chart notes" (lib/prefs `notes`, off by default)
+  const { notes } = usePrefs()
+  if (!notes) return null
   return (
     <span className="info-tip" tabIndex={0} aria-label={label} aria-describedby={tip.place ? tip.id : undefined}
       onMouseEnter={e => tip.show(e.currentTarget)} onMouseLeave={tip.closeSoon}
@@ -494,15 +533,69 @@ function useFloatingTip(align: 'start' | 'end') {
   return { id, place, show, close, closeSoon, body }
 }
 
-/** A tile's corner note: the same floating body as InfoTip, from a button in the tile's corner. */
-function FloatingInfoTip({ children }: { children: ReactNode }) {
-  const tip = useFloatingTip('end')
+/**
+ * A button in a tile's corner whose box floats beside it on hover, focus or click, placed like InfoTip's body (inside
+ * the window, flipping above when there is no room below), so a small tile keeps its height for the chart:
+ *   notes  ⚠  the chart's notes (ChartAside: values not drawn, filters left out, readouts), instead of under the plot
+ *   info   ⓘ  its fit statistics (RegressionOverlay), instead of above the plot, then the chart's `tip`
+ * The box is always mounted, since the chart portals into its slot (`onBox`), and hidden while closed. The button
+ * shows only while there is something to read (an explain-only note hidden by the tile's explain setting does not count).
+ */
+function TileCorner({ kind, onBox, children }: { kind: 'notes' | 'info'; onBox: (el: HTMLElement | null) => void; children?: ReactNode }) {
+  const id = useId()
+  const [open, setOpen] = useState(false)
+  const [count, setCount] = useState(0)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const box = useRef<HTMLDivElement | null>(null)
+  const slot = useRef<HTMLDivElement | null>(null)
+  const setSlot = useCallback((el: HTMLDivElement | null) => { slot.current = el; onBox(el) }, [onBox])
+  const place = useFloatingMenu(open, trigger, box, Infinity, { width: TILE_CORNER_WIDTH, align: 'end' })
+  const closeTimer = useRef<ReturnType<typeof setTimeout>>()
+  const cancelClose = () => clearTimeout(closeTimer.current)
+  const show = () => { cancelClose(); setOpen(true) }
+  const close = () => { cancelClose(); setOpen(false) }
+  const closeSoon = () => { cancelClose(); closeTimer.current = setTimeout(() => setOpen(false), 120) }
+  const fixed = !!children
+  useEffect(() => {
+    const el = slot.current
+    if (!el) return
+    const check = () => setCount((fixed ? 1 : 0) + [...el.children].filter((c) => getComputedStyle(c).display !== 'none').length)
+    check()
+    const mo = new MutationObserver(check)
+    mo.observe(el, { childList: true, subtree: true, characterData: true })
+    const panel = el.closest('section')
+    if (panel) mo.observe(panel, { attributes: true, attributeFilter: ['data-chart-explain'] })
+    return () => mo.disconnect()
+  }, [fixed])
+  useEffect(() => { if (!count) setOpen(false) }, [count])
+  useEffect(() => {
+    if (!open) return
+    const shut = (e: Event) => { if (!box.current?.contains(e.target as Node)) setOpen(false) }
+    window.addEventListener('resize', shut)
+    window.addEventListener('scroll', shut, true)
+    return () => { window.removeEventListener('resize', shut); window.removeEventListener('scroll', shut, true) }
+  }, [open])
+  useEffect(() => cancelClose, [])
+  const label = kind === 'notes' ? `${count} note${count === 1 ? '' : 's'} on this chart` : 'Fit statistics and notes on this chart'
   return <>
-    <button type="button" className="tile-info-btn info-tip-icon" aria-label="Notes on this chart" aria-describedby={tip.place ? tip.id : undefined}
-      onMouseEnter={e => tip.show(e.currentTarget)} onMouseLeave={tip.closeSoon}
-      onFocus={e => tip.show(e.currentTarget)} onBlur={tip.closeSoon}
-      onClick={e => tip.show(e.currentTarget)} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); tip.close() } }}>i</button>
-    {tip.body(children)}
+    {count > 0 && <button ref={trigger} type="button" className={`tile-corner-btn ${kind}`} data-export="skip" aria-label={label} aria-expanded={open}
+      aria-describedby={open ? id : undefined}
+      onMouseEnter={show} onMouseLeave={closeSoon} onFocus={show} onBlur={closeSoon}
+      onClick={() => (open ? close() : show())} onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); close() } }}>
+      {kind === 'notes'
+        ? <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M8 1.8 15 14.2H1Z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+          <path d="M8 6.2v3.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          <circle cx="8" cy="11.9" r="0.85" fill="currentColor" />
+        </svg>
+        : <span aria-hidden="true">i</span>}
+    </button>}
+    <div ref={box} id={id} role="tooltip" data-export="skip" className={`info-tip-body floating tile-corner ${kind}${open ? ' open' : ''}`}
+      style={open && place ? place : { position: 'fixed', left: 0, top: 0, width: TILE_CORNER_WIDTH, visibility: 'hidden', pointerEvents: 'none' }}
+      onMouseEnter={cancelClose} onMouseLeave={closeSoon}>
+      <div ref={setSlot} className="tile-corner-slot" />
+      {children && <div className="tile-corner-tip">{children}</div>}
+    </div>
   </>
 }
 

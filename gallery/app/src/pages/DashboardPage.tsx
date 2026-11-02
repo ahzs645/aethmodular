@@ -9,6 +9,7 @@ import { EQUIVALENTS, whyMissing } from '@/lib/fieldEquivalents'
 import { useHeaderHeight } from '@/hooks/useSidePanel'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { ChartSite, ChartFit, LEGEND_MODES, TileLegend, type LegendMode } from '@/lib/chartFit'
+import { TILE_FIT_MODES, type TileFitMode } from '@/lib/singleView'
 import { addTile, arrange, COLS, nextId, nextTileId, placeTile, removeTile, stepTile, ROWS, rowsUsed, tileKeyPrefix, updateTile, type DashState, type Scope, type Sheet, type Tile } from '@/lib/dashboard'
 import { clearScopedParams, copyScopedParams, ParamScope, useSearchParam } from '@/lib/url'
 import { CohortControls, DashboardDialog, DetailsDialog, TileData, TileErrorBoundary, TileInformation, tileDataRequest, useTileCohort } from '@/components/dashboard/DashboardTools'
@@ -427,13 +428,15 @@ function ScopedTileView({ tile, chart, data, width, height, style, scopePrefix, 
   // where the chart's legends go (⋯ menu), kept with the tile's other URL keys
   const [legend, setLegend] = useSearchParam<LegendMode>(`legend`, 'auto', LEGEND_MODES)
   const legendReserve = Math.round(Math.min(220, Math.max(130, width * 0.28)))
+  // where a chart's fit statistics go (⋯ menu): behind the ⓘ, beside the plot, or above it (components/ChartFrame)
+  const [fitMode, setFitMode] = useSearchParam<TileFitMode>(`fit`, 'corner', TILE_FIT_MODES)
 
   // ---- fit: a first guess, then corrected by the frame's leftover (or overflow) after each draw
   const minFit = chart.kind === 'stat' || chart.kind === 'sitesummary' ? 16 : 120
   const ref = useRef<HTMLDivElement>(null)
   const [fit, setFit] = useState(() => Math.max(minFit, height - (chart.kind === 'note' ? 70 : 100)))
   const tries = useRef(0)
-  const key = `${width}|${height}|${tile.kind}|${fields.join('|')}|${legend}`
+  const key = `${width}|${height}|${tile.kind}|${fields.join('|')}|${legend}|${fitMode}`
   const lastKey = useRef(key)
   if (lastKey.current !== key) { lastKey.current = key; tries.current = 0 }
   // new rows (a filter, the data still arriving) start the correction over, in this render: an
@@ -515,10 +518,9 @@ function ScopedTileView({ tile, chart, data, width, height, style, scopePrefix, 
     <span aria-hidden>⠿</span> <strong>{chart.label}</strong>{(subtitle ?? (chart.kind === 'stat' ? fields[0] : null)) && <span className="frame-sub">{subtitle ?? fields[0]}</span>}
     <span className="tile-size">{tile.w} × {tile.h}</span>
   </div> : undefined
-  const extras: FrameExtras = { compact: true, menu, controls: pickers, subtitle, editBar }
 
   // fields none of the rows in view has (a site that never measured them): the tile says why rather than
-  // drawing an empty chart; and a field standing in for one the sites lack says so in a chip
+  // drawing an empty chart; and a field standing in for one the sites lack says so behind the tile's ⓘ
   const present = fieldsPresent(cohortRows)
   const measured = fieldsPresent(data.measured?.length ? data.measured : data.rows)
   const unmeasured = cohortRows.length ? fields.filter((f) => !present.has(data.eff(f))) : []
@@ -527,6 +529,10 @@ function ScopedTileView({ tile, chart, data, width, height, style, scopePrefix, 
     const alt = hit?.[1].find((a) => a.field === f)
     return hit && alt ? [{ ...alt, for: hit[0] }] : []
   })
+  const standInNote = !unmeasured.length && standIn.length ? standIn.map((e) => <p key={e.field} className="tile-standin">
+    <strong>{e.field}</strong> in place of {e.for}: {e.basis}. <a href={e.source.url} target="_blank" rel="noreferrer">{e.source.label}</a>
+  </p>) : null
+  const extras: FrameExtras = { compact: true, menu, controls: pickers, subtitle, editBar, fitStats: { mode: fitMode, set: setFitMode }, info: standInNote }
 
   // Defer offscreen grid, rail and phone charts once; keep them mounted after first approach.
   const near = useNear(ref, !edit && role !== 'max' && role !== 'hero')
@@ -563,8 +569,6 @@ function ScopedTileView({ tile, chart, data, width, height, style, scopePrefix, 
         <div className="tile-menu-actions">{menu(() => {})}</div>
         {pickers && <div className="frame-controls">{pickers}</div>}
       </section>}
-      {!unmeasured.length && standIn.map((e) => <a key={e.field} className="tile-standin" href={e.source.url} target="_blank" rel="noreferrer"
-        title={`${e.field} in place of ${e.for}: ${e.basis}. Source: ${e.source.label}`}>{e.field} in place of {e.for}</a>)}
       {edit && <span className="dash-resize" onPointerDown={onResizeStart} title="Drag to resize" aria-hidden />}
     </div>
   )

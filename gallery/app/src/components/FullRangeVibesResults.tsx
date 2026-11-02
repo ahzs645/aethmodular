@@ -13,7 +13,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { useSearchParam } from '@/lib/url'
 import { usePageChoice } from '@/lib/pageChoices'
 import { SidebarControls } from '@/lib/pageSidebar'
-import { FONT, BASELINE_COLOR } from '@/lib/theme'
+import { FONT, BASELINE_COLOR, themed } from '@/lib/theme'
 import { fmt } from '@/lib/format'
 
 interface Score { cohort: string; method: string; RMSE: number; predictive_R2: number; k: number; n_train: number; n_test: number }
@@ -27,7 +27,7 @@ interface Evidence {
   spectra: Record<string, Record<string, Spectrum>>
 }
 // benchmark variants by run: rank 70 is the current VIBES, rank 30 the archived full-range fit
-const COLORS: Record<string, string> = { get AIRSpec() { return BASELINE_COLOR.AIRSpec }, get VIBES() { return BASELINE_COLOR['VIBES-full-r70'] }, get uncapped_full() { return BASELINE_COLOR['VIBES-full-r70'] }, get capped_shared() { return BASELINE_COLOR['VIBES-full'] }, get capped_full() { return BASELINE_COLOR['VIBES-full'] }, archived_truncated: '#666666' }
+const COLORS: Record<string, string> = { get AIRSpec() { return BASELINE_COLOR.AIRSpec }, get VIBES() { return BASELINE_COLOR['VIBES-full-r70'] }, get uncapped_full() { return BASELINE_COLOR['VIBES-full-r70'] }, get capped_shared() { return BASELINE_COLOR['VIBES-full'] }, get capped_full() { return BASELINE_COLOR['VIBES-full'] }, get archived_truncated() { return themed('#666666', '#98a1ab') } }
 const NAMES: Record<string, string> = { AIRSpec: 'Spline · shared input', VIBES: 'Rank 70 · shared input', uncapped_full: 'Rank 70 · full input', capped_shared: 'Rank 30 · shared input', capped_full: 'Rank 30 · full input', archived_truncated: 'Archived truncated fit' }
 const SPECTRUM_NAMES: Record<string, string> = { AIRSpec: 'Spline baseline', uncapped_full: 'VIBES rank 70 · completed', capped_full: 'VIBES rank 30 · preliminary' }
 const f = (v: number) => fmt(v, 3)

@@ -2,6 +2,7 @@ import { createContext, useContext, useId, useLayoutEffect, useMemo, useRef, use
 import { panelAxesKey, type PanelAxes, type PanelDim } from '@/lib/axes'
 import { unionExtent, type Extent } from '@/lib/facets'
 import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
+import { useInFrameControls } from '@/lib/frameControls'
 import type { FitGrouping } from '@/lib/siteRegression'
 
 /**
@@ -80,7 +81,7 @@ class GroupStore {
   controlNodes(): ReactNode[] {
     const byId = new Map<string, ControlReg[]>()
     for (const r of this.controls.values()) byId.set(r.id, [...(byId.get(r.id) ?? []), r])
-    return [...byId.entries()].map(([id, regs]) => <span key={id} className="panel-group-control">{regs[regs.length - 1].render(regs.map((r) => r.value))}</span>)
+    return [...byId.entries()].map(([id, regs]) => <span key={id} className="panel-group-control option-node">{regs[regs.length - 1].render(regs.map((r) => r.value))}</span>)
   }
 }
 
@@ -205,16 +206,22 @@ export function useGroupControl<T>(id: string, value: T | null, render: (values:
 export const useGroupGrouping = () => useContext(GroupCtx)?.grouping
 
 /**
- * The group's control row, above the panels: the controls the charts hoisted (one each) and, while ranges are
- * shared across several panels, the Panel axes setting. A `.frame-controls` row: left out of exports.
+ * The group's controls: the ones the charts hoisted (one each) and, while ranges are shared across several panels,
+ * the Panel axes setting. Inside a ChartFrame they join the frame's own options row (lib/frameControls), so every
+ * multi-panel chart has one row of options; a group in page markup of its own draws them in a `.frame-controls` row
+ * above the panels. Either way left out of exports.
  */
 export function PanelGroupControls({ value, axesControl, dims, extra }: { value: GroupValue; axesControl: boolean; dims?: PanelDim[]; extra?: ReactNode }) {
   const v = useSyncExternalStore(value.store.subscribeControls, () => value.store.controlVersion)
   const nodes = useMemo(() => value.store.controlNodes(), [value.store, v]) // eslint-disable-line react-hooks/exhaustive-deps
-  if (!nodes.length && !axesControl && !extra) return null
-  return <div className="frame-controls panel-group-controls">
+  const any = !!(nodes.length || axesControl || extra)
+  const items = <>
     {extra}
-    {axesControl && <PanelAxesControl dims={dims} />}
+    {axesControl && <span className="option-node"><PanelAxesControl dims={dims} /></span>}
     {nodes}
-  </div>
+  </>
+  const frame = useInFrameControls(any, items)
+  if (frame.inFrame) return frame.node
+  if (!any) return null
+  return <div className="frame-controls panel-group-controls">{items}</div>
 }

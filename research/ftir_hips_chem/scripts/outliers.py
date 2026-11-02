@@ -53,6 +53,39 @@ EXCLUDED_SAMPLES = {
             'filter_ec_approx': 60640,  # ng/m3 — 5x higher than any other Delhi point
             'reason': 'Extreme FTIR EC outlier (~60.6 ug/m3) - likely contamination or mislabeled sample'
         },
+        # AQRC run 20261031_234146_395a58fd, media comments 749-756 dated
+        # 2025-02-27: WashU rejected cartridge INDH-022 for water infiltration
+        # and mass inconsistent with BAM. These are sampling dates, not comment dates.
+        {
+            'date': '2024-06-12',
+            'filter_id': 'INDH-0169-1',
+            'reason': 'SPARTAN cartridge INDH-022 rejected by WashU: water infiltration; mass inconsistent with BAM (AQRC media comment 749, 2025-02-27)'
+        },
+        {
+            'date': '2024-06-15',
+            'filter_id': 'INDH-0170-2',
+            'reason': 'SPARTAN cartridge INDH-022 rejected by WashU: water infiltration; mass inconsistent with BAM (AQRC media comment 750, 2025-02-27)'
+        },
+        {
+            'date': '2024-06-18',
+            'filter_id': 'INDH-0171-3',
+            'reason': 'SPARTAN cartridge INDH-022 rejected by WashU: water infiltration; mass inconsistent with BAM (AQRC media comment 751, 2025-02-27)'
+        },
+        {
+            'date': '2024-06-24',
+            'filter_id': 'INDH-0173-5',
+            'reason': 'SPARTAN cartridge INDH-022 rejected by WashU: water infiltration; mass inconsistent with BAM (AQRC media comment 753, 2025-02-27)'
+        },
+        {
+            'date': '2024-06-27',
+            'filter_id': 'INDH-0174-6',
+            'reason': 'SPARTAN cartridge INDH-022 rejected by WashU: water infiltration; mass inconsistent with BAM (AQRC media comment 754, 2025-02-27)'
+        },
+        {
+            'date': '2024-06-30',
+            'filter_id': 'INDH-0176-8',
+            'reason': 'SPARTAN cartridge INDH-022 rejected by WashU: water infiltration; mass inconsistent with BAM (AQRC media comment 756, 2025-02-27)'
+        },
     ],
     'JPL': [
         {

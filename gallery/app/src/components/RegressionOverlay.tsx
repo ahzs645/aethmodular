@@ -1,7 +1,7 @@
 import { useContext, useId, useLayoutEffect, useRef, useState } from 'react'
 import { fitColumns } from '@/lib/facets'
 import { createPortal } from 'react-dom'
-import { StatsInPlotCtx, useSingleView } from '@/lib/singleView'
+import { StatsInPlotCtx, TILE_CORNER_INNER, TileStatsCtx, useSingleView } from '@/lib/singleView'
 import { useExportRender } from '@/lib/exportRender'
 import { equation, fitsFor, useRegressions } from '@/lib/regressionPrefs'
 import { fmt, type RegressionStats } from '@/lib/stats'
@@ -97,21 +97,25 @@ export function useRegressionSummary({ stats, groups, width, enabled = true, pan
   //   chart  above the axes (everywhere, and in an export as on screen)
   //   side   the chart in single-chart view (lib/singleView): the sidebar card, at its width; the plot keeps the height
   //          (unless the chart, or the viewer, keeps its statistics above the plot: StatsInPlotCtx)
+  //   tile   a Dashboard tile: the box behind its ⓘ (components/ChartFrame TileCorner), at that box's width
   //   data   an export setting it inside the plot (lib/exportRender): hidden here, read by lib/export
   const single = useSingleView()
+  const tileSlot = useContext(TileStatsCtx)
   const render = useExportRender()
   const inPlot = useContext(StatsInPlotCtx)
   const probe = useRef<SVGGElement>(null)
-  const [place, setPlace] = useState<'chart' | 'side' | 'data'>('chart')
+  const [place, setPlace] = useState<'chart' | 'side' | 'tile' | 'data'>('chart')
   useLayoutEffect(() => {
     const el = probe.current
     const now = el && render?.panel.contains(el) ? (render.statsInside ? 'data' : 'chart')
+      : el && tileSlot ? 'tile'
       : el && !inPlot && single.active && single.slot && el.closest('[data-single-active]') ? 'side' : 'chart'
     if (now !== place) setPlace(now)
   })
-  const slot = place === 'side' ? single.slot : null
-  // the stats box's width (lib/singleView measures it, empty or not), never wider than its column
-  if (slot) width = Math.max(140, single.slotWidth || slot.clientWidth || 240)
+  const slot = place === 'side' ? single.slot : place === 'tile' ? tileSlot : null
+  // the stats box's width (lib/singleView measures it, empty or not), never wider than its column; a tile's box is fixed
+  if (place === 'tile' && slot) width = TILE_CORNER_INNER
+  else if (slot) width = Math.max(140, single.slotWidth || slot.clientWidth || 240)
   const items = !enabled || !methods.length ? [] : groups ?? [{ stats, name: undefined, color: undefined }]
   const readouts = items.map(group => ({ group, r: readout(group.stats, methods, showCI, group.name, group.color) }))
   // as many columns as the longest readout line allows (lib/facets fitColumns): short group readouts sit side by side
@@ -150,6 +154,12 @@ export function useRegressionSummary({ stats, groups, width, enabled = true, pan
       {box.raw.map((line, j) => <text key={j} fill={line.color} data-regression-color={line.method} data-line={line.text === box.name ? 'name' : undefined}>{line.text}</text>)}
     </g>)}
   </g></> }
+  if (slot && place === 'tile') {
+    // a tile's ⓘ box or column: one value per line (filters, R², then each line's slope and intercept), not the plot's box
+    const outline = (on: boolean) => probe.current?.closest('svg')?.parentElement?.classList.toggle('fit-pointed', on)
+    return { height: 0, node: <><g ref={probe} />{createPortal(<>{items.map((group) => <FitStack key={group.name ?? 'pooled'} stats={group.stats}
+      methods={methods} showCI={showCI} title={group.name ?? panel?.title} color={group.color ?? panel?.color} onPoint={panel ? outline : undefined} />)}</>, slot)}</> }
+  }
   if (slot) {
     const outline = (on: boolean) => probe.current?.closest('svg')?.parentElement?.classList.toggle('fit-pointed', on)
     const side = <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>{node}</svg>
@@ -161,6 +171,35 @@ export function useRegressionSummary({ stats, groups, width, enabled = true, pan
       : <div className="regression-summary-side">{side}</div>, slot)}</> }
   }
   return { height, node: <><g ref={probe} />{node}</> }
+}
+
+/** A fit's statistics stacked one per line, as label and value: a tile's ⓘ box or its column beside the plot. */
+function FitStack({ stats, methods, showCI, title, color, onPoint }: {
+  stats: RegressionStats | null; methods: Estimator[]; showCI: boolean; title?: string; color?: string; onPoint?: (on: boolean) => void
+}) {
+  if (!stats) return null
+  const fits = fitsFor(stats, methods)
+  const range = (r: [number, number]) => `${fmt(r[0], 3)} – ${fmt(r[1], 3)}`
+  return <div className="fit-stack" onMouseEnter={onPoint && (() => onPoint(true))} onMouseLeave={onPoint && (() => onPoint(false))}>
+    {title && <p className="fit-stack-title">{color && <span className="swatch" style={{ background: color }} />}{title}</p>}
+    <dl>
+      <dt>Filters</dt><dd>{stats.n.toLocaleString()}</dd>
+      <dt>R²</dt><dd>{fmt(stats.r2, 3)}</dd>
+    </dl>
+    {fits.map((f) => {
+      const ci = showCI ? confidence(stats, f.method) : null
+      return <div key={f.method} className="fit-stack-line" style={{ ['--fit-color' as string]: color ?? f.color }}>
+        <p className="fit-stack-method">{f.label}{f.assumption && <span title={f.assumption}> ⓘ</span>}</p>
+        <dl>
+          <dt>Slope</dt><dd>{fmt(f.slope, 3)}</dd>
+          {ci && <><dt className="ci">95%</dt><dd className="ci">{range(ci.slope)}</dd></>}
+          <dt>Intercept</dt><dd>{fmt(f.intercept, 3)}</dd>
+          {ci && <><dt className="ci">95%</dt><dd className="ci">{range(ci.intercept)}</dd></>}
+        </dl>
+      </div>
+    })}
+    {methods.includes('york') && !fits.some((f) => f.method === 'york') && <p className="fit-stack-note">York unavailable: check uncertainties</p>}
+  </div>
 }
 
 export function RegressionGroupLines({ groups, ...props }: Omit<Parameters<typeof RegressionLines>[0], 'stats' | 'color' | 'domain'> & { groups: RegressionGroup[] }) {

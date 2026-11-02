@@ -26,23 +26,31 @@ function ticksOf(scale: AnyScale, count: number): { v: any; pos: number }[] {
 
 /** a tick label's width as drawn at the axis's 11 px, plus a gap */
 const labelWidth = (text: string) => textWidth(text, 11) + 12
+/** y-axis tick labels (11 px text) need this much room between neighbours to stay apart */
+const Y_LABEL_GAP = 14
+const fitsY = (t: { pos: number }[]) => t.every((a, i) => i === 0 || Math.abs(a.pos - t[i - 1].pos) >= Y_LABEL_GAP)
 
 /**
  * The scale's ticks, thinned until no two labels overlap and none runs off the axis: d3 is asked
  * for fewer ticks in turn, and if it still crowds, every second label is kept. Band axes and
- * rotated labels are left as they are.
+ * rotated labels are left as they are. `vertical` checks label height (y axes) instead of width.
  */
-function fittedTicks(scale: AnyScale, count: number, format: ((v: any) => string) | undefined, rotate: number) {
+function fittedTicks(scale: AnyScale, count: number, format: ((v: any) => string) | undefined, rotate: number, vertical = false) {
   let all = ticksOf(scale, count)
   // a log axis over two or more decades labels the decades only (0.1, 1, 10), not every minor tick between
   if ('base' in scale && typeof scale.base === 'function') {
     const b = (scale as unknown as { base(): number }).base()
     const decades = all.filter(({ v }) => { const e = Math.log(Math.abs(v)) / Math.log(b); return Math.abs(e - Math.round(e)) < 1e-9 })
     if (decades.length >= 3) all = decades
+    // under three decades: the 1-2-5 steps of each decade before falling back to every other tick
+    else if (vertical) {
+      const steps = all.filter(({ v }) => { const n = Math.abs(v), m = Math.round(n / b ** Math.floor(Math.log(n) / Math.log(b) + 1e-9)); return m === 1 || m === 2 || m === 5 })
+      if (steps.length >= 3 && steps.length < all.length && !fitsY(all)) all = steps
+    }
   }
   if ('bandwidth' in scale || rotate || all.length < 3) return all
   const text = (v: any) => (format ? format(v) : String(v))
-  const fits = (t: { v: any; pos: number }[]) => t.every((a, i) => i === 0 || a.pos - t[i - 1].pos >= (labelWidth(text(a.v)) + labelWidth(text(t[i - 1].v))) / 2)
+  const fits = vertical ? fitsY : (t: { v: any; pos: number }[]) => t.every((a, i) => i === 0 || a.pos - t[i - 1].pos >= (labelWidth(text(a.v)) + labelWidth(text(t[i - 1].v))) / 2)
   let t = all, n = count
   while (!fits(t) && n > 2) {
     n = Math.min(n - 1, t.length - 1)
@@ -152,7 +160,8 @@ export function YAxis({
   labelX?: number
 }) {
   const method = useEstimator()
-  const ticks = useMemo(() => ticksOf(scale, tickCount), [scale, tickCount])
+  // as many ticks as fit the height: decades only on a log axis, fewer when the labels would touch
+  const ticks = useMemo(() => fittedTicks(scale, tickCount, format, 0, true), [scale, tickCount, format])
   const range = scale.range() as [number, number]
   const y0 = Math.min(...range)
   const y1 = Math.max(...range)

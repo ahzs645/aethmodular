@@ -113,7 +113,7 @@ export function SitePicker({ items: itemsIn, onToggle: toggleIn, onAll, onClear,
     <div className="site-picker">
       {chipsOnly ? (
         <div className="season-chips">
-          {onAll && <button type="button" className={`chip ${allSelected ? 'active' : ''}`} style={{ ['--chip' as string]: 'var(--ink-muted)' }} onClick={() => { setPending(new Map()); onAll() }}>All</button>}
+          {onAll && <button type="button" className={`chip ${allSelected ? 'active' : ''}`} style={{ ['--chip' as string]: 'var(--chip-neutral)' }} onClick={() => { setPending(new Map()); onAll() }}>All</button>}
           {items.map((it) => (
             <button key={it.key} type="button" className={`chip ${it.selected ? 'active' : ''} ${it.n === 0 ? 'disabled' : ''}`}
               style={{ ['--chip' as string]: it.color }} disabled={it.n === 0} onClick={() => onToggle(it.key)}>

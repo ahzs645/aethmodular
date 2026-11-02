@@ -33,8 +33,11 @@
   --ink-strong: #111827;
   --warm-soft: #fdecdf;
   --warm-ink: #a63603;
+  --ink-warn: #b45309;
   --addis-soft: #fffbea;
   --addis-border: #f1dfa0;
+  /* an active chip with no colour of its own: white text sits on it */
+  --chip-neutral: #7b8794;
   color-scheme: light;
   --font: ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
@@ -64,8 +67,10 @@
   --ink-strong: #f1f4f8;
   --warm-soft: #3a2a1c;
   --warm-ink: #f3a76b;
+  --ink-warn: #f0a548;
   --addis-soft: #2b2617;
   --addis-border: #5e5128;
+  --chip-neutral: #566170;
   color-scheme: dark;
 }
 /* white text on the lighter dark-theme accent needs a darker fill to stay legible */
@@ -195,7 +200,11 @@ code { font-family: var(--mono); font-size: 0.92em; }
   .frame-body:not(.controls-top) > .frame-controls > .control,
   .frame-body:not(.controls-top) > .frame-controls > .option-node > .control,
   .frame-body:not(.controls-top) > .frame-controls > .option-node > .combobox-control,
-  .frame-body:not(.controls-top) > .frame-controls > .combobox-control { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .frame-body:not(.controls-top) > .frame-controls > .combobox-control,
+  .frame-body:not(.controls-top) > .frame-controls > .frame-hoisted > .control,
+  .frame-body:not(.controls-top) > .frame-controls > .frame-hoisted > .option-node > .control,
+  .frame-body:not(.controls-top) > .frame-controls > .frame-hoisted > .option-node > .combobox-control,
+  .frame-body:not(.controls-top) > .frame-controls > .frame-hoisted > .combobox-control { flex-direction: column; align-items: flex-start; gap: 4px; }
   .frame-body:not(.controls-top) > .frame-controls .combobox,
   .frame-body:not(.controls-top) > .frame-controls .combobox-trigger { width: 100%; max-width: 100%; }
   .frame-body:not(.controls-top) > .frame-controls .combobox-control { width: 100%; min-width: 0; }
@@ -205,7 +214,8 @@ code { font-family: var(--mono); font-size: 0.92em; }
   .frame-body:not(.controls-top) > .frame-controls .grouping-picker > .control { flex: 1 1 auto; min-width: 0; flex-direction: column; align-items: flex-start; gap: 4px; }
   .frame-body:not(.controls-top) > .frame-controls .grouping-picker .grouping-actions { flex: 0 0 auto; flex-wrap: nowrap; }
   .frame-body:not(.controls-top) > .frame-controls .seg { flex-wrap: wrap; }
-  .frame-body:not(.controls-top) > .frame-controls > .option-node > .control { display: flex; }   /* not inline: lets a stacked list fill the column */
+  .frame-body:not(.controls-top) > .frame-controls > .option-node > .control,
+  .frame-body:not(.controls-top) > .frame-controls > .frame-hoisted > .option-node > .control { display: flex; }   /* not inline: lets a stacked list fill the column */
   /* long options (Segmented marks them) read one per line in the narrow column, as a list */
   .frame-body:not(.controls-top) > .frame-controls .seg.long { flex-direction: column; align-self: stretch; }
   .frame-body:not(.controls-top) > .frame-controls .seg.long button { text-align: left; }
@@ -244,6 +254,16 @@ code { font-family: var(--mono); font-size: 0.92em; }
   background: var(--ink-panel); color: var(--ink-text); font-family: var(--font); max-width: 240px;
 }
 .select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+/* The native clear (x) button: Chrome draws it only on hover/focus and Safari as a fixed grey disc, neither
+   following the theme. One themed glyph instead, shown whenever the field has text (the engine still hides it
+   when empty). Firefox has no clear button, so nothing changes there. */
+input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin: 0 -2px 0 6px; flex: none;
+  background: var(--ink-muted); opacity: 1; pointer-events: auto; cursor: pointer;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M3.5 3.5l7 7M10.5 3.5l-7 7' stroke='%23000' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M3.5 3.5l7 7M10.5 3.5l-7 7' stroke='%23000' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+}
+input[type="search"]::-webkit-search-cancel-button:hover { background: var(--ink-text); }
 .combobox-control { display: inline-flex; align-items: center; gap: 6px; font-size: calc(12px * var(--text-scale)); color: var(--ink-muted); }
 .combobox-label { font-size: calc(12px * var(--text-scale)); color: var(--ink-muted); white-space: nowrap; }
 .combobox { position: relative; display: inline-block; max-width: 100%; }
@@ -385,6 +405,8 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .subset-panel::-webkit-scrollbar, .drawer::-webkit-scrollbar { width: 8px; }
 .subset-panel::-webkit-scrollbar-thumb, .drawer::-webkit-scrollbar-thumb { background: transparent; border-radius: 8px; }
 .subset-panel:hover::-webkit-scrollbar-thumb, .drawer:hover::-webkit-scrollbar-thumb { background: rgba(60, 70, 85, 0.35); }
+:root[data-theme="dark"] :is(.subset-panel, .drawer):is(:hover, :focus-within) { scrollbar-color: rgba(170, 180, 195, 0.35) transparent; }
+:root[data-theme="dark"] :is(.subset-panel, .drawer):hover::-webkit-scrollbar-thumb { background: rgba(170, 180, 195, 0.35); }
 
 /* site picker: chips for the selection, a search combo box, and a map dialog */
 .site-picker { display: flex; flex-direction: column; gap: 6px; width: 100%; }
@@ -452,7 +474,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .cite-pop q { color: var(--ink-muted); font-size: 11.5px; }
 .cite-pop-note { color: var(--ink-muted); font-size: 11px; }
 .cite-pop-tags { font-size: 11px; color: var(--ink); }
-.cite-pop-tags.warn { color: var(--warn, #9a5b00); }
+.cite-pop-tags.warn { color: var(--ink-warn); }
 .season-site-tools { margin-left: auto; display: inline-flex; gap: 2px; }
 .season-site-tools .btn { font-weight: 400; padding: 1px 6px; }
 .season-edit-btn.on { color: var(--accent); }
@@ -494,7 +516,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .chip {
   border: 1px solid var(--ink-border); background: var(--ink-panel); color: var(--ink-muted);
   border-radius: 14px; padding: 3px 11px; font-size: calc(12px * var(--text-scale)); cursor: pointer; font-family: var(--font);
-  --chip: var(--ink-muted);
+  --chip: var(--chip-neutral);
 }
 .chip:hover { border-color: var(--chip); }
 .chip.active { background: var(--chip); border-color: var(--chip); color: #fff; }
@@ -657,7 +679,10 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
 @media (hover: none) { .panel-expand-float { opacity: 0.6; } }
 /* a PanelGrid child that draws nothing (an ExplainOnly with Explain off) takes no column, as a bare grid item would not */
 .panel-grid > .panel-cell:not(:has(> :not(.panel-expand-float))) { display: none; }
-/* a panel group's own control row (components/PanelGroup): the hoisted fit grouping, Panel axes */
+/* a panel group's controls (components/PanelGroup): inside a ChartFrame they join its options row through this
+   slot (lib/frameControls), which lays out as if its children were the row's own */
+.frame-hoisted { display: contents; }
+/* a panel group's own control row, outside a ChartFrame: the hoisted fit grouping, Panel axes */
 .frame-controls.panel-group-controls { margin-bottom: 6px; padding-bottom: 0; border-bottom: 0; }
 .facet-legend .legend { padding: 0 0 4px; gap: 4px 12px; }
 
@@ -1065,7 +1090,7 @@ html.ctx-open .tooltip { visibility: hidden; }
 .grouping-band { display: grid; grid-template-columns: 14px minmax(140px, 1fr) minmax(120px, auto) 90px; align-items: center; gap: 10px; }
 .grouping-band input { max-width: none; width: 100%; }
 /* a band's colour, a button that opens the colour chooser (components/GroupingDialog BandColor) */
-.grouping-swatch { width: 14px; height: 14px; padding: 0; border: 1px solid rgba(0, 0, 0, 0.18); border-radius: 3px; cursor: pointer; }
+.grouping-swatch { width: 14px; height: 14px; padding: 0; border: 1px solid color-mix(in srgb, var(--ink-text) 22%, transparent); border-radius: 3px; cursor: pointer; }
 .grouping-swatch:hover, .grouping-swatch[aria-expanded="true"] { outline: 2px solid var(--accent-soft); outline-offset: 1px; }
 /* a phone: each band on two lines, its label across the dialog, then its range and count (no sideways scroll) */
 @media (max-width: 560px) {
@@ -1084,8 +1109,8 @@ html.ctx-open .tooltip { visibility: hidden; }
 .cset-row > .cset-source { grid-column: 3 / -1; color: var(--ink-muted); font-size: calc(10.5px * var(--text-scale)); line-height: 1.35; }
 .cset-row > .cset-source b { font-weight: 600; }
 .cset-label { max-width: none; width: 100%; padding-top: 2px; padding-bottom: 2px; }
-.cset-label.invalid { border-color: #c0392b; }
-.cset-clash { color: #c0392b; }
+.cset-label.invalid { border-color: var(--danger); }
+.cset-clash { color: var(--danger); }
 .cset-hint { margin-left: 10px; font-weight: 400; color: var(--ink-muted); font-size: calc(10.5px * var(--text-scale)); text-transform: none; letter-spacing: 0; }
 .cset-legend { display: flex; flex-direction: column; gap: 6px; }
 .cset-legend-preview { margin: 0; padding: 6px 8px; background: var(--ink-zebra); border-radius: 6px; }
@@ -1211,7 +1236,8 @@ svg [font-size="16"] { font-size: calc(16px * var(--chart-text-scale)); }
 .display-menu fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .display-menu legend { padding: 0; margin-bottom: 5px; font-size: calc(12px * var(--text-scale)); font-weight: 600; }
 .display-menu .seg { display: flex; width: 100%; }
-.display-menu .seg button { flex: 1; }
+.display-menu .seg button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+.display-menu .seg button > svg { flex: none; width: 13px; height: 13px; }
 .display-menu button:disabled { opacity: 0.45; cursor: default; }
 .display-menu p { margin: 6px 0 0; color: var(--ink-muted); font-size: calc(11.5px * var(--text-scale)); line-height: 1.4; }
 .display-menu .display-target { color: var(--ink-text); }
@@ -1269,7 +1295,7 @@ svg [font-size="16"] { font-size: calc(16px * var(--chart-text-scale)); }
 
 /* ---------- colour schemes (components/ColourSchemePicker) ---------- */
 /* the hairline is an inset shadow, not a border: a gradient background tiles under a border, so its far end showed as a sliver at the near edge */
-.scheme-swatch { display: inline-block; width: 46px; height: 10px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); }
+.scheme-swatch { display: inline-block; width: 46px; height: 10px; border-radius: 3px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink-text) 12%, transparent); }
 .scheme-swatch.wide { width: 90px; height: 12px; }
 .scheme-pop { position: fixed; z-index: 1000; width: 250px; background: var(--ink-panel); border: 1px solid var(--ink-border); border-radius: 10px;
   max-width: calc(100vw - 16px); overflow-y: auto; overscroll-behavior: contain; box-shadow: 0 10px 30px rgba(31, 41, 51, 0.18); padding: 6px; display: flex; flex-direction: column; gap: 4px; }
@@ -1384,13 +1410,10 @@ html.dash-mode .app-title-row .nav-btn { padding: 3px 10px; font-size: calc(12px
 .dash-tile .not-measured p { margin: 0 0 6px; }
 .dash-tile .not-measured a { color: var(--accent); }
 .not-measured-alts { display: flex; flex-wrap: wrap; gap: 6px; }
-/* a field standing in for one the sites never measured (HIPS BC → reflectometer BC): what and why, linked to the source */
-.tile-standin {
-  position: absolute; right: 8px; bottom: 6px; z-index: 2; max-width: calc(100% - 16px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-size: calc(10.5px * var(--text-scale)); color: var(--ink-muted); background: var(--ink-hover); border: 1px solid var(--ink-border);
-  border-radius: 999px; padding: 1px 8px; text-decoration: none;
-}
-.tile-standin:hover { color: var(--ink-text); border-color: var(--ink-axis); }
+/* a field standing in for one the sites never measured (HIPS BC → reflectometer BC): what and why, linked to the source, in the tile's ⓘ box */
+.tile-standin { margin: 0 0 6px; }
+.tile-standin:last-child { margin-bottom: 0; }
+.tile-standin a { color: var(--accent); }
 .dash-tile > .panel { margin: 0; height: 100%; overflow: auto; padding: 8px 12px 6px; display: flow-root; }
 .dash-tile.editing > .panel { padding-top: 30px; outline: 1px dashed var(--ink-border); outline-offset: -1px; }
 .dash-tile.dragging { z-index: 8; }
@@ -1541,8 +1564,42 @@ html.dash-present .container.dash { padding-top: 10px; }
 }
 
 /* Corner notes stay visible; their body lives outside the tile's scroll container. */
-.tile-info-btn { flex: none; padding: 0; width: 20px; height: 20px; }
-.tile-info-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* a tile's corner buttons (components/ChartFrame TileCorner): ⚠ its notes, ⓘ its fit statistics and tip; shown while there is something to read */
+.tile-corner-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0;
+  border: 1px solid var(--ink-border); border-radius: 50%; background: var(--ink-panel); color: var(--ink-muted); cursor: help; }
+.tile-corner-btn.notes { color: var(--ink-warn); }
+.tile-corner-btn.info { font: italic 600 11px/1 Georgia, serif; }
+.tile-corner-btn.info:hover, .tile-corner-btn.info[aria-expanded="true"] { color: var(--accent); }
+.tile-corner-btn:hover, .tile-corner-btn[aria-expanded="true"] { border-color: currentColor; }
+.tile-corner-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tile-corner .chart-note { margin: 0 0 6px; color: var(--ink-text); font-size: inherit; }
+.tile-corner .chart-note:last-child { margin-bottom: 0; }
+.tile-corner-slot:empty { display: none; }
+.tile-corner-slot:not(:empty) + .tile-corner-tip { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--ink-grid); }
+/* a tile's fit statistics beside the plot (Fit statistics: Beside in the ⋯ menu); the column is empty, and drawn as nothing, otherwise */
+.tile-chart-row { min-width: 0; }
+.tile-chart-row.fit-beside { display: flex; align-items: flex-start; gap: 10px; }
+.tile-chart-row.fit-beside > .frame-chart { flex: 1 1 auto; }
+.tile-fit-side { flex: none; width: clamp(104px, 30%, 150px); max-height: 100%; overflow-y: auto; scrollbar-width: thin; padding-top: 26px; }
+.tile-fit-side:empty, .tile-chart-row:not(.fit-beside) > .tile-fit-side { display: none; }
+@container chart-frame (min-width: 760px) {
+  .frame-body.controls-right > .tile-chart-row { grid-column: 1; grid-row: 1; }
+  .frame-body.controls-left > .tile-chart-row { grid-column: 2; grid-row: 1; }
+}
+/* a fit's statistics one per line (components/RegressionOverlay FitStack) */
+.fit-stack { font-size: calc(11.5px * var(--text-scale)); line-height: 1.35; }
+.fit-stack + .fit-stack { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--ink-grid); }
+.fit-stack dl { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; row-gap: 1px; margin: 0; }
+.fit-stack dt { color: var(--ink-muted); }
+.fit-stack dd { margin: 0; text-align: right; font-family: var(--mono); color: var(--ink-text); font-variant-numeric: tabular-nums; }
+.fit-stack .ci { font-size: 0.88em; }
+.fit-stack dd.ci { color: var(--ink-muted); }
+.fit-stack-title { margin: 0 0 3px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+.fit-stack-line { margin-top: 5px; padding-left: 7px; border-left: 2px solid var(--fit-color); }
+.fit-stack-line dd { color: var(--fit-color); }
+.fit-stack-method { margin: 0 0 1px; font-weight: 600; color: var(--fit-color); }
+.fit-stack-note { margin: 4px 0 0; color: var(--ink-muted); }
+.tile-fit-side .fit-stack dl { column-gap: 6px; }
 .info-tip-body.floating { display: block; z-index: 1200; margin: 0; overflow-y: auto; }
 .site-summary-group:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 .site-summary-row.compact { display: flex; flex-direction: column; gap: 2px; }
@@ -1600,7 +1657,7 @@ html.dash-present .container.dash { padding-top: 10px; }
 .export-color-picker { display: flex; align-items: center; gap: 8px; }
 .export-color-picker > button { display: inline-flex; align-items: center; gap: 8px; }
 .export-color-sample { display: inline-flex; gap: 2px; }
-.export-color-sample > span { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0,0,0,.12); }
+.export-color-sample > span { width: 12px; height: 12px; border-radius: 3px; border: 1px solid color-mix(in srgb, var(--ink-text) 16%, transparent); }
 .export-color-popover { position: fixed; z-index: 90; width: min(390px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); display: flex; flex-direction: column;
   background: var(--ink-panel); border: 1px solid var(--ink-border); border-radius: 10px; box-shadow: 0 12px 36px rgba(0,0,0,.24); }
 .export-color-popover > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-bottom: 1px solid var(--ink-border); }
@@ -1815,8 +1872,14 @@ html[data-single='1'] [data-single-active] [data-single-hide] { display: none !i
 /* everything beside the chart in view is hidden; the wrappers that hold it stack it full width */
 [data-single-hidden] { display: none !important; }
 html[data-single='1'] [data-single-path] { display: block !important; max-width: none !important; width: auto !important; margin-left: 0; margin-right: 0; }
-html[data-single='1'] [data-single-root] { max-width: none; padding-top: 12px; padding-bottom: 0; }
+html[data-single='1'] [data-single-root] { max-width: none; padding-top: 10px; padding-bottom: 0; }
 html[data-single='1'] [data-single-active] { margin: 0; }
+/* the chart in view is the page, not a card on it: straight under the header, no frame round it
+   (a chart opened in focus mode keeps its card, it floats over the page) */
+html[data-single='1'] .app-header { margin-bottom: 0; background: color-mix(in srgb, var(--ink-panel) 92%, transparent); }
+/* the page takes the card's colour, so the chart reads as it did on its card */
+html[data-single='1'] body { background: var(--ink-panel); }
+html[data-single='1'] [data-single-active]:not(.focused) { background: none; border: 0; border-radius: 0; padding: 0; }
 /* beside an open dock on a wide screen, not under it */
 @media (min-width: 901px) {
   html[data-single='1'][data-dock='open'] [data-single-root] { padding-left: calc(min(380px, 100vw - 36px) + 22px); }
@@ -1893,7 +1956,7 @@ html[data-single='1'] [data-single-active] { margin: 0; }
 /* export dialog, publication style (components/ExportDialog) */
 .export-label-field { display: inline-flex; align-items: center; gap: 8px; }
 .export-label-field input { width: 72px; height: 28px; padding: 0 8px; border: 1px solid var(--ink-border); border-radius: 6px; background: var(--ink-panel); color: var(--ink-text); font: inherit; font-size: calc(12.5px * var(--text-scale)); }
-.export-warn { color: var(--warn, #b45309); }
+.export-warn { color: var(--ink-warn); }
 .export-show { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 0; padding: 0; border: 0; }
 .export-show > legend { width: 100%; padding: 0 0 2px; font-size: calc(11.5px * var(--text-scale)); color: var(--ink-muted); }
 .export-check { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 4px; border: 1px solid var(--ink-border); border-radius: 12px;

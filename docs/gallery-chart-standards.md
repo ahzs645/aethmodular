@@ -242,7 +242,11 @@ Follow-ups (31 Oct 2026, after the unify merges):
   rasters (use `inkNow(key)`) and colours computed from the theme. Use
   `INK.panel` rather than `#fff` for halos, hollow markers and separators, and
   `inkOn` for cell labels (its dark ink is `CELL_INK`, which the CSS leaves
-  alone). A filled scatter dot that is
+  alone). SVG `<text>` with no `fill` of its own and none inherited from a
+  `[fill]` ancestor would be the browser's black; `lib/themeCss` `textRules()`
+  gives it the dark text ink (1 Nov 2026), at zero specificity so any explicit
+  fill still wins. Prefer `fill={INK.text}` / `INK.muted` in new code anyway,
+  and never a grey hex without a `themed()` twin. A filled scatter dot that is
   not focused wears `dotRim()` from `lib/highlight` (the panel colour at 0.8 px,
   as `focusStyle` does), never a rim in its own colour or a dark hex, which shows
   as a bright ring or disappears on the dark panel (27 Oct 2026). Hollow dots,

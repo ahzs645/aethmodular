@@ -61,7 +61,7 @@ import { CommandPaletteButton } from '@/components/CommandPalette'
 import { UndoToast } from '@/components/UndoToast'
 import { HeaderNavProvider, useHeaderNav } from '@/lib/headerNav'
 import { NavMenu, type NavGroup, type NavItem } from '@/components/NavMenu'
-import { SidebarIcon, SingleChartIcon, XIcon } from '@/components/Icons'
+import { DashboardIcon, SidebarIcon, SingleChartIcon, XIcon } from '@/components/Icons'
 import { DisplayControls } from '@/components/DisplayControls'
 import { SingleFit, SingleViewProvider, SingleViewToggle, useSingleViewPref } from '@/lib/singleView'
 import { WEATHER_GROUP, useWeather } from '@/lib/weather'
@@ -205,7 +205,7 @@ const areaItem = (a: InvestigationArea, p: AreaPage, heading?: string): NavItem 
   ...(a.tab === 'meeting' ? { meeting: p.key } : a.pages.length > 1 ? { sub: p.key } : {}),
 })
 const NAV_GROUPS: NavGroup[] = [
-  { label: 'Charts', items: ['dashboard', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'pmf', 'flow', 'builder'].flatMap(tabItem) },
+  { label: 'Charts', items: ['correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'pmf', 'flow', 'builder'].flatMap(tabItem) },
   { label: 'Sites', items: ['map', 'weather', 'aeronet'].flatMap(tabItem) },
   { label: 'Calibration', items: ['calibration', 'baseline', 'similarity', 'blanks'].flatMap(tabItem) },
 ].filter((g) => g.items.length)
@@ -233,7 +233,8 @@ const OTHER_SITE = '__other_site'
 
 /** what the ⌘K search offers: the tabs this build shows (lib/headerNav) */
 const NAV_TABS = TABS.filter((t) => shared(t.key) && !('hidden' in t && t.hidden) && !UNLISTED_TABS.has(t.key)).map((t) => ({ key: t.key as string, label: t.label as string, title: 'title' in t ? t.title as string : undefined,
-  group: NAV_GROUPS.find((g) => g.items.some((i) => i.tab === t.key))?.label ?? 'Investigations' }))
+  // the Dashboard opens from its own header button (DashboardButton), and the search lists it with the charts
+  group: t.key === 'dashboard' ? 'Charts' : NAV_GROUPS.find((g) => g.items.some((i) => i.tab === t.key))?.label ?? 'Investigations' }))
 // Keep existing #tab=satoshi links working under the shared Meeting tab.
 const tabFromParams = (p: URLSearchParams): TabKey =>
   p.get('tab') === 'satoshi' && shared('meeting') ? 'meeting' : isTab(p.get('tab')) ? p.get('tab') as TabKey : LANDING_TAB
@@ -418,6 +419,18 @@ export default function App() {
     else if (t === 'availability') setAvailRef.current(x)
     else if (t === 'experimental') setExperiment(x)
   }, [])
+  // the page the Dashboard button returns to: the last one open before the Dashboard (the landing tab for a link straight to it)
+  const beforeDash = useRef<{ tab: string; sub?: string }>({ tab: LANDING_TAB })
+  useEffect(() => {
+    if (tab === 'dashboard') return
+    const sub = tab === 'meeting' ? meeting : tab === 'experimental' ? experiment : tab === 'availability' ? availView : SECTION_TABS.has(tab) ? sectionPage || undefined : undefined
+    beforeDash.current = { tab, sub }
+  }, [tab, meeting, experiment, availView, sectionPage])
+  const toggleDash = useCallback(() => {
+    if (tab !== 'dashboard') { openTab('dashboard'); return }
+    const b = beforeDash.current
+    openTab(b.tab, undefined, b.sub)
+  }, [tab, openTab])
   // Mirrors get_clean_data: excluded samples are hidden by default but never
   // deleted, so you can always put them back and see what was removed. Or the
   // reader draws them as × left out of every statistic (lib/exclusionMode):
@@ -1477,7 +1490,7 @@ export default function App() {
         fields={tab === 'correlation' ? [xField, yField] : [field]} onClose={() => setGroup(null)} />}
       {isEmbed() && <a className="embed-open" href="#" onClick={async (e) => { e.preventDefault(); window.open((await viewUrl(currentView())), '_blank', 'noopener') }}>Open in the gallery ↗</a>}
       {(NETWORK_TABS as readonly string[]).includes(tab) && <BrushBar onKeep={keepFilters} onDrop={dropFilters} />}
-      <Shell nav={nav} dash={tab === 'dashboard'} wide={tab === 'builder' || tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental'} editsBadge={!subset}>
+      <Shell nav={nav} dash={tab === 'dashboard'} onDash={toggleDash} wide={tab === 'builder' || tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental'} editsBadge={!subset}>
         {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
         {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting' || tab === 'experimental' || tab === 'similarity')
           && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} label={tab === 'similarity' ? 'Target' : 'Samples'} />)}
@@ -1587,7 +1600,8 @@ export default function App() {
 /** `wide` gives the long research tabs room for the table-of-contents column. */
 /** `editsBadge`: show the hand edits in the header, for tabs without the Filters panel that lists them */
 /** `dash`: the Dashboard, full width, its options in the header (pages/DashboardPage portals them into #dash-bar) */
-function Shell({ children, nav, wide = false, editsBadge = false, dash = false }: { children: React.ReactNode; nav?: React.ReactNode; wide?: boolean; editsBadge?: boolean; dash?: boolean }) {
+/** `onDash`: the header's Dashboard button, which opens it and, clicked again, returns to the page before */
+function Shell({ children, nav, wide = false, editsBadge = false, dash = false, onDash }: { children: React.ReactNode; nav?: React.ReactNode; wide?: boolean; editsBadge?: boolean; dash?: boolean; onDash?: () => void }) {
   const container = dash ? 'container dash' : wide ? 'container wide' : 'container'
   // the sticky header's height, for what sticks under it (a chart's options column, styles.css --header-h)
   const headerH = useHeaderHeight()
@@ -1601,7 +1615,7 @@ function Shell({ children, nav, wide = false, editsBadge = false, dash = false }
             {editsBadge && <HandEditsBadge />}
             {nav ?? <span className="nav" />}
             {dash && <div id="dash-bar" className="dash-bar-slot" />}
-            <HeaderTools />
+            <HeaderTools dash={dash} onDash={onDash} />
           </div>
         </div>
       </header>
@@ -1610,11 +1624,13 @@ function Shell({ children, nav, wide = false, editsBadge = false, dash = false }
   )
 }
 
-/** Explain toggle (absent in public builds, see lib/prefs) and the Views menu (presets, saved views, share and embed). */
-function HeaderTools() {
+/** Explain toggle (absent in public builds, see lib/prefs) and the Views menu (presets, saved views, share and embed).
+ *  `dash`: the Dashboard is the open tab */
+function HeaderTools({ dash = false, onDash }: { dash?: boolean; onDash?: () => void }) {
   return (
     <span className="header-tools">
       <span className="header-display"><DisplayToggles /></span>
+      {onDash && <DashboardButton open={dash} onToggle={onDash} />}
       <CommandPaletteButton />
       <UndoToast />
       {/* on a phone these two fold into the ⋯ menu, with the display toggles */}
@@ -1622,6 +1638,17 @@ function HeaderTools() {
       <HeaderMore display={<DisplayToggles />} />
     </span>
   )
+}
+
+/** Opens the Dashboard (it is not in the Charts menu); lit while it is open, and a second click returns to the page before.
+ *  Absent from builds without it. */
+function DashboardButton({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  const nav = useHeaderNav()
+  if (!nav?.tabs.some((t) => t.key === 'dashboard')) return null
+  return <button type="button" className={`btn quiet icon-btn${open ? ' on' : ''}`} aria-label="Dashboard" aria-pressed={open} onClick={onToggle}
+    title={open ? 'Dashboard (open): click to go back to the page you were on' : 'Dashboard: your own page of gallery charts, add, arrange and size tiles'}>
+    <DashboardIcon />
+  </button>
 }
 
 /** Readable text, Explain, the sections list: in the header, or in its ⋯ menu on a phone (components/HeaderMore) */

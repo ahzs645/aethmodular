@@ -124,3 +124,37 @@ def test_spectrum_codec_round_trips_within_half_a_step_and_keeps_gaps():
     assert np.nanmax(np.abs(back - y)) <= codec.DEFAULT_STEP / 2 + 1e-15
     coarse, d = codec.encode(y, step=1e-7)
     assert np.nanmax(np.abs(codec.decode(coarse, d) - y)) <= 5e-8 + 1e-15
+
+
+def test_exclusion_refresh_preserves_values_source_flags_and_native_assets(tmp_path):
+    import gzip
+    import json
+
+    data = tmp_path / 'data'
+    out = data / 'spartan_network'
+    out.mkdir(parents=True)
+    rows = [dict(id='INDH-0169', code='INDH', site='Delhi', date='2024-06-12', excluded=True,
+                 exclusion_reason='source flag', **{'EC (FTIR)': 3.9}),
+            dict(id='INDH-0999', code='INDH', site='Delhi', date='2024-06-12', excluded=False,
+                 exclusion_reason=None, **{'EC (FTIR)': 7.1})]
+    for name in ['filters.json', 'spartan_reference.json']:
+        (data / name).write_text(json.dumps(dict(rows=rows, n=2, n_excluded=1)))
+    shard = export.write_asset(out, 'sites/INDH', export.json_bytes(dict(rows=rows, code='INDH')))
+    native = export.write_asset(out, 'native/INDH', b'{"native":"preserve"}')
+    native_bytes = (data / native).read_bytes()
+    (out / 'index.json').write_text(json.dumps(dict(sites=[dict(code='INDH', filters=shard, native=native)])))
+
+    assert export.refresh_exclusions(data)['INDH'] == ['INDH-0169']
+    index = json.loads((out / 'index.json').read_text())
+    snapshot = json.loads(gzip.decompress((data / index['sites'][0]['filters']).read_bytes()))['rows']
+    for name in ['filters.json', 'spartan_reference.json']:
+        assert json.loads((data / name).read_text())['rows'] == snapshot
+    for before, after in zip(rows, snapshot):
+        assert {k: v for k, v in before.items() if k not in ('excluded', 'exclusion_reason')} == {
+            k: v for k, v in after.items() if k not in ('excluded', 'exclusion_reason')}
+    assert snapshot[0]['exclusion_reason'].startswith('source flag; ')
+    assert 'water infiltration' in snapshot[0]['exclusion_reason']
+    assert not snapshot[1]['excluded']
+    assert index['sites'][0]['native'] == native
+    assert (data / native).read_bytes() == native_bytes
+    assert export.refresh_exclusions(data) == {}

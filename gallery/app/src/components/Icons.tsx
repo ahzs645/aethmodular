@@ -11,6 +11,8 @@ export const XIcon = () => <svg width="12" height="12" viewBox="0 0 12 12" fill=
 export const UndoIcon = () => <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3.2 4.4A4.3 4.3 0 1 1 2.4 8" /><path d="M2.6 1.8v2.8h2.8" /></svg>
 export const SidebarIcon = () => <Svg><rect x="2" y="2.5" width="12" height="11" rx="1.5" /><path d="M10 2.5v11" /></Svg>
 /** one chart framed, with the arrows to the next and previous */
+/** the Dashboard: a page of tiles */
+export const DashboardIcon = () => <Svg><rect x="2" y="2" width="5" height="6" rx="1" /><rect x="9" y="2" width="5" height="3.5" rx="1" /><rect x="2" y="10" width="5" height="4" rx="1" /><rect x="9" y="7.5" width="5" height="6.5" rx="1" /></Svg>
 export const SingleChartIcon = () => <Svg><rect x="4" y="3" width="8" height="10" rx="1.2" /><path d="M2 6.2.8 8 2 9.8M14 6.2 15.2 8 14 9.8" /></Svg>
 export const TextSizeIcon = () => <Svg><path d="M2 12.5 5 4l3 8.5M3.1 9.5h3.8" /><path d="M9.5 12.5 11.6 7l2.1 5.5M10.2 10.7h2.8" /></Svg>
 /** open a panel larger (arrows out to the corners) */

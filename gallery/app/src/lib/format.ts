@@ -59,6 +59,26 @@ export const adaptive = (v: unknown): string => {
   return n === null ? '—' : n.toFixed(Math.abs(n) >= 100 ? 0 : Math.abs(n) >= 10 ? 1 : 2)
 }
 
+/**
+ * Labels for a ramp legend's ticks: adaptive's decimals, unless they would print two ticks alike or a tick
+ * that is not zero as zero; then as many decimals as the tick step needs, so a range of 0.001 to 0.004 reads
+ * "0.001 … 0.004", not "0.00" four times. Never "-0.00".
+ */
+export const tickLabels = (ticks: number[]): ((v: unknown) => string) => {
+  const noNegZero = (s: string) => (/^-0(\.0*)?$/.test(s) ? s.slice(1) : s)
+  const base = (v: unknown) => noNegZero(adaptive(v))
+  const labels = ticks.map(base)
+  const zeroed = ticks.some((t, i) => t !== 0 && Number(labels[i]) === 0)
+  if (new Set(labels).size === labels.length && !zeroed) return base
+  const sorted = [...ticks].sort((a, b) => a - b)
+  const steps = sorted.slice(1).map((t, i) => t - sorted[i]).filter((d) => d > 0)
+  const step = steps.length ? Math.min(...steps) : Math.abs(sorted[0] ?? 0)
+  if (!(step > 0)) return base
+  const digits = Math.max(0, Math.ceil(-Math.log10(step) - 1e-9))
+  if (digits > 6) return (v: unknown) => { const n = num(v); return n === null ? '—' : n === 0 ? '0' : n.toExponential(1) }
+  return (v: unknown) => { const n = num(v); return n === null ? '—' : noNegZero(n.toFixed(digits)) }
+}
+
 /** Scientific notation with one decimal: 0.000123 -> "1.2e-4". */
 export const sci = (v: unknown): string => {
   const n = num(v)

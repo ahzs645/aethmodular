@@ -139,6 +139,19 @@ class TestApplyExclusionFlags:
         assert list(out["is_excluded"]) == [True, False, False]
         assert "PM10" in out.loc[0, "exclusion_reason"]
 
+    @pytest.mark.parametrize("identity", ["filter_id", "base_filter_id", "id"])
+    def test_rejected_delhi_cartridge_keeps_records_and_does_not_flag_other_same_day_filters(self, identity):
+        dates = ["2024-06-12", "2024-06-15", "2024-06-18", "2024-06-24", "2024-06-27", "2024-06-30"]
+        external_ids = ["INDH-0169-1", "INDH-0170-2", "INDH-0171-3", "INDH-0173-5", "INDH-0174-6", "INDH-0176-8"]
+        from data_matching import base_filter_id
+        ids = external_ids if identity == "filter_id" else [base_filter_id(fid) for fid in external_ids]
+        frame = _frame(dates + [dates[0]], **{identity: ids + ["INDH-0999"]})
+        flagged = apply_exclusion_flags(frame, "Delhi")
+        assert len(flagged) == 7
+        assert flagged.is_excluded.tolist() == [True] * 6 + [False]
+        assert flagged.loc[:5, "exclusion_reason"].str.contains("water infiltration").all()
+        assert get_clean_data(flagged)[identity].tolist() == ["INDH-0999"]
+
 
 # ---------------------------------------------------------------------------
 # apply_threshold_flags
