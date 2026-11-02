@@ -72,7 +72,7 @@ export function Classes({ c, data }: { c: Charcoal; data: SpectralExport }) {
       provenance={<>{NB.c08} [6] left, [16]; {NB.c09} [8] left, [10]. {provenance(data, ['class_by_subset', 'relative_loss', 'per_filter'])}</>}>
       <IntervalStrip panels={[{ label: 'median best r against the class' }, { label: 'relative loss in the dry season (%)', reference: 0 }]} labelWidth={260} noteWidth={50}
         blocks={[{ key: 'live', rows: lib.length ? [liveRow] : [] }, { key: 'classes', title: 'Notebook classes (static)', rows: classRows }]} />
-      {/* the live row follows the set and the exclusions; the class rows are the notebooks' */}
+      {/* the live row follows the Samples settings; the class rows are the notebooks' */}
       <SetNote c={c} of={(x) => x.libraryR !== null} />
       <FixedSetNote subject="the class rows" what="the notebooks' 239 filters and seasons (no script saves a filter's r per class)" />
       <Key items={[{ label: 'all filters', color: INK.text }, { label: 'non-dry', color: wet }, { label: 'dry season', color: dryC, kind: 'hollow' }, { label: 'live: char_02 library match on the filters shown', color: INK.text, kind: 'diamond' }]} />

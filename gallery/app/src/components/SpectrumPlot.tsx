@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import * as d3 from 'd3'
 import { XAxis, YAxis } from '@/components/Axes'
 import { Marker, RefLine } from '@/components/RefLines'
@@ -64,7 +64,7 @@ type Scales = { x: d3.ScaleLinear<number, number>; y: d3.ScaleContinuousNumeric<
 
 export function SpectrumPlot({
   series = [], bands = [], window: win, height = 300, width: fixedWidth, title,
-  yLabel = 'Absorbance', xLabel = 'Wavenumber (cm⁻¹)', yDomain, yClip, includeZero = false, logY = false, zeroLine = false,
+  yLabel = 'Absorbance', xLabel = 'Wavenumber (cm⁻¹)', yDomain, yClip, yIgnore, includeZero = false, logY = false, zeroLine = false,
   regions = [], annotations = [], markers = [], hover = 'nearest', highlight, lookup, dim, yFormat, readoutFormat, background, children, minWidth,
 }: {
   series?: SpectrumSeries[]
@@ -81,6 +81,8 @@ export function SpectrumPlot({
   yDomain?: [number, number]
   /** quantiles for a clipped y range (lib/axes robustDomain); default the full extent */
   yClip?: [number, number]
+  /** wavenumber ranges left out of the automatic y range (substrate bands that would flatten the rest); clipped at the frame */
+  yIgnore?: readonly (readonly [number, number])[]
   includeZero?: boolean
   logY?: boolean
   /** an agreement line at y = 0 (differences, loadings) */
@@ -106,6 +108,7 @@ export function SpectrumPlot({
   minWidth?: number
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  const clipId = `spec-clip-${useId().replace(/[^\w-]/g, '')}`
   const { width: measured } = useDimensions(ref)
   const tip = useTooltip(ref)
   const [localHover, setLocalHover] = useState<string | null>(null)
@@ -132,8 +135,9 @@ export function SpectrumPlot({
   const yDom = useMemo<[number, number]>(() => {
     if (yDomain) return yDomain
     const vals: number[] = []
+    const ignored = (w: number) => !!yIgnore?.some(([a, b]) => w >= Math.min(a, b) && w <= Math.max(a, b))
     const take = (wn: ArrayLike<number>, v: ArrayLike<number>, step: number) => {
-      for (let i = 0; i < v.length; i += step) if (inWin(wn[i])) { const y = v[i]; if (y != null && Number.isFinite(y) && (!logY || y > 0)) vals.push(y) }
+      for (let i = 0; i < v.length; i += step) if (inWin(wn[i]) && !ignored(wn[i])) { const y = v[i]; if (y != null && Number.isFinite(y) && (!logY || y > 0)) vals.push(y) }
     }
     // many traces: every 4th channel is plenty for a range
     const step = series.filter((s) => s.role === 'trace').length > 50 ? 4 : 1
@@ -143,7 +147,7 @@ export function SpectrumPlot({
     const [lo, hi] = yClip ?? [0, 1]
     return robustDomain(vals, lo, hi, { include: includeZero ? [0] : [], fallback: logY ? [1e-4, 1] : [0, 1] }).domain
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [yDomain, series, bands, hiWn, loWn, yClip, includeZero, logY, pinned])
+  }, [yDomain, series, bands, hiWn, loWn, yClip, yIgnore, includeZero, logY, pinned])
 
   // in a panel group that shares ranges (components/PanelGroup), the y range is the group's
   const gy = useGroupDomain('y', yDomain ? null : yDom)
@@ -211,7 +215,8 @@ export function SpectrumPlot({
           {markers.map((mk, i) => (mk.orient ?? 'v') === 'v'
             ? mk.at <= hiWn && mk.at >= loWn && <Marker key={i} orient="v" at={x(mk.at)} from={0} to={ih} label={mk.label} color={mk.color} labelSide={x(mk.at) > iw * 0.8 ? 'left' : 'right'} />
             : <Marker key={i} orient="h" at={y(mk.at)} from={0} to={iw} label={mk.label} color={mk.color} />)}
-          <g pointerEvents="none">
+          <clipPath id={clipId}><rect width={iw} height={ih} /></clipPath>
+          <g pointerEvents="none" clipPath={`url(#${clipId})`}>
             {bands.map((b) => <path key={b.id} d={area(b)} fill={b.color} fillOpacity={(b.opacity ?? TRACE.bandOpacity) * op(b.group)} />)}
             {traces.map((s) => <path key={s.id} d={line(s.wn, s.y)} fill="none" stroke={s.color}
               strokeOpacity={(s.opacity ?? 0.18) * op(s.group)} strokeWidth={s.width ?? 0.8} strokeDasharray={s.dash} />)}

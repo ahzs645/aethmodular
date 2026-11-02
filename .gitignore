@@ -220,6 +220,7 @@ deliverables/**/.chart-data-*/
 # history (the similarity .bin traces alone are ~30 MB) and it carries per-filter
 # predictions; see gallery/README.md "Running it" for the export commands.
 gallery/app/public/data/baseline_*
+gallery/app/public/data/pilot_*
 gallery/app/public/data/meeting/
 gallery/app/public/data/similarity/
 gallery/app/public/data/spec_curve.json

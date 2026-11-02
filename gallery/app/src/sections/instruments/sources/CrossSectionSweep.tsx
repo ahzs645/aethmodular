@@ -40,8 +40,6 @@ export function CrossSectionSweep({ daily, pair, regions }: { daily: DailySite[]
           `${c}: ${pct(s.shares[c])} of ${s.n} bins`, `median AAE ${f2(s.median)}`] }
       }) }))
   }, [site, steps, pair, regions]) // eslint-disable-line react-hooks/exhaustive-deps
-  const atOwn = series.find((s) => s.id === 'Biomass')?.points.find((q) => Math.abs((q.x as number) - own) < 1e-4)?.y
-  const atOne = series.find((s) => s.id === 'Biomass')?.points.find((q) => q.x === 1)?.y
   return (
     <ChartFrame id="aeth-sources-cross-section"
       title={`What the cross-section does to the classes — share of daily bins per class against the ${p.short}/${p.long} cross-section ratio`}
@@ -53,7 +51,6 @@ export function CrossSectionSweep({ daily, pair, regions }: { daily: DailySite[]
           xMarkers={[{ at: 1, label: 'BCc (notebooks)' }, { at: own, label: `MA350 ${f2(own)}`, labelSide: 'left' }]}
           chosen={macs.map((m) => ({ series: 'Biomass', x: +m.ratio.toFixed(4) }))} />
         <Key items={[...CLASSES.map((c) => ({ label: c, color: CLASS_COLOR[c], kind: 'line' as const })), ...(macs.length ? [{ label: 'addis_01 MAC pairs', color: CLASS_COLOR.Biomass, kind: 'hollow' as const }] : [])]} />
-        {atOwn != null && atOne != null && <p className="chart-note">{site.name}: biomass {Math.round(atOne)} % of bins from BCc against {Math.round(atOwn)} % from absorption.</p>}
       </>}
     </ChartFrame>
   )

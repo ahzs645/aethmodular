@@ -3,6 +3,7 @@ import { Note, Segmented, Select } from '@/components/ChartFrame'
 import { ExportState } from '@/components/ExportState'
 import { SidebarControls } from '@/lib/pageSidebar'
 import { useSearchParam } from '@/lib/url'
+import { usePrefs } from '@/lib/prefs'
 import { useSiteMode } from '@/lib/siteFocus'
 import { SiteModeHead } from '@/components/SiteModeHead'
 import type { SectionPageProps } from '../../types'
@@ -49,6 +50,7 @@ const SPANS: Span[] = ['filters', 'record']
  */
 export function Overview({ rows: allRows, meta }: SectionPageProps) {
   const instruments = useInstruments(meta)
+  const { explain } = usePrefs()
   const [screen, setScreen] = useSearchParam<Screen>('aeoscr', 'neg', SCREENS)
   const [span, setSpan] = useSearchParam<Span>('aeospan', 'filters', SPANS)
   const [channel, setChannel] = useSearchParam<Channel>('aeoch', 'IR', CHANNELS)
@@ -96,7 +98,7 @@ export function Overview({ rows: allRows, meta }: SectionPageProps) {
   const status = <>
     {loading && <Note>Loading the daily files…</Note>}
     {failed.length > 0 && <Note>No daily file could be read for {failed.join(', ')}.</Note>}
-    {dropped > 0 && <Note>The screen dropped {dropped} daily channel values in this view (negative{screen === '3sd' ? ' or above mean + 3 SD' : ''}).{series.some((x) => x.inst.siteCode === 'ETAD') ? " At Addis the legacy files' UV channel goes negative on many days and spikes to hundreds of µg/m³ on others: read UV there with care (the addis_02 screen removes the worst)." : ''}</Note>}
+    {explain && dropped > 0 && <Note>The screen dropped {dropped} daily channel values in this view (negative{screen === '3sd' ? ' or above mean + 3 SD' : ''}).{series.some((x) => x.inst.siteCode === 'ETAD') ? " At Addis the legacy files' UV channel goes negative on many days and spikes to hundreds of µg/m³ on others: read UV there with care (the addis_02 screen removes the worst)." : ''}</Note>}
   </>
 
   // the hourly part: a heading, then what the record allows
@@ -148,11 +150,7 @@ export function Overview({ rows: allRows, meta }: SectionPageProps) {
 
   return (
     <>
-      <SiteModeHead mode={mode} panel="Filters" title={`The aethalometers · ${sites.length} sites compared`} controls={controls}>
-        The MA350 daily records at the sites in view ({atSite.length} daily files: at Addis also the Jacros file, a longer record of the same MA350-0238), each on its own
-        season calendar. Click a site in the table (or choose One site under Page › analysis) for its
-        wavelengths, months, weekdays, filters and hours. The analysis charts use each site's filter-era file.
-      </SiteModeHead>
+      {controls}
       {status}
       <SiteTable series={series} meta={meta} screen={screen} onSite={mode.open} />
       <SitesTimeline series={series} meta={meta} screen={screen} channel={channel} setChannel={setChannel} />

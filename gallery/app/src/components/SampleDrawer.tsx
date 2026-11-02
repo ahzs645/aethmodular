@@ -26,14 +26,14 @@ import { RecordSection } from '@/components/RecordDrawer'
 import { FilterSpectrum } from '@/components/FilterSpectrum'
 import { HipsReadings } from '@/components/NativeFilterMeasurements'
 import { NO_PMF, PMF_SOURCE, pmfShareField } from '@/lib/pmfGroups'
-import { placements, quantilePlacements, stripPosition, ratioPlacement, ratioReference, isFiniteNumber, type Placement, type ReferenceRow } from '@/lib/referencePopulation'
+import { placements, quantilePlacements, ratioPlacement, ratioReference, isFiniteNumber, type Placement, type ReferenceRow } from '@/lib/referencePopulation'
 import { DrawerShell, DrawerScroll } from '@/components/DrawerShell'
 import { XIcon } from '@/components/Icons'
+import { PlacementRow } from '@/components/PlacementRow'
+import { PilotSection } from '@/components/PilotSection'
 import { namedColor, siteCodeColor } from '@/lib/siteColours'
 
 
-/** English ordinal suffix: 1st, 2nd, 3rd, 11th, 51st. */
-const ordinal = (n: number) => (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th')
 
 /** Ratios worth reading off a single filter. Each is a pair of field names. */
 const RATIOS: { label: string; num: string; den: string; why: string }[] = [
@@ -75,7 +75,10 @@ export function SampleDrawer({
   context,
   exclusion,
   seasonOf,
+  enter = true,
 }: {
+  /** false: it replaces a lookup's placeholder drawer (App openRecord), so it appears in place instead of sliding in again */
+  enter?: boolean
   /** the gallery's season of a filter (App seasonOf), so the reference's filters are grouped as the charts' are */
   seasonOf?: SeasonOf
   /** whether the charts draw this filter: left out by the data export (or put back), excluded by hand, or in */
@@ -164,23 +167,8 @@ export function SampleDrawer({
   const partialHere = [...ref.partial].filter(([f]) => isNum(row[f]))
 
   // one measurement (or ratio) against the reference: value, range strip with IQR and median, percentile
-  const placeRow = (key: string, label: string, p: Placement, unit: string, hot = false, title?: string) => {
-    const s = (value: number) => stripPosition(value, p)
-    const outside = p.v < p.min ? 'below' : p.v > p.max ? 'above' : null
-    return (
-      <tr key={key} className={hot ? 'hot' : ''}>
-        <td className="f" title={title}>{label}</td>
-        <td className="v">{fmt(p.v, 3)} <span className="u">{unit}</span></td>
-        <td className="strip" title={`${referenceLabel}: min ${fmt(p.min, 2)} · q1 ${fmt(p.q1, 2)} · median ${fmt(p.med, 2)} · q3 ${fmt(p.q3, 2)} · max ${fmt(p.max, 2)} · n=${p.n}${outside ? ` · filter is ${outside} the reference range; dot shown at the edge` : ''}`}>
-          <span className="track" />
-          <span className="iqr" style={{ left: `${s(p.q1)}%`, width: `${Math.max(1, s(p.q3) - s(p.q1))}%` }} />
-          <span className="med" style={{ left: `${s(p.med)}%` }} />
-          <span className={`dot${outside ? ' outside' : ''}`} data-outside-range={outside ?? undefined} style={{ left: `${s(p.v)}%`, background: site?.color ?? INK.text }} />
-        </td>
-        <td className="pct">{fmt(p.pct, 0)}<span className="u">{ordinal(Math.round(p.pct))}</span>{outside && <span className="u" style={{ display: 'block' }}>{outside} range</span>}</td>
-      </tr>
-    )
-  }
+  const placeRow = (key: string, label: string, p: Placement, unit: string, hot = false, title?: string) =>
+    <PlacementRow key={key} label={label} p={p} unit={unit} hot={hot} title={title} color={site?.color} referenceLabel={referenceLabel} />
 
   // ---- mini crossplot
   // the crossplot's grouping, as on the gallery's crossplots (components/GroupingDialog): bands of a measurement,
@@ -235,7 +223,7 @@ export function SampleDrawer({
   }
 
   return (
-    <DrawerShell label={`Sample ${row.id}`} onClose={onClose}>
+    <DrawerShell label={`Sample ${row.id}`} onClose={onClose} enter={enter}>
       <header className="drawer-head">
         <div>
           <div className="drawer-id">
@@ -265,6 +253,9 @@ export function SampleDrawer({
       </div>
 
       {context && <RecordSection rec={context} />}
+
+      {/* an Ethiopia pilot filter (Bishoftu) also has the frozen external pilot's values (lib/pilotFilters) */}
+      <PilotSection id={row.id} row={row} color={site?.color} />
 
       {/* Addis filters resolve to their similarity trace via etad_ids.json; nothing renders without one */}
       <FilterSpectrum id={row.id} />
@@ -357,7 +348,7 @@ export function SampleDrawer({
             <DrawerScroll label="Filter reference crossplot"><svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', height: 'auto' }}>
               <g transform="translate(12,6)">{summary.node}</g>
               <g className="regression-plot" transform={`translate(${m.left},${top})`}>
-                <YAxis scale={ys} x={0} label={withUnit(cy, meta.field_units)} gridWidth={iw} tickCount={5} labelX={-48} pick="y" />
+                <YAxis scale={ys} x={0} label={withUnit(cy, meta.field_units)} gridWidth={iw} tickCount={5} pick="y" />
                 <XAxis scale={xs} y={ih} label={withUnit(cx, meta.field_units)} tickCount={5} pick="x" />
                 <AxisSwap x={-38} y={ih + 29} />
                 {cross.pool.map((p) => (

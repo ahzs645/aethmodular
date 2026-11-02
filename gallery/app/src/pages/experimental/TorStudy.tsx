@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useColourScheme } from '@/lib/colourSchemes'
 import * as d3 from 'd3'
 import { MapLineLayer, MapMarker, MarkerContent, type LngLatPoint } from '@pgmaps/geo-toolkit/map'
@@ -26,6 +26,8 @@ import { Forest, Scatter, num, placeLabels, rowsOf, runLine, sourceOf, useCounte
 import { ExcludedNote, FixedSetNote, useCountedFilter, useMarkReason } from '@/lib/markedRows'
 import { crossPath, markTip } from '@/lib/exclusionMode'
 import { FindingsList } from '@/components/Findings'
+import { DrawerShell } from '@/components/DrawerShell'
+import { XIcon } from '@/components/Icons'
 
 /**
  * Adama TOR study (experiments_20261022.ipynb §8): the five Adama quartz/PTFE pilot pairs against IMPROVE
@@ -548,9 +550,12 @@ function NetworkScatter({ d }: { d: TorData }) {
   // the run's site medians; a site that loses filters to Filters → excluded is recomputed from the ones that count
   const { network, nOut } = useNetwork(d)
   const rows = [...network].sort((a, b) => order.indexOf(a.population) - order.indexOf(b.population)).filter((r) => lg.show(r.population))
+  // a site median is not a filter: a click opens this chart's own site drawer
+  const [openKey, setOpenKey] = useState<string | null>(null)
+  const site = network.find((r) => `${r.population}${r.site}` === openKey)
   const pts = rows.map((r) => {
     const big = r.population === 'SPARTAN Addis' || r.population === 'Adama pilot (TOR)'
-    return { x: r[SITE_KEY[xk]] as number, y: r[SITE_KEY[yk]] as number, key: `${r.population}${r.site}`, color: POP_COLOR[r.population] ?? INK.accent,
+    return { x: r[SITE_KEY[xk]] as number, y: r[SITE_KEY[yk]] as number, key: `${r.population}${r.site}`, color: POP_COLOR[r.population] ?? INK.accent, open: () => setOpenKey(`${r.population}${r.site}`),
       r: big ? 8 : r.population === 'IMPROVE (TOR)' ? 2.5 + Math.sqrt(r.filters) / 4 : 4.5, hollow: r.population === 'IMPROVE (TOR)' && r.urban,
       tip: [`${r.name} (${r.site})`, POP_LABEL[r.population], `${r.filters} filters`, `${X.label}: ${f2(r[SITE_KEY[xk]])} ${X.unit}`, `${Y.label}: ${f2(r[SITE_KEY[yk]])} ${Y.unit}`, ...(r.urban ? ['urban IMPROVE site'] : [])] }
   })
@@ -581,7 +586,34 @@ function NetworkScatter({ d }: { d: TorData }) {
       </AxisChoices>
       <Legend {...lg.props} items={order.map((p) => ({ label: POP_LABEL[p], color: POP_COLOR[p] }))} note="click to show or hide" />
       <ExcludedNote count={nOut} />
+      {site && <SiteDrawer site={site} network={network} onClose={() => setOpenKey(null)} />}
     </ChartFrame>
+  )
+}
+
+/** One site median from "Sites compared": its medians on every axis, and where each sits among the IMPROVE sites' medians. */
+function SiteDrawer({ site, network, onClose }: { site: NetRow; network: NetRow[]; onClose: () => void }) {
+  const improve = network.filter((r) => r.population === 'IMPROVE (TOR)' && r !== site)
+  const among = (k: keyof NetRow, v: number) => {
+    const vals = improve.map((r) => r[k] as number).filter((z) => Number.isFinite(z))
+    if (!vals.length) return '—'
+    const below = vals.filter((z) => z < v).length
+    return below === vals.length ? `above all ${vals.length}` : below === 0 ? `below all ${vals.length}` : `${nth((100 * below) / vals.length)} of ${vals.length}`
+  }
+  return (
+    <DrawerShell portal label={`${site.name} (${site.site}) · ${POP_LABEL[site.population]}`} onClose={onClose}>
+      <header className="drawer-head"><div>
+        <div className="drawer-id"><span className="swatch" style={{ background: POP_COLOR[site.population] }} />{site.name}</div>
+        <div className="drawer-sub">{site.site} · {POP_LABEL[site.population]}{site.urban ? ' · urban IMPROVE site' : ''}</div>
+      </div><button type="button" className="btn quiet x-btn" aria-label="Close site details" onClick={onClose}><XIcon /></button></header>
+      <section className="drawer-section"><h3>Site medians over {site.filters} filter{site.filters === 1 ? '' : 's'}</h3>
+        <table className="placement"><thead><tr><th></th><th>Median</th><th>Percentile among IMPROVE sites</th></tr></thead><tbody>
+          {SITE_AXES.map((k) => { const v = site[SITE_KEY[k]] as number | null, ok = v != null && Number.isFinite(v)
+            return <tr key={k}><th>{AXIS_INFO[k].label} ({AXIS_INFO[k].unit})</th><td>{ok ? f2(v) : '—'}</td><td>{ok ? among(SITE_KEY[k], v) : '—'}</td></tr> })}
+        </tbody></table>
+        <p className="chart-note" style={{ display: 'block' }}>Percentile: the share of the other IMPROVE calibration sites whose median is lower.{site.population.startsWith('SPARTAN') ? ' SPARTAN EC is FTIR, not TOR.' : ''}{site.population === 'Adama pilot (TOR)' ? ' Adama has no weighed PM2.5.' : ''}</p>
+      </section>
+    </DrawerShell>
   )
 }
 
@@ -627,8 +659,15 @@ function PilotPairs({ d }: { d: TorData }) {
   const [model, setModel] = useSearchParam<string>('xd-pilot.model', 'frozen AIRSpec', models)
   const [refk, setRefk] = useSearchParam<'ECTR' | 'ECTT'>('xd-pilot.ref', 'ECTR', ['ECTR', 'ECTT'])
   const key = model === 'this notebook' ? thisCol : col[model]
-  const pts = d.adama_pairs.map((p) => ({ x: num(p[refk === 'ECTR' ? 'ec_tr_ugm3' : 'ec_tt_ugm3']), y: num(p[key]), color: ADAMA, hollow: !!p.flag,
-    tip: [`Adama ${p.ptfe_id} / quartz ${p.quartz_id}`, String(p.date), `${refk} ${f2(p[refk === 'ECTR' ? 'ec_tr_ugm3' : 'ec_tt_ugm3'])} µg/m³ · FTIR ${f2(p[key])} µg/m³`, `distance percentile ${Math.round(num(p['distance percentile']))}`, p.flag ? `flag: ${p.flag}` : 'unflagged'] }))
+  // each pair is its PTFE filter (the id the loading plane's Adama dots carry), so hover and pin link the two charts
+  // and a click opens the pair's record
+  const pts = d.adama_pairs.map((p) => ({ x: num(p[refk === 'ECTR' ? 'ec_tr_ugm3' : 'ec_tt_ugm3']), y: num(p[key]), color: ADAMA, hollow: !!p.flag, id: String(p.ptfe_id),
+    tip: [`Adama ${p.ptfe_id} / quartz ${p.quartz_id}`, String(p.date), `${refk} ${f2(p[refk === 'ECTR' ? 'ec_tr_ugm3' : 'ec_tt_ugm3'])} µg/m³ · FTIR ${f2(p[key])} µg/m³`, `distance percentile ${Math.round(num(p['distance percentile']))}`, p.flag ? `flag: ${p.flag}` : 'unflagged'],
+    rec: { id: String(p.ptfe_id), source: 'Adama TOR study · pilot pairs', site: 'ADAMA', date: String(p.date), note: 'A date-candidate pair: the quartz/PTFE identity and sampler equivalence are unconfirmed.',
+      fields: [['quartz filter', p.quartz_id], ['flag', p.flag || 'none'], ['TOR EC, ECTR (µg/m³)', p.ec_tr_ugm3], ['TOR EC, ECTT (µg/m³)', p.ec_tt_ugm3], ['TOR OC, ECTR (µg/m³)', p.oc_tr_ugm3],
+        ['FTIR EC, frozen AIRSpec (µg/m³)', p.airspec_frozen_ugm3], ['FTIR EC, frozen VIBES (µg/m³)', p.vibes_frozen_ugm3], ...(thisCol ? [[`${thisCol} (µg/m³)`, p[thisCol]] as [string, number]] : []),
+        ['PTFE volume (m³)', p.volume_m3], ['quartz volume (m³)', p.quartz_volume_m3], ['volume ratio (PTFE ÷ quartz)', p.volume_ratio], ['deposit area (cm²)', p.deposit_area_cm2],
+        ['distance percentile', p['distance percentile']], ['device', p.device], ['sample', p.sample_id]] as [string, string | number | null][] } }))
   return (
     <ChartFrame id="xd-pilot" source={source('PilotPairs')} provenance={runLine(d)}
       title="The Adama pilot pairs — FTIR against TOR, with the draft tolerance"

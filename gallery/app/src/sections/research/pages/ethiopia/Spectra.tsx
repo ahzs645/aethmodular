@@ -36,6 +36,22 @@ const WINDOWS = [
   { value: 'fingerprint', label: '1900–1000 cm⁻¹', window: [1900, 1000] as [number, number] },
 ]
 const windowOf = (v: unknown) => WINDOWS.find((w) => w.value === v)?.window
+// PTFE in the 2nd derivative: the CF doublet with its shoulders, and the CF₂ wag/rock bands below 700 cm⁻¹; 20–50× the aerosol bands
+const PTFE_D2: [number, number][] = [[1100, 1300], [500, 700]]
+const D2_BANDS: SpectrumAnnotation[] = [
+  ...BANDS01.slice(1),
+  { lo: 1100, hi: 1300, label: 'CF (PTFE)', fill: ARTIFACT }, { lo: 500, hi: 700, label: 'CF₂ (PTFE)', fill: ARTIFACT },
+]
+/** the largest |y| between two wavenumbers (inside an optional visible window) */
+const peakIn = (wn: number[], y: number[], lo: number, hi: number, win?: [number, number]) => {
+  let m = 0
+  for (let i = 0; i < wn.length; i++) {
+    const v = wn[i]
+    if (v < lo || v > hi || (win && (v > Math.max(...win) || v < Math.min(...win)))) continue
+    if (Number.isFinite(y[i])) m = Math.max(m, Math.abs(y[i]))
+  }
+  return m
+}
 
 export function SpectraMissing({ data }: { data: SpectralExport }) {
   return <ChartFrame id="ethiopia-spectra" title="The ETAD, Adama and training spectra (June 01, 04, 06, 13)" exportable={false}
@@ -185,6 +201,7 @@ export function DerivativeSpectra({ data }: { data: SpectralExport }) {
   const o = useChartOptions('ethiopia-derivative', [
     { key: 'w', label: 'Savitzky–Golay window', default: '11', choices: ['5', '7', '11', '15', '21'].map((v) => ({ value: v, label: v === '11' ? '11 (06, Weakley)' : v })) },
     { key: 'win', label: 'Range', default: 'full', choices: WINDOWS.map(({ value, label }) => ({ value, label })) },
+    { key: 'y', label: 'Derivative scale', default: 'aerosol', choices: [{ value: 'aerosol', label: 'Aerosol bands (PTFE off scale)' }, { value: 'all', label: 'Everything' }] },
   ])
   const lg = useLegend()
   const wn = useMemo(() => means.map((r) => num(r.wavenumber) ?? NaN), [means])
@@ -193,14 +210,20 @@ export function DerivativeSpectra({ data }: { data: SpectralExport }) {
   const curves = useMemo(() => sets.map((s) => { const raw = col(means, s.key); return { ...s, raw, d2: savgol(raw, w, 2, 2) } }), [means, w]) // eslint-disable-line react-hooks/exhaustive-deps
   const shown = curves.filter((c) => lg.show(c.label))
   const line = (c: (typeof curves)[number], y: number[]): SpectrumSeries => ({ id: c.key, label: c.label, group: c.label, wn, y, color: c.color, role: 'line', width: 1 })
-  const annotations = [...BANDS01.slice(1), BANDS01[0]]
+  const annotations = D2_BANDS
+  const win = windowOf(o.values.win), aerosolScale = o.values.y !== 'all'
+  const ptfePeak = Math.max(0, ...shown.flatMap((c) => PTFE_D2.map(([lo, hi]) => peakIn(wn, c.d2, lo, hi, win))))
+  // ETAD ÷ training peak |2nd derivative| per band: the substrate lines up, the organics do not
+  const ratio = (lo: number, hi: number) => { const [t, e] = curves.map((c) => peakIn(wn, c.d2, lo, hi)); return t > 0 ? e / t : NaN }
+  const [rCH, rCO, rCF] = [ratio(2800, 3000), ratio(1650, 1750), ratio(1100, 1300)]
   return <ChartFrame id="ethiopia-derivative" title="The 2nd derivative strips the sloping PTFE baseline and sharpens the bands — why it needs fewer components"
-    subtitle={`June 06 [21] (Weakley's preprocessing): the mean raw spectrum of the 906-filter calibration set and its mean Savitzky–Golay 2nd derivative (polynomial order 2, window ${w} channels of about 1.29 cm⁻¹). The derivative is linear, so the mean of the derivatives is the derivative of the mean, taken here in the browser exactly as scipy does (edges by polynomial fit; per channel², as 06 left delta at 1). The ETAD mean (not in 06) is drawn on the same grid: the raw level differs by loading and lot, while the derivative bands line up. The RMSECV comparison of raw and 2nd-derivative calibrations (06 [19], 09 [9]) needs the curves only the notebooks drew; their component picks are on Machine learning → June 2026 variants.`}
+    subtitle={`June 06 [21] (Weakley's preprocessing): the mean raw spectrum of the 906-filter calibration set and its mean Savitzky–Golay 2nd derivative (polynomial order 2, window ${w} channels of about 1.29 cm⁻¹). The derivative is linear, so the mean of the derivatives is the derivative of the mean, taken here in the browser exactly as scipy does (edges by polynomial fit; per channel², as 06 left delta at 1). The ETAD mean (not in 06) is drawn on the same grid: the raw level differs by loading and lot. In the derivative the PTFE bands line up (ETAD's CF peak is ${f2(rCF)}× the training set's), but ETAD's CH and C=O peaks are only ${f2(rCH)}× and ${f2(rCO)}× theirs. The PTFE bands are 20–50× the aerosol bands, so by default the derivative's y axis is scaled to the rest and the PTFE peaks run off it; "Everything" shows them whole. The OH band is too broad to survive a 2nd derivative. The RMSECV comparison of raw and 2nd-derivative calibrations (06 [19], 09 [9]) needs the curves only the notebooks drew; their component picks are on Machine learning → June 2026 variants.`}
     controls={o.controls()} provenance={provenance(data, ['spectra_means'], 'research/ftir_ec_calibration_2026_06_25/06_calibration_variants_components.ipynb fig06_second_derivative_spectra.')}>
     <Grid min={420}>
-      <SpectrumPlot title="Mean raw spectrum" series={shown.map((c) => line(c, c.raw))} window={windowOf(o.values.win)} annotations={annotations} hover="readout" dim={lg.dim} height={260} />
-      <SpectrumPlot title={`Mean 2nd derivative (window ${w})`} series={shown.map((c) => line(c, c.d2))} window={windowOf(o.values.win)} annotations={annotations} hover="readout" dim={lg.dim} height={260}
-        zeroLine yLabel="2nd derivative (per channel²)" yClip={[0.005, 0.995]} yFormat={(v) => (v === 0 ? '0' : v.toExponential(0))} readoutFormat={(v) => v.toExponential(2)} />
+      <SpectrumPlot title="Mean raw spectrum" series={shown.map((c) => line(c, c.raw))} window={win} annotations={annotations} hover="readout" dim={lg.dim} height={260} />
+      <SpectrumPlot title={`Mean 2nd derivative (window ${w})${aerosolScale && ptfePeak > 0 ? ` · PTFE off scale, peaks to ±${ptfePeak.toExponential(1)}` : ''}`}
+        series={shown.map((c) => line(c, c.d2))} window={win} annotations={annotations} hover="readout" dim={lg.dim} height={260}
+        zeroLine yLabel="2nd derivative (per channel²)" yIgnore={aerosolScale ? PTFE_D2 : undefined} yFormat={(v) => (v === 0 ? '0' : v.toExponential(0))} readoutFormat={(v) => v.toExponential(2)} />
     </Grid>
     <Legend {...lg.props} items={sets.map((s) => ({ label: s.label, color: s.color, shape: 'line' as const }))} />
     <FixedSetNote what="the mean spectra of the notebook's 906 training filters and 319 ETAD spectra" />

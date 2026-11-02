@@ -4,6 +4,7 @@ import type { FilterRecord } from '@/lib/highlight'
 import { FilterSpectrum } from '@/components/FilterSpectrum'
 import { DrawerShell } from '@/components/DrawerShell'
 import { XIcon } from '@/components/Icons'
+import { loadSpartanIndex } from '@/lib/spartan'
 
 /** A value as a drawer cell: numbers to 3 decimals, missing as an em dash. */
 const cell = (v: FilterRecord['fields'][number][1]) =>
@@ -30,17 +31,18 @@ export function RecordSection({ rec }: { rec: FilterRecord }) {
 }
 
 /**
- * The drawer for a filter the gallery's exports do not carry: Bishoftu, the Adama
- * quartz campaign, and the few IMPROVE spectral samples with no IMPROVE network row
- * (the rest open the full sample drawer once App finds their row, lib/improveRecord). It shows what
+ * The drawer for a filter no filter-level export carries (a quartz filter, the few IMPROVE spectral
+ * samples with no network row), and the placeholder while App looks a filter up (lib/linkRecord):
+ * a SPARTAN or IMPROVE network row then opens the full sample drawer, an Adama pilot filter the
+ * pilot drawer, each in this drawer's place. It shows what
  * the clicked chart knows, in the same side panel as the full sample drawer,
  * so every single-filter mark in the app opens the same way.
  */
 export function RecordDrawer({ rec, onClose, lookup }: {
   rec: FilterRecord
   onClose: () => void
-  /** an IMPROVE filter being looked up in the IMPROVE network export (App openRecord), or not found there */
-  lookup?: { status: 'loading' } | { status: 'missing'; reason: string } | null
+  /** a filter being looked up in the export that would carry it (App openRecord, lib/linkRecord), or not found there */
+  lookup?: { status: 'loading'; target: string } | { status: 'missing'; reason: string; target: string } | null
 }) {
   const [copied, setCopied] = useState(false)
   useEffect(() => {
@@ -48,6 +50,18 @@ export function RecordDrawer({ rec, onClose, lookup }: {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+  // a chart often knows only the SPARTAN site code; name it as the sample drawer does, "Name (CODE)"
+  const [siteLabel, setSiteLabel] = useState(rec.site)
+  useEffect(() => {
+    setSiteLabel(rec.site)
+    if (!rec.site) return
+    let live = true
+    loadSpartanIndex().then((index) => {
+      const s = index.sites.find((x) => x.code === rec.site || x.name === rec.site)
+      if (live && s) setSiteLabel(`${s.name} (${s.code})`)
+    }, () => {})
+    return () => { live = false }
+  }, [rec.site])
   const copy = () => navigator.clipboard?.writeText(rec.id).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) })
 
   return (
@@ -55,15 +69,14 @@ export function RecordDrawer({ rec, onClose, lookup }: {
       <header className="drawer-head">
         <div>
           <div className="drawer-id">{rec.id}</div>
-          <div className="drawer-sub">{[rec.site, rec.date].filter(Boolean).join(' · ')}</div>
+          <div className="drawer-sub">{[siteLabel, rec.date].filter(Boolean).join(' · ')}</div>
         </div>
         <button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close" title="Close (Esc)"><XIcon /></button>
       </header>
       <div className="drawer-actions">
-        <span className="u">{lookup?.status === 'loading' ? 'Looking for this filter in the IMPROVE network export…'
-          : lookup?.status === 'missing' ? `Not in the IMPROVE network export (${lookup.reason}), so only this chart's values are shown.`
-          : rec.id.startsWith('improve:') ? 'Not in the IMPROVE network export, so only this chart\'s values are shown.'
-          : 'Not in the SPARTAN filter export, so only this chart\'s values are shown.'}</span>
+        <span className="u">{lookup?.status === 'loading' ? `Looking for this filter in ${lookup.target}…`
+          : lookup?.status === 'missing' ? `Not found in ${lookup.target} (${lookup.reason}), so only this chart's values are shown.`
+          : 'No filter-level export carries this filter, so only this chart\'s values are shown.'}</span>
         <span style={{ flex: 1 }} />
         <button type="button" className="btn" onClick={copy}>{copied ? 'Copied' : 'Copy ID'}</button>
       </div>

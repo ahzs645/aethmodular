@@ -5,7 +5,7 @@ import { ExcludedNote, useExclusionSplit } from '@/lib/markedRows'
 import type { Row } from '@/lib/table'
 import { provenance, rows as tableRows, type SpectralExport } from '../spectralCommon'
 import { galleryId } from './data'
-import { ecByCalibration, kSummary, medianRatio, ratioOfMedians } from './variants'
+import { ecByCalibration, kSummary, medianRatio, ratioOfMedians, scansOf, type Scan } from './variants'
 
 /**
  * Three June 2026 figures read straight off the per-spectrum ETAD EC the page already loads (variants.ts holds
@@ -25,12 +25,21 @@ export function useEtadSpectra(data: SpectralExport | null) {
   return useMemo(() => ({ all, counted: split.counted, marked: new Set(split.marked.map((f) => galleryId(String(f.ExternalFilterId)))).size }), [all, split])
 }
 
+/**
+ * A tooltip line for a filter scanned more than once (22 of the 296; variants.scansOf): which scan this point is and
+ * where its filter's other scans sit on the same axes. Hover and pin link by filter, so all of them ring together.
+ * Spread into a point's row: a filter scanned once gets no `scan` key and no line (components/Figure tipLine).
+ */
+export const scanTip = (s: Scan | null, x: readonly number[], y: readonly number[]): { scan?: string } =>
+  s ? { scan: `${s.k} of ${s.n}; other ${s.others.length > 1 ? 'scans' : 'scan'} at ${s.others.map((j) => `(${f2(x[j])}, ${f2(y[j])})`).join(', ')}` } : {}
+
 /** each calibration's per-spectrum EC over every spectrum (`all`, for the crossplots) and over those that count */
 export function useEtadEc(data: SpectralExport) {
   const spectra = useEtadSpectra(data)
   return useMemo(() => {
     const index = tableRows(data, 'calibrations')
-    return { all: ecByCalibration(spectra.all, index), counted: ecByCalibration(spectra.counted, index), ids: spectra.all.map((f) => String(f.ExternalFilterId)), marked: spectra.marked }
+    const ids = spectra.all.map((f) => String(f.ExternalFilterId))
+    return { all: ecByCalibration(spectra.all, index), counted: ecByCalibration(spectra.counted, index), ids, scans: scansOf(ids), marked: spectra.marked }
   }, [data, spectra])
 }
 
@@ -41,13 +50,14 @@ export function VariantsVsCal0({ data }: { data: SpectralExport }) {
   const ref = ec.all.get(CAL0) ?? []
   // the median ratios over the spectra that count; the crossplot gets every spectrum
   const ratios = variants.map((v) => ({ v, r: medianRatio(ec.counted.get(v) ?? [], ec.counted.get(CAL0) ?? []) }))
-  const points = useMemo(() => variants.flatMap((v) => (ec.all.get(v) ?? []).map((y, i): Row => ({ variant: v, CAL0: ref[i], EC: y, id: ec.ids[i], ratio: y / ref[i] }))), [ec]) // eslint-disable-line react-hooks/exhaustive-deps
+  const points = useMemo(() => variants.flatMap((v) => { const ys = ec.all.get(v) ?? []
+    return ys.map((y, i): Row => ({ variant: v, CAL0: ref[i], EC: y, id: ec.ids[i], ratio: y / ref[i], ...scanTip(ec.scans[i], ref, ys) })) }), [ec]) // eslint-disable-line react-hooks/exhaustive-deps
   const r = (v: string) => f2(ratios.find((x) => x.v.startsWith(v))?.r)
-  return <Figure kind="crossplot" id="ethiopia-variant-vs-cal0" data={points} x="CAL0" y="EC" idColumn="id" tipColumns={['ratio']} fit={false} maxSide={440}
+  return <Figure kind="crossplot" id="ethiopia-variant-vs-cal0" data={points} x="CAL0" y="EC" idColumn="id" tipColumns={['ratio', 'scan']} fit={false} maxSide={440}
     choose={[{ column: 'variant', label: 'Variant', default: 'CAL-1 cleaned' }]}
     xLabel="CAL-0 (keep everything) ETAD EC (µg/m³)" yLabel="Variant ETAD EC (µg/m³)"
     title={`Paired with CAL-0, the 3σ trim reads every spectrum lower (median ×${r('CAL-1')}) and the below-1:1 set higher (×${r('CAL-3')}); the inverse sets go negative`}
-    subtitle={`June 07 [11]: each variant's EC for an ETAD spectrum against CAL-0's for the same spectrum (k = 20, the 906-filter IMPROVE set), with the 1:1. Median variant / CAL-0, per spectrum that counts: ${ratios.map((x) => `${x.v.split(' ')[0]} ${f2(x.r)}`).join(', ')} (on all 319, Filters → excluded: Include, 07's tracked etad_variant_ratio_vs_cal0.csv to 3 decimals). CAL-2 (the 46 removed filters) and CAL-4 (EC ≥ 70 µg, 22 filters) are diagnostics: too few, too extreme filters to calibrate on, and they predict negative EC. Spectra without a sampling volume have no µg/m³ and are left out.`}
+    subtitle={`June 07 [11]: each variant's EC for an ETAD spectrum against CAL-0's for the same spectrum (k = 20, the 906-filter IMPROVE set), with the 1:1. Median variant / CAL-0, per spectrum that counts: ${ratios.map((x) => `${x.v.split(' ')[0]} ${f2(x.r)}`).join(', ')} (on all 319, Filters → excluded: Include, 07's tracked etad_variant_ratio_vs_cal0.csv to 3 decimals). CAL-2 (the 46 removed filters) and CAL-4 (EC ≥ 70 µg, 22 filters) are diagnostics: too few, too extreme filters to calibrate on, and they predict negative EC. Spectra without a sampling volume have no µg/m³ and are left out. 22 filters were scanned two or three times: a filter's scans ring together on hover or pin, and the tooltip gives the others. They agree closely except ETAD-0139, whose first scan is flat (a failed acquisition, like ETAD-0037's only scan) and reads about 4× low.`}
     provenance={provenance(data, ['per_filter', 'calibrations'], 'research/ftir_ec_calibration_2026_06_25/07_ethiopia_variant_ec.ipynb fig07_etad_variant_vs_cal0.')} />
 }
 
@@ -74,8 +84,8 @@ export function LotsPaired({ data }: { data: SpectralExport }) {
   const a = ec.all.get(LOT251) ?? [], b = ec.all.get(BOTH) ?? []
   // the medians over the spectra that count; the crossplot gets every spectrum
   const effect = ratioOfMedians(ec.counted.get(BOTH) ?? [], ec.counted.get(LOT251) ?? [])
-  const points = a.map((x, i): Row => ({ lot251: x, both: b[i], id: ec.ids[i], ratio: b[i] / x }))
-  return <Figure kind="crossplot" id="ethiopia-lots-paired" data={points} x="lot251" y="both" idColumn="id" tipColumns={['ratio']} fit={false} maxSide={400}
+  const points = a.map((x, i): Row => ({ lot251: x, both: b[i], id: ec.ids[i], ratio: b[i] / x, ...scanTip(ec.scans[i], a, b) }))
+  return <Figure kind="crossplot" id="ethiopia-lots-paired" data={points} x="lot251" y="both" idColumn="id" tipColumns={['ratio', 'scan']} fit={false} maxSide={400}
     xLabel="Lot 251 only, 906 filters, k = 30 (µg/m³)" yLabel="Both lots, 935 filters, k = 30 (µg/m³)"
     title={`Per spectrum, adding the 29 lot-248 filters barely moves the ETAD EC: the median goes ×${f2(effect)} (${signed(100 * (effect - 1), 1)} %)`}
     subtitle="June 10 [12] panel B: each ETAD spectrum's EC from the 2026-07-07 export's lot-251 filters alone (which reproduce the old 906 set exactly) against the same export with the 29 lot-248 filters added, both at k = 30 (the both-lots curve's first major minimum), with the 1:1. Ratio of the medians over the spectra that count (10 printed 1.030 on all 319: Filters → excluded: Include). ETAD spans filter lots 248 and 251; the lot-248+251 mirror of notebooks 12–15 is the bigger step (see the progression above)."

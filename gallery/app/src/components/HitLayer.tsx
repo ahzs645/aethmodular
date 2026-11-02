@@ -11,7 +11,7 @@ import * as d3 from 'd3'
  * The rect is filled transparent, so a click on empty plot reaches the gallery's background click (lib/highlight),
  * which lets go of the pin.
  */
-export function HitLayer<T>({ items, xy, width, height, hit = 18, reach, follow = false, onHover, onLeave, onPick, onMenu }: {
+export function HitLayer<T>({ items, xy, width, height, hit = 18, reach, follow = false, onHover, onLeave, onMiss, onPick, pickable, onMenu }: {
   items: readonly T[]
   /** each item's position in plot pixels, in the same order; memoise it, as the index is rebuilt when it changes */
   xy: readonly (readonly [number, number])[]
@@ -26,7 +26,14 @@ export function HitLayer<T>({ items, xy, width, height, hit = 18, reach, follow 
   onHover: (e: React.MouseEvent<SVGRectElement>, t: T) => void
   /** once, when the pointer leaves the last point */
   onLeave: () => void
+  /**
+   * the pointer is over the plot but near no point (null: it left the plot), for what sits behind the points,
+   * e.g. the cell of a binned density (research/common/density); called on every such move
+   */
+  onMiss?: (e: React.MouseEvent<SVGRectElement> | null) => void
   onPick?: (t: T, e: React.MouseEvent<SVGRectElement>) => void
+  /** whether a click on this item does anything (default: every item, when there is an onPick); only those get the pointer cursor */
+  pickable?: (t: T) => boolean
   onMenu?: (e: React.MouseEvent<SVGRectElement>, t: T) => void
 }) {
   const delaunay = useMemo(() => d3.Delaunay.from(xy, (p) => p[0], (p) => p[1]), [xy])
@@ -43,17 +50,19 @@ export function HitLayer<T>({ items, xy, width, height, hit = 18, reach, follow 
     const was = current.current
     current.current = t
     // the cursor follows the point under it without a re-render
-    e.currentTarget.style.cursor = t !== null && onPick ? 'pointer' : ''
+    e.currentTarget.style.cursor = t !== null && onPick && (pickable?.(t) ?? true) ? 'pointer' : ''
     if (t !== null) { if (t !== was || follow) onHover(e, t) }
     else if (was !== null) onLeave()
   }
+  const miss = (e: React.MouseEvent<SVGRectElement>, t: T | null) => { if (t === null) onMiss?.(e) }
   return (
     <rect width={width} height={height} fill="transparent"
-      onMouseMove={(e) => move(e, nearest(e))}
-      onMouseLeave={(e) => move(e, null)}
+      onMouseMove={(e) => { const t = nearest(e); move(e, t); miss(e, t) }}
+      onMouseLeave={(e) => { move(e, null); onMiss?.(null) }}
       onClick={(e) => {
         const t = nearest(e)
-        if (t !== null && onPick) { e.stopPropagation(); onPick(t, e) }
+        // a point a click does nothing for counts as empty plot, so the background click still lets go of the pin
+        if (t !== null && onPick && (pickable?.(t) ?? true)) { e.stopPropagation(); onPick(t, e) }
         else move(e, null)
       }}
       onContextMenu={(e) => { const t = nearest(e); if (t !== null) onMenu?.(e, t) }}

@@ -27,7 +27,7 @@ import { INK } from '@/lib/theme'
  * The scatter matrix (charts/correlation/Correlogram SplomCell) uses the same three pieces in its own arrangement:
  * its hover marks go on an overlay above thirty panels of dots, so a hover does not repaint them.
  */
-export function ScatterLayer<T>({ items, xy, idOf, dots, width, height, focus, focusR = 6, tip, tipOf, onHover, onLeave, onPick, menu = true,
+export function ScatterLayer<T>({ items, xy, idOf, dots, width, height, focus, focusR = 6, tip, tipOf, onHover, onLeave, onMiss, onPick, pickable, menu = true,
   hit, reach, follow, active = true, marks, markTip, children }: {
   items: readonly T[]
   /** each item's place in plot pixels, in the same order; memoise it (the pointer index is rebuilt when it changes) */
@@ -48,8 +48,12 @@ export function ScatterLayer<T>({ items, xy, idOf, dots, width, height, focus, f
   /** replace the default hover (tooltip + gallery-wide highlight) */
   onHover?: (e: React.MouseEvent<SVGRectElement>, t: T) => void
   onLeave?: () => void
+  /** the pointer is over the plot but near no point or mark (null: it left the plot): components/HitLayer onMiss */
+  onMiss?: (e: React.MouseEvent<SVGRectElement> | null) => void
   /** what a click does; default: open the filter's record, which pins it */
   onPick?: (t: T) => void
+  /** whether a click on an item does anything, for the pointer cursor (default: it stands for a filter, or the chart passes onPick) */
+  pickable?: (t: T) => boolean
   /** right-click a point for the filter menu (default on) */
   menu?: boolean
   /** how far from a point the pointer still picks it, px (HitLayer's default 18) */
@@ -103,6 +107,8 @@ export function ScatterLayer<T>({ items, xy, idOf, dots, width, height, focus, f
             hl.setHover(idOf(t) ?? null)
           }}
           onLeave={() => { if (onLeave) onLeave(); else { tip?.hide(); hl.setHover(null) } if (markTip) markTip.hide() }}
+          onMiss={onMiss}
+          pickable={(t) => t instanceof MarkHit || (pickable ? pickable(t) : !!onPick || !!idOf(t))}
           onPick={(t) => {
             if (t instanceof MarkHit) { hl.openSample(t.m.id); return }
             if (onPick) onPick(t)

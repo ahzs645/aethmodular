@@ -35,14 +35,11 @@ export function AaeDistribution({ rows, meta, daily, pair, basis, regions }: {
   const lg = useLegend()
   const abs = useMemo(() => siteValues(basis, 'absorption', pair, rows, daily, meta), [basis, pair, rows, daily, meta])
   const bcc = useMemo(() => (showBcc ? siteValues(basis, 'BCc', pair, rows, daily, meta) : []), [showBcc, basis, pair, rows, daily, meta])
-  // the notebook's axis (−1 to 3), a little wider; values beyond it are counted under the chart, not drawn
+  // the notebook's axis (−1 to 3), a little wider; values beyond it are counted in the shares, not drawn
   const range: [number, number] = [showBcc ? -2 : -1, 3.5]
   const inRange = (v: number) => v >= range[0] && v <= range[1]
   const d = useMemo(() => densities([...abs.map((s) => ({ key: s.code, values: s.values.filter(inRange) })), ...bcc.map((s) => ({ key: `${s.code}·bcc`, values: s.values.filter(inRange) }))], { bins: 36 }),
     [abs, bcc, range[0]]) // eslint-disable-line react-hooks/exhaustive-deps
-  // an AAE outside 0 to 3 is not ambient absorption (black carbon near 1, brown carbon up to about 3)
-  const odd = abs.map((s) => ({ s, low: s.values.filter((v) => v < 0).length, high: s.values.filter((v) => v > 3).length })).filter((o) => (o.low + o.high) / o.s.values.length > 0.02)
-  const outside = abs.reduce((a, s) => a + s.values.filter((v) => !inRange(v)).length, 0)
   const label = `AAE ${pair}`
   const series: SweepSeries[] = d.series.flatMap((s) => {
     const fromBcc = s.key.endsWith('·bcc'), code = s.key.replace('·bcc', '')
@@ -67,11 +64,6 @@ export function AaeDistribution({ rows, meta, daily, pair, basis, regions }: {
           const c = classShares(s.values, regions)
           return { label: s.name, color: s.color, shape: 'line' as const, detail: `n=${c.n} · median ${f2(c.median)} · ${CLASSES.map((k) => pct(c.shares[k])).join(' / ')}` }
         })} note="detail: fossil / mixed / biomass shares (absorption AAE); click a site to hide it" />
-        {(outside > 0 || odd.length > 0) && <p className="chart-note">
-          {outside > 0 && `${outside} value${outside > 1 ? 's' : ''} outside ${range[0]} to ${range[1]} ${outside > 1 ? 'are' : 'is'} not drawn but counted in the shares. `}
-          {odd.map((o) => `${o.s.name}: ${pct(o.low / o.s.values.length)} of ${unit} below 0 and ${pct(o.high / o.s.values.length)} above 3`).join('; ')}
-          {odd.length > 0 && '. An AAE outside 0 to 3 is not ambient absorption (black carbon sits near 1, brown carbon up to about 3); such bins are more likely noise in a channel than aerosol, and they swell the fossil and biomass shares at both ends. Read those sites’ classes as a spread, not a census.'}
-        </p>}
         {/* Filters → excluded: Mark (lib/markedRows): on the filter windows, the excluded filters with an AAE are in no curve or share; the daily bins are not filters */}
         {basis === 'Filter windows' && <ExcludedNote fields={[AAE_PAIRS[pair].field]} />}
       </>}

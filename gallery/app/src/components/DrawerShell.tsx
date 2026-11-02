@@ -9,10 +9,12 @@ const DISMISS = 90
  * it is the right-hand panel; on a phone the CSS turns it into a bottom sheet over a scrim, with
  * a grip that can be pulled down to close it. The scrim and grip are hidden on wide windows.
  */
-export function DrawerShell({ label, onClose, children, portal = false }: {
+export function DrawerShell({ label, onClose, children, portal = false, enter = true }: {
   label: string; onClose: () => void; children: React.ReactNode
   /** A drawer opened inside a chart floats outside its clipping and single-chart layout. */
   portal?: boolean
+  /** false: the drawer takes the place of one already open (a lookup's placeholder), so it does not slide in again */
+  enter?: boolean
 }) {
   const ref = useRef<HTMLElement>(null)
   const close = useRef(onClose)
@@ -43,8 +45,8 @@ export function DrawerShell({ label, onClose, children, portal = false }: {
     el.style.transform = dy ? `translateY(${dy}px)` : ''
   }
   const body = <>
-    <div className="sheet-scrim" onClick={onClose} aria-hidden />
-    <aside ref={ref} className="drawer" role="dialog" aria-label={label}>
+    <div className={`sheet-scrim${enter ? '' : ' no-enter'}`} onClick={onClose} aria-hidden />
+    <aside ref={ref} className={`drawer${enter ? '' : ' no-enter'}`} role="dialog" aria-label={label}>
       <div className="sheet-grip" aria-hidden
         onPointerDown={(e) => { start.current = e.clientY; try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* a synthetic pointer */ } }}
         onPointerMove={(e) => { if (start.current !== null) pull(Math.max(0, e.clientY - start.current)) }}

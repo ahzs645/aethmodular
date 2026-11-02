@@ -5,11 +5,9 @@
  */
 import { useMemo } from 'react'
 import { loadBinary, loadJson, useDerived, useExport } from '@/lib/data'
-import { ExcludedNote, useCountedFilter, useExclStatus, useMarkedRows } from '@/lib/markedRows'
-import { seasonOfDate } from '@/lib/seasons'
+import { ExcludedNote, useCountedFilter, useExclStatus, useMarkedRows, usePlaceFilter } from '@/lib/markedRows'
 import type { FilterRow, FiltersFile, MetaFile } from '@/lib/types'
-import { useSearchParam } from '@/lib/url'
-import { decodeView, MEMBER_SETS, membersOf, NOTEBOOK_SEASONS, type LotExport, type Member, type MemberSet, type ViewKey } from '../../common/lotSpectra'
+import { decodeView, membersOf, NOTEBOOK_SEASONS, notebookSeason, type LotExport, type Member, type ViewKey } from '../../common/lotSpectra'
 import { SERIES } from '../../common/ui'
 import { LOT_COLOR } from '@/lib/theme'
 
@@ -20,9 +18,8 @@ export const NB = 'research/ftir_etad_char/char_12_weakley_transferability.ipynb
 /** the gallery's lot colours (lib/theme LOT_COLOR: 248 and 251 as char_12 draws them); other lots from the page ramp */
 export const lotColor = (lot: number, i = 0) => LOT_COLOR[lot] ?? SERIES[(i + 3) % SERIES.length]
 
-export const SET_LABEL: Record<MemberSet, string> = { view: 'Gallery rows in view', plus: 'In view + no gallery row', notebook: "char_12's 239 (Addis)" }
-export const SET_TITLE = "Which filters: the exported spectra whose gallery row is in view (your sites, seasons, dates and exclusions); those plus, for the sites in view, the PM2.5 spectra the gallery has no row for (sampled after its series ends; seasoned by your calendar, no dates applied); or char_12's own 239 Addis filters with its calendar, which reproduces its tables under Filters → excluded: Include. Filters → excluded acts on every set."
-export const useMemberSet = () => useSearchParam<MemberSet>('ls.set', 'view', MEMBER_SETS)
+/** char_12's calendar among the gallery's (config.season_for_month: February in Dry), for the CohortPreset */
+export const NOTEBOOK_CALENDAR = 'dry_feb'
 
 export function useLotExport() {
   return useExport<LotExport>(`${FOLDER}/lot_spectra.json`, (d) => (d.schema_version === 1 ? null : 'unsupported data version'))
@@ -45,13 +42,15 @@ export interface Lots {
   members: Member[]
   /**
    * Filters → excluded: Mark (lib/markedRows): the exported spectra of the excluded filters (the gallery rows in view
-   * joined as the view set joins its rows, or, in char_12's set and the spectra with no row, by filter id), for the
-   * charts' notes; in no centre, band, box or test.
+   * joined by id, or, for the spectra with no row, by filter id), for the charts' notes; in no centre, band, box or test.
    */
   marked: Member[]
   /** exported spectra of the sites in view with no gallery row */
   unmatched: number
-  set: MemberSet
+  /** char_12's cohort: its size and sampling dates, for the CohortPreset */
+  cohort: { n: number; from: string; to: string }
+  /** the filters shown are char_12's 239 under its calendar (the CohortPreset), so its saved tables compare like for like */
+  notebook: boolean
   /** site code → display name */
   siteName: (code: string) => string
   siteColor: (code: string) => string
@@ -59,26 +58,32 @@ export interface Lots {
   seasons: { name: string; color: string }[]
 }
 
-export function useLots(exp: LotExport | null, rows: FilterRow[], meta: MetaFile, set: MemberSet): Lots | null {
+export function useLots(exp: LotExport | null, rows: FilterRow[], meta: MetaFile): Lots | null {
   const known = useKnownIds()
   const markedRows = useMarkedRows()
   const counts = useCountedFilter()
   const status = useExclStatus()
+  const place = usePlaceFilter()
   return useMemo(() => {
     if (!exp || !known) return null
     const nameOf = new Map([...Object.entries(exp.site_names ?? {}), ...meta.sites.map((s) => [s.code, s.name] as [string, string])])
     for (const r of rows) nameOf.set(r.code, r.site)
     const colorOf = new Map(meta.sites.map((s) => [s.code, s.color]))
     for (const r of rows) colorOf.set(r.code, r.color)
-    const calendarOf = (code: string) => meta.seasons.filter((s) => !s.site || s.site === nameOf.get(code))
-    const joined = membersOf(exp, set, rows, known, (code, date, month) => seasonOfDate(date, month, calendarOf(code))?.name ?? null)
+    // the gallery rows in view, and the spectra of those sites with no gallery row (sampled after the series ends)
+    // where the Samples settings would put a row with their site and date: the same dates, calendar and season chips
+    const joined = membersOf(exp, 'plus', rows, known, (code, date, month) => place(nameOf.get(code) ?? code, code, date, month))
     const { unmatched } = joined
-    // Filters → excluded acts on every set: a member joined to a gallery row in view already counts (the rows are the
-    // counted ones); one without (char_12's set, plus's spectra with no row) counts by its filter id, as on every chart
+    // Filters → excluded: a member joined to a gallery row in view already counts (the rows are the counted ones); a
+    // spectrum with no row counts by its filter id, as on every chart
     const members = joined.members.filter((m) => m.inView || counts(m.id))
     const ownMarked = joined.members.filter((m) => !m.inView && !counts(m.id) && status(m.id) === 'marked')
-    // `plus` adds only spectra with no gallery row at all, so an excluded row is never among its own members
-    const marked = [...(set === 'notebook' || !markedRows.length ? [] : membersOf(exp, 'view', markedRows, known, () => null).members), ...ownMarked]
+    // only spectra with no gallery row at all are added, so an excluded row is never among them
+    const marked = [...(!markedRows.length ? [] : membersOf(exp, 'view', markedRows, known, () => null).members), ...ownMarked]
+    const f = exp.filters
+    const c12 = f.date.filter((_, i) => f.char12[i]).sort()
+    const cohort = { n: c12.length, from: c12[0] ?? '', to: c12[c12.length - 1] ?? '' }
+    const notebook = cohort.n > 0 && members.length === cohort.n && members.every((m) => f.char12[m.i] && m.season === notebookSeason(m.month))
     const first = new Map<string, number>()
     for (const m of members) first.set(m.season, Math.min(first.get(m.season) ?? 99, (m.month + 2) % 12))
     const names = [...first.keys()].sort((a, b) => first.get(a)! - first.get(b)!)
@@ -86,17 +91,17 @@ export function useLots(exp: LotExport | null, rows: FilterRow[], meta: MetaFile
     const seasonColor = (name: string, i: number) => palette.find((s) => s.name === name)?.color
       ?? (NOTEBOOK_SEASONS.some((s) => s.name === name) ? palette.find((s) => s.name.split(' ')[0] === name.split(' ')[0])?.color : undefined) ?? SERIES[i % SERIES.length]
     return {
-      members, marked, unmatched, set,
+      members, marked, unmatched, cohort, notebook,
       siteName: (c: string) => nameOf.get(c) ?? c,
       siteColor: (c: string) => colorOf.get(c) ?? SERIES[0],
       seasons: names.map((name, i) => ({ name, color: seasonColor(name, i) })),
     }
-  }, [exp, known, rows, markedRows, meta, set, counts, status])
+  }, [exp, known, rows, markedRows, meta, counts, status, place])
 }
 
 /**
  * The one exclusion note a lot chart carries: under Mark, how many excluded filters with a spectrum it leaves out
- * (`of` narrows them to what the chart reads), in every set. The charts draw centres, bands and boxes, never a
+ * (`of` narrows them to what the chart reads). The charts draw centres, bands and boxes, never a
  * filter, so nothing is drawn as ×.
  */
 export function LotNote({ lots, of }: { lots: Lots; of?: (m: Member) => boolean }) {

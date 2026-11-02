@@ -116,6 +116,28 @@ and so does the gallery (it counts in every FTIR chart). Its native-beam and ref
 (`data_review/prepared/etad0037_investigation/audit.json`). Keep it until the lab says whether the spectrum or the
 reference is wrong; then exclude it with that reason.
 
+### Drop ETAD-0139's flat scan, and decide how repeat scans count
+
+`ETAD_FTIR_spectra.csv` holds 319 spectra of 296 filters: 22 filters were scanned two or three times under one
+ExternalFilterId and MediaId (only SampleAnalysisId differs). Checked 2 Nov 2026: 21 of those groups agree (scans
+correlate ≥ 0.995, worst max |Δabsorbance| 0.24 at ETAD-0070). ETAD-0139-3 (MediaId 2355) does not. Its first scan,
+SampleAnalysisId 1626, is flat: peak-to-peak 0.0019, against a set median of 0.43 and 0.30 for the next-flattest real
+spectrum. It correlates −0.18 with the second scan (1668), which looks like a normal loaded filter (162 µg). Under
+CAL-0 the flat scan reads 1.09 µg/m³ and the good one 4.74, against HIPS Fabs/10 of 5.09. The only flatter spectrum in
+the file is ETAD-0037-5 (SampleAnalysisId 406, peak-to-peak 0.0001), the item above.
+
+Two decisions, both upstream of the gallery, so the notebooks (07, 09, 10, 12, 15 in
+`research/ftir_ec_calibration_2026_06_25`) and the gallery's checks against their saved numbers stay in sync:
+
+1. Drop SampleAnalysisId 1626 from the ETAD spectra. It is a failed acquisition, not a second opinion on the filter.
+   The ETAD medians move slightly and the saved tables would need regenerating.
+2. Decide how repeat scans weigh. Today every spectrum counts, so these 22 filters count two or three times in every
+   ETAD median, mean and share. Averaging a filter's scans, or keeping one, gives one vote per filter. Because the
+   repeats agree, this matters little once 1626 is gone.
+
+Until then the gallery draws every spectrum. A filter's scans ring together on hover and pin (links are by filter),
+and the tooltip on the three per-spectrum ETAD crossplots names the scan and where the others sit.
+
 ### Include restores only the export's exclusions (decided, 30 Oct 2026)
 
 Filters → excluded: Include brings back the filters the data export excludes, not filters excluded by hand: a hand

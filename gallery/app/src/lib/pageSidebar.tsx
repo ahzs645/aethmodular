@@ -14,17 +14,21 @@ type Reg = { id: string; tab: string }
 type Ctx = {
   node: HTMLElement | null; setNode: (n: HTMLElement | null) => void
   tabNode: HTMLElement | null; setTabNode: (n: HTMLElement | null) => void
+  plotNode: HTMLElement | null; setPlotNode: (n: HTMLElement | null) => void
+  samplesNode: HTMLElement | null; setSamplesNode: (n: HTMLElement | null) => void
   note: string | null; setNote: (n: string | null) => void
   regs: Reg[]; setRegs: (f: (r: Reg[]) => Reg[]) => void
 }
-const Ctx = createContext<Ctx>({ node: null, setNode: () => {}, tabNode: null, setTabNode: () => {}, note: null, setNote: () => {}, regs: [], setRegs: () => {} })
+const Ctx = createContext<Ctx>({ node: null, setNode: () => {}, tabNode: null, setTabNode: () => {}, plotNode: null, setPlotNode: () => {}, samplesNode: null, setSamplesNode: () => {}, note: null, setNote: () => {}, regs: [], setRegs: () => {} })
 
 export function PageSidebarProvider({ children }: { children: ReactNode }) {
   const [node, setNode] = useState<HTMLElement | null>(null)
   const [tabNode, setTabNode] = useState<HTMLElement | null>(null)
+  const [plotNode, setPlotNode] = useState<HTMLElement | null>(null)
+  const [samplesNode, setSamplesNode] = useState<HTMLElement | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [regs, setRegs] = useState<Reg[]>([])
-  return <Ctx.Provider value={{ node, setNode, tabNode, setTabNode, note, setNote, regs, setRegs }}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{ node, setNode, tabNode, setTabNode, plotNode, setPlotNode, samplesNode, setSamplesNode, note, setNote, regs, setRegs }}>{children}</Ctx.Provider>
 }
 
 /** what a page shows on the sidebar's edge tab (SidebarControls `tabNote`), so its setting reads while the sidebar is closed */
@@ -46,6 +50,40 @@ export function PageSidebarSlot() {
 export function PageTabSlot({ hidden }: { hidden: boolean }) {
   const { setTabNode } = useContext(Ctx)
   return <div ref={setTabNode} className="page-sidebar-slot" hidden={hidden} />
+}
+
+/** where the dock's Plot tab takes a page's unit controls (`PlotControls`), under its MAC row (SubsetBar) */
+export function PlotTabSlot() {
+  const { setPlotNode } = useContext(Ctx)
+  return <div ref={setPlotNode} className="page-sidebar-slot" />
+}
+
+/** where the dock's Samples tab takes a page's sample presets (`SampleControls`), under its summary (SubsetBar) */
+export function SamplesTabSlot() {
+  const { setSamplesNode } = useContext(Ctx)
+  return <div ref={setSamplesNode} className="page-sidebar-slot" />
+}
+
+/**
+ * a page's presets for the samples (sites, calendar, dates, exclusions: Samples settings the page knows a
+ * reproduction needs), at the top of the dock's Samples tab. Like PlotControls, they render nothing while that tab
+ * is shut, and in place where there is no dock.
+ */
+export function SampleControls({ children }: { children: ReactNode }) {
+  const { node, tabNode, samplesNode } = useContext(Ctx)
+  if (samplesNode) return createPortal(children, samplesNode)
+  return tabNode || node ? null : <div className="panel">{children}</div>
+}
+
+/**
+ * a page's own unit choice that hangs on the MAC (HIPS as Fabs or as BC = Fabs / MAC), in the dock's Plot tab under
+ * the MAC row instead of the Page tab. The Plot tab draws its options only while open, so while it is shut (and the
+ * slot gone) these render nothing where there is a dock; with no dock at all (an embed) they are drawn in place.
+ */
+export function PlotControls({ children }: { children: ReactNode }) {
+  const { node, tabNode, plotNode } = useContext(Ctx)
+  if (plotNode) return createPortal(children, plotNode)
+  return tabNode || node ? null : <div className="panel">{children}</div>
 }
 
 /**

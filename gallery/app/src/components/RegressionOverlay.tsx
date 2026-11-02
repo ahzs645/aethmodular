@@ -87,8 +87,11 @@ function wrapSummary(text: string, width: number) {
  * the same boxes, stacked on phones and up to two columns on wide panels.
  * The returned height is part of the SVG, so exports keep the exact layout.
  */
-export function useRegressionSummary({ stats, groups, width, enabled = true, panel }: {
+export function useRegressionSummary({ stats, groups, width, maxWidth, enabled = true, panel }: {
   stats: RegressionStats | null; groups?: RegressionGroup[]; width: number; enabled?: boolean
+  /** above the axes, the summary may grow to this width (a square plot in a wider frame) so its boxes sit in one row;
+   *  the returned `width` is what it took, for the caller to widen its SVG */
+  maxWidth?: number
   /** a faceted chart's panel title: in the sidebar card it names whose fit this is, and pointing at it outlines that panel */
   panel?: { title: string; color?: string } | null
 }) {
@@ -132,7 +135,13 @@ export function useRegressionSummary({ stats, groups, width, enabled = true, pan
   const readouts = items.map(group => ({ group, r: readout(group.stats, methods, showCI, group.name, group.color) }))
   // as many columns as the longest readout line allows (lib/facets fitColumns): short group readouts sit side by side
   const longest = Math.max(0, ...readouts.flatMap(({ r }) => r ? r.lines.map(line => line.text.length) : []))
-  const columns = fitColumns(width, Math.ceil(longest * SUMMARY_FONT * 0.62) + 16, readouts.filter(({ r }) => r).length, { gap: SUMMARY_GAP })
+  const need = Math.ceil(longest * SUMMARY_FONT * 0.62) + 16, shown = readouts.filter(({ r }) => r).length
+  // a square plot narrower than its frame: widen the summary toward the frame until its boxes fit one row (at most fitColumns' 4)
+  if (place === 'chart' && maxWidth && maxWidth > width) {
+    const row = Math.min(shown, 4) * (need + SUMMARY_GAP) - SUMMARY_GAP
+    if (row > width) width = Math.min(maxWidth, row)
+  }
+  const columns = fitColumns(width, need, shown, { gap: SUMMARY_GAP })
   const cellWidth = (width - (columns - 1) * SUMMARY_GAP) / columns
   const boxes = readouts.flatMap(({ group, r }) => {
     if (!r) return []
@@ -160,8 +169,8 @@ export function useRegressionSummary({ stats, groups, width, enabled = true, pan
       {box.note && <title>{box.note}</title>}
     </g>)}
   </g> : null
-  if (!node) return { height, node }
-  if (place === 'data') return { height: 0, node: <><g ref={probe} /><g data-export-stats="" display="none">
+  if (!node) return { height, node, width: 0 }
+  if (place === 'data') return { height: 0, width: 0, node: <><g ref={probe} /><g data-export-stats="" display="none">
     {boxes.map((box) => <g key={box.name ?? 'pooled'} data-fit-site={box.name} data-export-color={box.color}>
       {box.raw.map((line, j) => <text key={j} fill={line.color} data-regression-color={line.method} data-line={line.text === box.name ? 'name' : undefined}>{line.text}</text>)}
     </g>)}
@@ -169,20 +178,20 @@ export function useRegressionSummary({ stats, groups, width, enabled = true, pan
   if (slot && place === 'tile') {
     // a tile's ⓘ box or column: one value per line (filters, R², then each line's slope and intercept), not the plot's box
     const outline = (on: boolean) => probe.current?.closest('svg')?.parentElement?.classList.toggle('fit-pointed', on)
-    return { height: 0, node: <><g ref={probe} />{createPortal(<>{items.map((group) => <FitStack key={group.name ?? 'pooled'} stats={group.stats}
+    return { height: 0, width: 0, node: <><g ref={probe} />{createPortal(<>{items.map((group) => <FitStack key={group.name ?? 'pooled'} stats={group.stats}
       methods={methods} showCI={showCI} title={group.name ?? panel?.title} color={group.color ?? panel?.color} onPoint={panel ? outline : undefined} />)}</>, slot)}</> }
   }
   if (slot) {
     const outline = (on: boolean) => probe.current?.closest('svg')?.parentElement?.classList.toggle('fit-pointed', on)
     const side = <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>{node}</svg>
-    return { height: 0, node: <><g ref={probe} />{createPortal(panel
+    return { height: 0, width: 0, node: <><g ref={probe} />{createPortal(panel
       ? <div ref={card} className="regression-summary-side pointable" onMouseEnter={() => outline(true)} onMouseLeave={() => outline(false)}>
           <p className="side-fit-title">{panel.color && <span className="swatch" style={{ background: panel.color }} />}{panel.title}</p>
           {side}
         </div>
       : <div className="regression-summary-side">{side}</div>, slot)}</> }
   }
-  return { height, node: <><g ref={probe} />{node}</> }
+  return { height, width, node: <><g ref={probe} />{node}</> }
 }
 
 /** A fit's statistics stacked one per line, as label and value: a tile's ⓘ box or its column beside the plot. */

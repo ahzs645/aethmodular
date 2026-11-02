@@ -34,7 +34,9 @@ import { MacControl, Row, SideDock, SubsetBar, type SubsetActions, type SubsetCa
 import { ExportSitesProvider } from '@/lib/exportSites'
 import { SampleDrawer } from '@/components/SampleDrawer'
 import { RecordDrawer } from '@/components/RecordDrawer'
-import { linkImproveRecord, type LinkedImprove } from '@/lib/improveRecord'
+import { linkRecord, lookupTarget, type LinkedRows } from '@/lib/linkRecord'
+import type { PilotRecord } from '@/lib/pilotFilters'
+import { PilotDrawer } from '@/components/PilotDrawer'
 import type { DateRange } from '@/components/DateBrush'
 import type { FilterRow, SeasonMeta, SiteMeta } from '@/lib/types'
 import { AXES_MODES, DEFAULT_AXES, PAX_PARAM, paxFromParam, type AxesMode, type AxesOpts } from '@/lib/axes'
@@ -520,11 +522,12 @@ export default function App() {
   const [openId, setOpenId] = useState<string | null>(null)
   // what the clicked chart knows about the open filter; a filter outside filters.json opens from this alone
   const [openRec, setOpenRec] = useState<FilterRecord | null>(null)
-  // an IMPROVE filter a chart knows by its FTIR sample number, looked up in the IMPROVE network export
-  // (lib/improveRecord): its site's rows stay while the drawer steps through them; `linkSeq` drops a
-  // lookup that finishes after the drawer was closed or another filter opened
-  const [improveLink, setImproveLink] = useState<{ recId: string; status: 'loading' } | { recId: string; status: 'missing'; reason: string }
-    | { recId: string; status: 'linked'; linked: LinkedImprove } | null>(null)
+  // a filter a chart opens that the page's rows do not carry, looked up where it can be (lib/linkRecord): an IMPROVE
+  // spectral sample or a SPARTAN filter of another site is a network row, whose site's rows stay while the drawer
+  // steps through them; an Adama pilot filter is a pilot record. `linkSeq` drops a lookup that finishes after the
+  // drawer was closed or another filter opened.
+  const [recordLink, setRecordLink] = useState<{ recId: string; status: 'loading'; target: string } | { recId: string; status: 'missing'; reason: string; target: string }
+    | { recId: string; status: 'linked'; linked: LinkedRows } | { recId: string; status: 'pilot'; record: PilotRecord } | null>(null)
   const linkSeq = useRef(0)
   // a bin of filters (a hex, a histogram bar) listed in the side panel
   const [group, setGroup] = useState<FilterGroup | null>(null)
@@ -542,7 +545,7 @@ export default function App() {
     setPinnedId(null)
     setOpenId(null)
     setOpenRec(null)
-    setImproveLink(null)
+    setRecordLink(null)
   }, [])
   const openSample = useCallback((id: string) => {
     // the linked site's rows stay, for the drawer's previous / next
@@ -1036,6 +1039,15 @@ export default function App() {
       .filter(inSsr)
       .filter((r) => !keepIds || keepIds.has(r.id))
   }, [exclMode, data, plainSourceRows, exclIn, dropIds, seasonForFilter, paint, inRange, seasonSel, netView, activeSites, inChartPmf, inSsr, keepIds])
+  // where a filter with no gallery row (a page's newer filters) sits under the Samples filters: the site pick, the
+  // date range, the calendar and season chips, and the PMF pick (it has no PMF day, so it leaves the PMF site's view)
+  const placeFilter = useCallback((site: string, code: string, date: string, month: number) => {
+    if (!inRange({ date })) return null
+    if (!(netView ? netView.chosenCodes.has(code) || netView.chosenNames.has(site) : !activeSites || activeSites.has(site))) return null
+    if (chartPmf && (code === pmfSite || pmfOnly)) return null
+    const season = seasonOf(site, month, '', date)
+    return season && (!seasonSel || seasonSel.has(season)) ? season : null
+  }, [inRange, netView, activeSites, chartPmf, pmfSite, pmfOnly, seasonOf, seasonSel])
   const knownFilter = useCallback((id: string) => sourceById.has(id) || sourceById.has(baseFilterId(id)), [sourceById])
   const markReason = useCallback((id: string) => {
     const r = sourceById.get(id) ?? sourceById.get(baseFilterId(id))
@@ -1085,25 +1097,27 @@ export default function App() {
     const ticket = ++linkSeq.current
     setPinnedId(id)
     setOpenRec(rec)
-    if (knownIds.has(id)) { setOpenId(id); return }
+    if (knownIds.has(id)) { setOpenId(id); setRecordLink(null); return }
     setOpenId(null)
-    // an IMPROVE spectral sample opens the full drawer on its network row, once found; until then
-    // (and when it is not there) the drawer shows what the chart knows
-    if (!id.startsWith('improve:')) { setImproveLink(null); return }
-    setImproveLink({ recId: id, status: 'loading' })
-    linkImproveRecord(id).then((res) => {
+    // until the lookup answers (and when it finds nothing) the drawer shows what the chart knows; what it finds
+    // takes that drawer's place without sliding in again (`enter` below)
+    const target = lookupTarget(id)
+    if (!target) { setRecordLink(null); return }
+    setRecordLink({ recId: id, status: 'loading', target })
+    linkRecord(id).then((res) => {
       if (ticket !== linkSeq.current) return
-      if (res.state === 'missing') { setImproveLink({ recId: id, status: 'missing', reason: res.reason }); return }
-      setImproveLink({ recId: id, status: 'linked', linked: res.linked })
+      if (res.state === 'missing') { setRecordLink({ recId: id, status: 'missing', reason: res.reason, target }); return }
+      if (res.state === 'pilot') { setRecordLink({ recId: id, status: 'pilot', record: res.record }); return }
+      setRecordLink({ recId: id, status: 'linked', linked: res.linked })
       setOpenId(res.linked.rowId)
     }, (e: unknown) => {
-      if (ticket === linkSeq.current) setImproveLink({ recId: id, status: 'missing', reason: `the IMPROVE network export could not be read (${e instanceof Error ? e.message : String(e)})` })
+      if (ticket === linkSeq.current) setRecordLink({ recId: id, status: 'missing', target, reason: `it could not be read (${e instanceof Error ? e.message : String(e)})` })
     })
   }, [knownIds])
-  const linked = improveLink?.status === 'linked' ? improveLink.linked : null
+  const linked = recordLink?.status === 'linked' ? recordLink.linked : null
   // the linked site's rows under the gallery's calendar, as the drawer's reference and its previous / next
   const linkedRows = useMemo(() => linked?.rows.map((r) => ({ ...r, season: seasonForFilter(r) })) ?? null, [linked, seasonForFilter])
-  // where the open filter came from: the charts' rows, else the linked IMPROVE site's (only when the view does not carry it)
+  // where the open filter came from: the charts' rows, else the linked site's (only when the view does not carry it)
   const { openRow, openLinked } = useMemo(() => {
     const raw = openId && data ? rawSourceRows.find((r) => r.id === openId) ?? data.filters.rows.find((r) => r.id === openId) : null
     if (raw) return { openRow: { ...raw, season: seasonForFilter(raw) } as FilterRow, openLinked: false }
@@ -1172,7 +1186,7 @@ export default function App() {
   meta.field_units = { ...meta.field_units, [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3' }
   // the drawer compares a filter with exported reference populations, so it keeps the exported units
   const drawerMeta = stable('drawerMeta', { ...meta })
-  // a linked IMPROVE filter is read against its own network: its sites, measurements and units
+  // a linked filter is read against its own network: its sites, measurements and units
   const linkedMeta = linked ? stable('linkedMeta', { ...drawerMeta, sites: linked.sites, fields: linked.fields,
     field_units: { ...drawerMeta.field_units, ...linked.field_units }, field_groups: linked.field_groups }) : null
   // the reader's view (lib/viewFields): ratios join the pickers; µg/m³ becomes µg/filter in mass mode
@@ -1484,7 +1498,7 @@ export default function App() {
     <FilterEditsProvider enabled dropped={dropIds} kept={keepIds}
       onDrop={dropFilters} onKeep={keepFilters} onRestore={restoreFilters} group={group} onGroup={setGroup}>
     {/* Filters → excluded: Mark — the excluded filters in view, drawn as × by the point charts, counted by none */}
-    <MarkedRowsProvider mode={exclMode} rows={markedRows} reasonOf={markReason} known={knownFilter}>
+    <MarkedRowsProvider mode={exclMode} rows={markedRows} reasonOf={markReason} known={knownFilter} place={placeFilter}>
       {openRow && (
         <SampleDrawer
           row={openRow}
@@ -1497,13 +1511,14 @@ export default function App() {
           focusField={field}
           // a linked filter stays pinned under the id its chart knows (improve:<FilterId>)
           pinned={pinnedId === openRow.id || (!!linked && linked.rowId === openRow.id && pinnedId === linked.recId)}
+          enter={!openLinked}
           onPin={(id) => id === null ? dismissSample() : setPinnedId(id)}
           onOpen={openSample}
           onClose={dismissSample}
           context={openRec}
           // whether the charts draw this filter, and the one action that flips it; a linked IMPROVE filter has none:
           // the page that opened it draws it under its improve: id, which a hand exclusion of the row would not reach
-          exclusion={openLinked ? undefined : (() => {
+          exclusion={openLinked && linked?.network === 'IMPROVE' ? undefined : (() => {
             const id = openRow.id
             if (openRow.excluded) return exclIn(openRow)
               ? { state: 'export-in' as const, toggle: () => includeIds([id], false) }
@@ -1514,8 +1529,10 @@ export default function App() {
           })()}
         />
       )}
-      {!openRow && openRec && <RecordDrawer rec={openRec} onClose={dismissSample}
-        lookup={improveLink && improveLink.recId === baseFilterId(openRec.id) && improveLink.status !== 'linked' ? improveLink : null} />}
+      {!openRow && openRec && recordLink?.status === 'pilot' && recordLink.recId === baseFilterId(openRec.id)
+        ? <PilotDrawer record={recordLink.record} context={openRec} onClose={dismissSample} enter={false} />
+        : !openRow && openRec && <RecordDrawer rec={openRec} onClose={dismissSample}
+          lookup={recordLink && recordLink.recId === baseFilterId(openRec.id) && (recordLink.status === 'loading' || recordLink.status === 'missing') ? recordLink : null} />}
       {!openRow && !openRec && shownGroup && <GroupDrawer group={shownGroup} byId={sourceById} meta={meta}
         fields={tab === 'correlation' ? [xField, yField] : [field]} onClose={() => setGroup(null)} />}
       {isEmbed() && <a className="embed-open" href="#" onClick={async (e) => { e.preventDefault(); window.open((await viewUrl(currentView())), '_blank', 'noopener') }}>Open in the gallery ↗</a>}

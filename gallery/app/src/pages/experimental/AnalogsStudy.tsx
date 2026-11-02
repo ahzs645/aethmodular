@@ -189,8 +189,6 @@ function AddisScatter({ d }: { d: AnalogsData }) {
   const all = useMemo(() => rowsOf(d.addis_filters).map((r): Record<string, any> => ({ ...r, hips_bc: mac.bc(num(r.hips_bc)) })), [d, mac])
   // Filters → excluded by filter id (shared useCounted): `f` feeds every point and fit, `out` is drawn as × under Mark
   const { counted: f, marked: out, nOut } = useCounted(all, (r) => String(r.filter_id))
-  // the forest's fit for the same filters (the run's, or refitted while any filter is out)
-  const fit = useAddisFits(d).fits.find((r) => r.model === exportName(model))
   const choices = ['hips_bc', ...models]
   const [xField, setX] = useSearchParam<string>('xa-scatter.x', 'hips_bc', choices)
   const [yField, setY] = useSearchParam<string>('xa-scatter.y', model, choices)
@@ -228,7 +226,6 @@ function AddisScatter({ d }: { d: AnalogsData }) {
       <Crossplot points={overlay} marked={view === 'overlay' && out.length ? overlayOf(out) : undefined} title="Every model" xLabel={labelOf('hips_bc')} yLabel="FTIR EC (µg/m³)" brushable brush={brush} maxSide={520} errorRatio={lambda} grouping="site" />
       <Legend {...lg.props} items={models.map((m) => ({ label: m, color: colorOf(m) }))} />
     </>}
-    {view === 'one' && standard && fit && <Note>The Deming line here is the one in "Addis against HIPS" above, on the same filters ({fitSummary({ slope: mac.slope(fit.slope), intercept: fit.intercept, n: fit.n }, { sep: ', ', signedIntercept: true, unit: 'µg/m³' })}, λ {f2(lambda)}). Choosing another estimator changes it here only.</Note>}
     {view !== 'one' && <Note>Each model's Deming line is the one in "Addis against HIPS" above, on the same filters (λ {f2(lambda)}). Choosing another estimator changes them here only.</Note>}
     <ExcludedNote count={nOut} drawn />
   </ChartFrame>

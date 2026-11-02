@@ -11,7 +11,7 @@ import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
 import { useAddisMet } from '../common/met'
-import { correlationP, ols, pearson, quantile, steiger, type OlsFit as Fit } from '@/lib/stats'
+import { ols, pearson, quantile, steiger } from '@/lib/stats'
 import { BASIS_NOTE, DataTable, Grid, HIGH, LOW, MID, SitePick, initials, line, num, pText, ofSite, point, seasonsOf, shortSeason, useConcRows, useSite } from '../common/ui'
 import { namedColor } from '@/lib/siteColours'
 
@@ -53,7 +53,6 @@ export function MoistureMac({ rows: viewRows, meta: viewMeta }: SectionPageProps
   const lo = quantile(all.map((p) => p.mac), 0.01), hi = quantile(all.map((p) => p.mac), 0.99)
   const trimmed = all.filter((p) => p.mac >= lo && p.mac <= hi)
   const money = ols(trimmed.map((p) => p.m), trimmed.map((p) => p.mac))
-  const pMoney = money ? correlationP(money.r, money.n) : NaN
 
   const bySeason = (value: (p: (typeof trimmed)[number]) => number): IntervalRow[] => seasons.map((s) => {
     const v = trimmed.filter((p) => p.r.season === s.name).map(value)
@@ -85,7 +84,6 @@ export function MoistureMac({ rows: viewRows, meta: viewMeta }: SectionPageProps
     <FieldSelect label="Moisture" value={moisture} meta={meta} onChange={setM} ratios={false} />
   </>
   if (trimmed.length < 10 || !money) return <ChartFrame id="mm-empty" title="Effective MAC and moisture" provenance={NB} controls={controls}><Empty>Fewer than 10 filters at {site} carry HIPS Fabs, FTIR EC and {moisture}.</Empty></ChartFrame>
-  const macLine = (f: Fit | null) => (f ? `${fmt(f.slope, 2)} · ${moisture.split(' (')[0]} + ${fmt(f.intercept, 2)}` : '—')
   return (
     <>
       <ChartFrame id="mm-money" title={`Effective MAC against ${moisture} — ${site}`}
@@ -106,7 +104,6 @@ export function MoistureMac({ rows: viewRows, meta: viewMeta }: SectionPageProps
         </Grid>
         <Key items={seasons.map((s) => ({ label: shortSeason(s.name), color: s.color }))} />
         <ExcludedNote count={marked.length} drawn />
-        <Note>MAC = {macLine(money)}; r {fmt(money.r, 3)} (p {pText(pMoney)}), R² {fmt(money.r2, 3)}, n {money.n}. The notebook used daily AERONET precipitable water on the filter's start day; here it is the mean of the retrievals inside each filter's window.</Note>
       </ChartFrame>
 
       <ChartFrame id="mm-split" title={`Does moisture move the slope (MAC) or the intercept (a baseline)? — ${site}`}
@@ -129,7 +126,6 @@ export function MoistureMac({ rows: viewRows, meta: viewMeta }: SectionPageProps
           ]} />
         </Grid>
         <ExcludedNote count={marked.length} drawn />
-        {groups.length >= 2 && groups[0].fabsFit && groups[groups.length - 1].fabsFit && <Note>From the driest to the wettest group the slope changes by {fmt(groups[groups.length - 1].fabsFit!.slope - groups[0].fabsFit!.slope, 2)} m²/g ({fmt((100 * (groups[groups.length - 1].fabsFit!.slope - groups[0].fabsFit!.slope)) / groups[0].fabsFit!.slope, 0)} %) and the intercept by {fmt(groups[groups.length - 1].fabsFit!.intercept - groups[0].fabsFit!.intercept, 2)} Mm⁻¹. The notebook's reading: a slope change means moisture alters absorption per unit mass; an intercept change, a baseline artefact on the filter.</Note>}
       </ChartFrame>
 
       <ChartFrame id="mm-steiger" title={`Which tracks the column? — FTIR EC and HIPS BC against ${AOD}`}

@@ -110,7 +110,7 @@ function row(id: string, s: SiteMeta, date: string, excluded: boolean, reason: s
     lon: Number.isFinite(s.lon) ? s.lon : null, excluded, exclusion_reason: reason, ...values }
 }
 
-async function loadSpartan(picked: string[] | 'all', source: SpartanSource, revision: number): Promise<NetworkData> {
+export async function loadSpartan(picked: string[] | 'all', source: SpartanSource, revision: number): Promise<NetworkData> {
   const { index, rows: records } = await loadSpartanFilters(picked)
   let sites = index.sites.map(s => site(s.code, s.name, s.location, s.lat, s.lon, s.n_filters, s.date_min, s.date_max))
   let activeRecords = records

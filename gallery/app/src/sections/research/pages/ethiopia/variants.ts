@@ -45,3 +45,20 @@ export function kSummary(ec: Map<string, number[]>, labels: readonly string[]): 
     return [{ k, calibration, n: f.length, median: median(f), mean: f.reduce((a, b) => a + b, 0) / f.length, pctNegative: (100 * f.filter((x) => x < 0).length) / v.length }]
   }).sort((a, b) => a.k - b.k)
 }
+
+export interface Scan { n: number; k: number; others: number[] }
+
+/**
+ * Which scan of its filter each spectrum is. The ETAD export has 319 spectra of 296 filters: 22 filters were scanned
+ * two or three times, under one ExternalFilterId and MediaId. The gallery links hover and pin by filter (lib/filterId
+ * baseFilterId), so a filter's scans ring together; the tooltip says which scan a point is and where the others sit.
+ * `k` is 1-based in export order; `others` are the other scans' indices. A filter scanned once gets null.
+ */
+export function scansOf(ids: readonly string[]): (Scan | null)[] {
+  const byId = new Map<string, number[]>()
+  ids.forEach((id, i) => byId.set(id, [...(byId.get(id) ?? []), i]))
+  return ids.map((id, i) => {
+    const all = byId.get(id)!
+    return all.length > 1 ? { n: all.length, k: all.indexOf(i) + 1, others: all.filter((j) => j !== i) } : null
+  })
+}

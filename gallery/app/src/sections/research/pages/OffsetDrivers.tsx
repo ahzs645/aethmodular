@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
+import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
 import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { Crossplot } from '@/components/Crossplot'
 import { FieldSelect } from '@/components/FieldSelect'
@@ -54,7 +55,6 @@ export function OffsetDrivers({ rows: viewRows, meta: viewMeta }: SectionPagePro
   // the residual against the covariate (Panel C of the recursive notebook)
   const covPts = residuals.flatMap((p) => { const c = num(p.r, cov); return c !== null && Number.isFinite(p.e) ? [{ ...p, c }] : [] })
   const covFit = ols(covPts.map((p) => p.c), covPts.map((p) => p.e))
-  const covRho = spearman(covPts.map((p) => p.c), covPts.map((p) => p.e))
 
   // nested models (does the covariate help?)
   const nested = useMemo(() => {
@@ -114,13 +114,23 @@ export function OffsetDrivers({ rows: viewRows, meta: viewMeta }: SectionPagePro
   }).filter((e) => e.p < 0.1).sort((a, b) => Math.abs(b.ratio) - Math.abs(a.ratio)), [candidates, flagged, kept])
 
   const unitY = meta.field_units[yF] ?? '', unitX = meta.field_units[xF] ?? ''
+  // x and y are picked on the crossplot's axis titles (components/AxisFieldPopover), as on the other
+  // scatterplots; picking the other axis's field swaps the two
+  const axisValue = useMemo(() => ({ x: xF, y: yF, field: '' }), [xF, yF])
+  const setAxis = useCallback((role: AxisRole, f: string) => {
+    if (role === 'x') { if (f === yF) setY(xF); setX(f) }
+    else if (role === 'y') { if (f === xF) setX(yF); setY(f) }
+  }, [xF, yF, setX, setY])
   const controls = <>
     <SitePick value={site} options={sites} onChange={setSite} />
-    <FieldSelect label="x" value={xF} meta={meta} onChange={setX} />
-    <FieldSelect label="y" value={yF} meta={meta} onChange={setY} />
     <FieldSelect label="Covariate" value={cov} meta={meta} onChange={setCov} ratios={false} />
   </>
-  if (pairs.length < 10) return <ChartFrame id="od-empty" title="What tracks the offset" provenance={RECURSIVE} controls={controls}><Empty>Fewer than 10 filters at {site} carry {xF} and {yF}.</Empty></ChartFrame>
+  // no crossplot to click when too few filters carry the pair, so the bar keeps x and y there
+  if (pairs.length < 10) return <ChartFrame id="od-empty" title="What tracks the offset" provenance={RECURSIVE} controls={<>
+    {controls}
+    <FieldSelect label="x" value={xF} meta={meta} onChange={setX} />
+    <FieldSelect label="y" value={yF} meta={meta} onChange={setY} />
+  </>}><Empty>Fewer than 10 filters at {site} carry {xF} and {yF}.</Empty></ChartFrame>
   const ptsXY = pairs.map((p) => point(p.r, p.x, p.y, colorOf(p.r), xF, yF, 'Research · what tracks the offset'))
   const markedXY = markedPairs.map((p) => point(p.r, p.x, p.y, colorOf(p.r), xF, yF, 'Research · what tracks the offset'))
   const markedBA = markedPairs.map((p) => point(p.r, (p.x + p.y) / 2, p.y - p.x, colorOf(p.r), 'mean', 'difference', 'Research · Bland–Altman'))
@@ -132,17 +142,18 @@ export function OffsetDrivers({ rows: viewRows, meta: viewMeta }: SectionPagePro
   return (
     <>
       <ChartFrame id="od-baseline" title={`Baseline fit and the residual — ${yF} against ${xF} at ${site}`}
-        subtitle={`Left: OLS with a free intercept (black) and through the origin (dashed), points coloured by season. Right: the residual against ${cov}, with its OLS line. The through-origin R² is uncentred, as the notebook computes it.`}
+        subtitle={`Left: OLS with a free intercept (black) and through the origin (dashed), points coloured by season; click an axis title to change x or y. Right: the residual against ${cov}, with its OLS line. The through-origin R² is uncentred, as the notebook computes it.`}
         provenance={`${RECURSIVE} (Panels A and C)`} controls={controls}>
         <Grid>
-          <Crossplot points={ptsXY} marked={markedXY} title={`${yF} vs ${xF}`} xLabel={`${xF}${unitX ? ` (${unitX})` : ''}`} yLabel={`${yF}${unitY ? ` (${unitY})` : ''}`} fit={false}
-            extraLines={[...line(base, INK.fit, 'OLS'), ...(origin ? line({ slope: origin.slope, intercept: 0 }, INK.fit, 'through origin', '6 4') : [])]} />
+          <AxisFieldsProvider meta={meta} value={axisValue} set={setAxis}>
+            <Crossplot points={ptsXY} marked={markedXY} title={`${yF} vs ${xF}`} xLabel={`${xF}${unitX ? ` (${unitX})` : ''}`} yLabel={`${yF}${unitY ? ` (${unitY})` : ''}`} fit={false} pick
+              extraLines={[...line(base, INK.fit, 'OLS'), ...(origin ? line({ slope: origin.slope, intercept: 0 }, INK.fit, 'through origin', '6 4') : [])]} />
+          </AxisFieldsProvider>
           {covPts.length >= 10 ? <Crossplot points={covPts.map((p) => point(p.r, p.c, p.e, colorOf(p.r), cov, 'residual', 'Research · what tracks the offset'))} marked={markedCov} sameScale={false}
             title={`Residual vs ${cov}`} xLabel={cov} yLabel={residLabel} fit={false} extraLines={line(covFit, INK.fit, 'OLS')} />
             : <Empty>Fewer than 10 filters carry {cov}.</Empty>}
         </Grid>
         <Key items={[...seasons.map((s) => ({ label: shortSeason(s.name), color: s.color })), { label: 'OLS', color: INK.fit, kind: 'line' }, { label: 'through the origin', color: INK.fit, kind: 'dash' }]} />
-        <Note>OLS: {fitSummary(base)}. Through the origin: {fitSummary({ slope: origin?.slope, r2: origin?.r2 }, { sep: ', ' })}. Residual against {cov}: Spearman ρ {fmt(covRho, 3)} (n {covPts.length}){covFit ? `, OLS slope ${fmt(covFit.slope, 4)} per unit, R² ${fmt(covFit.r2, 3)}` : ''}.</Note>
       </ChartFrame>
 
       <ChartFrame id="od-nested" title={`Does ${cov} help? — nested models for ${yF}`} subtitle="Least squares with an intercept on the filters that carry all three measurements. A covariate that matters lifts adjusted R² and lowers the RMSE."
@@ -188,7 +199,6 @@ export function OffsetDrivers({ rows: viewRows, meta: viewMeta }: SectionPagePro
         provenance={`${INVESTIGATION} (§5 Bland–Altman)`}>
         <Crossplot points={ba.map((p) => point(p.r, p.m, p.d, colorOf(p.r), 'mean', 'difference', 'Research · Bland–Altman'))} marked={markedBA} sameScale={false} title={`${yF} − ${xF}`} xLabel={`Mean of the two${unitX ? ` (${unitX})` : ''}`} yLabel="Difference" fit={false}
           extraLines={[...line({ slope: 0, intercept: bias }, INK.fit, 'bias'), ...line({ slope: 0, intercept: bias + 1.96 * sd }, INK.muted, '+1.96 SD', '5 4'), ...line({ slope: 0, intercept: bias - 1.96 * sd }, INK.muted, '−1.96 SD', '5 4'), ...line(prop, INK.deming, 'trend', '2 3')]} maxSide={420} />
-        <Note>Mean difference {fmt(bias, 3)}, limits of agreement {fmt(bias - 1.96 * sd, 2)} to {fmt(bias + 1.96 * sd, 2)}. Trend of the difference with the mean (pink dotted): {fitSummary(prop)}.</Note>
       </ChartFrame>
 
       <ChartFrame id="od-influence" title={`Influential filters — Cook's distance above 4 / n, and what they are made of`}

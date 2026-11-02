@@ -74,6 +74,13 @@ export function MethodAgreement({ pairs, marked = [], meta, sites, ch }: { pairs
     const high = pts.filter((p) => p.bc! > HIGH || p.ec! > HIGH), low = pts.filter((p) => !(p.bc! > HIGH || p.ec! > HIGH))
     return { high: high.length, low: low.length, mHigh: d3.mean(high, third), mLow: d3.mean(low, third) }
   }, [pairs, colour]) // eslint-disable-line react-hooks/exhaustive-deps
+  // the filters with all three methods, per site: their means and the aethalometer over the mean of the two filter
+  // methods (ETAD_Aug13's "overestimation factor"; the means under the old Through time chart)
+  const allThree = useMemo(() => sites.map((s) => {
+    const own = pairs.filter((p) => p.site === s.name && p.bc !== null && p.hipsBc !== null && p.ec !== null)
+    const bc = d3.mean(own, (p) => p.bc!), hips = d3.mean(own, (p) => p.hipsBc!), ec = d3.mean(own, (p) => p.ec!)
+    return { s, n: own.length, bc, hips, ec, factor: bc !== undefined && hips !== undefined && ec !== undefined && hips + ec > 0 ? bc / ((hips + ec) / 2) : undefined }
+  }).filter((x) => x.n > 0), [pairs, sites])
   const multi = sites.length > 1
   // marked: Filters → excluded: Mark, the excluded filters as × (lib/markedRows), never in a fit
   const panels = pairings.map((g) => ({ g, pts: pointsOf(g), marked: pointsOf(g, marked) })).filter((x) => x.pts.length >= 3)
@@ -92,6 +99,11 @@ export function MethodAgreement({ pairs, marked = [], meta, sites, ch }: { pairs
         </Key> : <Key items={colour === 'Season'
           ? meta.seasons.filter((s) => pairs.some((p) => p.season === s.name)).map((s) => ({ label: s.name, color: s.color }))
           : sites.map((s) => ({ label: `${s.name} (n=${s.n})`, color: s.color }))} />}
+        {allThree.length > 0 && <Note>
+          Filters with all three, mean aethalometer {bcName} · HIPS BC (Fabs ÷ {mac}) · FTIR EC, and the aethalometer ÷ the mean of
+          HIPS and EC (ETAD_Aug13's "overestimation factor"):{' '}
+          {allThree.map((x) => `${x.s.name} (n=${x.n}) ${fmt(x.bc, 2)} · ${fmt(x.hips, 2)} · ${fmt(x.ec, 2)} µg/m³, ${fmt(x.factor, 2)}`).join('; ')}.
+        </Note>}
         {threshold && threshold.high > 0 && <Note>
           Mean Fe/BC where the aethalometer or FTIR EC reads above {HIGH} µg/m³: {fmt(threshold.mHigh, 3)} (n={threshold.high});
           elsewhere {fmt(threshold.mLow, 3)} (n={threshold.low}). ETAD_Aug13 read a higher ratio at high loading as support for iron

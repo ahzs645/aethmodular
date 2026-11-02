@@ -4,6 +4,7 @@ import { INK, FONT, BASELINE_COLOR } from '@/lib/theme'
 import { useAddisStatus, useFilterSpectrum, traceVersionLabel, type AddisStatus, type FilterSpectrumData, type SpectrumMethod } from '@/lib/filterSpectrum'
 import { SpectrumModal, SpectrumPlot } from '@/components/FilterSpectrumPlot'
 import { NativeFilterMeasurements } from '@/components/NativeFilterMeasurements'
+import { usePilotRecord } from '@/lib/pilotFilters'
 
 // the baseline colours used on the AIRSpec / VIBES pages
 // the drawer's VIBES is always the completed full-range run
@@ -33,7 +34,9 @@ export function FilterSpectrum({ id }: { id: string }) {
   // SPARTAN filters (Addis included) have the native FTIR block; the frozen export's corrected
   // trace stays only for the IMPROVE samples, which have no native spectrum
   const native = /^[A-Z]{4}-\d{4}/.test(id)
-  return <><NativeFilterMeasurements id={id} />{!native && <CorrectedFilterSpectrum id={id} />}</>
+  // the pilot filters (Bishoftu is a SPARTAN site) also carry the frozen pilot's corrected spectra
+  const pilot = !!usePilotRecord(native ? id : null).record
+  return <><NativeFilterMeasurements id={id} />{(!native || pilot) && <CorrectedFilterSpectrum id={id} />}</>
 }
 
 function CorrectedFilterSpectrum({ id, embedded = false }: { id: string; embedded?: boolean }) {
@@ -88,7 +91,9 @@ function SpectrumLegend({ shown }: { shown: SpectrumMethod[] }) {
 
 function SpectrumNote({ spec, methods, shown }: { spec: FilterSpectrumData; methods: SpectrumMethod[]; shown: SpectrumMethod[] }) {
   return <p className="chart-note" style={{ display: 'block' }}>
-    From the Spectral similarity export ({spec.sampleId}): 8-channel means (~10 cm⁻¹), for display only.
+    {spec.source === 'pilot'
+      ? <>From the frozen external pilot ({spec.sampleId}{spec.provisional ? ', provisional analysis-to-filter map' : ''}): 8-channel means (~10 cm⁻¹), for display only.</>
+      : <>From the Spectral similarity export ({spec.sampleId}): 8-channel means (~10 cm⁻¹), for display only.</>}
     {spec.series.VIBES && shown.includes('VIBES') && <> VIBES uses the full-range fit (4000–500 cm⁻¹) · {traceVersionLabel(spec.series.VIBES)}. {shown.includes('AIRSpec') && <>Spline baseline stops near 1425 cm⁻¹.</>}</>}
     {spec.unavailable.filter(k => methods.includes(k)).map(k => <span key={k}> {NAME[k]} could not be loaded{ k === 'VIBES' && '; the archived truncated fit is not substituted'}.</span>)}
   </p>

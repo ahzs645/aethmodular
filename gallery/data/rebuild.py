@@ -242,6 +242,15 @@ STEPS: tuple[Step, ...] = (
           drive("DAVIS/SPARTAN FTIR pulls/CHTS/CHTS_filters.csv"), drive("Spartan/SPARTAN_HIPS_Batch1-51.v2.csv"),
           drive("FTIR/runs/2026-06-24/ftir-spectra-2026-06-24.csv")),
          note="AETHMODULAR_FTIR_SPECTRA_DIR must point at Davis Data/FTIR"),
+    Step("pilot-filters", "export", ("gallery/data/export_pilot_filters.py",),
+         "The Ethiopia pilot filters (5 Adama quartz/PTFE pairs, 26 Bishoftu) as per-filter records for the filter drawer: "
+         "TOR and its fractions, the frozen rank-70 FTIR EC, the Addis reference under the same model, and both corrected spectra",
+         "gallery/app/public/data/pilot_filters.json, pilot_spectra.json",
+         (repo("research/ftir_hips_chem/output/tables/vibes_fullrange/gallery_rank70_20261002/external/manifest.json"),
+          repo("research/ftir_hips_chem/output/tables/adama_bishoftu_frozen_pilot/external_corrected.npz"),
+          repo("research/spartan_ec_2026_06_16/tables/adama_char_soot_classification.csv"),
+          repo("research/ftir_ec_calibration_2026_06_25/tables/adama_tor_vs_ftir.csv")),
+         note="after research/ftir_hips_chem/workflows/migrate_vibes_external_rank70.py"),
     Step("research-python-pmf", "export", ("gallery/data/export_python_pmf.py",),
          "Python PMF (Oct 2026): the independent Python PMF package's saved five-factor fits, rank screen, bootstrap profile bands, "
          "held-out total-OM predictions and QC inventory (its CSV/JSON/NPZ read as data; its code is never run)",

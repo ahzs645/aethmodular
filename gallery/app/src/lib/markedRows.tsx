@@ -18,7 +18,15 @@ interface Marked {
   reasonOf: (id: string) => string | null
   /** does the gallery have a row for this filter at all (in view or not); pages joining their own items ask it */
   known?: (id: string) => boolean
+  /**
+   * where a filter the gallery has no row for would sit in the Samples view (lib/markedRows usePlaceFilter): its season
+   * under the calendar in use when its site is picked and its date and season pass the date range and season chips,
+   * else null. Exclusions are not asked here (useCountedFilter is).
+   */
+  place?: PlaceFilter
 }
+/** site name, site code, sampling date (YYYY-MM-DD), month → the season it is in view under, or null when out of view */
+export type PlaceFilter = (site: string, code: string, date: string, month: number) => string | null
 const Ctx = createContext<Marked>({ mode: 'hide', rows: [], reasonOf: () => null })
 /**
  * The context as a chart sees it: a meeting page shown As presented (lib/presentation) is untouched by the
@@ -32,8 +40,8 @@ function useMarked(): Marked {
   return useMemo(() => (presented ? { ...ctx, mode: 'hide' as const, rows: [], reasonOf: COUNTS } : ctx), [ctx, presented])
 }
 
-export function MarkedRowsProvider({ mode, rows, reasonOf, known, children }: Marked & { children: ReactNode }) {
-  const value = useMemo(() => ({ mode, rows: mode === 'mark' ? rows : [], reasonOf, known }), [mode, rows, reasonOf, known])
+export function MarkedRowsProvider({ mode, rows, reasonOf, known, place, children }: Marked & { children: ReactNode }) {
+  const value = useMemo(() => ({ mode, rows: mode === 'mark' ? rows : [], reasonOf, known, place }), [mode, rows, reasonOf, known, place])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
@@ -46,6 +54,14 @@ export const useMarkReason = () => useMarked().reasonOf
 const UNKNOWN = () => false
 /** does the gallery have a row for a filter id at all (in view or not): a page tells its newer filters from cut ones */
 export const useKnownFilter = (): ((id: string) => boolean) => useMarked().known ?? UNKNOWN
+
+const NOWHERE: PlaceFilter = () => null
+/**
+ * The Samples filters for a page's filters that have no gallery row (sampled after the gallery's series ends): the
+ * season a filter is in view under, or null when the sites, date range or season chips leave it out. Read with
+ * useCountedFilter for the exclusions, it puts such a filter where a gallery row with its site and date would be.
+ */
+export const usePlaceFilter = (): PlaceFilter => useMarked().place ?? NOWHERE
 
 /** where any filter id stands under the current mode (lib/exclusionMode exclStatus), for pages with their own rows */
 export function useExclStatus(): (id: string | null | undefined) => ExclStatus {

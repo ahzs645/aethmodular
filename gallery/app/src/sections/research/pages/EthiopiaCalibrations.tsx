@@ -7,7 +7,8 @@ import { num, type Row } from '@/lib/table'
 import type { SectionPageProps } from '../../types'
 import { PageIntro, provenance, rows, useSpectral, Waiting } from './spectralCommon'
 import { AdamaFigures } from './ethiopia/Adama'
-import { ComponentSweep, LotsPaired, VariantsVsCal0, useEtadSpectra } from './ethiopia/Paired'
+import { ComponentSweep, LotsPaired, VariantsVsCal0, scanTip, useEtadSpectra } from './ethiopia/Paired'
+import { scansOf } from './ethiopia/variants'
 import { CleaningResiduals } from './ethiopia/Residuals'
 import { SmokeFigures } from './ethiopia/Smoke'
 import { AdamaSpectra, BandProfile, DerivativeSpectra, EtadSpectra, SpectraMissing } from './ethiopia/Spectra'
@@ -34,10 +35,16 @@ export function EthiopiaCalibrations({ rows: galleryRows }: SectionPageProps) {
   // the export keeps one row per spectrum and one column per calibration; the figures want one row per point
   const pointsOf = useMemo(() => (perFilter: Row[]) => {
     const index = rows(data, 'calibrations')
-    return perFilter.flatMap((f) => index.map((c): Row => ({
-      family: c.family, calibration: c.calibration, which: `${c.family} — ${c.calibration}`,
-      EC: num(f[String(c.column)]), HIPS: m.bc(num(f['HIPS Fabs/10']), 10), id: f.ExternalFilterId,
-    })))
+    // a filter scanned more than once says which scan a point is and where the others sit (ethiopia/Paired scanTip)
+    const scans = scansOf(perFilter.map((f) => String(f.ExternalFilterId)))
+    const hips = perFilter.map((f) => m.bc(num(f['HIPS Fabs/10']), 10) ?? NaN)
+    return index.flatMap((c) => {
+      const ec = perFilter.map((f) => num(f[String(c.column)]) ?? NaN)
+      return perFilter.map((f, i): Row => ({
+        family: c.family, calibration: c.calibration, which: `${c.family} — ${c.calibration}`,
+        EC: num(f[String(c.column)]), HIPS: m.bc(num(f['HIPS Fabs/10']), 10), id: f.ExternalFilterId, ...scanTip(scans[i], hips, ec),
+      }))
+    })
   }, [data, m])
   const points = useMemo(() => pointsOf(etad.all), [pointsOf, etad.all])
   const counted = useMemo(() => pointsOf(etad.counted), [pointsOf, etad.counted])
@@ -55,7 +62,7 @@ export function EthiopiaCalibrations({ rows: galleryRows }: SectionPageProps) {
   return <>
     <PageIntro id="ethiopia-intro" title="Ethiopia (ETAD) EC under the June 2026 calibrations — which samples, how many components, which lots" data={data}
       notebooks="research/ftir_ec_calibration_2026_06_25/01_adama_spectra, 02_adama_tor_vs_ftir, 03_adama_char_soot, 04_ethiopia_etad_spectra, 06_calibration_variants_components [12], [21], 07_ethiopia_variant_ec, 08_adama_hips_crossplots, 09_ethiopia_component_ec, 10_ethiopia_ec_both_lots, 12_dedicated_ethiopia_calibration, 13_chase_origin_and_biomass [9], 15_downstream_recommended_calibration; research/spartan_ec_2026_06_16/02_biomass_calibration_comparison, 03_adama_han_char_soot, 05_calibration_optimization, 07_calibration_optimization_story, 08_outlier_removal_explainer; research/July07/regular_before_cal0_vs_smoke_hips, regular_vs_smoke_ec_vs_hips">
-      <p>All of these apply PLS calibrations trained on IMPROVE to the 319 ETAD spectra (19 filters scanned twice, so one point per spectrum, as the notebooks do). None has an Ethiopian thermal EC reference: they are judged by agreement with HIPS Fabs/MAC (the notebooks: MAC 10; here the MAC set under Plot → units, now {m.mac}) and by physical sense. Notebook 07 left the HIPS comparison as a to-do; the crossplots here add it from the HIPS Fabs carried in notebook 15's table.</p>
+      <p>All of these apply PLS calibrations trained on IMPROVE to the 319 ETAD spectra of 296 filters (22 filters scanned two or three times; one point per spectrum, as the notebooks do, and a filter's scans ring together on hover). None has an Ethiopian thermal EC reference: they are judged by agreement with HIPS Fabs/MAC (the notebooks: MAC 10; here the MAC set under Plot → units, now {m.mac}) and by physical sense. Notebook 07 left the HIPS comparison as a to-do; the crossplots here add it from the HIPS Fabs carried in notebook 15's table.</p>
       <FixedSetNote subject="each saved-table chart (the variants' HIPS fits, training-set medians, progression, mean spectra, Adama and cleaning figures)" what="the notebooks' saved statistics (the charts of the 319 ETAD spectra and of the gallery's Addis rows follow it)" />
       <p>A naming hazard runs through the July07 and spartan_ec notebooks: their "regular CAL-0" is the 906-filter IMPROVE set (the set the gallery's "Biomass-smoke (906)" calibration preset trains on), while their "smoke" or "biomass tool" calibration is a different model, the coefficients SPARTAN's calibration tool exported for filter lot 251. The page names them that way. The only thermal EC in Ethiopia is the five Adama quartz filters, read against every calibration below.</p>
     </PageIntro>
@@ -69,7 +76,7 @@ export function EthiopiaCalibrations({ rows: galleryRows }: SectionPageProps) {
     <VariantsVsCal0 data={data} />
     <ComponentSweep data={data} />
 
-    <Figure kind="crossplot" id="ethiopia-hips" data={points} x="HIPS" y="EC" idColumn="id" choose={[{ column: 'which', label: 'Calibration', default: '15 · recommended — NEW lot-248+251, flag-filtered, k10' }]}
+    <Figure kind="crossplot" id="ethiopia-hips" data={points} x="HIPS" y="EC" idColumn="id" tipColumns={['scan']} choose={[{ column: 'which', label: 'Calibration', default: '15 · recommended — NEW lot-248+251, flag-filtered, k10' }]}
       xLabel={`HIPS Fabs / ${m.mac} (µg/m³)`} yLabel="Predicted FTIR EC (µg/m³)" maxSide={460} errorRatio={m.lambda}
       title="Each calibration against HIPS — the old set is steep and offset, the lot-248+251 mirror moves toward 1:1"
       subtitle={`ETAD spectra with a HIPS Fabs, against Fabs ÷ ${m.mac} (the MAC set under Plot → units; the notebooks used 10). The notebooks fitted OLS (08's table below; 15: 2.27x − 5.25 old, about 1.2x − 2.2 new, at MAC 10); the line here is the gallery's estimator on the same points, Deming with the explorer's λ at this MAC (${f2(m.lambda)}).`}

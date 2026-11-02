@@ -3,6 +3,7 @@ import { useColourScheme } from '@/lib/colourSchemes'
 import * as d3 from 'd3'
 import { ChartFrame, Empty, Note, Segmented, Select } from '@/components/ChartFrame'
 import { ColorLegend } from '@/components/ColorLegend'
+import { Legend } from '@/components/Legend'
 import { Crossplot } from '@/components/Crossplot'
 import { HeatMatrix } from '@/components/HeatMatrix'
 import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
@@ -97,6 +98,9 @@ export function SourceWeather({ rows: viewRows, meta: viewMeta }: SectionPagePro
   const dtPts = dtOf(joined), dtMarked = dtOf(markedJoined)
   const tExtent = d3.extent(dtPts.map((p) => p.t).filter((v): v is number => v !== null)) as [number, number]
   const tColor = d3.scaleSequential(d3.interpolateRgbBasis(tColours.stops)).domain([tExtent[0] ?? 0, tExtent[1] ?? 1])
+  // what the colour is, in words: the station's coldest reading of the sample day, or the window mean standing in
+  const tName = sampleDay ? 'minimum temperature on the sample day' : 'mean temperature over the filter window'
+  const noT = dtPts.filter((p) => p.t === null).length
   const rhoDt = factors.map((f) => ({ f, dt: spearman(joined.map((j) => num(j.r, DT) ?? NaN), joined.map((j) => value(j, f))), t: spearman(joined.map((j) => num(j.r, sampleDay ? TAVG_DAY : T_WINDOW) ?? NaN), joined.map((j) => value(j, f))),
     tmin: sampleDay ? spearman(joined.map((j) => num(j.r, TMIN_DAY) ?? NaN), joined.map((j) => value(j, f))) : null }))
   // slopes by source: the dominant factor (or group) of each day, by K_F concentration
@@ -134,21 +138,26 @@ export function SourceWeather({ rows: viewRows, meta: viewMeta }: SectionPagePro
         <ExcludedNote count={markedJoined.filter((j) => num(j.r, rainField) !== null).length} />
       </ChartFrame>
 
-      <ChartFrame id="sw-dt" title={`Diurnal temperature range against ${factor} — coloured by the mean temperature`}
+      <ChartFrame id="sw-dt" title={`Diurnal temperature range against ${factor} — coloured by the ${tName}`}
         subtitle={`A narrow temperature range suggests a stable, poorly mixed boundary layer; cold mornings suggest heating with charcoal and wood. Points coloured from cold (blue) to warm (red) by ${T}. ${sampleDay ? 'Temperatures are the Addis station\'s day on the sample date, as the notebooks join them (T_max − T_min, T_min).' : 'The notebooks used the station day on the sample date; without that export the window means stand in.'}`}
         provenance={`${DT_NB} (§1–3) · ${MET_NB} (§3 temperature range)`}
         controls={<Select label="Factor" value={factor} options={factors} onChange={setFactor} />}>
         <Grid>
-          {dtPts.length >= 5 ? <Crossplot points={dtPts.map((p) => point(p.j.r, p.x, p.y, p.t === null ? INK.muted : tColor(p.t), 'ΔT', factor, 'Research · PMF and weather', [`T ${fmt(p.t, 1)} °C`]))} sameScale={false}
+          {dtPts.length >= 5 ? <div key="plot"><Crossplot points={dtPts.map((p) => point(p.j.r, p.x, p.y, p.t === null ? INK.muted : tColor(p.t), 'ΔT', factor, 'Research · PMF and weather', [`T ${fmt(p.t, 1)} °C`]))} sameScale={false}
             marked={dtMarked.map((p) => point(p.j.r, p.x, p.y, INK.muted, 'ΔT', factor, 'Research · PMF and weather', [`T ${fmt(p.t, 1)} °C`]))}
-            title={`${factor} vs ΔT`} xLabel={`${DT} (°C)`} yLabel={`${factor} (${unit})`} fit={false} /> : <Empty>Too few filters with {DT}.</Empty>}
+            title={`${factor} vs ΔT`} xLabel={`${DT} (°C)`} yLabel={`${factor} (${unit})`} fit={false} />
+            {/* the colour key under its own plot (and in its ⤢ view), as a standard legend row */}
+            <Legend items={noT ? [{ label: `no ${tName} (${noT})`, color: INK.muted }] : []} relabelFits={false}>
+              <ColorLegend scale={tColor as unknown as { domain(): number[]; (v: number): string }} scheme={tColours.scheme}
+                label={`${sampleDay ? 'Sample-day minimum' : 'Window-mean'} temperature, station (°C)`} format={(v) => fmt(v, 0)} />
+            </Legend>
+          </div> : <Empty key="plot">Too few filters with {DT}.</Empty>}
           <DataTable rows={rhoDt} rowKey={(r) => r.f} columns={[
             { key: 'f', label: 'Factor', value: (r) => <span style={{ color: factorColor(r.f), fontWeight: 600 }}>{r.f}</span> },
             { key: 'dt', label: 'ρ with ΔT', num: true, value: (r) => fmt(r.dt, 2) }, { key: 't', label: 'ρ with mean T', num: true, value: (r) => fmt(r.t, 2) },
             ...(sampleDay ? [{ key: 'tmin', label: 'ρ with T_min', num: true, value: (r: (typeof rhoDt)[number]) => fmt(r.tmin, 2) }] : [])]} />
         </Grid>
         <ExcludedNote count={dtMarked.length} drawn />
-        {dtPts.length >= 5 && <ColorLegend scale={tColor as unknown as { domain(): number[]; (v: number): string }} scheme={tColours.scheme} label={`${T} (°C)`} format={(v) => fmt(v, 0)} />}
       </ChartFrame>
 
       <ChartFrame id="sw-slopes" title="Method agreement by source — OLS slopes on the days each source dominates"

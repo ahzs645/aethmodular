@@ -10,7 +10,6 @@ import { SiteModeHead } from '@/components/SiteModeHead'
 import type { SectionPageProps } from '../../types'
 import { useAethFields } from '../lib'
 import { CHANNELS, NEAREST_TO_HIPS, bccField, fallbackSites, pairSites, useAethExtra, usePairs, type Channel } from '../filters/data'
-import { AgreementTimeline } from '../filters/AgreementTimeline'
 import { ChannelAgreement } from '../filters/ChannelAgreement'
 import { ConstraintCheck } from '../filters/ConstraintCheck'
 import { ImpliedMac } from '../filters/ImpliedMac'
@@ -92,7 +91,6 @@ export function FilterComparison({ rows: allRows, meta, field, axes, setField }:
       <MacTimeline pairs={pairs} marked={markedPairs} meta={meta} sites={sites} ch={ch} sigma={sigma} />
       <ConstraintCheck pairs={pairs} marked={markedPairs} sites={sites} ch={ch} sigma={sigma} />
       <IronTest pairs={pairs} marked={markedPairs} meta={meta} sites={sites} ch={ch} sigma={sigma} />
-      <AgreementTimeline pairs={pairs} marked={markedPairs} sites={sites} ch={ch} />
       <AxisFieldsProvider meta={meta} value={axisValue} set={setAxis}>
         <Scatterplot rows={scatterRows} meta={meta} xField={xField} yField={field} axes={{ ...axes, identity: false, mode: 'Data' }}
           id="aeth-filters-scatter" title={`${field} against ${xField} — any pair, per site (click an axis title to change it)`} />

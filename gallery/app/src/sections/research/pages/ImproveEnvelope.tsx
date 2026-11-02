@@ -2,12 +2,11 @@ import { useMemo } from 'react'
 import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
 import { LoadState } from '@/components/ExportState'
 import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
-import { Key } from '@/components/Key'
 import { SweepPlot } from '@/components/SweepPlot'
 import { useExport } from '@/lib/data'
 import { useMac } from '@/lib/mac'
 import { fmt } from '@/lib/format'
-import { crossPath, markTip } from '@/lib/exclusionMode'
+import { markTip } from '@/lib/exclusionMode'
 import { ExcludedNote, FixedSetNote, useMarkedRows, useMarkReason } from '@/lib/markedRows'
 import type { FilterRow } from '@/lib/types'
 import { IMPROVE_GREY, INK } from '@/lib/theme'
@@ -84,6 +83,7 @@ export function ImproveEnvelope({ rows, meta }: SectionPageProps) {
   const markedRows = useMarkedRows()
   const marked = useMemo(() => densityOf(markedRows), [densityOf, markedRows])
   const reasonOf = useMarkReason()
+  const markedPoints = useMemo(() => marked.map((p) => ({ id: p.id, x: p.x, y: p.y, tip: markTip({ id: p.id }, reasonOf(p.id) ?? 'excluded', p.tip.slice(1)) })), [marked, reasonOf])
   // the focus-site filters the exporter's `matched` and `mass_space` summarise, as the gallery counts them (µg/m³ rows)
   const concRows = useConcRows(rows, meta), markedConc = useConcRows(markedRows, meta)
   const focusOf = useMemo(() => (rs: FilterRow[]): FocusFilter[] => rs.flatMap((r) => { const o = byId.get(r.id); const f = o ? focusFilter(r, o) : null; return f ? [f] : [] }), [byId])
@@ -98,8 +98,8 @@ export function ImproveEnvelope({ rows, meta }: SectionPageProps) {
   const b = data.bounds
   const d = data.density[space]
   const xLabel = space === 'mass' ? 'EC on the filter (µg)' : 'EC surface loading (µg/cm²)'
-  const box = space === 'mass' ? { x: [b.ec_ug.p05, b.ec_ug.p95] as [number, number], y: [b.fabs.p05, b.fabs.p95] as [number, number], label: 'Addis p05–p95' }
-    : { x: [b.ec_ug_cm2.p05, b.ec_ug_cm2.p95] as [number, number], y: [b.fabs.p05, b.fabs.p95] as [number, number], label: 'Addis p05–p95' }
+  const box = space === 'mass' ? { x: [b.ec_ug.p05, b.ec_ug.p95] as [number, number], y: [b.fabs.p05, b.fabs.p95] as [number, number], label: 'Addis p05–p95', key: 'Addis p05–p95 window (EC and fAbs)' }
+    : { x: [b.ec_ug_cm2.p05, b.ec_ug_cm2.p95] as [number, number], y: [b.fabs.p05, b.fabs.p95] as [number, number], label: 'Addis p05–p95', key: 'Addis p05–p95 window (EC and fAbs)' }
   const rt = data.rt?.pairs[pair]
   const matchedColors = [rows.find((r) => r.code === 'ETAD')?.color ?? '#F39C12', IMPROVE_GREY, '#6a51a3']
   // the Addis row live (common/envelope); the IMPROVE subsets as saved
@@ -133,13 +133,9 @@ export function ImproveEnvelope({ rows, meta }: SectionPageProps) {
         subtitle={`Every post-2003 IMPROVE filter with a volume, binned (${d.n.toLocaleString()} filters; ${d.beyond.toLocaleString()} beyond the axes), with the focus-site filters in view on top and the Addis p05–p95 window dashed. Linear axes from zero, as the loading-envelope notebook pins them.`}
         provenance={<>{NB.anne} · {NB.fed} · {NB.may} §3</>}
         controls={<Segmented label="x" value={space} options={['mass', 'surface'] as const} onChange={setSpace} optionLabel={(o) => (o === 'mass' ? 'EC mass (µg)' : 'EC per area (µg/cm²)')} />}>
-        <DensityPlot id="ie-density" cells={d.cells} bins={d.bins} x={[0, d.x_max]} y={[0, d.y_max]} xLabel={xLabel} yLabel="fAbs (Mm⁻¹)" points={spartan} box={box} maxSide={520}>
-          {marked.length ? ({ x, y }) => <g fill="none" stroke={INK.muted} strokeWidth={1.3} strokeOpacity={0.85} strokeLinecap="round">
-            {marked.filter((p) => p.x <= d.x_max && p.y <= d.y_max).map((p) => <path key={p.id} d={crossPath(x(p.x), y(p.y))}>
-              <title>{markTip({ id: p.id }, reasonOf(p.id) ?? 'excluded', p.tip.slice(1)).join('\n')}</title></path>)}
-          </g> : undefined}
-        </DensityPlot>
-        <Key items={sites.map((s) => ({ label: s, color: colorOf(s) }))} />
+        <DensityPlot id="ie-density" cells={d.cells} bins={d.bins} x={[0, d.x_max]} y={[0, d.y_max]} xLabel={xLabel} yLabel="fAbs (Mm⁻¹)"
+          cloudLabel="IMPROVE filters per cell (post-2003)" points={spartan} box={box} marks={markedPoints}
+          legend={sites.map((s) => ({ label: s, parent: 'SPARTAN filters', color: colorOf(s) }))} />
         <ExcludedNote count={marked.length} drawn />
       </ChartFrame>
 
@@ -191,14 +187,14 @@ export function ImproveEnvelope({ rows, meta }: SectionPageProps) {
         provenance={<>{NB.rt} · {NB.white}</>}
         controls={<Segmented label="Readings" value={pair} options={Object.keys(data.rt.pairs)} onChange={setPair} />}>
         <Grid>
-          {rt ? <DensityPlot id="ie-rt" cells={rt.cells} bins={rt.bins} x={rt.x} y={rt.y} xLabel={`${rt.ref.replace('_Val', '')} (ratio)`} yLabel={`${rt.trans.replace('_Val', '')} (ratio)`} mode="value" valueLabel="median fAbs (Mm⁻¹)" maxSide={420}
+          {rt ? <DensityPlot id="ie-rt" cells={rt.cells} bins={rt.bins} x={rt.x} y={rt.y} xLabel={`${rt.ref.replace('_Val', '')} (ratio)`} yLabel={`${rt.trans.replace('_Val', '')} (ratio)`} mode="value" valueLabel="median fAbs (Mm⁻¹)" cloudLabel="IMPROVE median fAbs per cell (Mm⁻¹)" maxSide={420}
+            legend={[{ label: 'Addis-comparable IMPROVE filters', color: INK.warn, shape: 'hollow' }, ...(pair === 'initial' ? [{ label: 'initial-reading line', color: INK.fit, shape: 'dash' as const }] : [])]}
             points={rt.comparable.map(([x, y, f]) => ({ x, y, color: INK.warn, hollow: true, tip: ['Addis-comparable IMPROVE filter', `fAbs ${fmt(f, 1)} Mm⁻¹`] }))}>
             {pair === 'initial' && data.rt.initial_line?.slope != null ? ({ x, y }) => <line x1={x(rt.x[0])} x2={x(rt.x[1])} y1={y(data.rt!.initial_line!.intercept! + data.rt!.initial_line!.slope! * rt.x[0])} y2={y(data.rt!.initial_line!.intercept! + data.rt!.initial_line!.slope! * rt.x[1])} stroke={INK.fit} strokeWidth={1.6} strokeDasharray="6 3" /> : undefined}
           </DensityPlot> : <Empty>No {pair} readings in the export.</Empty>}
           {data.rt.deficit?.length ? <SweepPlot series={[{ id: 'd', label: 'deficit', color: INK.accent, interval: 'whisker', points: data.rt.deficit.map((q) => ({ x: `${fmt(q.fabs_lo, 0)}${q.fabs_hi === null ? '+' : `–${fmt(q.fabs_hi, 0)}`}`, y: q.p50, lo: q.p25, hi: q.p75, tip: [`fAbs ${fmt(q.fabs_lo, 0)}${q.fabs_hi === null ? '+' : `–${fmt(q.fabs_hi, 0)}`} Mm⁻¹`, `median ${fmt(q.p50, 1)} (IQR ${fmt(q.p25, 1)}–${fmt(q.p75, 1)})`, `n ${q.n.toLocaleString()}`] })) }]}
             xScale="point" xLabel="fAbs bin (Mm⁻¹)" yLabel="Trans_M − initial line" reference={0} /> : null}
         </Grid>
-        <Key items={[{ label: 'Addis-comparable IMPROVE filters', color: INK.warn, kind: 'hollow' }, ...(pair === 'initial' ? [{ label: 'initial-reading line', color: INK.fit, kind: 'dash' as const }] : [])]} />
       </ChartFrame>}
 
       <ChartFrame id="ie-mass" title="The networks in mass on the filter — IMPROVE against each focus site"

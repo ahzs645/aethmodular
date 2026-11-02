@@ -23,6 +23,18 @@ export function writeParams(values: Record<string, string | null | undefined>) {
   if (next !== cur) window.history.replaceState(null, '', next ? `#${next}` : window.location.pathname)
 }
 
+/**
+ * Change some hash keys (null removes one) and let App and the charts re-read the URL, as a shared view does
+ * (lib/views applyView): a page's Samples preset. One replaceState, so it is one undo step.
+ */
+export function patchHash(patch: Record<string, string | null>) {
+  const p = readParams()
+  for (const [k, v] of Object.entries(patch)) { if (v === null) p.delete(k); else p.set(k, v) }
+  const next = p.toString()
+  window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${next ? `#${next}` : ''}`)
+  window.dispatchEvent(new HashChangeEvent('hashchange'))
+}
+
 export const listParam = (v: string | null): Set<string> | null =>
   v ? new Set(v.split('|').filter(Boolean)) : null
 

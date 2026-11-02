@@ -1,8 +1,7 @@
-import { ChartFrame, Note } from '@/components/ChartFrame'
 import { ExportState } from '@/components/ExportState'
 import type { SectionPageProps } from '../../types'
 import { Agreement } from './filterOnly/Agreement'
-import { COMMAND, FoMarkedProvider, NB_DIAG, NB_PROP, NB_STAB, SettingsControls, useFilterOnly, useRuns, useSettings } from './filterOnly/data'
+import { COMMAND, FoMarkedProvider, SettingsControls, useFilterOnly, useRuns, useSettings } from './filterOnly/data'
 import { CoefficientInfluence, CommonFilterInfluence } from './filterOnly/Influence'
 import { Id11Errors, Id11Support } from './filterOnly/Id11'
 import { DenominatorSensitivity, PopulationHeat, PopulationModels, Weighting } from './filterOnly/Populations'
@@ -14,8 +13,8 @@ import { PairedProportional, QuarterBias, QuarterMae, TestWeights } from './filt
  * Addis, Beijing, Delhi and JPL, from the filter-only release's frozen 545 diagnostic filters
  * (gallery/data/export_research_filter_only.py). Every model is refitted here (common/filterOnly.ts), so the
  * charts follow the population, the minimum training n, Filters → excluded (the export's exclusions and the
- * reader's hand exclusions, filterOnly/data useFilterOnly) and, for HIPS in BC units, the MAC; the last panel checks
- * the refit against the release's own tables, on all 545 as the release ran.
+ * reader's hand exclusions, filterOnly/data useFilterOnly) and, for HIPS in BC units, the MAC. The settings sit in the
+ * dock (population and minimum n on the Page tab, HIPS units on the Plot tab under the MAC); the last panel checks the refit against the release's own tables, on all 545 as the release ran.
  */
 export function FilterOnly({ meta }: SectionPageProps) {
   const { data, error } = useFilterOnly()
@@ -24,15 +23,7 @@ export function FilterOnly({ meta }: SectionPageProps) {
   if (!data) return <ExportState title="Filter-only transfer limits" what="the filter-only release export" error={error} command={COMMAND} />
   const props = { runs, s, meta }
   return <FoMarkedProvider value={data.marked}>
-    <ChartFrame id="fo-settings" title="Filter-only transfer limits — how far the HIPS–FTIR EC relationship carries across reported-date quarters" exportable={false} pageOnly
-      subtitle="545 diagnostic filters (480 with a ratio-eligible EC) at Addis Ababa, Beijing, Delhi and JPL · HIPS Fabs predicted from FTIR-predicted EC by OLS, the training median, or a through-origin fit, on withheld calendar quarters"
-      provenance={<>{NB_STAB} (9 figures), {NB_PROP} (8 figures), {NB_DIAG} (figure 05)</>}
-      controls={<SettingsControls />}>
-      <Note>
-        Reported dates are not verified sampling intervals, and the FTIR predictor is not an independent EC reference. The population, minimum training n and units apply to every chart below;
-        Filters → excluded acts on every chart but the last: an excluded filter (the data export's own exclusions and any excluded by hand) is left out of every fit, Include puts the export's back, and Mark draws them as × on the held-out scatter. The release ran on all 545, ETAD-0248 among them, which the export excludes as a PM10 filter: the release's numbers quoted in the tips are the charts under Include.{data.note ? ` ${data.note}` : ''} Fabs is in Mm⁻¹ and needs no MAC; “BC at MAC” divides every HIPS value, prediction and error by the reader's MAC, which leaves percentages unchanged.
-      </Note>
-    </ChartFrame>
+    <SettingsControls />
     <QuarterMae {...props} />
     <QuarterBias {...props} />
     <PairedProportional {...props} />

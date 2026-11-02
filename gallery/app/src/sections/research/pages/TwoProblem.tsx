@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { Crossplot } from '@/components/Crossplot'
 import { Key } from '@/components/Key'
 import { SweepPlot } from '@/components/SweepPlot'
@@ -110,7 +110,6 @@ export function TwoProblem({ rows: viewRows, meta }: SectionPageProps) {
     { key: 'e', label: 'RMSE', num: true, value: (r: T) => fmt(r.f?.rmse, 3) },
     { key: 'neg', label: 'Negative values', num: true, value: (r: T) => r.nNeg },
   ]
-  const rWin = pearson(windows.map((w) => w.center), windows.map((w) => w.slope))
   const bcLabel = 'HIPS BC (µg/m³)', ecLabel = 'FTIR EC (µg/m³)'
   const color = rows.find((r) => r.site === site)?.color ?? INK.text
 
@@ -150,7 +149,6 @@ export function TwoProblem({ rows: viewRows, meta }: SectionPageProps) {
               title={`EC = (Fabs − ${fmt(d.baseline, 1)}) / ${fmt(d.macEff, 2)}`} xLabel={ecLabel} yLabel="Corrected HIPS EC (µg/m³)" fit={false} extraLines={line(ols(pairs.map((p) => p.ec), d.corrected.map((p) => p.corr)), INK.good, 'OLS')} />
           </Grid>
           <Key items={[{ label: site, color }, { label: 'negative after correction', color: NEG, kind: 'hollow' }, { label: 'OLS', color: INK.fit, kind: 'line' }, { label: 'baseline (intercept)', color: INK.accent, kind: 'dash' }]} />
-          <Note>Baseline {fmt(d.baseline, 1)} Mm⁻¹ = {fmt(d.bcFit.intercept, 2)} µg/m³ at MAC {mac}; MAC_eff {fmt(d.macEff, 2)} m²/g, so HIPS follows {fmt(100 * d.sensitivity, 0)} % of the EC variability. {d.nNeg} of {d.corrected.length} filters ({fmt((100 * d.nNeg) / d.corrected.length, 1)} %) go negative after the correction: below detection, not negative carbon.</Note>
         </>}
       </ChartFrame>
 
@@ -176,7 +174,6 @@ export function TwoProblem({ rows: viewRows, meta }: SectionPageProps) {
             background={quad ? (x, y) => { const [x0, x1] = x.domain(); const xs = d3.range(0, 101).map((i) => x0 + ((x1 - x0) * i) / 100)
               return <path d={d3.line<number>().x((v) => x(v)).y((v) => y(quad.coef[0] + quad.coef[1] * v + quad.coef[2] * v * v))(xs) ?? ''} fill="none" stroke={INK.deming} strokeWidth={1.8} strokeDasharray="5 3" /> } : undefined} />
         </Grid>
-        <Note>r(window EC, slope) = {fmt(rWin, 2)}{rWin !== null && rWin < -0.3 ? ': the slope falls with loading' : ': no clear saturation'}. Quadratic x² coefficient {fmt(quad?.coef[2], 4)}; R² linear {fmt(d.bcFit.r2, 3)}, quadratic {fmt(quad?.r2, 3)} (ΔR² {fmt((quad?.r2 ?? NaN) - d.bcFit.r2, 4)}).</Note>
       </ChartFrame>}
 
       {d && validation && <ChartFrame id="tp-validation" title={`Does the correction agree better with the aethalometer? — ${site}`}
@@ -188,7 +185,6 @@ export function TwoProblem({ rows: viewRows, meta }: SectionPageProps) {
             <Crossplot points={validation.pts.map((p) => point(p.r, p.a, p.corr, p.corr < 0 ? NEG : color, 'IR BCc', 'corrected', 'Research · two problems', [], p.corr < 0))} title="Corrected HIPS EC" xLabel="Aethalometer IR BCc (µg/m³)" yLabel="Corrected HIPS EC (µg/m³)" fit={false} extraLines={line(validation.rows[1].f, INK.good, 'OLS')} />
           </Grid>
           <DataTable rows={validation.rows} rowKey={(r) => r.name} columns={fitCols<(typeof validation.rows)[number]>().slice(0, 5)} />
-          <Note>Original: {fitSummary(validation.rows[0].f)}. Corrected: {fitSummary(validation.rows[1].f)}.</Note>
         </>}
       </ChartFrame>}
     </>

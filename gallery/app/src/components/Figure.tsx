@@ -179,6 +179,11 @@ export function Figure(props: FigureSpec & { about?: ReactNode; provenance?: Rea
   )
 }
 
+/** a tipColumns line: a column the row does not carry (undefined) is left out, so a column can annotate some points
+ * only; null prints '—'; a fractional number prints to 3 decimals instead of every digit of the float */
+const tipLine = (c: string, v: Value | undefined): string[] =>
+  v === undefined ? [] : [`${c}: ${typeof v === 'number' && !Number.isInteger(v) ? fmt(v, 3) : v ?? '—'}`]
+
 /** what a crossplot's facets split by, for Panel axes (a facet on neither site nor season collapses Per site/Per season to Shared) */
 const facetDimOf = (facet?: string): PanelDim | null => (facet === 'season' ? 'season' : facet === 'site' || facet === 'Site' ? 'site' : null)
 
@@ -199,7 +204,7 @@ function CrossplotFigure({ spec, rows, marked = [] }: { spec: Extract<FigureSpec
     const etad = byMedia && raw !== undefined ? byMedia.get(mediaKey(raw)) : undefined
     const idv = etad ?? raw
     return [{ x, y, color: spec.color ? color(r[spec.color]) : INK.text, id: idv, open: etad ? () => openSample(etad) : undefined,
-      tip: [...(etad ? [`${etad} · MediaId ${mediaKey(raw)}`] : idv ? [idv] : []), ...(spec.tipColumns ?? (spec.color ? [spec.color] : [])).map((c) => `${c}: ${r[c] ?? '—'}`), `${spec.xLabel}: ${f2(x)}`, `${spec.yLabel}: ${f2(y)}`] }]
+      tip: [...(etad ? [`${etad} · MediaId ${mediaKey(raw)}`] : idv ? [idv] : []), ...(spec.tipColumns ?? (spec.color ? [spec.color] : [])).flatMap((c) => tipLine(c, r[c])), `${spec.xLabel}: ${f2(x)}`, `${spec.yLabel}: ${f2(y)}`] }]
   })
   const facets = facetsOf(rows, spec.facet)
   const sameScale = spec.sameScale ?? true

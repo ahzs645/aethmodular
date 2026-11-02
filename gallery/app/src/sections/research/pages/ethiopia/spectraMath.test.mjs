@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
 import { ALL, bandArea, flatten, groupOf, MONTH_SPLITS, OTHER, pool, profileStats, rankDesc, savgol, UNDATED } from './spectraMath.ts'
-import { ecByCalibration, kSummary, medianRatio, ratioOfMedians } from './variants.ts'
+import { ecByCalibration, kSummary, medianRatio, ratioOfMedians, scansOf } from './variants.ts'
 
 const page = JSON.parse(fs.readFileSync(new URL('../../../../../public/data/research/spectral/ethiopia_calibrations.json', import.meta.url), 'utf8'))
 const table = (name) => { const t = page.tables[name]; const cols = Object.keys(t); return t[cols[0]].map((_, i) => Object.fromEntries(cols.map((c) => [c, t[c][i]]))) }
@@ -75,4 +75,18 @@ test('07 [11], 09 [12] C and 10 [12] B from the per-spectrum EC', () => {
   })
   // 10 printed: adding the 29 lot-248 filters changes the median by 1.030×
   near(ratioOfMedians(ec.get('935 both lots, k30 (first major min)'), ec.get('906 lot 251 only, k30')), 1.030, 0.0006, 'lot-248 effect')
+})
+
+test('scansOf: 319 ETAD spectra of 296 filters, 22 scanned more than once (ETAD-0070 three times)', () => {
+  const ids = table('per_filter').map((f) => String(f.ExternalFilterId))
+  const scans = scansOf(ids)
+  assert.equal(ids.length, 319)
+  assert.equal(new Set(ids).size, 296)
+  assert.equal(new Set(ids.filter((_, i) => scans[i])).size, 22)
+  const at = (id) => ids.flatMap((x, i) => (x === id ? [scans[i]] : []))
+  assert.deepEqual(at('ETAD-0070-6').map((s) => [s.k, s.n]), [[1, 3], [2, 3], [3, 3]])
+  const [a, b] = at('ETAD-0139-3')
+  assert.equal(ids[a.others[0]], 'ETAD-0139-3')
+  assert.deepEqual([a.k, b.k, a.n], [1, 2, 2])
+  assert.equal(scans[ids.indexOf('ETAD-0001-1')] ?? null, null)
 })

@@ -23,7 +23,7 @@ import { DELTA, R_CHAR, R_RAW, scorePoint, SetNote } from './Scores'
 type Scored = ScoredOf<FilterRow>
 const med = (v: number[]) => spread(v).mid
 
-export function LotControl({ c, data, setPick }: { c: Charcoal; data: SpectralExport; setPick: React.ReactNode }) {
+export function LotControl({ c, data }: { c: Charcoal; data: SpectralExport }) {
   const withLot = c.scored.filter((s) => s.lot !== null)
   const lots = [...new Set(withLot.map((s) => s.lot!))].sort((a, b) => a - b)
   const crosstab = lots.map((lot) => ({ lot, ...Object.fromEntries(c.seasons.map((se) => [se.name, withLot.filter((s) => s.lot === lot && s.season === se.name).length])) }))
@@ -35,7 +35,7 @@ export function LotControl({ c, data, setPick }: { c: Charcoal; data: SpectralEx
   const t2 = lots.map((lot) => ({ lot, ...headline(dry.filter((s) => s.lot === lot)) })).filter((r) => r.n)
   const u2 = lots.length === 2 ? mannWhitney(dry.filter((s) => s.lot === lots[0]).map((s) => s.delta), dry.filter((s) => s.lot === lots[1]).map((s) => s.delta)) : null
   return (
-    <ChartFrame id="ch-lot" controls={setPick} exportable={false}
+    <ChartFrame id="ch-lot" exportable={false}
       title={u1 && u2 ? `The lot is not the explanation: within lot ${main} the ${c.dryName} season still stands out (p ${pText(u1.p)}); within the ${c.dryName} season the lots do not differ (p ${pText(u2.p)})` : 'Is it the filter lot?'}
       subtitle={`ETAD spectra come from two PTFE lots, and lot 248 is mostly dry-season, so lot and season are confounded. char_06 separates them: within the lot that spans every season, and within the dry season split by lot. Mann–Whitney on delta (two-sided, scipy's normal approximation). The lot is known for the filters the gallery has (char_06 joins it from the SPARTAN filter list); the newer filters have none.`}
       provenance={<>{NB.c06} §1. {provenance(data, ['per_filter', 'lot_within_251', 'lot_within_dry'])}</>}>
@@ -68,7 +68,7 @@ export function LotControl({ c, data, setPick }: { c: Charcoal; data: SpectralEx
   )
 }
 
-export function LoadingCheck({ c, data, setPick }: { c: Charcoal; data: SpectralExport; setPick: React.ReactNode }) {
+export function LoadingCheck({ c, data }: { c: Charcoal; data: SpectralExport }) {
   const m = useMac()
   const [axis, setAxis] = useSearchParam<'fabs' | 'bc'>('ch.abs', 'fabs', ['fabs', 'bc'])
   const absLabel = axis === 'fabs' ? 'HIPS Fabs (Mm⁻¹)' : `HIPS BC = Fabs / ${m.mac} (µg/m³)`
@@ -86,7 +86,7 @@ export function LoadingCheck({ c, data, setPick }: { c: Charcoal; data: Spectral
   })
   const competing = rows(data, 'competing')
   return (
-    <ChartFrame id="ch-loading" controls={<>{setPick}<Segmented label="Absorption" value={axis} options={['fabs', 'bc'] as const} onChange={setAxis} optionLabel={(o) => (o === 'fabs' ? 'HIPS Fabs' : `Fabs / MAC (${m.mac})`)} /></>}
+    <ChartFrame id="ch-loading" controls={<Segmented label="Absorption" value={axis} options={['fabs', 'bc'] as const} onChange={setAxis} optionLabel={(o) => (o === 'fabs' ? 'HIPS Fabs' : `Fabs / MAC (${m.mac})`)} />}
       title={`Not the loading: within the ${c.dryName} season the low-similarity filters carry the same Fabs (p ${pText(tests[0].u?.p ?? NaN)}) and EC (p ${pText(tests[1].u?.p ?? NaN)}) as the rest`}
       subtitle={`Thin deposits give noisier spectra, and noise lowers correlation with any reference, so low loading could fake the anomaly. Left: r_char against the gallery's FTIR EC; right: against HIPS ${axis === 'fabs' ? 'Fabs' : `BC at the MAC set under Plot → units (${m.mac})`}. A gallery row's own EC and Fabs are used; newer filters take the notebook's Fabs and have no EC. Spearman ρ does not depend on the MAC.`}
       provenance={<>{NB.c06} [20], §5. {provenance(data, ['per_filter', 'loading_within_dry', 'competing'])}</>}>
@@ -118,7 +118,7 @@ export function LoadingCheck({ c, data, setPick }: { c: Charcoal; data: Spectral
 type Rule = 'calendar' | 'anomaly' | 'both'
 const RULE_LABEL: Record<Rule, string> = { calendar: 'Dry season (calendar)', anomaly: 'char_06 anomalies', both: 'Both' }
 
-export function Exclusion({ c, data, setPick }: { c: Charcoal; data: SpectralExport; setPick: React.ReactNode }) {
+export function Exclusion({ c, data }: { c: Charcoal; data: SpectralExport }) {
   const [rule, setRule] = useSearchParam<Rule>('ch.rule', 'calendar', ['calendar', 'anomaly', 'both'])
   const out = (s: Scored) => (rule === 'calendar' ? c.isDry(s) : rule === 'anomaly' ? s.low : c.isDry(s) || s.low)
   const kept = c.scored.filter((s) => !out(s)), dropped = c.scored.filter(out)
@@ -137,7 +137,7 @@ export function Exclusion({ c, data, setPick }: { c: Charcoal; data: SpectralExp
     { subset: 'Excluded', ...x },
   ]
   return (
-    <ChartFrame id="ch-exclusion" controls={<>{setPick}<Segmented label="Exclude" value={rule} options={['calendar', 'anomaly', 'both'] as const} onChange={setRule} optionLabel={(o) => RULE_LABEL[o]} /></>}
+    <ChartFrame id="ch-exclusion" controls={<Segmented label="Exclude" value={rule} options={['calendar', 'anomaly', 'both'] as const} onChange={setRule} optionLabel={(o) => RULE_LABEL[o]} />}
       title={`Without the excluded filters raw feedstock still wins for ${pct(k.rawWins)}, with a smaller margin (median delta ${fmt(all.deltaMedian, 3)} → ${fmt(k.deltaMedian, 3)})`}
       subtitle={`char_07 repeats char_05 with the dry season excluded by the calendar (its primary rule), by char_06's low-similarity component, or both. Left: the char_05 scatter with the excluded filters grey. Right: delta = r_raw − r_char, median and interquartile range, for every filter shown, the kept and the excluded.`}
       provenance={<>{NB.c07} [7], §1 and §5. {provenance(data, ['per_filter', 'headline_07', 'rules_07'])}</>}>

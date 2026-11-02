@@ -6,13 +6,14 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import * as d3 from 'd3'
 import { Segmented, Select } from '@/components/ChartFrame'
 import { useExport } from '@/lib/data'
-import { fmt } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { ExcludedNote, useExclMode, useExclusionSplit } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { rowsOf as tableRows } from '@/lib/table'
 import { useSearchParam } from '@/lib/url'
+import { PlotControls, SidebarControls } from '@/lib/pageSidebar'
+import { Row } from '@/components/SubsetBar'
 import { MIN_TRAIN, POPULATIONS, evaluate, inPopulation, type Block, type FPoint, type Population, type Scheme } from '../../common/filterOnly'
 import { siteColor as metaSiteColor } from '@/lib/siteColours'
 
@@ -107,15 +108,27 @@ export function useSettings(): Settings {
   return { population, minTrain: Number(min), unit, k: unit === 'bc' ? 1 / mac : 1, u: unit === 'bc' ? 'µg/m³' : 'Mm⁻¹', mac }
 }
 
+/**
+ * the page-wide settings in the dock: population and minimum training n on the Page tab, HIPS units on the Plot tab
+ * under the MAC that "BC" divides by (lib/pageSidebar)
+ */
 export function SettingsControls() {
   const [population, setPopulation] = useSearchParam<Population>('fo.pop', 'diagnostic', POP_KEYS)
   const [min, setMin] = useSearchParam<string>('fo.min', String(MIN_TRAIN), MIN_OPTIONS)
   const [unit, setUnit] = useSearchParam<Unit>('fo.unit', 'fabs', ['fabs', 'bc'])
-  const { mac } = useMac()
   return <>
-    <Select label="Population" value={population} options={POP_KEYS} onChange={(v) => setPopulation(v as Population)} optionLabel={(o) => POPULATIONS.find((p) => p.key === o)!.label} />
-    <Segmented label="Min training n" value={min} options={MIN_OPTIONS} onChange={setMin} optionLabel={(o) => (o === String(MIN_TRAIN) ? `${o} (release)` : o)} />
-    <Segmented label="HIPS as" value={unit} options={['fabs', 'bc'] as const} onChange={setUnit} optionLabel={(o) => (o === 'fabs' ? 'Fabs (Mm⁻¹)' : `BC at MAC ${fmt(mac, 1)}`)} />
+    <SidebarControls title="Filter-only transfer limits">
+      <Select label="Population" value={population} options={POP_KEYS} onChange={(v) => setPopulation(v as Population)} optionLabel={(o) => POPULATIONS.find((p) => p.key === o)!.label}
+        title="Which filters every chart on the page refits on" />
+      <Segmented label="Min training n" value={min} options={MIN_OPTIONS} onChange={setMin} optionLabel={(o) => (o === String(MIN_TRAIN) ? `${o} (release)` : o)}
+        title="The fewest training filters a quarter needs before it is evaluated" />
+    </SidebarControls>
+    <PlotControls>
+      <Row label="HIPS as">
+        <Segmented value={unit} options={['fabs', 'bc'] as const} onChange={setUnit} optionLabel={(o) => (o === 'fabs' ? 'Fabs (Mm⁻¹)' : 'BC (µg/m³)')}
+          title="Filter-only charts: Fabs needs no MAC; BC divides every HIPS value, prediction and error by the MAC above, which leaves percentages unchanged" />
+      </Row>
+    </PlotControls>
   </>
 }
 

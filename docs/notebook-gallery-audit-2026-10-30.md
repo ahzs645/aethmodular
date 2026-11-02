@@ -100,7 +100,7 @@ Cell indices are notebook cell numbers. "MSF" is Multi_Site_Analysis_Fixed, "FU"
 |---|---|---|---|---|---|---|
 | Analysis_Tasks_Jan2025 | c10: iron vs FTIR EC per site, mean Fe/EC | In: Correlation (Iron × EC (FTIR), per-site layout); Fe/EC via Ratio dialog | D | | N | Not executed |
 | Analysis_Tasks_Jan2025 | c13: Delhi axis scaling before/after | n/a | n/a | | N | A plot-format fix |
-| Analysis_Tasks_Jan2025 | c16: HIPS vs aeth, filters with all three measurements | In: Aethalometer → Against the filters (MethodAgreement; AgreementTimeline gives "all three" means) | D | | N | Follows MAC |
+| Analysis_Tasks_Jan2025 | c16: HIPS vs aeth, filters with all three measurements | In: Aethalometer → Against the filters (MethodAgreement, with the "all three" means in its note) | D | | N | Follows MAC |
 | Analysis_Tasks_Jan2025 | c18: all pairs × sites crossplots | In: Correlation with aethalometer fields (full build); MethodAgreement | D | | N | |
 | Analysis_Tasks_Jan2025 | c20: slope / R² summary table (CSV) | Partial: each chart shows its own fit; no table across all pairs | D | A small table over METHOD_PAIRS × sites | N | |
 | Analysis_Tasks_Jan2025 | c22: BC wavelength correlation matrix | In: Aethalometer → Data quality → attenuation (AtnCorrelation, BCc triangle) | D | | N | |
@@ -165,7 +165,7 @@ Cell indices are notebook cell numbers. "MSF" is Multi_Site_Analysis_Fixed, "FU"
 | addis_02_temporal_patterns | c13, c15, c17: seasonal box and timeseries; extreme events by hour and season; rate of change | In: SeasonalSpread, DailyTimeline, HighEpisodes, EpisodesBySite | D | | N | The episode rule is the gallery's own |
 | addis_02_temporal_patterns_daily | c9–17: monthly, weekday, seasonal, extreme days, day-to-day change | In: MonthlyPattern, WeeklyPattern, SeasonalSpread, Episodes | D | | N | Every site, not only Addis |
 | addis_02.5_temporal_patterns_filter | c9, c11, c13: monthly, weekday and seasonal for the 3 methods | In: Overview → FilterMethods | D | | N | Follows MAC |
-| addis_02.5_temporal_patterns_filter | c15, c17: timeseries + inter-method ratios; inter-method scatter | In: DailyTimeline, AgreementTimeline, Evolution (ratio field), MethodAgreement | D | | N | |
+| addis_02.5_temporal_patterns_filter | c15, c17: timeseries + inter-method ratios; inter-method scatter | In: DailyTimeline, Evolution (ratio field), MethodAgreement | D | | N | |
 | addis_03_meteorology (+_daily) | c9: monthly and daily precipitation | In: Weather → WeatherTimeline, MonthlyClimate | D | | N | |
 | addis_03_meteorology (+_daily) | c11, c17: BC by rain intensity; rain-threshold sensitivity | In: Weather → RainWashout (field = IR BCc (aethalometer), full build); rain groupings with editable cut points | D | | N | Per filter window rather than hourly or daily |
 | addis_03_meteorology (+_daily) | c13: static vs dynamic seasons | In: MonthlyClimate + the dynamic season editor (re-seasons every chart) | D | | N | |

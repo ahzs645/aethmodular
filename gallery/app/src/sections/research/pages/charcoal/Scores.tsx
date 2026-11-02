@@ -5,7 +5,7 @@
  */
 import { useMemo } from 'react'
 import type { ScaleTime } from 'd3'
-import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { Key } from '@/components/Key'
 import { timeSeasonBands } from '@/components/SeasonBands'
@@ -16,19 +16,14 @@ import { ExcludedNote, useMarkReason } from '@/lib/markedRows'
 import { INK, MONTHS } from '@/lib/theme'
 import type { FilterRow } from '@/lib/types'
 import { num } from '@/lib/table'
-import type { ScoreSet, Scored } from '../../common/charcoal'
+import type { Scored } from '../../common/charcoal'
 import { byGroup, monthlyRate } from '../../common/charcoal'
 import { Bars, DataTable, Grid, line, shortSeason } from '../../common/ui'
 import { provenance, rows as rowsOfTable, type SpectralExport } from '../spectralCommon'
-import { NB, SET_LABEL, SET_TITLE, type Charcoal } from './data'
+import { NB, type Charcoal } from './data'
 
 const rChar = (s: Scored<FilterRow>) => s.rChar
 export const R_CHAR = 'best r vs McCall char (r_char)', R_RAW = 'best r vs McCall raw feedstock (r_raw)', DELTA = 'delta = r_raw − r_char'
-
-/** the page's filter-set picker (one URL key, ch.set, for every chart) */
-export function SetPick({ value, onChange }: { value: ScoreSet; onChange: (s: ScoreSet) => void }) {
-  return <Segmented label="Filters" value={value} options={['view', 'plus', 'notebook'] as const} onChange={onChange} optionLabel={(o) => SET_LABEL[o]} title={SET_TITLE} />
-}
 
 /** a scored filter as a crossplot point: a gallery row opens its record, a filter the gallery lacks only tips */
 export function scorePoint(s: Scored<FilterRow>, x: number, y: number, color: string, xLabel: string, yLabel: string, hollow = false, extra: string[] = []): CrossPoint {
@@ -39,7 +34,7 @@ export function scorePoint(s: Scored<FilterRow>, x: number, y: number, color: st
 
 /**
  * The one exclusion note a chart of the scores carries (lib/markedRows): under Mark, how many excluded scored filters
- * it leaves out (`drawn`: its crossplots draw them as ×; `of` narrows them to what the chart reads), in every set.
+ * it leaves out (`drawn`: its crossplots draw them as ×; `of` narrows them to what the chart reads).
  */
 export function SetNote({ c, drawn = false, of }: { c: Charcoal; drawn?: boolean; of?: (s: Scored<FilterRow>) => boolean }) {
   return <ExcludedNote count={(of ? c.marked.filter(of) : c.marked).length} drawn={drawn} />
@@ -53,22 +48,22 @@ function useSweepMarks(marked: Scored<FilterRow>[], y: (s: Scored<FilterRow>) =>
   [marked, y, yLabel, reasonOf])
 }
 
-/** the notebook's value beside the page's, when the page shows the notebooks' set */
+/** the notebook's value beside the page's, when the page shows the notebooks' 239 (Charcoal `notebook`) */
 const vs = (mine: number, theirs: number | null | undefined, digits = 3) => theirs == null ? fmt(mine, digits) : `${fmt(mine, digits)} (nb ${fmt(theirs, digits)})`
 
-export function RawVsChar({ c, data, setPick }: { c: Charcoal; data: SpectralExport; setPick: React.ReactNode }) {
+export function RawVsChar({ c, data }: { c: Charcoal; data: SpectralExport }) {
   const groups = useMemo(() => [...byGroup(c.scored, () => 'All filters', ['All filters']), ...byGroup(c.scored, (s) => s.season, c.seasons.map((s) => s.name))].filter((g) => g.n), [c])
   const saved = rowsOfTable(data, 'by_season_05')
-  const nbOf = (season: string) => (c.set === 'notebook' ? saved.find((r) => r.season === season) : undefined)
+  const nbOf = (season: string) => (c.notebook ? saved.find((r) => r.season === c.nbSeason(season)) : undefined)
   const pts = c.scored.map((s) => scorePoint(s, s.rChar, s.rRaw, c.colorOf(s.season), 'r_char', 'r_raw', false, [`${DELTA}: ${fmt(s.delta, 3)}`]))
   const marked = c.marked.map((s) => scorePoint(s, s.rChar, s.rRaw, c.colorOf(s.season), 'r_char', 'r_raw', false, [`${DELTA}: ${fmt(s.delta, 3)}`]))
   const all = groups[0], dry = groups.find((g) => g.group !== 'All filters' && c.isDry({ season: g.group, month: 0 }))
   return (
-    <ChartFrame id="ch-raw-vs-char" controls={setPick}
+    <ChartFrame id="ch-raw-vs-char"
       title={all ? `Within McCall, raw feedstock matches ${pct(all.rawWins)} of these ${all.n} filters better than char${dry ? `; ${pct(dry.rawWins)} in the ${shortSeason(dry.group)} season` : ''}` : 'Raw feedstock against char, per filter'}
-      subtitle={`Each Addis filter's best Pearson r against McCall's charred feedstock (x) and against its raw feedstock (y), on AIRSpec-baselined, detrended, SNV spectra over 1430–3500 cm⁻¹ (char_05). Above the 1:1 line raw biomass is the closer analogue. Coloured by season; the table recomputes char_05's by-season summary for the filters shown${c.set === 'notebook' ? ', with the notebook\'s own numbers in brackets' : ''}.`}
+      subtitle={`Each Addis filter's best Pearson r against McCall's charred feedstock (x) and against its raw feedstock (y), on AIRSpec-baselined, detrended, SNV spectra over 1430–3500 cm⁻¹ (char_05). Above the 1:1 line raw biomass is the closer analogue. Coloured by season; the table recomputes char_05's by-season summary for the filters shown${c.notebook ? ', with the notebook\'s own numbers in brackets' : ''}.`}
       provenance={<>{NB.c05} [14] left, [18]. {provenance(data, ['per_filter', 'by_season_05'])}</>}>
-      {pts.length < 3 ? <Empty>No scored Addis filters in view. Choose “{SET_LABEL.notebook}” or bring Addis into view.</Empty> : <Grid>
+      {pts.length < 3 ? <Empty>No scored Addis filters in view: bring Addis into view in Samples, or use its char notebooks' 239 preset.</Empty> : <Grid>
         <Crossplot points={pts} marked={marked} title="r_raw vs r_char" xLabel={R_CHAR} yLabel={R_RAW} fit={false} extraLines={line({ slope: 1, intercept: 0 }, INK.identity, '1:1', '5 4')} maxSide={420} />
         <DataTable rows={groups} rowKey={(g) => g.group} columns={[
           { key: 'g', label: 'Filters', value: (g) => g.group === 'All filters' ? g.group : <span style={{ color: c.colorOf(g.group) }}>{shortSeason(g.group)}</span> },
@@ -81,23 +76,22 @@ export function RawVsChar({ c, data, setPick }: { c: Charcoal; data: SpectralExp
       </Grid>}
       <Key items={[...c.seasons.map((s) => ({ label: shortSeason(s.name), color: s.color })), { label: '1:1', color: INK.identity, kind: 'dash' }]} />
       <SetNote c={c} drawn />
-      <Note>Best r is the maximum over a class's reference spectra, so it rises with the number of references (McCall: 24 raw, 216 char spectra); the notebooks compare feedstocks on the mean r for that reason. The full charcoal library matches Addis better than either McCall class (median best r 0.78, char_02), so this is a statement about McCall, not evidence that Addis is unburned.</Note>
     </ChartFrame>
   )
 }
 
-export function Recurrence({ c, data, setPick }: { c: Charcoal; data: SpectralExport; setPick: React.ReactNode }) {
+export function Recurrence({ c, data }: { c: Charcoal; data: SpectralExport }) {
   const marks = useSweepMarks(c.marked, rChar, 'r_char')
   const series: SweepSeries[] = c.seasons.map((se) => ({ id: se.name, label: shortSeason(se.name), color: se.color, marks: true, width: 0, r: 3,
     points: c.scored.filter((s) => s.season === se.name).sort((a, b) => a.date.localeCompare(b.date))
       .map((s) => ({ x: new Date(s.date), y: s.rChar, id: s.row ? s.id : undefined, tip: [s.filterId, `${s.date} · ${shortSeason(s.season)}`, `r_char ${fmt(s.rChar, 3)} · delta ${fmt(s.delta, 3)}`] })) }))
   const monthly = monthlyRate(c.scored)
-  const saved = c.set === 'notebook' ? rowsOfTable(data, 'monthly_06') : []
+  const saved = c.notebook ? rowsOfTable(data, 'monthly_06') : []
   const dryMonths = new Set(c.drySeasons.flatMap((s) => s.months))
   const inDry = monthly.filter((m) => dryMonths.has(m.month) && m.n), outDry = monthly.filter((m) => !dryMonths.has(m.month) && m.n)
   const share = (ms: typeof monthly) => { const n = ms.reduce((a, m) => a + m.n, 0); return n ? ms.reduce((a, m) => a + m.rate * m.n, 0) / n : NaN }
   return (
-    <ChartFrame id="ch-recurrence" controls={setPick}
+    <ChartFrame id="ch-recurrence"
       title={`Similarity to char collapses every ${c.dryName} season: ${pct(share(inDry))} of ${c.dryName}-season filters are anomalous, ${pct(share(outDry))} of the rest`}
       subtitle={`Top: each filter's best r against McCall char over time, the ${c.dryName} season shaded. Bottom: the share of filters per calendar month (all years pooled) with delta = r_raw − r_char above 0.05, char_06's anomaly rule. An instrument or filter-lot artefact would not switch on and off with the calendar for four years.`}
       provenance={<>{NB.c06} [8]. {provenance(data, ['per_filter', 'monthly_06'])}</>}>
@@ -105,7 +99,7 @@ export function Recurrence({ c, data, setPick }: { c: Charcoal; data: SpectralEx
         <SweepPlot series={series} marks={marks} xScale="time" yLabel="r_char" height={260}
           background={({ x, iw, ih }) => timeSeasonBands(x as ScaleTime<number, number>, c.drySeasons, iw).map((b, i) => <rect key={i} x={b.x} y={0} width={b.w} height={ih} fill={b.color} opacity={0.1} />)} />
         <Key items={c.seasons.map((s) => ({ label: shortSeason(s.name), color: s.color }))} />
-        <Bars label={`share of filters with delta > 0.05${c.set === 'notebook' ? ' (nb = char_06\'s saved rate)' : ''}`} max={1} format={(v) => pct(v)}
+        <Bars label={`share of filters with delta > 0.05${c.notebook ? ' (nb = char_06\'s saved rate)' : ''}`} max={1} format={(v) => pct(v)}
           bars={monthly.map((m) => {
             const nbRate = num(saved.find((r) => r.month === m.month)?.rate ?? null)
             return { key: String(m.month), label: MONTHS[m.month - 1], value: m.n ? m.rate : null, signed: dryMonths.has(m.month) ? -1 : 1,
@@ -118,7 +112,7 @@ export function Recurrence({ c, data, setPick }: { c: Charcoal; data: SpectralEx
   )
 }
 
-export function Populations({ c, data, setPick }: { c: Charcoal; data: SpectralExport; setPick: React.ReactNode }) {
+export function Populations({ c, data }: { c: Charcoal; data: SpectralExport }) {
   const edges = Array.from({ length: 31 }, (_, i) => 0.15 + (i * 0.75) / 30)
   const hist = c.seasons.map((se) => {
     const v = c.scored.filter((s) => s.season === se.name).map((s) => s.rChar)
@@ -129,12 +123,12 @@ export function Populations({ c, data, setPick }: { c: Charcoal; data: SpectralE
   const marked = c.marked.map((s) => scorePoint(s, s.rChar, s.delta, c.colorOf(s.season), 'r_char', 'delta', !s.low))
   const saved = rowsOfTable(data, 'mixture_vs_season')
   const counts = c.seasons.map((se) => {
-    const rs = c.scored.filter((s) => s.season === se.name), nb = c.set === 'notebook' ? saved.find((r) => r.season === se.name) : undefined
+    const rs = c.scored.filter((s) => s.season === se.name), nb = c.notebook ? saved.find((r) => r.season === c.nbSeason(se.name)) : undefined
     return { season: se.name, n: rs.length, low: rs.filter((s) => s.low).length, nbLow: num(nb?.['low-similarity'] ?? null) }
   })
   const low = c.scored.filter((s) => s.low)
   return (
-    <ChartFrame id="ch-populations" controls={setPick}
+    <ChartFrame id="ch-populations"
       title={`Two populations, not one shifted one: ${low.length} of ${c.scored.length} filters sit in the low-similarity component, ${counts.filter((r) => c.isDry({ season: r.season, month: 0 })).reduce((a, r) => a + r.low, 0)} of them in the ${c.dryName} season`}
       subtitle="Left: r_char by season. Right: r_char against delta; filled points are in char_06's low-similarity component, hollow ones in the normal one. The component comes from a two-component Gaussian mixture on r_char fitted on all 239 filters without the season (BIC −214.9 against −202.3 for one component; means 0.393 and 0.649), so it is the notebook's label: it does not refit on the filters shown."
       provenance={<>{NB.c06} [11]. {provenance(data, ['per_filter', 'mixture_vs_season'])}</>}>

@@ -242,7 +242,9 @@ export function ScatterPlot({
   const pooled = useMemo(() => (fitting && fit === 'pooled' ? regression(ok.map((p) => p.x), ok.map((p) => p.y),
     { errorsInVariables: true, lambda, bootstrapGroups: monthBlocks(ok.map((p) => p.rec ?? {})) }) : null), [ok, fit, lambda, fitting])
   const w = iw + m.left + m.right
-  const summary = useRegressionSummary({ stats: pooled, groups: fit === 'pooled' ? undefined : fitGroups, width: w - 24, enabled: fitting })
+  const summary = useRegressionSummary({ stats: pooled, groups: fit === 'pooled' ? undefined : fitGroups, width: w - 24, maxWidth: square ? (width || w) - 24 : undefined, enabled: fitting })
+  // a square plot's fit boxes may run wider than it (one row across the frame): the SVG takes their width, the plot stays centred
+  const svgW = Math.max(w, summary.width + 24), dx = (svgW - w) / 2
   const top = m.top + titleH + (summary.height ? summary.height + 14 : 0)
   const ih = ih0
   const y = useMemo(() => {
@@ -297,6 +299,7 @@ export function ScatterPlot({
       focus={(p, [cx, cy]) => <Mark shape={p.shape} cx={cx} cy={cy} r={Math.max(p.r ?? 3.5, focusR)} fill={p.hollow ? 'none' : p.color} opacity={p.dim}
         {...dotFill('sparse')} stroke={INK.text} strokeWidth={2} />}
       tipOf={(p) => (p.tip ? (p.rec || p.open ? [...p.tip, p.id ? 'click to pin it on every chart and open its record' : 'click to open its record'] : p.tip) : null)}
+      pickable={(p) => !!(onPick || p.open || p.rec || keyOf(p))}
       onPick={(p) => {
         if (onPick) { onPick(original?.get(p) ?? p); return }
         const key = keyOf(p)
@@ -310,10 +313,10 @@ export function ScatterPlot({
   )
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      <svg width={w} height={top + ih + m.bottom} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
-        {title && <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>}
+      <svg width={svgW} height={top + ih + m.bottom} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
+        {title && <text x={m.left + dx} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>}
         {fitting && <g transform={`translate(12,${m.top + titleH + 8})`}>{summary.node}</g>}
-        <g transform={`translate(${m.left},${top})`}>
+        <g transform={`translate(${m.left + dx},${top})`}>
           {yBands?.map((b, i) => <g key={b.key}>
             {bandStripes && i % 2 === 0 && <rect x={-m.left + 4} y={y(i)} width={iw + m.left - 4} height={y(i + 1) - y(i)} fill={INK.page} />}
             <text x={-10} y={(y(i) + y(i + 1)) / 2} dy="0.32em" textAnchor="end" fontSize={bandLabelSize} fontWeight={bandStripes ? 600 : 400} fill={b.color ?? INK.text}>{b.label}</text>

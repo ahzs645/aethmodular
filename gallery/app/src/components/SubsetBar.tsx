@@ -1,4 +1,4 @@
-import { PageTabSlot, usePageSidebarNote, usePageTab } from '@/lib/pageSidebar'
+import { PageTabSlot, PlotTabSlot, SamplesTabSlot, usePageSidebarNote, usePageTab } from '@/lib/pageSidebar'
 import { RegressionControls } from '@/lib/regressionPrefs'
 import { chemText, trim } from '@/lib/format'
 import { CONVENTION_LABEL, seasonOnly } from '@/lib/seasons'
@@ -396,6 +396,8 @@ export function SubsetBar({
           {explain && <span className="row-note">MAC scales the slope of a fit against HIPS BC; the intercept barely moves (exactly unchanged for OLS)</span>}
         </Row>
       )}
+      {/* a page's unit choice that rides on the MAC (lib/pageSidebar PlotControls) */}
+      <PlotTabSlot />
       {caps.fields !== 'none' && <RatioRow explain={explain} />}
 
       {caps.fields !== 'none' && s.showFtirBaseline && a.onFtirBaseline && (
@@ -482,6 +484,8 @@ export function SubsetBar({
           <PageTabSlot hidden={view !== 'page'} />
           {view === 'filters' && <>
             {summary}
+            {/* the page's presets for these settings (lib/pageSidebar SampleControls) */}
+            <SamplesTabSlot />
             <Row label="network">
               {caps.networks ? (
                 <span className="net-toggles" role="group" aria-label="Networks (pick one or both)"

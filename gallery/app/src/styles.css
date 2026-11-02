@@ -754,6 +754,8 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
   .subset-tab-label, .subset-tab-count { writing-mode: horizontal-tb; transform: none; }
 }
 @keyframes sheet-in { from { transform: translateY(40%); opacity: 0.4; } to { transform: none; opacity: 1; } }
+/* a drawer that replaces an open one (components/DrawerShell `enter`) appears in place */
+.drawer.no-enter, .sheet-scrim.no-enter { animation: none; }
 @keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .drawer, .sheet-scrim { animation: none; } }
 .drawer-head > div:first-child { flex: 1; min-width: 0; }
@@ -1798,7 +1800,22 @@ html.dash-present .container.dash { padding-top: 10px; }
 .gt-scrub-field.scrub-field:hover .gt-scrub-fill, .gt-scrub-field.scrub-field[data-scrubbing] .gt-scrub-fill { opacity: 0.22; }
 .gt-scrub-field.scrub-field .gt-scrub-value, .gt-scrub-field.scrub-field .gt-scrub-input { font-weight: 650; }
 .gt-scrub-field.scrub-field .gt-scrub-unit { color: var(--ink-muted); }
-.gt-scrub-field.scrub-field:has(.scrub-unit-frac) .gt-scrub-value, .gt-scrub-field.scrub-field:has(.scrub-unit-frac) .gt-scrub-input { padding-right: 1.45rem; }
+/* The number and its unit share one baseline: a two-column grid whose single row is centred in the field. The
+   toolkit centres each in its own box (different font and size, so "45" and "days" sat at different heights)
+   and gives the unit a fixed 1.5rem column that a word like "days" overflows into the border. */
+.gt-scrub-field.scrub-field { display: inline-grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; align-content: center; }
+.gt-scrub-field.scrub-field .gt-scrub-value, .gt-scrub-field.scrub-field .gt-scrub-input {
+  grid-column: 1; position: relative; inset: auto; display: block; height: auto; overflow: hidden; text-align: right; padding: 0 0.5rem; }
+.gt-scrub-field.scrub-field:has(.gt-scrub-unit) .gt-scrub-value, .gt-scrub-field.scrub-field:has(.gt-scrub-unit) .gt-scrub-input { padding-right: 0.25rem; }
+.gt-scrub-field.scrub-field .gt-scrub-unit { grid-column: 2; position: relative; right: auto; display: block; width: auto; height: auto; padding-right: 0.5rem; }
+/* a stacked unit (m²/g) is two lines with no baseline to share: centre both, as the toolkit does */
+.gt-scrub-field.scrub-field:has(.scrub-unit-frac) { align-items: center; }
+.gt-scrub-field.scrub-field .gt-scrub-unit:has(.scrub-unit-frac) { display: flex; }
+/* the bar for a field with no max (ScrubField `fill`), drawn by the host where the toolkit draws none */
+.gt-scrub-field.scrub-field.scrub-own-fill::before {
+  content: ''; position: absolute; inset-block: 0; left: 0; width: var(--scrub-fill, 0%);
+  background: var(--accent); opacity: 0.12; pointer-events: none; transition: opacity 0.15s; }
+.gt-scrub-field.scrub-field.scrub-own-fill:hover::before, .gt-scrub-field.scrub-field.scrub-own-fill[data-scrubbing]::before { opacity: 0.22; }
 .scrub-unit-frac { display: inline-flex; flex-direction: column; align-items: center; font-size: 8.5px; line-height: 1; }
 .scrub-unit-frac > span + span { border-top: 1px solid currentColor; padding-top: 1px; margin-top: 1px; min-width: 100%; text-align: center; }
 .frame-actions button[aria-label="Focus on this chart"] { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 6px; }

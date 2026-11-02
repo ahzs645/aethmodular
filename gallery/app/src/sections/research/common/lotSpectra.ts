@@ -93,9 +93,10 @@ export interface Member {
 
 /**
  * Which filters the charts use. `view`: exported spectra whose gallery row is in view (the reader's sites, seasons,
- * dates and exclusions; the row's season). `plus`: those and, for the sites in view, the PM2.5 spectra the gallery
- * has no row for at all (`known` = every gallery id), seasoned by the reader's calendar. `notebook`: char_12's 239
- * Addis filters with its own calendar, which reproduces its tables.
+ * dates and exclusions; the row's season). `plus` (the page's): those and, for the sites in view, the spectra the
+ * gallery has no row for at all (`known` = every gallery id) that are PM2.5 or in char_12's cohort (its five PM10
+ * Addis filters), placed by `seasonOf` (null leaves one out). `notebook`: char_12's 239 Addis filters with its own
+ * calendar, which reproduces its tables (the tests' reference).
  */
 export type MemberSet = 'view' | 'plus' | 'notebook'
 export const MEMBER_SETS: readonly MemberSet[] = ['view', 'plus', 'notebook']
@@ -118,7 +119,7 @@ export function membersOf(exp: LotExport, set: MemberSet, rows: readonly { id: s
     if (r) { members.push({ ...base, season: r.season, inView: true }); continue }
     if (!codes.has(f.code[i]) || known.has(f.id[i])) continue
     unmatched++
-    if (set === 'plus' && f.type[i] === 'PM2.5') {
+    if (set === 'plus' && (f.type[i] === 'PM2.5' || f.char12[i])) {
       const season = seasonOf(f.code[i], f.date[i], month)
       if (season) members.push({ ...base, season, inView: false })
     }

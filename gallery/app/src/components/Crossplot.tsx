@@ -21,7 +21,6 @@ import { FONT, INK } from '@/lib/theme'
 import { Toggle } from '@/components/ChartFrame'
 import { styleBrush } from '@/lib/brush'
 import { useSearchParam } from '@/lib/url'
-import { ChartAside } from '@/lib/singleView'
 import { useCountedFilter, useExclMode, useMarkReason, type MarkPoint } from '@/lib/markedRows'
 
 /** One filter on a crossplot. `rec` opens the record drawer; `id` links hover and pin across charts. */
@@ -37,8 +36,8 @@ export interface CrossPoint {
 
 /**
  * A fixed line drawn over the points (a saved fit, a season's line) with its confidence band. `saved` marks a line
- * read from an export, which the excluded-filters note then says was fitted on the notebook's own filters; a line the
- * page fits from the counted points leaves it unset.
+ * read from an export (fitted on the notebook's own filters); a line the page fits from the counted points leaves it
+ * unset.
  */
 export interface CrossLine { slope: number; intercept: number; color: string; label: string; dash?: string; method: Estimator; stats: RegressionStats | null; saved?: boolean }
 
@@ -59,7 +58,7 @@ const span = crossSpan
 
 const NO_KEYS: ReadonlySet<string> = new Set()
 
-export function Crossplot({ points: inputPoints, marked: inputMarked, title, xLabel: inputXLabel, yLabel: inputYLabel, maxSide = 360, domain: inputDomain, fit = true, errorRatio, extraLines = [], grouping: groupingProp, background, pick, sameScale = true, yDomain: inputYDomain, brushable = false, brush }: {
+export function Crossplot({ points: inputPoints, marked: inputMarked, title, xLabel: inputXLabel, yLabel: inputYLabel, maxSide = 360, domain: inputDomain, fit = true, errorRatio, extraLines = [], grouping: groupingProp, background, foreground, pick, sameScale = true, yDomain: inputYDomain, brushable = false, brush }: {
   points: CrossPoint[]
   /**
    * Filters → excluded: Mark (lib/markedRows): the excluded filters the chart would draw, built from useMarkedRows() the
@@ -86,6 +85,8 @@ export function Crossplot({ points: inputPoints, marked: inputMarked, title, xLa
   grouping?: FitGrouping | 'none'
   /** drawn under the points on the same scales, e.g. a density of the wider population */
   background?: (x: d3.ScaleLinear<number, number>, y: d3.ScaleLinear<number, number>) => ReactNode
+  /** drawn over the points and fits on the same scales, e.g. a summary line that runs through the densest dots */
+  foreground?: (x: d3.ScaleLinear<number, number>, y: d3.ScaleLinear<number, number>) => ReactNode
   /** axis titles open the nearest axis picker (components/AxisFieldPopover: the page's or the gallery's); 'x' or 'y' for one */
   pick?: boolean | 'x' | 'y'
   /** one range and a 1:1 line for both axes (comparable measurements); false: each axis its own range */
@@ -125,14 +126,6 @@ export function Crossplot({ points: inputPoints, marked: inputMarked, title, xLa
   const valid = useMemo(() => drawable.filter(p => !isOut(p)), [drawable, isOut])
   const markMode = useExclMode() === 'mark'
   const reasonOf = useMarkReason()
-  // filters, not points: one filter can be drawn more than once (several configurations in one panel)
-  const nOut = useMemo(() => {
-    const out = drawable.filter(isOut), ids = new Set(out.map((p) => p.id ?? p.rec?.id).filter(Boolean))
-    return ids.size + out.filter((p) => !(p.id ?? p.rec?.id)).length
-  }, [drawable, isOut])
-  const refit = fit && groupingOverride !== 'none', saved = extraLines.some((l) => l.saved)
-  const handNote = nOut <= 0 ? null
-    : `${nOut} excluded filter${nOut === 1 ? '' : 's'} (Filters → excluded) ${nOut === 1 ? 'is' : 'are'} ${markMode ? 'drawn as ×' : 'hidden here'}${refit ? ', left out of the refit' : ''}${saved ? '; the saved statistics were computed on the notebook\'s own filters' : ''}.`
   const lambda = orientErrorRatio(errorRatio, swapped)
   const prefs = useRegressions()
   const { methods } = prefs
@@ -199,7 +192,9 @@ export function Crossplot({ points: inputPoints, marked: inputMarked, title, xLa
   const hoisted = useGroupControl('fit-grouping', offerGrouping ? { site: multiSite, season: seasons } : null,
     (vs) => <FitGroupingFor site={vs.some((v) => v.site)} season={vs.some((v) => v.season)} />)
   // in single view its card in the sidebar carries the title, so several crossplots' cards say which plot is whose
-  const summary = useRegressionSummary({ stats: st, groups: siteFits ? fitGroups : undefined, width: w - 24, enabled: fitting, panel: title ? { title } : null })
+  const summary = useRegressionSummary({ stats: st, groups: siteFits ? fitGroups : undefined, width: w - 24, maxWidth: (width || w) - 24, enabled: fitting, panel: title ? { title } : null })
+  // the fit boxes may be wider than the square plot (one row across the frame): the SVG takes their width, the plot stays centred
+  const svgW = Math.max(w, summary.width + 24), dx = (svgW - w) / 2
   const top = m.top + (summary.height ? summary.height + 14 : 0)
   const height = side + top + m.bottom
   useEffect(() => {
@@ -228,10 +223,10 @@ export function Crossplot({ points: inputPoints, marked: inputMarked, title, xLa
       {offerGrouping && !hoisted && <FitGroupingControl only={['pooled', ...(multiSite ? ['site' as const] : []), ...(seasons ? ['season' as const] : [])]}
         value={grouping === 'season' && !seasons ? 'pooled' : grouping} />}
       {/* centred in its panel: a square plot in a wide frame leaves even margins either side */}
-      <svg width={w} height={height} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
-        {title && <text x={m.left} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>}
+      <svg width={svgW} height={height} fontFamily={FONT.family} style={{ display: 'block', margin: '0 auto' }}>
+        {title && <text x={m.left + dx} y={14} fontSize={12.5} fontWeight={600} fill={INK.text}>{title}</text>}
         <g transform="translate(12,22)">{summary.node}</g>
-        <g className="regression-plot" transform={`translate(${m.left},${top})`}>
+        <g className="regression-plot" transform={`translate(${m.left + dx},${top})`}>
           <defs><clipPath id={clipId}><rect width={iw} height={ih} /></clipPath></defs>
           <YAxis scale={y} x={0} label={yLabel} wrapLabel={brushable} tickCount={5} gridWidth={iw} labelX={-42} format={(v) => trim(v, 2)} pick={yPick} />
           <XAxis scale={x} y={ih} label={xLabel} wrapLabel={brushable} tickCount={5} format={(v) => trim(v, 2)} labelDy={38} pick={xPick} />
@@ -243,18 +238,19 @@ export function Crossplot({ points: inputPoints, marked: inputMarked, title, xLa
             <ScatterLayer items={valid} xy={xy} idOf={keyOf} dots={dots} width={iw} height={ih} tip={tip} marks={marks}
               focus={(p, [cx, cy]) => <circle cx={cx} cy={cy} r={6} fill={p.hollow ? 'none' : p.color} stroke={INK.text} strokeWidth={2} {...dotFill('standard', p.opacity ?? 1)} />}
               tipOf={(p) => (p.rec || p.open ? [...p.tip, 'click to pin it on every chart and open its record'] : p.tip)}
+              pickable={(p) => !!(p.open || p.rec || keyOf(p))}
               onPick={(p) => { const key = keyOf(p); if (p.open) p.open(); else if (p.rec) hl.openRecord(p.rec); if (key) hl.setPinned(key) }}>
               {fitting && (siteFits ? <RegressionGroupLines groups={fitGroups} x={x} y={y} width={iw} height={ih} />
                 : <RegressionLines stats={st} x={x} y={y} domain={dom} width={iw} height={ih} />)}
               <OrientedPlotLayer swapped={swapped} width={iw} height={ih}>
                 {extraLines.map((l) => <g key={l.label}><RegressionBand stats={l.stats} method={l.method} color={l.color} x={source.x} y={source.y} domain={sourceDomain} /><line {...savedLine(l.slope, l.intercept)} stroke={l.color} strokeWidth={1.8} strokeDasharray={l.dash} /></g>)}
               </OrientedPlotLayer>
+              {foreground && <OrientedPlotLayer swapped={swapped} width={iw} height={ih}><g pointerEvents="none">{foreground(source.x, source.y)}</g></OrientedPlotLayer>}
             </ScatterLayer>
           </g>
           <g ref={brushRef} className="brush-layer" />
         </g>
       </svg>
-      {handNote && <ChartAside><p className="chart-note">{handNote}</p></ChartAside>}
       {tip.node}
     </div>
   )

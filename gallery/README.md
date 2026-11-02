@@ -275,6 +275,7 @@ wrote under `research/*/output/`, so run that workflow first if they are absent)
 uv run python gallery/data/export_baseline_comparison.py      # baseline_comparison.json + pool/addis/paired CSVs
 uv run python gallery/data/export_baseline_applicability.py   # baseline_applicability.json
 uv run python gallery/data/export_baseline_external_pilot.py  # baseline_external_pilot.json
+uv run python gallery/data/export_pilot_filters.py  # pilot_filters.json, pilot_spectra.json (the filter drawer's Adama / Bishoftu records)
 uv run python gallery/data/export_baseline_followup.py        # baseline_followup.json, *_followup_*.csv, notebooks
 uv run python gallery/data/export_similarity.py               # similarity/*.bin + similarity.json
 uv run python gallery/data/export_vibes_fullrange_traces.py   # similarity/traces_VIBES-full.*

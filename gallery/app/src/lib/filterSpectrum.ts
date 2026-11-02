@@ -2,6 +2,7 @@ import { loadEtadIds, loadSimilarityMeta, loadTraces, type Traces } from '@/lib/
 import { loadDerived, useLoaded } from '@/lib/data'
 import { baseFilterId } from '@/lib/highlight'
 import { improveSampleFor, parseImproveRowId } from '@/lib/improveLink'
+import { loadPilotFilters, loadPilotSpectra, pilotRecord } from '@/lib/pilotFilters'
 
 /**
  * One filter's baseline-corrected spectrum from the Spectral similarity export
@@ -15,6 +16,8 @@ import { improveSampleFor, parseImproveRowId } from '@/lib/improveLink'
  * sample ids already; an Addis SPARTAN id ("ETAD-0017", or "ETAD-0017-1") goes
  * through etad_ids.json (gallery/data/export_etad_ids.py) on its base id; an IMPROVE
  * network row ("PINN1-2022-11-22") through its site and day (lib/improveLink).
+ * The Ethiopia pilot filters (Adama J-numbers, Bishoftu ETBI ids) come from their own
+ * export instead (pilot_spectra.json, gallery/data/export_pilot_filters.py), same bins.
  */
 
 export const SPECTRUM_METHODS = ['AIRSpec', 'VIBES'] as const
@@ -63,6 +66,10 @@ export interface FilterSpectrumData {
   forId: string
   requestKey: string
   sampleId: string
+  /** which export the traces came from: the Spectral similarity export, or the pilot filters' */
+  source: 'similarity' | 'pilot'
+  /** the pilot's Adama analysis-to-filter map is provisional (date-based) */
+  provisional?: boolean
   /** Each baseline has its own wavenumber grid and corrected absorbance. */
   series: Partial<Record<SpectrumMethod, SpectrumTrace>>
   unavailable: SpectrumMethod[]
@@ -75,9 +82,13 @@ export interface FilterSpectrumData {
  */
 export function useFilterSpectrum(id: string | null | undefined, methods: readonly SpectrumMethod[], vibesRank: '30' | '70' = '70'): FilterSpectrumData | null {
   const requestKey = `${id}|${methods.join(',')}|${vibesRank}`
-  const known = !!id && (id.startsWith('improve:') || id.startsWith('etad:') || /^ETAD-\d{4}/.test(id) || !!parseImproveRowId(id))
+  // the similarity export holds IMPROVE and Addis spectra; any other id may still be a pilot filter
+  const similar = !!id && (id.startsWith('improve:') || id.startsWith('etad:') || /^ETAD-\d{4}/.test(id) || !!parseImproveRowId(id))
   // no spectrum is not an error in a drawer: a failure reads as none
-  return useLoaded(known ? requestKey : null, async (): Promise<FilterSpectrumData | null> => {
+  return useLoaded(id ? requestKey : null, async (): Promise<FilterSpectrumData | null> => {
+    const pilot = pilotRecord(await loadPilotFilters().catch(() => null), id)
+    if (pilot) return pilotSpectrum(id!, requestKey, pilot.spectrum, pilot.spectrum_map === 'provisional', methods)
+    if (!similar) return null
     const sim = await simIndex()
     const sids = await resolve(id!, sim)
     if (!sids.length) return null
@@ -92,11 +103,23 @@ export function useFilterSpectrum(id: string | null | undefined, methods: readon
       if (result.status === 'fulfilled') series[result.value[0]] = result.value[1]
       else unavailable.push(methods[i])
     })
-    return { forId: id!, requestKey, sampleId, series, unavailable }
+    return { forId: id!, requestKey, sampleId, source: 'similarity', series, unavailable }
   }).data
 }
 
 /** Base id (ETAD-0017) for an Addis drawer id or an "etad:<MediaId>" sample id; null otherwise. */
+/** A pilot filter's corrected spectra (completed rank-70 VIBES and the spline baseline), in the similarity traces' bins. */
+async function pilotSpectrum(forId: string, requestKey: string, sampleId: string, provisional: boolean, methods: readonly SpectrumMethod[]): Promise<FilterSpectrumData | null> {
+  const spec = await loadPilotSpectra().catch(() => null)
+  const k = spec?.ids.indexOf(sampleId) ?? -1
+  if (!spec || k < 0) return null
+  const series: FilterSpectrumData['series'] = {}
+  if (methods.includes('AIRSpec')) series.AIRSpec = { wn: spec.AIRSpec.bin_wn, y: Float32Array.from(spec.AIRSpec.y[k]) }
+  if (methods.includes('VIBES')) series.VIBES = { wn: spec.VIBES.bin_wn, y: Float32Array.from(spec.VIBES.y[k]),
+    backgroundRank: spec.VIBES.background_rank, presentationStatus: spec.VIBES.presentation_status }
+  return { forId, requestKey, sampleId, source: 'pilot', provisional, series, unavailable: [] }
+}
+
 async function addisBase(id: string): Promise<string | null> {
   if (id.startsWith('etad:')) {
     const ids = await etadIds()

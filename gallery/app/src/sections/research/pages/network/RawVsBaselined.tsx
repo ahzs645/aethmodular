@@ -9,7 +9,7 @@
  * (the notebook's own baselined matrix, four decimals). No HIPS, no Fabs: the MAC does not enter.
  */
 import { memo, useMemo, useRef } from 'react'
-import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Key } from '@/components/Key'
 import { IdentityLine } from '@/components/RefLines'
 import { SweepPlot, histogramSeries, type SweepSeries } from '@/components/SweepPlot'
@@ -209,7 +209,6 @@ function SitePanel({ s, focus, onFocus, partners, k, colourOf, controls, prov }:
       </Grid>
       <Key items={[{ label: 'IMPROVE site', color: BASE }, ...targets.map((n) => ({ label: `${name(n.j)} (SPARTAN)`, color: colourOf(s.names[n.j]) })), { label: '1:1', color: INK.identity, kind: 'dash' as const },
         { label: `in both ${k}-nearest lists`, color: INK.text, kind: 'line' as const }, { label: 'drops out after baselining', color: RAW, kind: 'dash' as const }, { label: 'comes in after baselining', color: BASE, kind: 'line' as const }]} />
-      <Note>Ranks are 1 for the nearest site; below rank {k} the axis is logarithmic down to rank {sum.partners}. The baselined r is the notebook's matrix rounded to four decimals, so two partners can tie.</Note>
     </ChartFrame>
   )
 }

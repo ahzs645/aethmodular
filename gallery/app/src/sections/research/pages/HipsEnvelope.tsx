@@ -210,7 +210,16 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
           <Crossplot points={siteEnv.map((e) => point(e.row, e.ec, e.hipsBc, namedColor(seasons, e.row.season), 'FTIR EC', 'HIPS BC', 'Research · HIPS envelope', [`EC loading ${fmt(e.ecLoad, 2)} µg/cm²`]))}
             marked={markedEnv.map((e) => point(e.row, e.ec, e.hipsBc, namedColor(seasons, e.row.season), 'FTIR EC', 'HIPS BC', 'Research · HIPS envelope', [`EC loading ${fmt(e.ecLoad, 2)} µg/cm²`]))}
             title="HIPS BC vs FTIR EC, binned medians" xLabel="FTIR EC (µg/m³)" yLabel="HIPS BC (µg/m³)" fit={false}
-            background={(x, y) => <path d={bins.map((b, i) => `${i ? 'L' : 'M'}${x(quantile(b.map((e) => e.ec), 0.5))},${y(quantile(b.map((e) => e.hipsBc), 0.5))}`).join('')} fill="none" stroke={INK.fit} strokeWidth={2} />} />
+            foreground={(x, y) => {
+              // over the dots: the bin medians run through the densest part of the cloud, so under them the line disappears
+              const at = bins.map((b) => [x(quantile(b.map((e) => e.ec), 0.5)), y(quantile(b.map((e) => e.hipsBc), 0.5))] as const)
+              const d = at.map(([px, py], i) => `${i ? 'L' : 'M'}${px},${py}`).join('')
+              return <g>
+                <path d={d} fill="none" stroke={INK.panel} strokeWidth={5} strokeLinejoin="round" strokeOpacity={0.9} />
+                <path d={d} fill="none" stroke={INK.fit} strokeWidth={2.2} strokeLinejoin="round" />
+                {at.map(([px, py], i) => <circle key={i} cx={px} cy={py} r={4} fill={INK.fit} stroke={INK.panel} strokeWidth={1.5} />)}
+              </g>
+            }} />
         </Grid>}
         <Key items={[...seasons.map((s) => ({ label: shortSeason(s.name), color: s.color })), { label: 'binned medians', color: INK.fit, kind: 'line' }]} />
       </ChartFrame>
