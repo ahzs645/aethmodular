@@ -39,11 +39,10 @@ function gapOf(a: { mid: Float64Array; lo: Float64Array; hi: Float64Array }, b: 
   return r.length ? r[Math.floor(r.length / 2)] : NaN
 }
 
-export function LotPanels({ exp, lots, id, prefix, defaults, figure, setPick }: {
+export function LotPanels({ exp, lots, id, prefix, defaults, figure }: {
   exp: LotExport; lots: Lots; id: string; prefix: string; defaults: PanelDefaults
   /** which char_12 figure this instance stands in for, for the provenance line */
   figure: string
-  setPick: React.ReactNode
 }) {
   const [view, setView] = useSearchParam<ViewKey>(`${prefix}.view`, defaults.view, VIEW_KEYS)
   const [regionPick, setRegion] = useSearchParam<Region>(`${prefix}.region`, defaults.region, ['ch', 'co', 'full'])
@@ -111,7 +110,6 @@ export function LotPanels({ exp, lots, id, prefix, defaults, figure, setPick }: 
   const window: [number, number] | undefined = region === 'full' ? undefined : [exp.regions[region][1], exp.regions[region][0]]
 
   const controls = <>
-    {setPick}
     <Segmented label="Spectra" value={view} options={VIEW_KEYS} onChange={setView} optionLabel={(o) => VIEW_LABEL[o]} title={v.binning} />
     <Segmented label="Region" value={region} options={regions} onChange={setRegion} optionLabel={(o) => REGION_LABEL[o]} />
     {seasonNames.length > 1 && <Select label="Hold fixed" value={season} options={seasonNames} onChange={setSeason} optionLabel={shortSeason} title="The season the right-hand panel keeps (char_12: the dry season)" />}
@@ -128,7 +126,7 @@ export function LotPanels({ exp, lots, id, prefix, defaults, figure, setPick }: 
       tip={<>The headline gap is the median, over the wavenumbers shown, of |centre A − centre B| divided by the lots' mean band width (10–90 % when the band is off). {v.binning}. Lots with one filter draw a line and no band. Per site, a site whose calendar has no season of that name holds its own dry-named season (or its largest) instead; pooled, the season applies as named, so under per-site calendars it may cover one site only. Instruments: SPARTAN lot 248 was scanned on instruments 823 and 2837 only, never on 151, so a pooled lot contrast at Beijing or JPL is partly an instrument contrast; pick one instrument to remove that.</>}
       provenance={<>{NB} §4, {figure}. Spectra: <code>{EXPORTER}</code> → <code>{FOLDER}/{v.file}</code>; centres and bands recomputed here (common/lotSpectra.ts).</>}>
       {error || !values ? <LoadState what="the spectra" error={error} failed={<>Could not load the {v.label.toLowerCase()} spectra: {error}</>} />
-        : !shown.length ? <Empty>No exported spectrum with a known lot among the filters shown{lots.set === 'view' && lots.unmatched ? ` (${lots.unmatched} spectra of these sites have no gallery row: pick “In view + no gallery row”)` : ''}.</Empty>
+        : !shown.length ? <Empty>No exported spectrum with a known lot among the filters shown.</Empty>
         : panels.map((g) => <div key={g.key}>
           {layout === 'site' && <p className="subtitle" style={{ margin: '8px 0 2px', fontWeight: 600 }}>{g.label}</p>}
           <Grid min={320}>
@@ -145,10 +143,7 @@ export function LotPanels({ exp, lots, id, prefix, defaults, figure, setPick }: 
         ...(q ? [{ label: `${BAND_LABEL[band]} of filters`, color: INK.muted, kind: 'faded' as const }] : []),
         ...(ref ? [{ label: `IMPROVE mean and 5–95 % (n=${exp.improve.n})`, color: INK.muted, kind: 'dash' as const }] : [])]} />
       <LotNote lots={lots} of={(m) => m.lot !== null && onInstrument(m, inst)} />
-      {(noLot > 0 || lots.unmatched > 0) && <Note>
-        {noLot > 0 && <>{noLot} filter{noLot === 1 ? '' : 's'} shown {noLot === 1 ? 'has' : 'have'} no lot in the source (Addis spectra the lot map does not cover) and {noLot === 1 ? 'is' : 'are'} left out. </>}
-        {lots.set === 'view' && lots.unmatched > 0 && <>{lots.unmatched} exported spectra of these sites have no gallery row; “In view + no gallery row” adds them.</>}
-      </Note>}
+      {noLot > 0 && <Note>{noLot} filter{noLot === 1 ? '' : 's'} shown {noLot === 1 ? 'has' : 'have'} no lot in the source (Addis spectra the lot map does not cover) and {noLot === 1 ? 'is' : 'are'} left out.</Note>}
     </ChartFrame>
   )
 }

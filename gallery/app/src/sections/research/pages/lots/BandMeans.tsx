@@ -12,7 +12,7 @@ import { defaultSeason, lotContrast, lotsOf, type LotExport } from '../../common
 import { DataTable, pText, shortSeason } from '../../common/ui'
 import { EXPORTER, FOLDER, LotNote, lotColor, NB, type Lots } from './data'
 
-export function BandMeans({ exp, lots, setPick }: { exp: LotExport; lots: Lots; setPick: React.ReactNode }) {
+export function BandMeans({ exp, lots }: { exp: LotExport; lots: Lots }) {
   const seasonNames = lots.seasons.map((s) => s.name)
   const [seasonPick, setSeason] = useSearchParam<string>('ls.b.season', '', seasonNames)
   const season = seasonNames.includes(seasonPick) ? seasonPick : defaultSeason(seasonNames)
@@ -34,7 +34,7 @@ export function BandMeans({ exp, lots, setPick }: { exp: LotExport; lots: Lots; 
     : `Within ${shortSeason(season)}, lots ${pair[0]} and ${pair[1]} do not differ in any band (p ≥ 0.05)`
   return (
     <ChartFrame id="ls-bands" title={title}
-      controls={<>{setPick}
+      controls={<>
         {seasonNames.length > 1 && <Select label="Season" value={season} options={seasonNames} onChange={setSeason} optionLabel={shortSeason} />}
         {codes.length > 1 && <SitePicker as="select" {...pick.picker} />}
       </>}
@@ -50,7 +50,7 @@ export function BandMeans({ exp, lots, setPick }: { exp: LotExport; lots: Lots; 
           { key: 'nb', label: 'char_12 (248 / 251, p)', num: true, value: (r) => (r.nb ? `${fmt(r.nb.median248, 2)} / ${fmt(r.nb.median251, 2)}, ${pText(r.nb.p)}` : '—') },
         ]} />
         <LotNote lots={lots} of={(m) => m.lot !== null && m.season === season && (site === 'all' || m.code === site)} />
-        <Note>The last column is char_12's table (its Addis dry-season filters: 27 of lot 248, 46 of lot 251); “{"char_12's 239 (Addis)"}” under Filters, with the dry season and Filters → excluded: Include, reproduces it.</Note>
+        <Note>The last column is char_12's table (its Addis dry-season filters: 27 of lot 248, 46 of lot 251); Samples → preset “char_12's {lots.cohort.n}”, with the dry season, reproduces it.</Note>
       </>}
     </ChartFrame>
   )

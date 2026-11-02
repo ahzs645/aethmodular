@@ -16,7 +16,7 @@ import { EXPORTER, FOLDER, LotNote, lotColor, NB, type Lots } from './data'
 
 type Split = 'held' | 'each'
 
-export function EscapeByLot({ exp, lots, setPick }: { exp: LotExport; lots: Lots; setPick: React.ReactNode }) {
+export function EscapeByLot({ exp, lots }: { exp: LotExport; lots: Lots }) {
   const [split, setSplit] = useSearchParam<Split>('ls.e.split', 'held', ['held', 'each'])
   const [layout, setLayout] = useSearchParam<'pooled' | 'site'>('ls.e.layout', 'site', ['pooled', 'site'])
   const seasonNames = lots.seasons.map((s) => s.name)
@@ -73,7 +73,7 @@ export function EscapeByLot({ exp, lots, setPick }: { exp: LotExport; lots: Lots
 
   return (
     <ChartFrame id="ls-escape" title={title}
-      controls={<>{setPick}
+      controls={<>
         {seasonNames.length > 1 && <Select label="Season" value={season} options={seasonNames} onChange={setSeason} optionLabel={shortSeason} title="The season held fixed (char_12: the dry season)" />}
         <Segmented label="Split" value={split} options={['held', 'each'] as const} onChange={setSplit} optionLabel={(o) => (o === 'held' ? `${shortSeason(season)} vs the rest` : 'Each season')} />
         <Segmented label="Layout" value={layout} options={['site', 'pooled'] as const} onChange={setLayout} optionLabel={(o) => (o === 'pooled' ? 'Sites pooled' : 'Per site')} />
@@ -93,7 +93,7 @@ export function EscapeByLot({ exp, lots, setPick }: { exp: LotExport; lots: Lots
           { key: 'mb', label: 'Median escape, lot B', num: true, value: (r) => <><span style={{ color: lotColor(r.b, lotOrder.indexOf(r.b)) }}>{r.b}</span> {fmt(r.medianB, 3)}</> },
           { key: 'p', label: 'Mann–Whitney p', num: true, value: (r) => pText(r.test?.p ?? NaN) },
         ]} />
-        {saved.length > 0 && <Note>char_12 (its 239 Addis filters, Dry Oct–Feb): {saved.map((r) => `${r.subset} — lot 248 ${fmt(r.median248, 3)} (n ${r.n248}) vs 251 ${fmt(r.median251, 3)} (n ${r.n251}), p ${pText(r.p ?? NaN)}`).join('; ')}. “{"char_12's 239 (Addis)"}” under Filters reproduces these.</Note>}
+        {saved.length > 0 && <Note>char_12 (its 239 Addis filters, Dry Oct–Feb): {saved.map((r) => `${r.subset} — lot 248 ${fmt(r.median248, 3)} (n ${r.n248}) vs 251 ${fmt(r.median251, 3)} (n ${r.n251}), p ${pText(r.p ?? NaN)}`).join('; ')}. Samples → preset “char_12's {lots.cohort.n}” reproduces these.</Note>}
         <LotNote lots={lots} of={(m) => m.lot !== null} />
         <p className="subtitle" style={{ margin: '10px 0 4px' }}>Filters per lot and season, and the spectrometers they were scanned on (Addis's export names none):</p>
         <DataTable rows={cross} rowKey={(r) => r.key} columns={[
