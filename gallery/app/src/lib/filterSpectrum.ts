@@ -1,6 +1,7 @@
 import { loadEtadIds, loadSimilarityMeta, loadTraces, type Traces } from '@/lib/similarity'
 import { loadDerived, useLoaded } from '@/lib/data'
 import { baseFilterId } from '@/lib/highlight'
+import { improveSampleFor, parseImproveRowId } from '@/lib/improveLink'
 
 /**
  * One filter's baseline-corrected spectrum from the Spectral similarity export
@@ -12,7 +13,8 @@ import { baseFilterId } from '@/lib/highlight'
  *
  * Id resolution: "improve:<FilterId>" and "etad:<MediaId>" are similarity
  * sample ids already; an Addis SPARTAN id ("ETAD-0017", or "ETAD-0017-1") goes
- * through etad_ids.json (gallery/data/export_etad_ids.py) on its base id.
+ * through etad_ids.json (gallery/data/export_etad_ids.py) on its base id; an IMPROVE
+ * network row ("PINN1-2022-11-22") through its site and day (lib/improveLink).
  */
 
 export const SPECTRUM_METHODS = ['AIRSpec', 'VIBES'] as const
@@ -46,6 +48,10 @@ async function traces(method: SpectrumMethod, rank: '30' | '70'): Promise<TraceS
 /** Similarity sample ids for a drawer id; empty when the filter is not in the export. */
 async function resolve(id: string, sim: SimIndex): Promise<string[]> {
   if (id.startsWith('improve:') || id.startsWith('etad:')) return sim.index.has(id) ? [id] : []
+  if (parseImproveRowId(id)) {
+    const sample = improveSampleFor(await loadSimilarityMeta(), id)
+    return sample && sim.index.has(sample) ? [sample] : []
+  }
   const base = baseFilterId(id)
   if (!/^ETAD-\d{4}$/.test(base)) return []
   const map = await etadIds().catch(() => ({} as Record<string, string[]>))
@@ -69,7 +75,7 @@ export interface FilterSpectrumData {
  */
 export function useFilterSpectrum(id: string | null | undefined, methods: readonly SpectrumMethod[], vibesRank: '30' | '70' = '70'): FilterSpectrumData | null {
   const requestKey = `${id}|${methods.join(',')}|${vibesRank}`
-  const known = !!id && (id.startsWith('improve:') || id.startsWith('etad:') || /^ETAD-\d{4}/.test(id))
+  const known = !!id && (id.startsWith('improve:') || id.startsWith('etad:') || /^ETAD-\d{4}/.test(id) || !!parseImproveRowId(id))
   // no spectrum is not an error in a drawer: a failure reads as none
   return useLoaded(known ? requestKey : null, async (): Promise<FilterSpectrumData | null> => {
     const sim = await simIndex()

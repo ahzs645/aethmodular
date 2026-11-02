@@ -30,12 +30,18 @@ export function RecordSection({ rec }: { rec: FilterRecord }) {
 }
 
 /**
- * The drawer for a filter the gallery's SPARTAN export does not carry: IMPROVE
- * calibration test filters, Bishoftu, the Adama quartz campaign. It shows what
+ * The drawer for a filter the gallery's exports do not carry: Bishoftu, the Adama
+ * quartz campaign, and the few IMPROVE spectral samples with no IMPROVE network row
+ * (the rest open the full sample drawer once App finds their row, lib/improveRecord). It shows what
  * the clicked chart knows, in the same side panel as the full sample drawer,
  * so every single-filter mark in the app opens the same way.
  */
-export function RecordDrawer({ rec, onClose }: { rec: FilterRecord; onClose: () => void }) {
+export function RecordDrawer({ rec, onClose, lookup }: {
+  rec: FilterRecord
+  onClose: () => void
+  /** an IMPROVE filter being looked up in the IMPROVE network export (App openRecord), or not found there */
+  lookup?: { status: 'loading' } | { status: 'missing'; reason: string } | null
+}) {
   const [copied, setCopied] = useState(false)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -54,7 +60,10 @@ export function RecordDrawer({ rec, onClose }: { rec: FilterRecord; onClose: () 
         <button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close" title="Close (Esc)"><XIcon /></button>
       </header>
       <div className="drawer-actions">
-        <span className="u">Not in the SPARTAN filter export, so only this chart's values are shown.</span>
+        <span className="u">{lookup?.status === 'loading' ? 'Looking for this filter in the IMPROVE network export…'
+          : lookup?.status === 'missing' ? `Not in the IMPROVE network export (${lookup.reason}), so only this chart's values are shown.`
+          : rec.id.startsWith('improve:') ? 'Not in the IMPROVE network export, so only this chart\'s values are shown.'
+          : 'Not in the SPARTAN filter export, so only this chart\'s values are shown.'}</span>
         <span style={{ flex: 1 }} />
         <button type="button" className="btn" onClick={copy}>{copied ? 'Copied' : 'Copy ID'}</button>
       </div>
