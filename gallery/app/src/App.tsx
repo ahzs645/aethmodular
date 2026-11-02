@@ -1717,7 +1717,7 @@ function PageSidebar({ fits, label = 'Samples', mac }: {
         {/* kept mounted on either half so the page's controls keep their state */}
         <div hidden={view !== 'page'}><PageSidebarSlot /></div>
         {fits && view === (mac ? 'plot' : 'page') && <RegressionControls />}
-        {mac && view === 'plot' && <Row label="units">
+        {mac && view === 'plot' && <Row label="MAC">
           <MacControl mac={mac.value} exportMac={mac.exportMac} onMac={mac.onMac} />
           {mac.note && <span className="method-note" style={{ display: 'block' }}>{mac.note}</span>}
           {explain && <span className="row-note">MAC scales the slope of a fit against HIPS BC; the intercept barely moves (exactly unchanged for OLS)</span>}

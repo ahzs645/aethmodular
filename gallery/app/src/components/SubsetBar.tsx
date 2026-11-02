@@ -27,7 +27,7 @@ import { SeasonEditor } from '@/components/SeasonEditor'
 import { DynamicSeasonEditor } from '@/components/DynamicSeasonEditor'
 import { defaultRuleFor, type DynRule } from '@/lib/dynamicSeasons'
 import { DEFAULT_RAIN_RULE, type RainRule } from '@/lib/rainSeasons'
-import { XIcon } from '@/components/Icons'
+import { UndoIcon, XIcon } from '@/components/Icons'
 import { EXCL_MODES, type ExclMode } from '@/lib/exclusionMode'
 import { CiteRef } from '@/components/CiteRef'
 import { ScrubField } from '@/components/ScrubField'
@@ -380,15 +380,19 @@ export function SubsetBar({
         </Row>
       )}
 
-      {(caps.fields !== 'none' && a.onBasis || caps.mac) && a.onMac && (
+      {caps.fields !== 'none' && a.onBasis && a.onMac && (
         <Row label="units">
-          {caps.fields !== 'none' && a.onBasis && <Segmented value={s.basis === 'mass' ? 'Mass per filter' : 'Concentration'} options={['Concentration', 'Mass per filter'] as any}
+          <Segmented value={s.basis === 'mass' ? 'Mass per filter' : 'Concentration'} options={['Concentration', 'Mass per filter'] as any}
             onChange={(v: string) => a.onBasis!(v === 'Mass per filter' ? 'mass' : 'conc')}
-            title="Concentration: µg/m³ in the air. Mass per filter: µg on the filter (concentration × sampled volume), what FTIR sees. IMPROVE samples about 33 m³ a day, SPARTAN about 7." />}
-          <MacControl mac={s.mac} exportMac={s.exportMac} onMac={a.onMac} />
+            title="Concentration: µg/m³ in the air. Mass per filter: µg on the filter (concentration × sampled volume), what FTIR sees. IMPROVE samples about 33 m³ a day, SPARTAN about 7." />
           {s.basis === 'mass' && s.withVolume && <span className="method-note" style={{ display: 'block' }}>
             {s.withVolume[0].toLocaleString()} of {s.withVolume[1].toLocaleString()} filters in view have a sampled volume; the rest drop out
           </span>}
+        </Row>
+      )}
+      {(caps.fields !== 'none' && a.onBasis || caps.mac) && a.onMac && (
+        <Row label="MAC">
+          <MacControl mac={s.mac} exportMac={s.exportMac} onMac={a.onMac} />
           {explain && <span className="row-note">MAC scales the slope of a fit against HIPS BC; the intercept barely moves (exactly unchanged for OLS)</span>}
         </Row>
       )}
@@ -813,19 +817,20 @@ function RatioRow({ explain }: { explain: boolean }) {
 }
 
 /**
- * The gallery's one MAC (lib/mac), as a scrub field with a way back to the export's. Drawn under Plot → units, here
+ * The gallery's one MAC (lib/mac), as a scrub field with a reset to the export's. Drawn on its own "MAC" row, here
  * and in App's PageSidebar (the tabs without the Samples panel), so every tab sets it the same way.
  */
 export function MacControl({ mac, exportMac, onMac }: { mac?: number | null; exportMac?: number; onMac: (mac: number | null) => void }) {
+  const base = exportMac ?? 10
   return (
     <span className="control"
       title="Mass absorption cross-section (m²/g) turning HIPS absorption into BC: HIPS BC = Fabs / MAC. It multiplies the absorption axis, so it scales a fit's slope; the intercept stays put for OLS and moves only slightly for Deming (fixed error ratio). Drag sideways or click to type.">
-      MAC
-      <ScrubField label="MAC (m²/g)" value={mac ?? exportMac ?? 10} min={MAC_CHOICES[0]} max={MAC_CHOICES[MAC_CHOICES.length - 1]} step={0.1}
+      <ScrubField label="MAC (m²/g)" value={mac ?? base} min={MAC_CHOICES[0]} max={MAC_CHOICES[MAC_CHOICES.length - 1]} step={0.1}
         format={(m) => trim(m, 1)} unit="m²/g" width={72}
         onChange={(m) => onMac(m === exportMac ? null : m)} />
-      {mac != null && mac !== exportMac && <button type="button" className="btn quiet" title="Back to the MAC the data was exported with"
-        onClick={() => onMac(null)}>Export ({exportMac ?? 10})</button>}
+      {mac != null && mac !== exportMac && <button type="button" className="btn quiet x-btn"
+        aria-label={`Reset MAC to ${trim(base, 1)} m²/g`} title={`Reset to ${trim(base, 1)} m²/g, the MAC the data was exported with`}
+        onClick={() => onMac(null)}><UndoIcon /></button>}
     </span>
   )
 }
