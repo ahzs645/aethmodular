@@ -198,7 +198,8 @@ export function Crossplot({ points: inputPoints, marked: inputMarked, title, xLa
   const offerGrouping = (multiSite || seasons) && !groupingOverride
   const hoisted = useGroupControl('fit-grouping', offerGrouping ? { site: multiSite, season: seasons } : null,
     (vs) => <FitGroupingFor site={vs.some((v) => v.site)} season={vs.some((v) => v.season)} />)
-  const summary = useRegressionSummary({ stats: st, groups: siteFits ? fitGroups : undefined, width: w - 24, enabled: fitting })
+  // in single view its card in the sidebar carries the title, so several crossplots' cards say which plot is whose
+  const summary = useRegressionSummary({ stats: st, groups: siteFits ? fitGroups : undefined, width: w - 24, enabled: fitting, panel: title ? { title } : null })
   const top = m.top + (summary.height ? summary.height + 14 : 0)
   const height = side + top + m.bottom
   useEffect(() => {

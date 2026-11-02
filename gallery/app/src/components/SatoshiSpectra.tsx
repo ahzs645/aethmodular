@@ -11,7 +11,6 @@ import { baselineName } from '@/lib/labels'
 import { loadEtadIds, loadSimilarityMeta, loadTraces, siteName } from '@/lib/similarity'
 import { addisTargetSpectra, rankedAnalogSpectra, type AddisSpectrumIds, type AnalogBaseline, type AnalogRegion } from '@/lib/satoshiSpectra'
 
-const TOP_N = ['50', '100', '250', '500'] as const
 const BASELINES: AnalogBaseline[] = ['AIRSpec', 'VIBES-full-r70']
 const baselineLabel = (baseline: string) => baselineName(baseline)
 type Columns = Record<string, (number | string | null)[]>
@@ -77,7 +76,7 @@ export function SatoshiSpectra({ membership, groups, region }: { membership: Col
     pinInstructions="Hover a trace to identify it; click to pin it and open its filter details. Ranks compare each analog with the median Addis spectrum."
     provenance="Saved Satoshi follow-up membership ranks · export_similarity.py binned per-filter traces · frozen Addis test-set membership"
     controls={<>
-      <CountPicker label="Most similar" value={topN} presets={TOP_N} max={500} onChange={setTopN} noun="analogs" />
+      <CountPicker label="Most similar" value={topN} max={500} onChange={setTopN} noun="analogs" />
       <Toggle label="Outer test sites" checked={test === 'on'} onChange={value => setTest(value ? 'on' : 'off')} />
     </>} />
 }

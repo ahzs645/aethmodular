@@ -1,5 +1,6 @@
 import type { MeetingSpec } from './types'
 import type { FigureVariant } from '@/components/Figure'
+import { SPECTRAL_REGION } from '@/lib/theme'
 
 // a reader-facing variant (components/Figure `variants`): the loadings span three decades, so log by default
 const LOG_AXIS: FigureVariant = { key: 'axis', label: 'x axis', default: 'log', choices: [
@@ -124,7 +125,7 @@ export default {
           yLabel: 'Absorbance / CH band area', window: [1900, 550], hover: 'readout',
           annotations: [
             { lo: 600, hi: 640, label: 'SO₄ ν4' }, { lo: 1000, hi: 1060, label: 'Si-O' }, { lo: 1080, hi: 1140, label: 'SO₄ ν3' },
-            { lo: 1150, hi: 1250, label: 'PTFE C-F', fill: '#f2e6c9' }, { lo: 1400, hi: 1430, label: 'NH₄⁺' },
+            { lo: 1150, hi: 1250, label: 'PTFE C-F', fill: SPECTRAL_REGION.ptfe.fill }, { lo: 1400, hi: 1430, label: 'NH₄⁺' },
           ],
         },
         {

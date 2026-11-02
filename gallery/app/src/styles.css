@@ -74,7 +74,7 @@
   color-scheme: dark;
 }
 /* white text on the lighter dark-theme accent needs a darker fill to stay legible */
-:root[data-theme="dark"] .nav-btn.active, :root[data-theme="dark"] .seg button.active, :root[data-theme="dark"] .seg .seg-input.active,
+:root[data-theme="dark"] .nav-btn.active, :root[data-theme="dark"] .seg button.active,
 :root[data-theme="dark"] .btn.primary, :root[data-theme="dark"] .net-toggle[aria-pressed="true"],
 :root[data-theme="dark"] .subset-tab-badge, :root[data-theme="dark"] .dash-badge { background: #2c6fae; border-color: #2c6fae; }
 :root[data-theme="dark"] .tooltip { background: rgba(36, 43, 53, 0.97); border: 1px solid var(--ink-border); }
@@ -339,13 +339,6 @@ input[type="search"]::-webkit-search-cancel-button:hover { background: var(--ink
 }
 .seg button + button { border-left: 1px solid var(--ink-border); }
 .seg button.active { background: var(--accent); color: #fff; }
-.seg .seg-input {
-  width: 58px; border: 0; border-left: 1px solid var(--ink-border); background: var(--ink-panel); color: var(--ink-muted); text-align: center;
-  font-size: calc(12px * var(--text-scale)); font-family: var(--font); padding: 4px 4px 4px 8px; -moz-appearance: textfield;
-}
-.seg .seg-input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--accent-soft); }
-.seg .seg-input.active { background: var(--accent); color: #fff; }
-.seg .seg-input::-webkit-inner-spin-button, .seg .seg-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
 /* ---------- subset bar ---------- */
 
@@ -1917,6 +1910,9 @@ html[data-single='1'] .configuration-section[data-single-path] { border: 0; bord
 .timeline-scroll { overflow-x: auto; overflow-y: hidden; padding-bottom: 4px; }
 .side-fit-title { margin: 0 0 3px; font-size: calc(12px * var(--text-scale)); font-weight: 600; color: var(--ink-text); display: flex; gap: 6px; align-items: center; }
 .fit-pointed { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 6px; }
+/* a titled panel's sidebar card (components/RegressionOverlay): it and its plot outline each other on hover */
+.regression-summary-side.pointable { padding: 4px; margin: -4px; border-radius: 6px; cursor: default; }
+.regression-summary-side.pointable:hover { box-shadow: inset 0 0 0 2px var(--accent); }
 .single-stats > .chart-note, .single-stats .chart-note { margin: 0; display: block; }
 .single-stats .connected-inspector { margin: 0; max-width: none; }
 .single-stats .connected-readout { margin-bottom: 6px; }

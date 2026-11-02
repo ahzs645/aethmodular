@@ -580,7 +580,6 @@ function BaselineCompare({ data }: { data: MeetingData }) {
 
 const SPEC_MODES = ['individual filters', 'median + IQR'] as const
 /** pooled Addis in the spectra (seasons keep their own colours) and the IMPROVE median line */
-const TOP_N = ['50', '100', '250', '500'] as const
 
 /**
  * The season's IMPROVE analogs and Addis filters as spectra: every filter, or the
@@ -657,7 +656,7 @@ function SpectraPanel({ data, method, group }: { data: MeetingData; method: stri
     <div style={{ marginTop: 10 }}>
       <div className="frame-controls" style={{ padding: 0 }}>
         <Segmented label="Spectra" value={mode as any} options={SPEC_MODES} optionLabel={(v: string) => v === 'median + IQR' ? 'Median + IQR' : 'Individual filters'} onChange={setMode as any} />
-        <CountPicker label="Most similar" value={topN} presets={TOP_N} max={500} onChange={setTopN} noun="analogs" />
+        <CountPicker label="Most similar" value={topN} max={500} onChange={setTopN} noun="analogs" />
       </div>
       {/* grey: dropped from analog selection; hatched: also dropped by the region agreed 1 Oct (similarity only; PLS still sees them) */}
       <SpectrumPlot series={series} bands={bands} window={[d3.max(wn) ?? 4000, lo]} height={286} includeZero

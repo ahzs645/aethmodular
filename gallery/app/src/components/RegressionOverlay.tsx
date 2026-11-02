@@ -1,4 +1,4 @@
-import { useContext, useId, useLayoutEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { fitColumns } from '@/lib/facets'
 import { createPortal } from 'react-dom'
 import { StatsInPlotCtx, TILE_CORNER_INNER, TileStatsCtx, useSingleView } from '@/lib/singleView'
@@ -105,6 +105,18 @@ export function useRegressionSummary({ stats, groups, width, enabled = true, pan
   const inPlot = useContext(StatsInPlotCtx)
   const probe = useRef<SVGGElement>(null)
   const [place, setPlace] = useState<'chart' | 'side' | 'tile' | 'data'>('chart')
+  // the sidebar card of a titled panel: pointing at the panel's plot lights up its card (the card outlines the plot)
+  const card = useRef<HTMLDivElement>(null)
+  const pointable = place === 'side' && !!panel
+  useEffect(() => {
+    const chart = probe.current?.closest('svg')?.parentElement
+    if (!pointable || !chart) return
+    const on = () => card.current?.classList.add('fit-pointed')
+    const off = () => card.current?.classList.remove('fit-pointed')
+    chart.addEventListener('mouseenter', on)
+    chart.addEventListener('mouseleave', off)
+    return () => { chart.removeEventListener('mouseenter', on); chart.removeEventListener('mouseleave', off); off() }
+  }, [pointable])
   useLayoutEffect(() => {
     const el = probe.current
     const now = el && render?.panel.contains(el) ? (render.statsInside ? 'data' : 'chart')
@@ -164,7 +176,7 @@ export function useRegressionSummary({ stats, groups, width, enabled = true, pan
     const outline = (on: boolean) => probe.current?.closest('svg')?.parentElement?.classList.toggle('fit-pointed', on)
     const side = <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>{node}</svg>
     return { height: 0, node: <><g ref={probe} />{createPortal(panel
-      ? <div className="regression-summary-side" onMouseEnter={() => outline(true)} onMouseLeave={() => outline(false)}>
+      ? <div ref={card} className="regression-summary-side pointable" onMouseEnter={() => outline(true)} onMouseLeave={() => outline(false)}>
           <p className="side-fit-title">{panel.color && <span className="swatch" style={{ background: panel.color }} />}{panel.title}</p>
           {side}
         </div>

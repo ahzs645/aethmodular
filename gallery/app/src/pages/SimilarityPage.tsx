@@ -28,7 +28,6 @@ import {
   type SimilarityMeta,
 } from '@/lib/similarity'
 
-const TOP_N = ['50', '100', '250', '500'] as const
 /** the stored list holds each target's 500 most similar filters, so any count up to that can be drawn */
 const TOP_MAX = 500
 const MIN_N = ['1', '5', '10', '20'] as const
@@ -250,7 +249,7 @@ function SimilarityView({ meta }: { meta: SimilarityMeta }) {
       <SpectraTraces meta={activeMeta} traces={traces.value} target={target} topFilters={topFilters.rows} compare={compare} mask={mask}
         hoverFilter={hoverFilter} pinned={pinned} onPin={onPin} method={baselineName(method)}
         controls={<>
-          <CountPicker label="Most similar" value={topN} presets={TOP_N} max={TOP_MAX} onChange={setTopN} noun="most similar filters" />
+          <CountPicker label="Most similar" value={topN} max={TOP_MAX} onChange={setTopN} noun="most similar filters" />
           <Toggle label="Outer test sites" checked={includeTest} onChange={(v) => setTestParam(v ? 'on' : 'off')} />
         </>} />
 
