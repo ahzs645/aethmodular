@@ -77,14 +77,8 @@ def build():
                "2nd-derivative spectra (the interleaved half is in no gallery export)")
     p.optional("selection_curves", PHASE3, NB23, out + "ftir23/selection_curves.csv",
                "ftir_23's curve under each protocol with its rule threshold (the within-5 % band and the ±1 SE ribbon), six cohorts")
-    p.missing.append({
-        "table": "cv_2x2_curves",
-        "what": "ftir_32's four curves per cohort (interleaved 10/5-fold, site-grouped 5/10-fold); the notebook saves only the summary and verdict, "
-                "so its cell 7 needs `pd.concat([c.assign(cohort=n, scheme=s) for (n, s), c in curves.items()]).to_csv(TABLE_DIR / 'cv_scheme_2x2_curves.csv')` first",
-        "needs": rel(PHASE3 / out / "ftir32/cv_scheme_2x2_curves.csv"),
-        "run": f"cd {rel(PHASE3)} && uv run python scripts/build_notebooks.py 32",
-        "after": "ftir_11's output/tables/ftir11 (lowest_ocec_800_cohort.csv) and output/corrected/improve_pool_corrected_df6.npz",
-    })
+    p.optional("cv_2x2_curves", PHASE3, NB32, out + "ftir32/cv_scheme_2x2_curves.csv",
+               "ftir_32's four full curves per cohort (interleaved 10/5-fold, site-grouped 5/10-fold)")
 
     # findings, read off the same tables the charts draw
     sel = p.tables["selection"].set_index(["cohort", "mode"])

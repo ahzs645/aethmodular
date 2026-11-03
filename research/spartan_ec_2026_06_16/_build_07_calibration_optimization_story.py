@@ -97,6 +97,10 @@ re-running 10-fold CV with 30 different random fold splits and recording where t
 
 code(r"""KS=np.arange(1,31); NSEED=8; STR=3            # one CV matrix at decent resolution, reused below
 CVMAT=np.vstack([rmsep(X,y,KS,cv=10,seed=s,stride=STR) for s in range(NSEED)])  # NSEED noisy CV runs
+pd.concat([pd.DataFrame({'k': KS, 'rmsep': curve, 'repeat': str(seed),
+                        'scheme': 'random 10-fold', 'prediction_stride': STR})
+           for seed, curve in enumerate(CVMAT)], ignore_index=True
+          ).to_csv('tables/rmsep_by_k.csv', index=False)
 argmins=KS[np.nanargmin(CVMAT,axis=1)]
 mC=np.nanmean(CVMAT,0); sC=np.nanstd(CVMAT,0)  # mean/spread of RMSEP across runs (reused in 3b)
 kmin_full=int(KS[np.nanargmin(mC)])            # robust optimum (min of the averaged curve)

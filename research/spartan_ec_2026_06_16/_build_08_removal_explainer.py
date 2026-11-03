@@ -100,6 +100,9 @@ md(r"""## 3. Before → after — the removed filters called out
 Left: all samples, with the **removed ones circled in red**. Right: the cleaned calibration.""")
 
 code(r"""pred_clean=fitpred(keep); s_clean=stats(y[keep],pred_clean)
+info.loc[keep].reset_index(drop=True).assign(
+    measured_EC_ug=y[keep], predicted_EC_ug=pred_clean
+).to_csv('tables/ec_cleaned_refit.csv', index=False)
 fig,ax=plt.subplots(1,2,figsize=(13,6),sharex=True,sharey=True)
 ax[0].scatter(y[~removed],pred_full[~removed],s=16,c="#9ecae1",alpha=.7,edgecolor="none",label="kept")
 ax[0].scatter(y[removed],pred_full[removed],s=70,facecolors="none",edgecolors="#e45756",linewidths=1.8,label="removed")

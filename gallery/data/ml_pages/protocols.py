@@ -165,6 +165,8 @@ def build():
                "ftir_21's per-filter Addis predictions for the six setups under both protocols (the app-protocol clouds of its crossplots, ftir_31 §1.2)")
     p.optional("residuals_by_mode", PHASE3, NB22, OUT + "ftir22/addis_residuals_by_mode.csv",
                "ftir_22's per-filter Addis residual, D² and season under both protocols (residual vs D², ftir_22 [13] and ftir_31 §1.3)")
+    p.optional("domain_locked", PHASE3, NB15, OUT + "ftir15/addis_domain_per_filter.csv",
+               "the locked models' per-filter D², Q and Fabs with prediction residuals and physical filter identifiers")
     p.optional("boot_draws_modes", PHASE3, NB22, OUT + "ftir22/bootstrap_draws_by_mode.csv",
                "ftir_22's 200 site-cluster bootstrap draws per protocol (the distributions behind the intervals)")
     p.optional("boot_draws_locked", PHASE3, NB15, OUT + "ftir15/addis_bootstrap_draws.csv",

@@ -53,6 +53,7 @@ import pandas as pd
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import export_aethalometer as aeth  # noqa: E402  (puts research/ftir_hips_chem/scripts on the path)
+from src.data.qc.smoothing import dema as _dema  # noqa: E402
 from config import WAVELENGTHS_NM  # noqa: E402
 from optics import aae  # noqa: E402
 
@@ -126,10 +127,7 @@ def add_segments(df: pd.DataFrame) -> pd.DataFrame:
 
 def dema(values: pd.Series, segment: pd.Series, span: int = DEMA_SPAN) -> pd.Series:
     """The cleaning pipeline's smoothing (pkl_cleaning.dema_bc_and_atn): 2·EMA − EMA(EMA), restarted on each spot."""
-    def one(s: pd.Series) -> pd.Series:
-        ema = s.ewm(span=span, adjust=False).mean()
-        return 2 * ema - ema.ewm(span=span, adjust=False).mean()
-    return values.astype(float).groupby(segment, sort=False).transform(one)
+    return _dema(values, segment, span)
 
 
 def hist(values, lo: float, hi: float, bins: int) -> dict:

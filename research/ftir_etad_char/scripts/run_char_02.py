@@ -54,6 +54,7 @@ from charcoal_spectra import (
     ramp_score, band_area, BANDS, ADDIS_USABLE,
 )
 from etad_spectra import load_etad, offset_correct_spectra
+from diagnostic_exports import score_rows, metadata_rows
 
 PLOT_DIR = Path("output/plots/char02")
 TABLE_DIR = Path("output/tables/char02")
@@ -527,6 +528,11 @@ pca = PCA(n_components=6, random_state=RANDOM_SEED).fit(ref_X)
 S_ref = pca.transform(ref_X)
 S_addis = pca.transform(X_addis)
 S_addis_raw = pca.transform(X_addis_raw)
+pd.concat([
+    score_rows(S_ref, ref_meta, 'Charcoal archive', 'Charcoal PCA'),
+    score_rows(S_addis, etad_meta_b, 'Addis · spline baseline', 'Charcoal PCA'),
+    score_rows(S_addis_raw, etad_meta, 'Addis · raw', 'Charcoal PCA'),
+], ignore_index=True).to_csv(TABLE_DIR / 'pca_scores.csv', index=False)
 
 fig, ax = plt.subplots(figsize=(8.5, 6), constrained_layout=True)
 sc = ax.scatter(S_ref[:, 0], S_ref[:, 1], s=9, c=ref_meta["temp_c"], cmap=TEMP_CMAP,
@@ -580,6 +586,10 @@ fig.savefig(PLOT_DIR / "04b_mahalanobis_distance.png", dpi=160, bbox_inches="tig
 plt.show()
 
 d_ref, d_add = d2(S_ref), d2(S_addis)
+pd.concat([
+    ref_meta.reset_index(drop=True).assign(population='Charcoal archive', distance=d_ref),
+    metadata_rows(etad_meta_b).assign(population='Addis · spline baseline', distance=d_add),
+], ignore_index=True).to_csv(TABLE_DIR / 'mahalanobis_per_filter.csv', index=False)
 print(f"median Mahalanobis distance — charcoal: {np.median(d_ref):.2f}, "
       f"Addis: {np.median(d_add):.2f}")
 print(f"the median Addis filter sits at the "

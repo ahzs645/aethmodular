@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Figure } from '@/components/Figure'
+import { SavedFigure } from '@/components/SavedFigure'
 import { useMac } from '@/lib/mac'
 import { num, type Row } from '@/lib/table'
 import type { SweepRow } from '@/lib/types'
@@ -106,7 +107,7 @@ export function Components(_props: SectionPageProps) {
     {presetCurves.length > 0 && <Figure kind="sweep" id="ml-components-preset-curves" data={presetCurves} x="k" y="pct" series="calibration"
       chosen={chosen(presetCurves, 'calibration')} xLabel="PLS factors" yLabel="Site-grouped RMSECV, % of mean training loading" height={340}
       title="Site-grouped CV curves, explorer calibrations — the composition cohorts flatten after 5–10 factors, the pool and smoke curves stay jagged above 100 %"
-      subtitle="ftir_20 [13]'s site-grouped half, from the explorer's own runs (site-grouped 5-fold on each cohort's training split, the curve that chose k; ringed: the first major minimum). Each curve is divided by its cohort's mean TOR loading so the cohorts compare, as ftir_20 does. Toggle calibrations in the legend; one curve with its ±1 SE band is on the Calibration tab. The interleaved curves are in no gallery export (see the list above)."
+      subtitle="ftir_20 [13]'s site-grouped half, from the explorer's own runs (site-grouped 5-fold on each cohort's training split, the curve that chose k; ringed: the first major minimum). Each curve is divided by its cohort's mean TOR loading so the cohorts compare, as ftir_20 does. Toggle calibrations in the legend; one curve with its ±1 SE band is on the Calibration tab. The regenerated interleaved comparisons are shown in the RMSECV panels above."
       provenance={<>Read from <code>calibration_runs.json</code> runs[].curve, rmsecv_floor and pct_rmsecv_floor (target Addis; the curve does not depend on the target).</>} />}
 
     {ocecCurves.length > 0 && <Figure kind="sweep" id="ml-components-ocec-sizes" data={ocecCurves} x="k" y="rmsecv" series="size" colors={CUT_COLOR}
@@ -135,6 +136,9 @@ export function Components(_props: SectionPageProps) {
       title="Selection curves (ftir_23 [9]) — each protocol's curve, one panel per cohort"
       subtitle="The curves the decisions above were read from (the notebook's output/tables, read after a re-run)."
       provenance={provenance(data, ['selection_curves'])} />}
+
+    <SavedFigure bundle={data} table="cv_2x2_curves" kind="sweep" id="ml-components-2x2-curves" x="n_components" y="pct_rmsecv" series="scheme" facet="cohort" colors={SCHEME_COLOR}
+      xLabel="PLS components (k)" yLabel="RMSECV (% of mean loading)" title="Full CV curves: grouping × fold count" height={240} />
 
     <Figure kind="intervals" id="ml-components-2x2" data={rows(data, 'scheme_2x2')} row="cohort" series="scheme" colors={SCHEME_COLOR}
       panels={[{ value: 'floor_pct_rmsecv', label: 'Lowest RMSECV, % of mean loading' }, { value: 'k_within_5pct', label: 'k, within 5 %' }, { value: 'k_global_min', label: 'k at the minimum' }]}

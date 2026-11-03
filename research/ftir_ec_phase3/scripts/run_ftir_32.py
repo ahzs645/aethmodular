@@ -167,6 +167,9 @@ for name in cohort_ids:
 
 summary = pd.DataFrame(rows)
 summary.to_csv(TABLE_DIR / "cv_scheme_2x2_summary.csv", index=False)
+pd.concat([curve.assign(cohort=name, scheme=scheme)
+           for (name, scheme), curve in curves.items()], ignore_index=True
+          ).to_csv(TABLE_DIR / "cv_scheme_2x2_curves.csv", index=False)
 
 # %% [markdown]
 # ### 4. The verdict numbers — grouping vs count

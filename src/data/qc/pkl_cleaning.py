@@ -13,6 +13,7 @@ import sys
 import os
 import importlib.util
 import pandas as pd
+from src.data.qc.smoothing import dema
 from itertools import groupby
 from operator import itemgetter
 from typing import Dict, List, Union, Optional, Tuple
@@ -368,9 +369,8 @@ class PKLDataCleaner:
                         if varname in dfi.columns:
                             if self.verbose and wl in self.wls_to_filter:  # Only print for filtered wavelengths
                                 print(f"  Processing {varname}")
-                            ema = dfi[varname].ewm(span=DEMA_span_min, adjust=False).mean()
-                            ema_of_ema = ema.ewm(span=DEMA_span_min, adjust=False).mean()
-                            dfi[varname + ' smoothed'] = 2 * ema - ema_of_ema
+                            dfi[varname + ' smoothed'] = dema(
+                                dfi[varname], pd.Series(0, index=dfi.index), DEMA_span_min)
                     
                     df_interim_list.append(dfi)
             

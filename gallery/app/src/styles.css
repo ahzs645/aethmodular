@@ -593,7 +593,7 @@ input[type="search"]::-webkit-search-cancel-button:hover { background: var(--ink
 .swatch.diamond { width: 8px; height: 8px; border-radius: 1px; margin: 0 1px; transform: rotate(45deg); }
 .swatch.hollow-diamond { width: 8px; height: 8px; border-radius: 1px; margin: 0 1px; transform: rotate(45deg); box-sizing: border-box; border: 1.3px solid currentColor; background: var(--ink-panel) !important; }
 .swatch.bar { width: 18px; height: 6px; border-radius: 0; }
-.legend-note { color: var(--ink-muted); font-size: calc(11.5px * var(--text-scale)); }
+.legend-note, .legend-definition { color: var(--ink-muted); font-size: calc(11.5px * var(--text-scale)); }
 /* the species network's groups in words (charts/correlation/SpeciesGraph): one row per colour */
 .species-groups { display: flex; flex-direction: column; gap: 2px; padding: 6px 0 4px; font-size: calc(12px * var(--text-scale)); color: var(--ink-text); }
 .species-groups-head { color: var(--ink-muted); padding-bottom: 2px; }

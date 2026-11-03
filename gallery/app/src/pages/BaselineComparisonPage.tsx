@@ -10,6 +10,7 @@ import { SidebarControls } from '@/lib/pageSidebar'
 import { PageChoiceControls, PageChoices, usePageChoice, type PageChoiceDef } from '@/lib/pageChoices'
 import { FullRangeVibesStatus } from '@/components/FullRangeVibesStatus'
 import { FullRangeVibesResults } from '@/components/FullRangeVibesResults'
+import { VibesValidation } from '@/components/VibesValidation'
 import { StackedPanels, type StackPanel } from '@/components/StackedPanels'
 import { BASELINE_COLOR, FONT, INK } from '@/lib/theme'
 import { fmt as f } from '@/lib/format'
@@ -43,7 +44,7 @@ export function BaselineComparisonPage({ mac, demingLambda }: { mac: number; dem
   const { data, error } = useExport<BaselineData>(showArchived ? 'baseline_comparison.json' : 'baseline_paired_r70.json',
     (d) => d.schema_version !== 1 || (!showArchived && d.run.background_rank !== 70) ? 'unsupported data version' : null)
   const { all, rows, sites, site, setSite, band, setBand } = usePairedSubset(data, cohort, ARCHIVED_KEYS)
-  if (!data) return <ExportState title="Baselines" what="the baseline comparison" error={error} command="uv run --locked --no-sync python gallery/data/export_baseline_comparison.py" />
+  if (!data) return <PageToc><VibesValidation /><ExportState title="Saved baseline benchmark" what="the baseline comparison" error={error} command="uv run --locked --no-sync python gallery/data/export_baseline_comparison.py" /></PageToc>
   const subset = site !== 'All sites' || band !== 'All loadings'
   const interval = data.groups.find(g => g.cohort === cohort && g.dimension === 'overall')!
   const spectrum = data.spectra.find(r => r.sample_id === sample) ?? data.spectra[0]
@@ -62,6 +63,7 @@ export function BaselineComparisonPage({ mac, demingLambda }: { mac: number; dem
   if(!showArchived) return <BaselineRankProvider rank={70}><PageChoices panel={false} defs={[cohortChoice]}><PageToc>
     {archiveControl}
     <SidebarControls><PageChoiceControls /></SidebarControls>
+    <VibesValidation />
     <ExplainOnly><FullRangeVibesStatus /></ExplainOnly>
     <FullRangeVibesResults />
     <PairedViews file="baseline_paired_r70.json" rank={70} keys={COMPLETED_KEYS} />
@@ -72,6 +74,7 @@ export function BaselineComparisonPage({ mac, demingLambda }: { mac: number; dem
   </PageToc></PageChoices></BaselineRankProvider>
   return <BaselineRankProvider rank={data.run.background_rank}><PageChoices panel={false} defs={[cohortChoice]}><PageToc>
     {archiveControl}
+    <VibesValidation />
     <SidebarControls><PageChoiceControls /></SidebarControls>
     <ExplainOnly><FullRangeVibesStatus linkToMeeting /></ExplainOnly>
     <FullRangeVibesResults />

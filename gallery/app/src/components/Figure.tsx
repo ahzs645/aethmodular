@@ -3,6 +3,9 @@ import * as d3 from 'd3'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { mediaKey, useEtadByMedia } from '@/lib/etadMedia'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
+import { ScatterPlot, type ScatterPoint } from '@/components/ScatterPlot'
+import { baseFilterId } from '@/lib/highlight'
+import { ecdf } from '@/lib/stats'
 import { useHighlightActions } from '@/lib/highlight'
 import { PanelAxesControl } from '@/lib/panelAxes'
 import type { PanelDim } from '@/lib/axes'
@@ -62,6 +65,8 @@ interface Base {
   colors?: Record<string, string>
   /** a note under the chart, Markdown */
   note?: string
+  /** Measurement or scope information needed even with Explain off. */
+  noteAlways?: boolean
   /**
    * Filters → excluded: Mark (lib/markedRows useExclusionSplit): rows of the same shape the gallery's exclusions take
    * out of `data`; a crossplot draws them as muted ×, never fitted or counted (the same `where`, `choose` and facets apply)
@@ -70,10 +75,12 @@ interface Base {
 }
 export type FigureSpec =
   | (Base & { kind: 'crossplot'; x: string; y: string; color?: string; idColumn?: string; tipColumns?: string[]; xLabel: string; yLabel: string; fit?: boolean; errorRatio?: number; facet?: string; maxSide?: number; sameScale?: boolean })
-  | (Base & { kind: 'spectrum'; wn: string; y: string; series: string; lo?: string; hi?: string; role?: 'trace' | 'line'; window?: [number, number]; yLabel?: string; yClip?: [number, number]; includeZero?: boolean; zeroLine?: boolean; regions?: RegionName[]; annotations?: SpectrumAnnotation[]; hover?: 'nearest' | 'readout'; facet?: string; height?: number })
-  | (Base & { kind: 'sweep'; x: string; y: string; series?: string; lo?: string; hi?: string; aggregate?: { stat?: 'median' | 'mean'; interval?: Interval }; xLabel: string; yLabel: string; xScale?: 'linear' | 'log' | 'time' | 'point'; yScale?: 'linear' | 'log'; reference?: number; xMarkers?: { at: number; label?: string }[]; chosen?: { series: string; x: Value }[]; interval?: 'band' | 'whisker'; yClip?: [number, number]; facet?: string; height?: number })
+  | (Base & { kind: 'scatter'; x: string; y: string; color?: string; idColumn?: string; tipColumns?: string[]; xLabel: string; yLabel: string; refX?: number[]; refY?: number[]; facet?: string; maxSide?: number })
+  | (Base & { kind: 'spectrum'; wn: string; y: string; series: string; lo?: string; hi?: string; bandLabel?: string; role?: 'trace' | 'line'; window?: [number, number]; yLabel?: string; yClip?: [number, number]; includeZero?: boolean; zeroLine?: boolean; regions?: RegionName[]; annotations?: SpectrumAnnotation[]; hover?: 'nearest' | 'readout'; facet?: string; height?: number })
+  | (Base & { kind: 'sweep'; x: string; y: string; series?: string; lo?: string; hi?: string; bandLabel?: string; aggregate?: { stat?: 'median' | 'mean'; interval?: Interval }; xLabel: string; yLabel: string; xScale?: 'linear' | 'log' | 'time' | 'point'; yScale?: 'linear' | 'log'; reference?: number; xMarkers?: { at: number; label?: string }[]; chosen?: { series: string; x: Value }[]; interval?: 'band' | 'whisker'; yClip?: [number, number]; facet?: string; height?: number })
   | (Base & { kind: 'intervals'; row: string; series?: string; block?: string; panels: { value: string; label: string; reference?: number; lo?: string; hi?: string }[]; aggregate?: { stat?: 'median' | 'mean'; interval?: Interval }; labelWidth?: number })
   | (Base & { kind: 'histogram'; value: string; series: string; log?: boolean; bins?: number; xLabel: string; medians?: boolean; height?: number })
+  | (Base & { kind: 'ecdf'; value: string; count?: string; series?: string; xLabel: string; height?: number })
   | (Base & { kind: 'heatmap'; row: string; column: string; value: string; domain?: [number, number]; ramp?: 'diverging' | 'sequential'; format?: FormatName; valueLabel?: string; cell?: [number, number] })
   | (Base & { kind: 'bars'; label: string; value: string; color?: string; sort?: 'none' | 'desc' | 'asc'; format?: FormatName; xLabel?: string; reference?: number; domain?: [number, number] })
   | (Base & { kind: 'table'; columns?: { key: string; label?: string; format?: FormatName }[] })
@@ -162,10 +169,12 @@ export function Figure(props: FigureSpec & { about?: ReactNode; provenance?: Rea
     ? (Custom ? <Custom bundle={bundle} props={spec.props} /> : <Empty>No figure registered as “{spec.component}”.</Empty>)
     : !rows.length ? <Empty>{spec.table && bundle && !bundle.tables[spec.table] ? `No table “${spec.table}” in this meeting’s data.` : 'No rows to draw.'}</Empty>
     : spec.kind === 'crossplot' ? <CrossplotFigure spec={spec} rows={rows} marked={marked} />
+    : spec.kind === 'scatter' ? <ScatterFigure spec={spec} rows={rows} marked={marked} />
     : spec.kind === 'spectrum' ? <SpectrumFigure spec={spec} rows={rows} />
     : spec.kind === 'sweep' ? <SweepFigure spec={spec} rows={rows} />
     : spec.kind === 'intervals' ? <IntervalsFigure spec={spec} rows={rows} />
     : spec.kind === 'histogram' ? <HistogramFigure spec={spec} rows={rows} />
+    : spec.kind === 'ecdf' ? <EcdfFigure spec={spec} rows={rows} />
     : spec.kind === 'heatmap' ? <HeatmapFigure spec={spec} rows={rows} />
     : spec.kind === 'bars' ? <BarsFigure spec={spec} rows={rows} />
     : <TableFigure spec={spec} rows={rows} />
@@ -173,7 +182,7 @@ export function Figure(props: FigureSpec & { about?: ReactNode; provenance?: Rea
     <ChartFrame id={id} title={spec.title} subtitle={spec.subtitle} tip={spec.tip} controls={controls} about={props.about} provenance={props.provenance}
       exportable={spec.kind !== 'table'} source={bundle ? `gallery/app/src/meetings/${bundle.id}.meeting.ts › ${id}${spec.table ? `; data: table "${spec.table}" in gallery/app/public/data/meetings/${bundle.id}.json, from ${bundle.generated_from}` : ''}` : undefined}>
       {body}
-      {spec.note && <div className="legend-note" style={{ marginTop: 6 }}><Markdown text={spec.note} /></div>}
+      {spec.note && <div className={spec.noteAlways ? 'legend-definition' : 'legend-note'} style={{ marginTop: 6 }}><Markdown text={spec.note} /></div>}
       {props.aside}
     </ChartFrame>
   )
@@ -221,6 +230,45 @@ function CrossplotFigure({ spec, rows, marked = [] }: { spec: Extract<FigureSpec
   </>
 }
 
+// Different quantities (PCA scores, residual vs domain distance): no 1:1 or
+// origin-based crossplot ranges. ScatterPlot owns marks, axes, exclusions and hover.
+function ScatterFigure({ spec, rows, marked }: { spec: Extract<FigureSpec, { kind: 'scatter' }>; rows: Row[]; marked: Row[] }) {
+  const color = useColors(spec)
+  const byMedia = useEtadByMedia(spec.idColumn === 'MediaId')
+  const located = useMemo(() => [...rows, ...marked].flatMap((r): { point: ScatterPoint; facet: string }[] => {
+    const x = num(r[spec.x]), y = num(r[spec.y])
+    if (x == null || y == null) return []
+    const raw = spec.idColumn && r[spec.idColumn] != null ? String(r[spec.idColumn]) : undefined
+    const id = raw ? (spec.idColumn === 'MediaId' ? byMedia?.get(mediaKey(raw)) : baseFilterId(raw)) : undefined
+    return [{ facet: spec.facet ? String(r[spec.facet]) : '', point: { x, y, id,
+      key: `${id ?? ''}|${r[spec.color ?? ''] ?? ''}|${x}|${y}`, color: spec.color ? color(r[spec.color]) : INK.accent,
+      tip: [...(id ? [id] : []), ...(spec.tipColumns ?? (spec.color ? [spec.color] : [])).map((k) => `${k}: ${r[k] ?? '—'}`), `${spec.xLabel}: ${f3(x)}`, `${spec.yLabel}: ${f3(y)}`] } }]
+  }), [rows, marked, spec.x, spec.y, spec.idColumn, spec.color, spec.facet, spec.xLabel, spec.yLabel, spec.tipColumns?.join('|'), byMedia, color])
+  const points = useMemo(() => located.map((p) => p.point), [located])
+  const groups = spec.color ? uniq(rows, spec.color) : []
+  const facets = spec.facet ? uniq([...rows, ...marked], spec.facet).map(String) : ['']
+  const facetPoints = useMemo(() => new Map(facets.map((key) => [key, located.filter((p) => p.facet === key).map((p) => p.point)])), [located, facets.join('|')])
+  return <>
+    {facets.length > 1 ? <FacetGrid items={facets} minCell={300} maxCols={3} render={(key, w) =>
+      <ScatterPlot points={facetPoints.get(key) ?? []} title={key} xLabel={spec.xLabel} yLabel={spec.yLabel} maxSide={w - 70} refX={spec.refX} refY={spec.refY} note="mark" swap />} />
+      : <ScatterPlot points={points} xLabel={spec.xLabel} yLabel={spec.yLabel} maxSide={spec.maxSide ?? 480} refX={spec.refX} refY={spec.refY} note="mark" swap />}
+    {groups.length > 0 && <Key items={groups.map((g) => ({ label: String(g), color: color(g) }))} />}
+  </>
+}
+
+function EcdfFigure({ spec, rows }: { spec: Extract<FigureSpec, { kind: 'ecdf' }>; rows: Row[] }) {
+  const color = useColors(spec), lg = useLegend()
+  const names = spec.series ? uniq(rows, spec.series).map(String) : [spec.xLabel]
+  const series = useMemo(() => names.filter(lg.show).map((name): SweepSeries => ({
+    id: name, label: name, color: color(name), curve: 'step', marks: false,
+    points: (() => { const group = rows.filter((r) => !spec.series || String(r[spec.series]) === name)
+      const pts = ecdf(group.map((r) => num(r[spec.value])), spec.count ? group.map((r) => num(r[spec.count!])) : undefined)
+      return pts.length ? [{ x: pts[0].x, y: 0 }, ...pts] : [] })(),
+  })), [rows, spec.value, spec.count, spec.series, color, names.join('|'), lg.show])
+  return <><SweepPlot series={series} xScale="linear" xLabel={spec.xLabel} yLabel="Cumulative fraction ≤ x" yDomain={[0, 1]} height={spec.height ?? 280} />
+    <Legend {...lg.props} items={names.map((name) => ({ label: name, color: color(name), shape: 'line' as const }))} /></>
+}
+
 // ------------------------------------------------------------------ spectrum
 function SpectrumFigure({ spec, rows }: { spec: Extract<FigureSpec, { kind: 'spectrum' }>; rows: Row[] }) {
   const color = useColors(spec)
@@ -249,7 +297,7 @@ function SpectrumFigure({ spec, rows }: { spec: Extract<FigureSpec, { kind: 'spe
       ? <FacetGrid items={facets} minCell={300} render={(f, w) => <SpectrumPlot {...build(f.rows)} {...common} width={w} height={spec.height ?? 220} title={f.key} />} />
       : <SpectrumPlot {...build(rows)} {...common} height={spec.height ?? 320} />}
     <Legend {...lg.props} items={names.map((n) => ({ label: n, color: color(n), shape: 'line' as const }))}
-      note={spec.lo && spec.hi ? 'line: median · band: interquartile range' : undefined} />
+      note={spec.lo && spec.hi ? spec.bandLabel ?? 'line: median · band: interquartile range' : undefined} noteAlways={!!spec.bandLabel} />
   </>
 }
 
@@ -274,7 +322,7 @@ function SweepFigure({ spec, rows }: { spec: Extract<FigureSpec, { kind: 'sweep'
       ? <FacetGrid items={facets} minCell={280} maxCols={3} render={(f, w) => <SweepPlot series={build(f.rows)} {...common} width={w} height={spec.height ?? 220} title={f.key} />} />
       : <SweepPlot series={build(rows)} {...common} height={spec.height ?? 280} />}
     {spec.series && <Legend {...lg.props} items={names.map((n) => ({ label: n, color: color(n), shape: 'line' as const }))}
-      note={spec.aggregate ? `${spec.aggregate.stat ?? 'median'} and ${INTERVAL_LABEL[spec.aggregate.interval ?? 'iqr']}` : undefined} />}
+      note={spec.bandLabel ?? (spec.aggregate ? `${spec.aggregate.stat ?? 'median'} and ${INTERVAL_LABEL[spec.aggregate.interval ?? 'iqr']}` : undefined)} noteAlways={!!spec.bandLabel} />}
   </>
 }
 

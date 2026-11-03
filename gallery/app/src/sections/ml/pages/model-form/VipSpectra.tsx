@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
 import { Key } from '@/components/Key'
 import { SpectrumPlot } from '@/components/SpectrumPlot'
 import { f2, f3, pct } from '@/lib/format'
@@ -35,9 +35,9 @@ export function VipSpectra({ data, sets, colors, provenance, missing }: {
   data: SpectralExport; sets: VipSet[]; colors: Record<string, string>; provenance: ReactNode; missing: ReactNode
 }) {
   const present = sets.filter((s) => data.tables[s.table])
-  const [setKey, setSet] = useSearchParam('ml-model-form-vip-profiles.set', present[0]?.key ?? '', present.map((s) => s.key))
+  const [setKey, setSet] = useSearchParam('ml-model-form-vip-profiles.set', present[0]?.key ?? sets[0]?.key ?? '', sets.map((s) => s.key))
   const [shade, setShade] = useSearchParam<(typeof SHADES)[number]>('ml-model-form-vip-profiles.shade', 'bands', SHADES)
-  const set = present.find((s) => s.key === setKey) ?? present[0]
+  const set = sets.find((s) => s.key === setKey) ?? sets[0]
   const edges = rows(data, 'vip_band_edges')
 
   const profile = useMemo(() => {
@@ -47,7 +47,12 @@ export function VipSpectra({ data, sets, colors, provenance, missing }: {
     return { wn: t.wn, a, b, overlap: vipOverlap(a, b) }
   }, [data, set])
 
-  if (!set || !profile) return <ChartFrame id="ml-model-form-vip-profiles" title="VIP profiles — written only on the machine with the Drive" exportable={false}>{missing}</ChartFrame>
+  const models = sets.length > 1 && <Segmented label="Models" value={set?.key ?? ''} options={sets.map((s) => s.key)}
+    optionLabel={(k) => { const s = sets.find((s) => s.key === k); return `${s?.label ?? k}${s && !data.tables[s.table] ? ' · unavailable' : ''}` }} onChange={setSet} />
+  if (!set || !profile) return <ChartFrame id="ml-model-form-vip-profiles" title={`${set?.label ?? 'Models'} · VIP profiles`} exportable={false}
+    controls={models} provenance={provenance} about={missing}>
+    <Empty>The full VIP profiles for this model pair are not available in this export. The overlap and band summaries remain available below.</Empty>
+  </ChartFrame>
 
   const { wn, a, b, overlap } = profile
   const [ma, mb] = set.models
@@ -71,7 +76,7 @@ export function VipSpectra({ data, sets, colors, provenance, missing }: {
         : `Shaded: ${ma}'s VIP where both models reach VIP ≥ 1 (ftir_07 [5]'s lower panel), ${runs.length} stretch${runs.length === 1 ? '' : 'es'}.`} VIP grows with the number of PLS factors, so compare shapes, not heights; it is a post hoc importance and names no unique molecule.`}
       provenance={provenance}
       controls={<>
-        {present.length > 1 && <Segmented label="Models" value={set.key} options={present.map((s) => s.key)} optionLabel={(k) => present.find((s) => s.key === k)?.label ?? k} onChange={setSet} />}
+        {models}
         <Segmented label="Shade" value={shade} options={SHADES} optionLabel={(o) => (o === 'bands' ? 'Functional bands' : 'VIP ≥ 1 in both')} onChange={setShade} />
       </>}>
       <SpectrumPlot height={340} yLabel="VIP" window={[d3.max(wn) ?? 4000, d3.min(wn) ?? 500]} includeZero hover="readout"

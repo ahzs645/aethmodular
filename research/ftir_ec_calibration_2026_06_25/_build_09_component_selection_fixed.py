@@ -130,6 +130,12 @@ for name, mask in MASKS.items():
     print(f"{name:22s} k*={curves[name]['k']:2d}  RMSECV_min={rc.min():6.2f} µg  "
           f"%RMSECV_min={pct.min():5.1f}%")""")
 
+code(r"""pd.concat([
+    pd.DataFrame({'k': c['ks'], 'rmsecv': c['rmsecv'], 'pct_rmsecv': c['pct'],
+                  'variant': name, 'scheme': 'interleaved 10-fold'})
+    for name, c in curves.items()], ignore_index=True
+).to_csv('tables/component_selection_curves.csv', index=False)""")
+
 md(r"""## Figure 1 — %RMSECV, candidates vs. diagnostics (the corrected graph)
 
 Left: the three variants that are actual calibration candidates (CAL-0/1/5). Right: the

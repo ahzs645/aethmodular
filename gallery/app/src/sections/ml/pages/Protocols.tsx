@@ -1,6 +1,9 @@
 import { useMemo } from 'react'
 import { usePrefs } from '@/lib/prefs'
 import { Figure } from '@/components/Figure'
+import { SavedFigure } from '@/components/SavedFigure'
+import { PredictionDiagnostics } from '@/components/PredictionDiagnostics'
+import { presetName } from '@/charts/calibration/common'
 import { rmseAtMac, useMac } from '@/lib/mac'
 import { num, type Row } from '@/lib/table'
 import { useCalibRuns } from '../../research/pages/spectralCommon'
@@ -33,6 +36,17 @@ export function Protocols(_props: SectionPageProps) {
   const { data, error } = useMl('protocols')
   const { calib } = useCalib()
   const { runs } = useCalibRuns()
+  const currentPredictions = useMemo(() => ({
+    sources: [{ table: 'predictions', path: 'calibration_runs.json', read: 'saved per-filter model predictions' }],
+    tables: { predictions: (runs?.runs ?? []).filter((run) => run.ref_kind === 'fabs').flatMap((run) => {
+      const preset = runs?.presets.find((p) => p.key === run.preset)
+      return run.eval.pred.map((pred, i): Row => ({
+        ExternalFilterId: run.eval.id[i], Fabs: run.eval.ref[i], prediction_ugm3: pred,
+        season: run.eval.group[i], date: run.eval.date?.[i] ?? null,
+        model: preset ? presetName(preset) : run.preset, site: runs?.targets[run.target]?.label ?? run.target,
+      }))
+    }) },
+  }), [runs])
   const m = useMac()
   // the figure index (which notebook figure lives where) is reading guidance: only with Explain on
   const { explain } = usePrefs()
@@ -132,6 +146,16 @@ export function Protocols(_props: SectionPageProps) {
   const airspecMarked = airspecOf(airspecSplit.marked)
 
   return <>
+    <PredictionDiagnostics bundle={currentPredictions} table="predictions" id="ml-protocols-current" mac={m.mac} domain={false}
+      choose={[{ column: 'site', label: 'Test set' }, { column: 'model', label: 'Calibration' }]} />
+    <PredictionDiagnostics bundle={data} table="domain_locked" id="ml-protocols-domain-locked" mac={m.mac}
+      choose={[{ column: 'model', label: 'Model' }]} />
+    <PredictionDiagnostics bundle={data} table="residuals_by_mode" id="ml-protocols-domain-mode" mac={m.mac}
+      choose={[{ column: 'spectra', label: 'Spectra' }, { column: 'mode', label: 'Protocol' }]} />
+    <SavedFigure bundle={data} table="boot_draws_locked" kind="ecdf" id="ml-protocols-bootstrap-draws" value="intercept" series="model"
+      xLabel="Addis intercept (µg/m³, fitted at MAC 10)" title="Site-cluster bootstrap intercept distribution" />
+    <SavedFigure bundle={data} table="boot_draws_modes" kind="ecdf" id="ml-protocols-bootstrap-modes" value="intercept" series="mode"
+      choose={[{ column: 'spectra', label: 'Spectra' }]} xLabel="Addis intercept (µg/m³, fitted at MAC 10)" title="Bootstrap distribution by protocol" />
     <PageIntro id="ml-protocols-intro" title="Protocols end to end — the protocol moves the Addis answer on raw spectra; the bootstrap and every training set tried bound it" data={data}
       notebooks="research/ftir_ec_phase3/ftir_21_both_protocols_end_to_end, ftir_22_figures_under_both_protocols, ftir_15_uncertainty_and_hybrid, ftir_11_ocec_ratio_cohort, ftir_13_airspec_corrected_calibrations, ftir_17_deck_figures_and_seasonal_spectra, ftir_18_transfer_roundup; ftir_31 §1.1, 1.2, 1.6, 1.7, 2.2 and 2.6 redraw ftir_21/22 from the same tables">
       <p>The Calibration app protocol fits on every cohort filter with k from interleaved 10-fold CV (first k within 5 % of the minimum); the
@@ -158,7 +182,7 @@ export function Protocols(_props: SectionPageProps) {
         { value: 'floor', label: 'RMSECV floor, % of mean loading' }, { value: 'tor_r2', label: 'Held-out TOR test R²' }]}
       aggregate={{ stat: 'median', interval: 'none' }} labelWidth={290}
       title="Both protocols end to end (ftir_21) — the app protocol reports lower CV error yet gives steeper Addis slopes everywhere, and only site-held-out produces a TOR test"
-      subtitle="The six setups run end to end twice. The app protocol fits on every cohort filter, so it has no held-out TOR test; the site-held-out test is near zero for Ethiopia-shaped smoke (R² 0.00). The site-held-out rows reproduce the locked ftir_11/ftir_13 calibrations exactly (the notebook asserts it). The per-filter clouds behind ftir_21 [11] (and ftir_31 §1.2) need a re-run: see the list above."
+      subtitle="The six setups run end to end twice. The app protocol fits on every cohort filter, so it has no held-out TOR test; the site-held-out test is near zero for Ethiopia-shaped smoke (R² 0.00). The site-held-out rows reproduce the locked ftir_11/ftir_13 calibrations exactly (the notebook asserts it). Saved per-filter comparisons are available above."
       provenance={provenance(data, ['headline', 'tor_test'])} />
 
     <Figure kind="intervals" id="ml-protocols-row-order" data={order} row="row order" series="protocol" colors={PROTOCOL_COLOR}
@@ -171,7 +195,7 @@ export function Protocols(_props: SectionPageProps) {
     <Figure kind="intervals" id="ml-protocols-bootstrap" data={boot} row="row" series="source" colors={SOURCE_COLOR}
       panels={[{ value: 'mid', lo: 'lo', hi: 'hi', label: 'Addis intercept (µg/m³): bootstrap median and 95 % interval', reference: 0 }]} labelWidth={330}
       title="Bootstrap intercept intervals (ftir_22, ftir_15) — the corrected intercept stays between −2.1 and −1.0 under either protocol; the raw one spans −6.2 to −2.8"
-      subtitle="Training sites resampled with replacement (B = 200), refitted at each protocol's own k, the Addis intercept re-measured. ftir_15's [−1.78, −1.06] for the corrected model was conditional on k = 5; ftir_22 shows what it becomes under the app protocol. The intercept does not depend on the MAC. The draws themselves (for distributions) need a re-run."
+      subtitle="Training sites resampled with replacement (B = 200), refitted at each protocol's own k, the Addis intercept re-measured. ftir_15's [−1.78, −1.06] for the corrected model was conditional on k = 5; ftir_22 shows what it becomes under the app protocol. The intercept does not depend on the MAC. The saved draw distributions are shown above."
       provenance={provenance(data, ['boot_modes', 'boot_locked'])} />
 
     <Figure kind="intervals" id="ml-protocols-bootstrap-locked" data={locked} row="model"
@@ -216,7 +240,7 @@ export function Protocols(_props: SectionPageProps) {
         { value: 'RMSE', label: rmseLabel('Addis') }]}
       aggregate={{ stat: 'median', interval: 'none' }} labelWidth={300}
       title="Transfer roundup (ftir_18) — no transfer closes the gap: only the Addis-only nested-CV ceiling sits on the 1:1 line"
-      subtitle={`Seven training choices on one axis, 239 Addis filters (deployed: its 190). Two predict HIPS Fabs directly (the IMPROVE HIPS-τ transfer and the Addis-only nested CV): divided by the MAC on both axes, their slope and R² do not move with the MAC and their intercept and RMSE scale by 10/MAC. The 13k-filter TOR model beats the 916-filter HIPS transfer on R² only because it has 14× the training filters. Per-filter predictions for the HIPS-τ and nested-CV models need a re-run.`}
+      subtitle={`Seven training choices on one axis, 239 Addis filters (deployed: its 190). Two predict HIPS Fabs directly (the IMPROVE HIPS-τ transfer and the Addis-only nested CV): divided by the MAC on both axes, their slope and R² do not move with the MAC and their intercept and RMSE scale by 10/MAC. These are comparisons between populations; the larger TOR training set alone does not establish why its transfer differs. The regenerated per-filter predictions are included in the saved export.`}
       provenance={provenance(data, ['roundup'])} />
 
     <Figure kind="table" id="ml-protocols-hips-transfer" data={rows(data, 'hips_transfer')}

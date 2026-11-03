@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Figure } from '@/components/Figure'
+import { SavedFigure } from '@/components/SavedFigure'
 import { f2, fitSummary, percent } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { median } from '@/lib/stats'
@@ -93,6 +94,12 @@ export function JuneVariants(_props: SectionPageProps) {
   const macNote = m.changed ? `The notebooks fitted against Fabs/10; slopes here are × ${m.mac}/10, the target is slope 1 at MAC ${m.mac} (slope ${f2(10 / m.mac)} in the notebooks' Fabs/10 frame), intercepts and R² do not move.` : 'Fitted against HIPS Fabs/10 (MAC 10), the MAC set under Plot → units; another MAC rescales the slopes and moves the target.'
 
   return <>
+    <SavedFigure bundle={data} table="variant_cv_curves" kind="sweep" id="june-cv-full-curves" x="k" y="pct_rmsecv" series="variant"
+      xLabel="PLS components (k)" yLabel="RMSECV (% of subset mean EC)" title="Full component curves by calibration variant" />
+    <SavedFigure bundle={data} table="rmsep_by_k" kind="sweep" id="june-repeat-cv-curves" x="k" y="rmsep" series="repeat"
+      xLabel="PLS components (k)" yLabel="RMSEP (µg/filter)" title="CV curves across random fold repeats" />
+    <SavedFigure bundle={data} table="cleaned_refit" kind="crossplot" id="june-cleaned-refit" x="measured_EC_ug" y="predicted_EC_ug"
+      xLabel="Measured TOR EC (µg/filter)" yLabel="Predicted EC (µg/filter)" title="Per-filter cleaned calibration refit" subtitle="In-sample fit on the retained IMPROVE filters; this is not a held-out validation." />
     <PageIntro id="june-intro" title="June 2026 calibration variants and chasing the origin" data={data}
       notebooks="research/ftir_ec_calibration_2026_06_25 05_calibration_variants, 06_calibration_variants_components, 09_component_selection_fixed, 09_ethiopia_component_ec (panel A), 10_calibration_variants_effect, 11_hips_intercept_calibrations, 13_chase_origin_and_biomass, 14_choosing_calibration_data; research/spartan_ec_2026_06_16 05_calibration_optimization, 07_calibration_optimization_story, 08_outlier_removal_explainer">
       <FixedSetNote subject="this page" what="the June notebooks' tables on their own filter sets (IMPROVE lot 251, ETAD, Adama)" />
