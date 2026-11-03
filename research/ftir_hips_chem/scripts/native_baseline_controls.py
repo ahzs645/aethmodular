@@ -270,4 +270,3 @@ def paired_injection_metrics(wavenumbers, parent_corrected, spike_corrected,
             "rms_recovery_error": float(np.sqrt(np.mean((recovered-expected)**2))) if success else np.nan,
             "relative_rms_recovery_error": float(np.sqrt(np.mean((recovered-expected)**2)) /
                                                   np.sqrt(np.mean(expected**2))) if success else np.nan}
-
