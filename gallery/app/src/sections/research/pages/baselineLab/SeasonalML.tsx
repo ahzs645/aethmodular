@@ -23,6 +23,8 @@ import { chooseMLFold, mlConfusionMatrix, mlMetricChoices, mlRegionSet, mlScoreV
   SEASONAL_ML_FILE, type MLCalendar, type MLFamily, type MLImportance, type MLImportanceKind, type MLKey,
   type MLMetric, type MLModel, type MLPermutationScheme, type MLRegionSet, type MLTask, type SeasonalMLData } from '../../common/seasonalML'
 import type { LabChartProps } from './data'
+import { useSeasonalChecks } from './SeasonalChecks'
+import { ecLineFor } from '../../common/seasonalChecks'
 
 const unique = <T,>(values: T[]) => [...new Set(values)]
 const calendarLabel = (calendar: string) => CONVENTION_LABEL[calendar]?.split(' · ')[1] ?? calendar
@@ -117,6 +119,14 @@ export function SeasonalMLPerformance(_props: LabChartProps) {
         state.fold?.label ?? score.fold_id, `${representationLabel(data, model.representation)}${rep ? ` · ${rep.n_channels} channels` : ''}`,
         `Additional predictors: ${covariateLabel(model)}`, ...(model.label_note ? [model.label_note] : []), ...(state.fold?.note ? [state.fold.note] : [])] }]
   })
+  // D contains FTIR EC(X): every disagreement score is read against a straight line on FTIR EC (no spectrum).
+  const checks = useSeasonalChecks().data
+  const ecLine = state.task === 'disagreement' ? ecLineFor(checks?.ec_line, { calendar: state.calendar, cohort: state.cohort, fold_id: state.fold?.id ?? '' }) : null
+  const ecValue = ecLine && (metric === 'rmse' || metric === 'mae' || metric === 'r2') ? ecLine[metric] : null
+  if (ecLine && finite(ecValue)) bars.unshift({ key: 'ec_line', label: 'FTIR EC line only · no spectrum', value: ecValue, color: INK.muted, labelWeight: 700,
+    valueLabel: metric === 'r2' ? null : fmt(ecValue, 3), tip: ['Comparator: D ≈ a + b·FTIR EC, fitted on the same training filters; no spectral channel',
+      `${ML_METRIC_LABEL[metric]}: ${fmt(ecValue, 3)}`, `${ecLine.n_train} training · ${ecLine.n_test} test filters`,
+      'A spectral model of D has to beat this to show information beyond the EC the spectrum already produced.'] })
   const confusionRows = selectMLRows(data?.confusion ?? [], { ...state.selection, model_id: model?.id ?? '' })
   const confusion = useMemo(() => mlConfusionMatrix(confusionRows), [confusionRows])
   const actualClasses = new Set(confusionRows.filter(row => row.n > 0).map(row => row.actual)).size
@@ -135,10 +145,10 @@ export function SeasonalMLPerformance(_props: LabChartProps) {
         : <Select label="Model" value={model?.id ?? ''} options={models.map(item => item.id)} onChange={setModel} optionLabel={v => { const item = models.find(item => item.id === v); return item ? modelLabel(item) : v }} />}
     </>}>
     {!data ? <LoadState what="seasonal ML results" error={error} /> : !state.fold || !scores.length ? <Empty>No saved model evaluation for this task, calendar and cohort.</Empty> : <>
-      <div className="chart-note">{state.coverage}</div>
+      <div className="chart-note">{state.coverage}{ecLine && finite(ecValue) ? ` · grey row and dashed line: FTIR EC line only (${ML_METRIC_LABEL[metric]} ${fmt(ecValue, 3)})` : ''}</div>
       {view === 'scores' ? !bars.length ? <Empty>This metric is unavailable for the selected models.</Empty> : <div className="chart-wrap">
         <BarRows rows={bars} domain={state.task === 'season' ? [0, 1] : undefined}
-          reference={metric === 'balanced_accuracy' && actualClasses === 3 ? 1 / 3 : undefined}
+          reference={metric === 'balanced_accuracy' && actualClasses === 3 ? 1 / 3 : finite(ecValue) && metric !== 'r2' ? ecValue : undefined}
           axis={{ label: `${ML_METRIC_LABEL[metric]} · ${state.task === 'season' || metric === 'r2' ? 'higher is better' : 'lower is better'}` }}
           format={v => fmt(v, 2)} rowHeight={Math.max(23, Math.min(44, (height - 45) / Math.max(1, bars.length)))} />
       </div> : !confusionRows.length ? <Empty>No saved held-out confusion counts for this model.</Empty> : <div className="chart-wrap">
@@ -268,6 +278,7 @@ export function SeasonalMLRegions({ meta }: LabChartProps) {
       <FixedSetNote what="the full descriptive seasonal spectra, whose membership is separate from the selected ML test fold" />
     </> : !selected.length ? <Empty>No saved held-out region test for this model, task and cycle.</Empty> : <>
       <div className="chart-note">{coverage} · {selected.length} region tests{selected.some(hasRepeatInterval) ? ' · marks show repeat spread' : ''}</div>
+      {state.task === 'disagreement' && <div className="chart-note" style={{ color: INK.text }}>D is mostly FTIR EC, so these region tests largely show where each model reads EC. The 1800–2250 cm⁻¹ peak is random-forest only and disappears once EC is accounted for: see <em>Checks for filter lot and FTIR EC → Regions beyond EC</em> below.</div>}
       <div className="chart-wrap">
         {view === 'rows' ? <BarRows rows={bars} axis={{ label: axis }} reference={0} format={v => fmt(v, 2)}
           rowHeight={Math.max(22, Math.min(40, (height - 45) / Math.max(1, bars.length)))} />

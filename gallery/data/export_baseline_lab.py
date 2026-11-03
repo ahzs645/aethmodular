@@ -612,6 +612,75 @@ def export_seasonal_ml(out, main_dir, by_season_dir, transition_dir=None):
     return folders
 
 
+SEASONAL_CHECKS_KEYS = ("lots", "ec_line", "residual_scores", "residual_importance", "lot_control", "lot_separability",
+                         "limitations", "provenance")
+
+
+def export_seasonal_checks(out, checks_dir):
+    """Serve the lot / FTIR-EC controls (run_seasonal_ml_checks.py) beside the seasonal ML view.
+
+    The checks are a separate saved analysis: they never alter the main ML scores. The served
+    JSON is copied byte for byte; only this exporter's own download folder is replaced.
+    """
+    source = checks_dir / "checks.json"
+    clear_generated_ml_tables(out, ("seasonal_checks",), (checks_dir,))
+    served = out / "seasonal_checks.json"
+    if not source.is_file():
+        served.unlink(missing_ok=True)
+        return []
+    payload = json.loads(source.read_text())
+    missing = [key for key in SEASONAL_CHECKS_KEYS if key not in payload]
+    if payload.get("schema_version") != 1 or missing:
+        raise ValueError(f"seasonal checks must be schema_version 1 with {missing or 'all keys'}")
+    if payload["provenance"].get("inputs_unchanged_during_run") is not True:
+        raise ValueError("seasonal checks inputs changed during the run")
+    if not payload["ec_line"] or not payload["residual_scores"]:
+        raise ValueError("seasonal checks need EC-line and residual scores")
+    out.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, served)
+    return [("seasonal_checks", checks_dir)]
+
+
+def copy_download_folders(out, download_folders):
+    downloads = []
+    for prefix, folder in download_folders:
+        if not folder.is_dir():
+            continue
+        for source in sorted(folder.rglob("*")):
+            if not source.is_file() or source.suffix not in (".csv", ".json"):
+                continue
+            relative = source.relative_to(folder)
+            target = out / "tables" / prefix / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, target)
+            downloads.append({"label": prefix + " · " + str(relative), "path": "research/baseline_lab/tables/" + prefix + "/" + relative.as_posix()})
+    return downloads
+
+
+def update_seasonal_checks_only(out, checks_dir):
+    """Refresh only the checks in an existing export (the full export needs the native audit inputs)."""
+    main_path = out / "baseline_lab.json"
+    if not main_path.is_file():
+        raise ValueError("no existing baseline_lab.json to update; run the full export")
+    data = json.loads(main_path.read_text())
+    folders = export_seasonal_checks(out, checks_dir)
+    downloads = [d for d in data.get("downloads", []) if not d["label"].startswith("seasonal_checks · ")]
+    data["downloads"] = [*downloads, *copy_download_folders(out, folders)]
+    write_json(main_path, data)
+    manifest_path = out / "manifest.json"
+    if manifest_path.is_file():
+        manifest = json.loads(manifest_path.read_text())
+        inputs = {k: v for k, v in manifest.get("inputs", {}).items() if not Path(k).is_relative_to(checks_dir.relative_to(ROOT))} \
+            if checks_dir.is_relative_to(ROOT) else manifest.get("inputs", {})
+        for _, folder in folders:
+            for p in sorted(folder.rglob("*")):
+                if p.is_file() and p.suffix in (".csv", ".json") and p.is_relative_to(ROOT):
+                    inputs[str(p.relative_to(ROOT))] = hashlib.sha256(p.read_bytes()).hexdigest()
+        manifest["inputs"] = inputs
+        write_json(manifest_path, manifest)
+    return folders
+
+
 def build_export(args):
     out = args.output
     out.mkdir(parents=True, exist_ok=True)
@@ -685,23 +754,14 @@ def build_export(args):
     spline_transition_dir = getattr(args, "spline_transition_dir", TABLES / "spline_transition_sensitivity_20261103")
     seasonal_pmf_dir = getattr(args, "seasonal_pmf_dir", TABLES / "seasonal_pmf_triangulation_20261103")
     seasonal_folders = export_seasonal_ml(out, seasonal_ml_dir, seasonal_by_season_dir, spline_transition_dir)
+    seasonal_folders += export_seasonal_checks(out, getattr(args, "seasonal_checks_dir", TABLES / "seasonal_ml_checks_20261103"))
     clear_generated_ml_tables(out, ("seasonal_pmf",), (seasonal_pmf_dir,))
     # Globally fitted PMF results are downloads only, never ML inputs or model scores.
     pmf_folders = [("seasonal_pmf", seasonal_pmf_dir)] if seasonal_pmf_dir.is_dir() else []
     download_folders = [("portable", args.portable_dir), ("native", args.native_audit_dir),
                         ("controls", args.controls_dir), ("calibration", args.calibration_dir),
                         ("cohorts", analysis_out), *seasonal_folders, *pmf_folders]
-    for prefix, folder in download_folders:
-        if not folder.is_dir():
-            continue
-        for source in sorted(folder.rglob("*")):
-            if not source.is_file() or source.suffix not in (".csv", ".json"):
-                continue
-            relative = source.relative_to(folder)
-            target = out / "tables" / prefix / relative
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(source, target)
-            downloads.append({"label": prefix + " · " + str(relative), "path": "research/baseline_lab/tables/" + prefix + "/" + relative.as_posix()})
+    downloads.extend(copy_download_folders(out, download_folders))
     data = {
         "schema_version": 1, "generated": datetime.now(timezone.utc).isoformat(),
         "source_revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
@@ -750,9 +810,17 @@ def main():
     parser.add_argument("--seasonal-ml-by-season-dir", type=Path, default=TABLES / "seasonal_spectral_ml_by_season_20261103")
     parser.add_argument("--spline-transition-dir", type=Path, default=TABLES / "spline_transition_sensitivity_20261103")
     parser.add_argument("--seasonal-pmf-dir", type=Path, default=TABLES / "seasonal_pmf_triangulation_20261103")
+    parser.add_argument("--seasonal-checks-dir", type=Path, default=TABLES / "seasonal_ml_checks_20261103")
+    parser.add_argument("--seasonal-checks-only", action="store_true",
+                        help="refresh only seasonal_checks.json and its downloads in an existing export")
     parser.add_argument("--native-dir", type=Path,
                         default=Path(os.environ["AETHMODULAR_ETAD_NATIVE_DIR"]) if os.environ.get("AETHMODULAR_ETAD_NATIVE_DIR") else None)
-    build_export(parser.parse_args())
+    args = parser.parse_args()
+    if args.seasonal_checks_only:
+        folders = update_seasonal_checks_only(args.output, args.seasonal_checks_dir)
+        print(json.dumps({"seasonal_checks": bool(folders), "output": str(args.output)}))
+        return
+    build_export(args)
 
 
 if __name__ == "__main__":

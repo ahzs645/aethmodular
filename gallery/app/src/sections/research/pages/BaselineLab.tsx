@@ -8,6 +8,8 @@ import { BaselineFilterScatter, BaselineSelectedSpectrum } from './baselineLab/F
 import { BaselineAssociations, BaselineChronology, BaselineControls, BaselineRecalibration } from './baselineLab/Experiments'
 import { BaselineEthiopia } from './baselineLab/Ethiopia'
 import { SeasonalMLPerformance, SeasonalMLRegions } from './baselineLab/SeasonalML'
+import { SeasonalMLChecks } from './baselineLab/SeasonalChecks'
+import { SEASONAL_CHECKS_FILE } from '../common/seasonalChecks'
 import { useLabExport } from './baselineLab/data'
 
 /** Graph-first review of executed controls; registered only through the existing private Research section. */
@@ -27,6 +29,7 @@ export function BaselineLab(props: SectionPageProps) {
     </Grid>
     <SeasonalMLPerformance {...props} />
     <SeasonalMLRegions {...props} />
+    <SeasonalMLChecks {...props} />
     <BaselineControls {...props} />
     <Grid min={430}>
       <BaselineAssociations {...props} />
@@ -46,6 +49,7 @@ export function BaselineLab(props: SectionPageProps) {
         <ul>
           <li><a href={dataUrl(LAB_FILE)} download>Complete diagnostic data (JSON)</a></li>
           <li><a href={dataUrl(SEASONAL_ML_FILE)} download>Seasonal ML scores, predictions and region tests (JSON)</a></li>
+          <li><a href={dataUrl(SEASONAL_CHECKS_FILE)} download>Seasonal ML checks: lot, FTIR EC line and residual regions (JSON)</a></li>
           {data?.downloads?.map(file => <li key={file.path}><a href={dataUrl(file.path)} download>{file.label}</a></li>)}
         </ul>
       </div>
