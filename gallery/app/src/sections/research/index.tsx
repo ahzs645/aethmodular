@@ -6,6 +6,7 @@
 import { SectionShell } from '../SectionShell'
 import type { Section, SectionPageProps } from '../types'
 import { RESEARCH_PAGES } from './pages'
+import './baselineLabDashboard'
 
 function ResearchPage(props: SectionPageProps) {
   return <SectionShell name="Research diagnostics" pages={RESEARCH_PAGES} props={props} />
