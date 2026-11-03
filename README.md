@@ -9,6 +9,7 @@ Detailed usage guides: `docs/library-usage.md` and `docs/commands.md`.
 Current scientific position: [FTIR transfer to Addis](docs/current-research-summary.md).
 Research priorities and completion criteria: [Project next steps](docs/project-next-steps.md).
 Research additions and new existing-data tests: [FTIR baseline, transfer and optical experiments — 2 November 2026](docs/ftir-research-experiments-2026-11-02.md).
+Matched calibration with Dry/Bega, Belg and Kiremt: [Drive-data calibration and seasonal study — 3 November 2026](docs/drive-calibration-seasonal-study-2026-11-03.md).
 
 AQRC/Davis database access: [CLI setup, reconnection, usage and limits](docs/aqrc-cli-access.md).
 The private read helper uses the existing Windows login without administrator rights.
