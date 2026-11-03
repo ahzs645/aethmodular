@@ -30,6 +30,7 @@ import { MassLead } from './pages/MassLead'
 import { FilterOnly } from './pages/FilterOnly'
 import { CharcoalScores } from './pages/CharcoalScores'
 import { LotSpectra } from './pages/LotSpectra'
+import { BaselineLab } from './pages/BaselineLab'
 // research-python-pmf: the independent Python PMF package (gallery/data/export_python_pmf.py)
 import { PythonPmf } from './pages/PythonPmf'
 
@@ -59,6 +60,7 @@ export const RESEARCH_PAGES: (SectionPage & { Page: ComponentType<SectionPagePro
   { key: 'filter-only', label: 'Filter-only transfer limits', title: 'filter_only_diagnostics, filter_proportionality, filter_relationship_stability: how far the filter relationships carry over time', Page: FilterOnly },
   { key: 'charcoal', label: 'Charcoal similarity', title: 'char_05–char_09: how closely each Addis spectrum matches the charcoal reference classes, by season, lot and loading', Page: CharcoalScores },
   { key: 'lot-spectra', label: 'PTFE lot comparison', title: 'char_12 §4 for any site or sites: spectra by filter lot, all filters and season-controlled, raw, 2nd derivative and AIRSpec', Page: LotSpectra },
+  { key: 'baseline-lab', label: 'Baseline lab', title: 'Executed existing-data controls: filter diagnostics, signed native spectra, baseline controls, forward checks and Ethiopian matched cohorts', Page: BaselineLab },
   // research-python-pmf
   { key: 'python-pmf', label: 'Python PMF (Oct 2026)', title: 'An independent Python PMF of the Addis and Bishoftu spectra: five-factor profiles and contributions, rank screen, residual floor, held-out total OM, archived-KF and measurement checks, QC inventory', Page: PythonPmf },
 ]

@@ -245,6 +245,10 @@ gallery/app/public/data/improve_samples/
 # Derived native SPARTAN site/filter and spectrum shards (regenerate with exporter)
 gallery/app/public/data/spartan_network/
 
+# Existing-data baseline investigation: regenerated private Research assets,
+# including signed native spectra and reference-calibration predictions.
+gallery/app/public/data/research/baseline_lab/
+
 # Dashboard browser-test screenshots (gallery/app/tests/dashboard.spec.ts): regenerated on every run, never tracked
 deliverables/dashboard_superset/screenshots/
 deliverables/dashboard_superset/*-snapshot.json
