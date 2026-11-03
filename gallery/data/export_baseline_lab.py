@@ -408,6 +408,210 @@ def calibration_blank_rows(folder):
             for r in records(read_csv(folder / "target_blank_predictions.csv"))]
 
 
+def validate_seasonal_addon_inputs(main, addon):
+    """Require identical shared source/data hashes for a separately run add-on."""
+    if main.get("schema_version") != 1 or addon.get("schema_version") != 1:
+        raise ValueError("seasonal main and add-on must use schema_version 1")
+    source = addon.get("provenance", {})
+    start, end = source.get("hashes_start", {}), source.get("hashes_end", {})
+    if not start or start != end or source.get("source_and_inputs_unchanged") is not True:
+        raise ValueError("seasonal add-on source/input hashes changed during analysis")
+    main_inputs = main.get("provenance", {}).get("inputs", {})
+    required = ("main_workflow", "core", "calendar_config", "ledger", "arrays", "boundaries", "weather")
+    matched = {}
+    for role in required:
+        record = start.get(role, {})
+        candidates = [path for path in main_inputs if Path(path).name == record.get("filename")]
+        if len(candidates) != 1:
+            raise ValueError(f"seasonal add-on has no unambiguous common input for {role}")
+        path = candidates[0]
+        digest = record.get("sha256", "")
+        if (not isinstance(digest, str) or len(digest) != 64
+                or any(c not in "0123456789abcdef" for c in digest)
+                or digest != main_inputs[path]):
+            raise ValueError(f"seasonal add-on SHA-256 mismatch for common input {role}")
+        matched[path] = digest
+    return matched
+
+
+def merge_seasonal_region_analysis(main, addon):
+    """Validate and add held-out seasonal diagnostics without refitting a model."""
+    matched = validate_seasonal_addon_inputs(main, addon)
+    source = addon["provenance"]
+
+    model_ids = {row["id"] for row in main.get("models", [])}
+    fold_ids = {row["id"] for row in main.get("folds", [])}
+    identity = ("task", "calendar", "cohort", "model_id", "fold_id")
+
+    def score_key(row):
+        return tuple(row.get(k) for k in identity)
+
+    score_index = {score_key(row): row for row in main.get("scores", [])}
+
+    def parent_score(row):
+        if row.get("model_id") not in model_ids or row.get("fold_id") not in fold_ids:
+            raise ValueError("seasonal add-on references an unknown model or fold")
+        parent = score_index.get(score_key(row))
+        if parent is None or not row.get("season"):
+            raise ValueError("seasonal add-on lacks a matching pooled score or explicit season")
+        return parent
+
+    performance = addon.get("performance", [])
+    if not performance or not addon.get("importance"):
+        raise ValueError("seasonal add-on needs performance and interval importance rows")
+    seasonal_scores = list(main.get("seasonal_region_scores", []))
+    season_index = {(*score_key(row), row.get("season")): row for row in seasonal_scores}
+    for row in performance:
+        parent = parent_score(row)
+        key = (*score_key(row), row["season"])
+        if key in season_index:
+            raise ValueError("duplicate seasonal performance key")
+        if (row.get("n_train") != parent.get("n_train")
+                or not 0 < row.get("n_test", 0) <= parent.get("n_test", 0)):
+            raise ValueError("seasonal add-on sample counts disagree with the pooled model")
+        labelled = {**row, "training_scope": "pooled", "evaluation_scope": "selected_heldout_season"}
+        seasonal_scores.append(labelled)
+        season_index[key] = labelled
+
+    importance = list(main.get("importance", []))
+    importance_fields = ("task", "model_id", "fold_id", "kind", "scheme", "region_id", "season")
+    seen = {tuple(row.get(k) for k in importance_fields) for row in importance}
+    if len(seen) != len(importance):
+        raise ValueError("duplicate seasonal importance key in main analysis")
+    for row in addon["importance"]:
+        parent_score(row)
+        key = tuple(row.get(k) for k in importance_fields)
+        if key in seen:
+            raise ValueError("duplicate seasonal importance key")
+        seen.add(key)
+        performance_row = season_index.get((*score_key(row), row["season"]))
+        if (performance_row is None or row.get("n_test") != performance_row.get("n_test")
+                or row.get("kind") != "permutation" or row.get("scheme") != "within_season"
+                or not row.get("region_id")):
+            raise ValueError("seasonal importance must match its within-season performance population")
+        n_train, n_test = performance_row["n_train"], performance_row["n_test"]
+        importance.append({
+            **row, "n_train": n_train, "training_scope": "pooled",
+            "evaluation_scope": "selected_heldout_season",
+            "evaluation_note": f"Model trained on {n_train} pooled filters; joint interval shuffles among {n_test} held-out filters in {row['season']}.",
+        })
+    return {
+        **main, "importance": importance, "seasonal_region_scores": seasonal_scores,
+        "provenance": {**main.get("provenance", {}), "seasonal_region_analysis": {
+            **source, "matched_main_inputs": matched,
+            "limitations": addon.get("limitations", []),
+        }},
+    }
+
+
+def merge_spline_transition_analysis(main, addon):
+    """Append new sensitivity models only when their original populations match."""
+    matched = validate_seasonal_addon_inputs(main, addon)
+    for field in ("models", "representations"):
+        existing_ids = {row["id"] for row in main.get(field, [])}
+        new_ids = [row.get("id") for row in addon.get(field, [])]
+        if not new_ids or not all(new_ids) or len(set(new_ids)) != len(new_ids) or existing_ids.intersection(new_ids):
+            raise ValueError(f"transition {field} must have new, unique IDs without collisions")
+    model_ids = {row["id"] for row in addon["models"]}
+    representations = {row["id"] for row in [*main.get("representations", []), *addon["representations"]]}
+    if any(row.get("representation") not in representations for row in addon["models"]):
+        raise ValueError("transition model references an unknown representation")
+    fold_ids = {row["id"] for row in main.get("folds", [])}
+    context_fields = ("task", "calendar", "cohort", "fold_id")
+
+    def context(row):
+        return tuple(row.get(field) for field in context_fields)
+
+    population_counts = {}
+    for row in main.get("scores", []):
+        population_counts.setdefault(context(row), set()).add((row.get("n_train"), row.get("n_test")))
+    heldout_ids = {}
+    for row in main.get("predictions", []):
+        heldout_ids.setdefault(context(row), set()).add(row.get("id"))
+    scores, predictions = addon.get("scores", []), addon.get("predictions", [])
+    if not scores or not predictions:
+        raise ValueError("transition add-on needs scores and held-out predictions")
+    score_index = {}
+    for row in scores:
+        if row.get("model_id") not in model_ids or row.get("fold_id") not in fold_ids:
+            raise ValueError("transition score references an unknown model or fold")
+        population = context(row)
+        if (row.get("n_train"), row.get("n_test")) not in population_counts.get(population, set()):
+            raise ValueError("transition sample counts or evaluation population disagree with main analysis")
+        key = (*population, row["model_id"])
+        if key in score_index:
+            raise ValueError("duplicate transition score key")
+        score_index[key] = row
+    predicted_ids = {}
+    for row in predictions:
+        population = context(row)
+        key = (*population, row.get("model_id"))
+        identifier = row.get("id")
+        if key not in score_index or identifier not in heldout_ids.get(population, set()):
+            raise ValueError("transition prediction references an unknown score or held-out physical filter")
+        ids = predicted_ids.setdefault(key, set())
+        if identifier in ids:
+            raise ValueError("duplicate transition physical-filter prediction")
+        ids.add(identifier)
+    for key, row in score_index.items():
+        ids = predicted_ids.get(key, set())
+        if len(ids) != row["n_test"] or ids != heldout_ids.get(context(row), set()):
+            raise ValueError("transition predictions must cover the unchanged held-out physical population")
+    merged = {**main, **{field: [*main.get(field, []), *addon[field]]
+                        for field in ("models", "representations", "scores", "predictions")}}
+    merged["provenance"] = {
+        **main.get("provenance", {}), "spline_transition_analysis": {
+            **addon["provenance"], "matched_main_inputs": matched,
+            **{key: addon.get(key) for key in ("transition_definition", "masked_channels", "adjacent_channel_summary", "limitations")},
+        },
+    }
+    return merged
+
+
+def clear_generated_ml_tables(out, names, input_dirs):
+    """Delete only explicitly owned download directories, never their inputs."""
+    owned_dirs = [out / "tables" / name for name in names]
+    for target in owned_dirs:
+        if any(source.resolve().is_relative_to(target.resolve()) for source in input_dirs):
+            raise ValueError("seasonal input directory must not be inside its generated export directory")
+    for target in owned_dirs:
+        if target.is_symlink() or target.is_file():
+            target.unlink()
+        elif target.is_dir():
+            shutil.rmtree(target)
+
+
+def export_seasonal_ml(out, main_dir, by_season_dir, transition_dir=None):
+    """Publish optional ML views; clear only this exporter's generated ML files."""
+    if transition_dir is None:
+        transition_dir = TABLES / "spline_transition_sensitivity_20261103"
+    main_source = main_dir / "seasonal_ml.json"
+    folders = []
+    merged = None
+    if main_source.is_file():
+        folders.append(("seasonal_ml", main_dir))
+        for prefix, folder, filename, merge in (
+            ("seasonal_ml_by_season", by_season_dir, "by_season.json", merge_seasonal_region_analysis),
+            ("spline_transition", transition_dir, "transition_sensitivity.json", merge_spline_transition_analysis),
+        ):
+            addon_source = folder / filename
+            if addon_source.is_file():
+                merged = merge(merged if merged is not None else json.loads(main_source.read_text()),
+                               json.loads(addon_source.read_text()))
+                folders.append((prefix, folder))
+    clear_generated_ml_tables(out, ("seasonal_ml", "seasonal_ml_by_season", "spline_transition"),
+                              (main_dir, by_season_dir, transition_dir))
+    served = out / "seasonal_ml.json"
+    if not folders:
+        served.unlink(missing_ok=True)
+    elif merged is None:
+        shutil.copyfile(main_source, served)
+    else:
+        # Keep main numerical values exact; the general gallery cleaner rounds floats.
+        served.write_text(json.dumps(merged, ensure_ascii=False, allow_nan=False, separators=(",", ":")) + "\n")
+    return folders
+
+
 def build_export(args):
     out = args.output
     out.mkdir(parents=True, exist_ok=True)
@@ -476,13 +680,22 @@ def build_export(args):
         if code and code not in by_code:
             by_code[code] = {"code": code, "name": site.get("name", code), "color": site.get("color", "#607d8b")}
     downloads = []
-    for prefix, folder in (("portable", args.portable_dir), ("native", args.native_audit_dir),
-                           ("controls", args.controls_dir), ("calibration", args.calibration_dir),
-                           ("cohorts", analysis_out)):
+    seasonal_ml_dir = getattr(args, "seasonal_ml_dir", TABLES / "seasonal_spectral_ml_20261103")
+    seasonal_by_season_dir = getattr(args, "seasonal_ml_by_season_dir", TABLES / "seasonal_spectral_ml_by_season_20261103")
+    spline_transition_dir = getattr(args, "spline_transition_dir", TABLES / "spline_transition_sensitivity_20261103")
+    seasonal_pmf_dir = getattr(args, "seasonal_pmf_dir", TABLES / "seasonal_pmf_triangulation_20261103")
+    seasonal_folders = export_seasonal_ml(out, seasonal_ml_dir, seasonal_by_season_dir, spline_transition_dir)
+    clear_generated_ml_tables(out, ("seasonal_pmf",), (seasonal_pmf_dir,))
+    # Globally fitted PMF results are downloads only, never ML inputs or model scores.
+    pmf_folders = [("seasonal_pmf", seasonal_pmf_dir)] if seasonal_pmf_dir.is_dir() else []
+    download_folders = [("portable", args.portable_dir), ("native", args.native_audit_dir),
+                        ("controls", args.controls_dir), ("calibration", args.calibration_dir),
+                        ("cohorts", analysis_out), *seasonal_folders, *pmf_folders]
+    for prefix, folder in download_folders:
         if not folder.is_dir():
             continue
         for source in sorted(folder.rglob("*")):
-            if source.suffix not in (".csv", ".json"):
+            if not source.is_file() or source.suffix not in (".csv", ".json"):
                 continue
             relative = source.relative_to(folder)
             target = out / "tables" / prefix / relative
@@ -515,9 +728,9 @@ def build_export(args):
         "main": "baseline_lab.json", "spectra_count": len(spectra_ids), "native_spectra_count": len(native_ids),
         "cohort_selection": selection,
         "inputs": {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-                   for folder in (args.portable_dir, args.native_audit_dir, args.controls_dir, args.calibration_dir)
-                   if folder.is_dir() for p in sorted(folder.iterdir())
-                   if p.suffix in (".csv", ".json") and p.is_relative_to(ROOT)},
+                   for prefix, folder in download_folders if prefix != "cohorts" and folder.is_dir()
+                   for p in sorted(folder.rglob("*"))
+                   if p.is_file() and p.suffix in (".csv", ".json") and p.is_relative_to(ROOT)},
     })
     print(json.dumps({"filters": len(filters), "eligible_pairs": int(f.spectral_pair_eligible.sum()),
                       "spectra": len(spectra_ids), "native_spectra": len(native_ids),
@@ -533,6 +746,10 @@ def main():
     parser.add_argument("--native-audit-dir", type=Path, default=TABLES / "native_baseline_audit_20261102")
     parser.add_argument("--controls-dir", type=Path, default=TABLES / "baseline_existing_data_20261103")
     parser.add_argument("--calibration-dir", type=Path, default=TABLES / "calibration_existing_data_20261103")
+    parser.add_argument("--seasonal-ml-dir", type=Path, default=TABLES / "seasonal_spectral_ml_20261103")
+    parser.add_argument("--seasonal-ml-by-season-dir", type=Path, default=TABLES / "seasonal_spectral_ml_by_season_20261103")
+    parser.add_argument("--spline-transition-dir", type=Path, default=TABLES / "spline_transition_sensitivity_20261103")
+    parser.add_argument("--seasonal-pmf-dir", type=Path, default=TABLES / "seasonal_pmf_triangulation_20261103")
     parser.add_argument("--native-dir", type=Path,
                         default=Path(os.environ["AETHMODULAR_ETAD_NATIVE_DIR"]) if os.environ.get("AETHMODULAR_ETAD_NATIVE_DIR") else None)
     build_export(parser.parse_args())
