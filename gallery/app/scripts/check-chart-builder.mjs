@@ -18,7 +18,9 @@ const contract = JSON.parse(await fs.readFile(new URL('../src/lib/graphicWalkerC
 const fixture = JSON.parse(await fs.readFile(new URL('../public/data/filters.json', import.meta.url), 'utf8'))
 const expected = fixture.rows.filter(row => !row.excluded).length
 const executablePath = values['browser-path'] ?? ['/usr/bin/chromium', '/usr/bin/chromium-browser'].find(existsSync)
-const browser = await chromium.launch({ executablePath, args: ['--no-sandbox'] })
+const browser = await chromium.launch(process.platform === 'darwin' && !values['browser-path']
+  ? { channel: 'chrome', chromiumSandbox: true } // patched system Chrome, sandbox on
+  : { executablePath, args: ['--no-sandbox'] })
 const context = await browser.newContext({ viewport: { width: 1500, height: 1050 } })
 if (output) await context.tracing.start({ screenshots: true, snapshots: true })
 const page = await context.newPage()
