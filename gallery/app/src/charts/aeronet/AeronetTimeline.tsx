@@ -10,6 +10,7 @@ import { loadDailyAeronet, L2_AOD440, type AeronetLevel } from '@/lib/aeronet'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
 import { ExcludedNote } from '@/lib/markedRows'
+import { Key } from '@/components/Key'
 import { DailyLanes, FieldLane, dailyDomain, dailyLine, dailyReadout, fieldDomain, fieldPoints, useSiteDaily } from '@/components/DailyLanes'
 import type { StackPanel } from '@/components/StackedPanels'
 
@@ -59,11 +60,8 @@ export function AeronetTimeline({ rows, meta, field, site, station, level = '15'
         {error ? <Empty>{error}</Empty> : !site || !domain ? <Empty>No filters at this site in the current subset.</Empty> : !daily ? <LoadState what="the daily AERONET" /> : (
           <DailyLanes domain={domain} lanes={lanes} seasons={seasons} readout={readout} />
         )}
-        <div className="legend">
-          {seasons.map((s) => <span key={s.name} className="legend-item"><span className="swatch band" style={{ background: s.color }} />{s.name.replace(`${site?.name} · `, '')}</span>)}
-          <span className="legend-item"><span className="swatch" style={{ background: '#8c2d04' }} />inversion, AOD 440 ≥ {L2_AOD440}</span>
-          <span className="legend-item"><span className="swatch ring" style={{ color: '#8c2d04' }} />AOD 440 &lt; {L2_AOD440}</span>
-        </div>
+        <Key items={[...seasons.map((s) => ({ label: s.name.replace(`${site?.name} · `, ''), color: s.color, kind: 'faded' as const })),
+          { label: `inversion, AOD 440 ≥ ${L2_AOD440}`, color: '#8c2d04' }, { label: `AOD 440 < ${L2_AOD440}`, color: '#8c2d04', kind: 'hollow' as const }]} />
         <ExcludedNote fields={[field]} of={(r) => r.site === site?.name} drawn />
       </div>
     </ChartFrame>

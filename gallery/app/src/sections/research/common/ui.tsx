@@ -6,10 +6,12 @@
 import { useMemo, type ReactNode } from 'react'
 import { BarRows } from '@/components/BarRows'
 import type { CrossLine, CrossPoint } from '@/components/Crossplot'
+import { Note } from '@/components/ChartFrame'
 import { PanelGrid, type PanelGroupProps } from '@/components/Panels'
 import { fmt } from '@/lib/format'
 import { FONT } from '@/lib/theme'
 import { shortSeason } from '@/lib/seasons'
+import { usePlaceFilter } from '@/lib/markedRows'
 import { ALL_SITES, SitePicker, usePageSite } from '@/lib/siteFocus'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { VOLUME } from '@/lib/viewFields'
@@ -17,6 +19,7 @@ import type { OlsFit as Fit } from '@/lib/stats'
 import { num as cell } from '@/lib/table'
 import { RESEARCH_SERIES } from '@/lib/palettes'
 import { namedColor } from '@/lib/siteColours'
+import { placedIn, type FilterPlace } from './sampleView'
 
 /** a row's field as a finite number, or null (lib/table num on r[f]) */
 export const num = (r: Record<string, unknown> | undefined, f: string): number | null => cell(r?.[f])
@@ -40,7 +43,37 @@ export function useConcRows(rows: FilterRow[], meta: MetaFile): FilterRow[] {
     })
   }, [rows, meta])
 }
+
+/**
+ * A site's name by code, as Samples knows it: the gallery rows' (a network site's name, e.g. "Bishoftu, Ethiopia",
+ * which picks its calendar), else the focus sites', else the code.
+ */
+export function useSiteNames(rows: readonly FilterRow[], meta: MetaFile): (code: string) => string {
+  return useMemo(() => {
+    const names = new Map(meta.sites.map((s) => [s.code, s.name]))
+    for (const r of rows) names.set(r.code, r.site)
+    return (code: string) => names.get(code) ?? code
+  }, [rows, meta])
+}
+
+const addisName = (code: string) => (code === 'ETAD' ? ADDIS : code)
+
+/**
+ * A page's own per-filter items that Samples leaves in view (sites, dates, calendar, season chips, PMF pick), before
+ * any exclusion: common/sampleView placedIn over lib/markedRows usePlaceFilter. For the item lists that hold undated
+ * records or need the list before Filters → excluded; read it with useExclusionSplit. Keep `at` stable: it is a
+ * dependency, so a join that loads later is picked up.
+ */
+export function useInSamples<T>(items: readonly T[], at: (t: T) => FilterPlace, siteName: (code: string) => string = addisName): T[] {
+  const place = usePlaceFilter()
+  return useMemo(() => placedIn(items, at, (code, date) => place(siteName(code), code, date, Number(date.slice(5, 7))) !== null), [items, at, place, siteName])
+}
 export const BASIS_NOTE = 'This page works in µg/m³ (the notebooks\' units), so it ignores mass per filter under Plot → units.'
+
+/** the sites in view a chart cannot draw, by name rather than silently absent: "Bishoftu, Dakar: {why}." */
+export function SitesNote({ sites, why }: { sites: readonly string[]; why: string }) {
+  return sites.length ? <Note>{sites.join(', ')}: {why}.</Note> : null
+}
 
 export const ADDIS = 'Addis Ababa'
 /** a categorical ramp for series that are neither sites nor seasons (lib/palettes RESEARCH_SERIES) */

@@ -4,6 +4,7 @@
  * reproduce the saved row (explorerFit.test.mjs); on the filters that count they move with the exclusions.
  */
 import { deming, median, ols } from '../../../lib/stats.ts'
+import { baseId } from './pythonPmf.ts'
 
 /** the columns of a saved metrics row a chart draws, refitted: OLS and Deming of predicted EC on Fabs/10 */
 export interface ExplorerFit { n: number; ols_slope: number; ols_intercept: number; deming_slope: number | null; deming_intercept: number | null; R2: number }
@@ -48,4 +49,11 @@ export function plausibilityOf(ev: { pred: readonly number[]; group: readonly st
   const pct = (k: number) => (v.length ? (100 * k) / v.length : null)
   return { n: v.length, median: v.length ? median(v) : null, negative_pct: pct(v.filter((x) => x < 0).length), above_8_pct: pct(v.filter((x) => x > 8).length),
     group_medians: Object.fromEntries([...byGroup].map(([g, xs]) => [g, median(xs)])) }
+}
+
+/** each filter's sampling date in a run's eval, by its physical id (the notebooks' ETAD-0017-1 and the explorer's ETAD-0017 are one filter) */
+export function evalDates(ev: { id: readonly (string | null)[]; date?: readonly (string | null)[] | null }): Map<string, string> {
+  const out = new Map<string, string>()
+  ev.id.forEach((id, i) => { const d = ev.date?.[i]; if (id && d) out.set(baseId(id), d) })
+  return out
 }

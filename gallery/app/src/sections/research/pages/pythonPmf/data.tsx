@@ -12,7 +12,7 @@ import { rowsOf, type Table } from '@/lib/table'
 import type { MetaFile, PmfFile, SeasonMeta } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
 import type { SpectralExport } from '../spectralCommon'
-import { baseId, type CaseContributions } from '../../common/pythonPmf'
+import { baseId, siteOfId, type CaseContributions } from '../../common/pythonPmf'
 import { RESEARCH_SERIES } from '@/lib/palettes'
 
 export const EXPORTER = 'gallery/data/export_python_pmf.py'
@@ -106,8 +106,16 @@ export function archivedFor(data: PythonPmfExport, caseKey: string): Map<number,
 /** "closest archived: Charcoal, r = 0.94" */
 export const closest = (m: { label: string; r: number } | undefined) => (m ? `closest archived: ${m.label}, r = ${fmt(m.r, 2)}` : '')
 
-/** one modelled filter of a case: its contributions, scaled RMSE and the season of its date under the reader's calendar */
-export interface CaseFilter { id: string; base: string; date: string; g: number[]; rmse: number | null; season: string | null }
+/** one modelled filter of a case: its site, contributions, scaled RMSE and the season of its date under the reader's calendar */
+export interface CaseFilter { id: string; base: string; code: string; date: string; g: number[]; rmse: number | null; season: string | null }
+
+/** where a modelled filter sits, for Samples (common/ui useInSamples) */
+export const caseFilterAt = (f: CaseFilter) => ({ code: f.code, date: f.date })
+
+/** the site a case's filters come from, in words */
+export const caseSite = (c: Pick<PmfCase, 'grid'>) => (c.grid === 'etbi' ? 'Bishoftu' : 'Addis Ababa')
+/** what a chart of a case's filters says when Samples leaves it none */
+export const noCaseFilters = (c: PmfCase) => `None of ${caseLabel(c)}'s filters is in these Samples: pick ${caseSite(c)} in the Samples panel, widen its dates and seasons, or pick another cohort.`
 
 /** the Addis calendar in use (Bishoftu, 45 km away, has no gallery calendar of its own and takes the same one) */
 export const addisCalendar = (meta: MetaFile): SeasonMeta[] => meta.seasons.filter((s) => !s.site || s.site === 'Addis Ababa')
@@ -116,7 +124,7 @@ export function caseFilters(data: PythonPmfExport, key: string, calendar: readon
   const c = data.contributions[key]
   if (!c) return []
   return c.id.map((id, i) => ({
-    id, base: baseId(id), date: c.date[i], g: c.g.map((col) => col[i] ?? NaN), rmse: c.rmse[i],
+    id, base: baseId(id), code: siteOfId(id), date: c.date[i], g: c.g.map((col) => col[i] ?? NaN), rmse: c.rmse[i],
     season: seasonOfDate(c.date[i], Number(c.date[i].slice(5, 7)), calendar)?.name ?? null,
   }))
 }

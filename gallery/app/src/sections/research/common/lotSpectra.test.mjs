@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { boxStats, columnsIn, decodeView, escapeOf, lotContrast, lotsOf, membersOf, notebookSeason, profile } from './lotSpectra.ts'
+import { boxStats, columnsIn, decodeView, escapeGroups, escapeOf, lotContrast, lotEffect, lotsOf, membersOf, notebookSeason, profile } from './lotSpectra.ts'
 
 const dir = new URL('../../../../public/data/research/lot_spectra/', import.meta.url)
 const exp = fs.existsSync(new URL('lot_spectra.json', dir)) ? JSON.parse(fs.readFileSync(new URL('lot_spectra.json', dir), 'utf8')) : null
@@ -92,4 +92,28 @@ test('the view join: gallery rows in view, plus the spectra the gallery has no r
   const plus = membersOf(exp, 'plus', rows, known, () => 'X')
   assert.ok(plus.members.length > 1 && plus.members.every((m) => m.code === 'INDH'))
   assert.equal(plus.members.filter((m) => m.season === 'X').length, plus.unmatched)
+})
+
+test('escapeGroups and lotEffect reproduce the applicability page\'s saved escape and lot_effect tables on char_12\'s 239', { skip }, () => {
+  const read = (p) => JSON.parse(fs.readFileSync(new URL(`../../../../public/data/${p}`, import.meta.url), 'utf8'))
+  const rowsOf = (t) => t[Object.keys(t)[0]].map((_, i) => Object.fromEntries(Object.keys(t).map((k) => [k, t[k][i]])))
+  const saved = read('research/spectral/applicability.json').tables
+  const char = rowsOf(read('research/charcoal/scores.json').tables.per_filter)
+  const low = new Map(char.map((r) => [r.FilterId.replace(/-\d+$/, ''), r.component === 'low-similarity']))
+  const f = exp.filters
+  const filters = f.id.flatMap((id, i) => (f.char12[i] ? [{ escape: f.escape[i], lot: f.lot[i], month: Number(f.date[i].slice(5, 7)), low: low.get(id) ?? null }] : []))
+  assert.equal(filters.length, 239)
+  const groups = new Map(rowsOf(saved.escape).map((r) => [r.group, r]))
+  const live = escapeGroups(filters)
+  assert.equal(live.length, groups.size - 1)  // every saved row but IMPROVE's, which is the reference
+  for (const r of live) for (const k of ['n', 'median escape', '90th pct', 'share > 2× null']) near(r[k], groups.get(r.group)[k], 1e-9, `${r.group} ${k}`)
+  const lots = new Map(rowsOf(saved.lot_effect).map((r) => [r.subset, r]))
+  for (const r of lotEffect(filters)) for (const k of ['n lot 248', 'n lot 251', 'median escape 248', 'median escape 251', 'Mann–Whitney p']) near(r[k], lots.get(r.subset)[k], 1e-9, `${r.subset} ${k}`)
+})
+
+test('escapeGroups and lotEffect drop what has no filter', () => {
+  const dry = { escape: 0.3, lot: 248, month: 1, low: null }
+  assert.deepEqual(escapeGroups([dry]).map((r) => r.group), ['ETAD — all', 'ETAD — dry season'])
+  assert.deepEqual(escapeGroups([]), [])
+  assert.deepEqual(lotEffect([{ ...dry, month: 7 }]).map((r) => r.subset), ['all filters'])
 })

@@ -63,6 +63,8 @@ export interface SubsetCaps {
 }
 
 export interface SubsetState {
+  /** the open page's preset (lib/samplePresets): its label, and whether the Samples are still on it */
+  pagePreset?: { label: string; at: boolean } | null
   convention: string
   defaultConvention: string
   seasons: SeasonMeta[]
@@ -477,7 +479,7 @@ export function SubsetBar({
             <strong>{viewTitle}</strong>
             {view === 'filters' && <span className="pill" title={`${s.shown} of ${s.total} ${caps.datasetLabel} in view`}>{s.shown} of {s.total}</span>}
             <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 4 }}>
-              {view === 'filters' && !isDefault && <button type="button" className="btn quiet" onClick={a.onReset} title="Clear every filter">Reset</button>}
+              {view === 'filters' && (s.pagePreset ? !s.pagePreset.at : !isDefault) && <button type="button" className="btn quiet" onClick={a.onReset} title={s.pagePreset ? 'Back to the Samples this page is presented on' : 'Clear every filter'}>Reset</button>}
               <button type="button" className="btn quiet x-btn" onClick={() => setOpen(false)} aria-label={`Close ${viewTitle.toLowerCase()}`} title="Close"><XIcon /></button>
             </span>
           </header>
@@ -487,6 +489,9 @@ export function SubsetBar({
           <PageTabSlot hidden={view !== 'page'} />
           {view === 'filters' && <>
             {summary}
+            {s.pagePreset && <Row label="page preset">
+              <span className="row-note" style={{ display: 'block' }}>{s.pagePreset.label}{s.pagePreset.at ? '' : ' · changed; your picks stay with this page'}</span>
+            </Row>}
             {/* the page's presets for these settings (lib/pageSidebar SampleControls) */}
             <SamplesTabSlot />
             <Row label="network">

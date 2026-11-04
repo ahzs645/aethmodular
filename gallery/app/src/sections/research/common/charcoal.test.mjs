@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { byGroup, dryOf, galleryId, headline, joinScores, markedScores, monthlyRate } from './charcoal.ts'
+import { byGroup, dryOf, galleryId, headline, joinNetworkScores, joinScores, markedScores, monthlyRate } from './charcoal.ts'
 import { mannWhitney } from '../../../lib/stats.ts'
 
 const path = new URL('../../../../public/data/research/charcoal/scores.json', import.meta.url)
@@ -18,6 +18,16 @@ test('gallery ids drop the scan suffix', () => {
   assert.equal(galleryId('ETAD-0017-1'), 'ETAD-0017')
   assert.equal(galleryId(' ETAD-0249-12 '), 'ETAD-0249')
   assert.equal(galleryId('ETAD-0001'), 'ETAD-0001')
+})
+
+test('network scores join the rows in view by id, and a row with no score stays out', () => {
+  const rows = [{ id: 'CHTS-0049', date: '2013-06-28', month: 6, season: 'Summer', 'HIPS Fabs': 12, 'EC (FTIR)': null }, { id: 'CHTS-0050', date: '2013-07-01', month: 7, season: 'Summer' }]
+  const scored = joinNetworkScores([{ id: 'CHTS-0049', code: 'CHTS', r_char: 0.3, r_raw: 0.5 }, { id: 'CHTS-9999', code: 'CHTS', r_char: 0.4, r_raw: 0.1 }], rows)
+  assert.equal(scored.length, 1)
+  near(scored[0].delta, 0.2, 1e-12, 'delta')
+  assert.equal(scored[0].fabs, 12)
+  assert.equal(scored[0].ec, null)
+  assert.equal(scored[0].row, rows[0])
 })
 
 test('Mann–Whitney U and p as scipy computes them (ties, continuity correction)', () => {

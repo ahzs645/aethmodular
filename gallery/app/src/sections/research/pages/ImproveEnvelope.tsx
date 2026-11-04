@@ -13,7 +13,7 @@ import { IMPROVE_GREY, INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { SectionPageProps } from '../../types'
 import { DensityPlot, type DensityPoint } from '../common/density'
-import { addisMatched, focusFilter, siteMassSpace, type FocusFilter } from '../common/envelope'
+import { focusFilter, rowFilter, siteMassSpace, siteMatched, type FocusFilter } from '../common/envelope'
 import { useOptics } from '../common/optics'
 import { Bars, DataTable, Grid, SERIES, useConcRows } from '../common/ui'
 
@@ -57,9 +57,10 @@ const qMark = (q: Q, color: string, wide = false) => ({ mid: q.p50, lo: wide ? q
  * them, where the network sits in (EC mass, fAbs), EC-matched subsets, the fAbs threshold sweep, what a
  * selection on fAbs does to the line, the smoke screen, the FED 635 nm R/T proxies, and the networks side by
  * side in mass on the filter. Summaries from gallery/data/export_research_improve_envelope.py; the IMPROVE
- * exports are not in the repo. The focus-site sides (the Addis matched row, the per-site mass rows) are recomputed
- * here from the gallery's rows and the HIPS optics (common/envelope), so they follow Filters → excluded; the Addis
- * windows the exporter screened IMPROVE with, and everything on the IMPROVE side, stay as saved.
+ * exports are not in the repo. The Samples side (the points over the cloud, the site rows of the matched and mass
+ * charts) is recomputed here from the gallery's rows and, where it has the filter, the HIPS optics (common/envelope),
+ * so it follows every Samples setting for any site with Fabs and EC; the Addis windows the exporter screened IMPROVE
+ * with, and the network-wide IMPROVE summaries, stay as saved.
  */
 export function ImproveEnvelope({ rows, meta }: SectionPageProps) {
   // the fAbs / EC panel's reference is the MAC the reader set under Plot → units (lib/mac), not the export's
@@ -71,24 +72,30 @@ export function ImproveEnvelope({ rows, meta }: SectionPageProps) {
   const byId = useMemo(() => new Map((optics ?? []).filter((o) => o.type !== 'FB').map((o) => [o.id, o])), [optics])
   const sites = useMemo(() => [...new Set(rows.map((r) => r.site))], [rows])
   const colorOf = (s: string) => rows.find((r) => r.site === s)?.color ?? INK.text
-  // the focus-site filters in view, in the same coordinates (FTIR's EC mass on the filter, HIPS Fabs): the gallery's
-  // counted rows, and under Filters → excluded: Mark the excluded ones in view, drawn as × (lib/markedRows)
-  const densityOf = useMemo(() => (rs: FilterRow[]): (DensityPoint & { id: string })[] => rs.flatMap((r) => {
-    const o = byId.get(r.id)
-    if (!o || o.fabs === null || o.ec_ug === null) return []
-    const x = space === 'mass' ? o.ec_ug : o.area_cm2 ? o.ec_ug / o.area_cm2 : null
-    return x === null ? [] : [{ id: r.id, x, y: o.fabs, color: r.color, tip: [r.id, `${r.site} · ${r.date}`, `EC ${fmt(o.ec_ug, 1)} µg on the filter (${fmt(o.area_cm2 ? o.ec_ug / o.area_cm2 : null, 2)} µg/cm²)`, `fAbs ${fmt(o.fabs, 1)} Mm⁻¹`] }]
-  }), [byId, space])
-  const spartan = useMemo(() => densityOf(rows), [densityOf, rows])
   const markedRows = useMarkedRows()
-  const marked = useMemo(() => densityOf(markedRows), [densityOf, markedRows])
-  const reasonOf = useMarkReason()
-  const markedPoints = useMemo(() => marked.map((p) => ({ id: p.id, x: p.x, y: p.y, tip: markTip({ id: p.id }, reasonOf(p.id) ?? 'excluded', p.tip.slice(1)) })), [marked, reasonOf])
-  // the focus-site filters the exporter's `matched` and `mass_space` summarise, as the gallery counts them (µg/m³ rows)
+  // the filters in view as the exporter's `matched` and `mass_space` summarise them (µg/m³ rows): the HIPS optics
+  // export where it has the filter, the gallery row at any other site, so every site picked under Samples is here
   const concRows = useConcRows(rows, meta), markedConc = useConcRows(markedRows, meta)
-  const focusOf = useMemo(() => (rs: FilterRow[]): FocusFilter[] => rs.flatMap((r) => { const o = byId.get(r.id); const f = o ? focusFilter(r, o) : null; return f ? [f] : [] }), [byId])
+  const filterOf = useMemo(() => (r: FilterRow): FocusFilter | null => { const o = byId.get(r.id); return o ? focusFilter(r, o) : rowFilter(r) }, [byId])
+  const focusOf = useMemo(() => (rs: FilterRow[]): FocusFilter[] => rs.flatMap((r) => { const f = filterOf(r); return f ? [f] : [] }), [filterOf])
   const focus = useMemo(() => focusOf(concRows), [focusOf, concRows])
   const focusMarked = useMemo(() => focusOf(markedConc), [focusOf, markedConc])
+  // the same filters in the cloud's coordinates (EC mass on the filter, HIPS Fabs): the counted rows, and under
+  // Filters → excluded: Mark the excluded ones in view, drawn as × (lib/markedRows)
+  const densityOf = useMemo(() => (rs: FilterRow[]): (DensityPoint & { id: string; site: string })[] => rs.flatMap((r) => {
+    const f = filterOf(r)
+    if (!f || f.ecUg === null) return []
+    const perArea = f.area ? f.ecUg / f.area : null
+    const x = space === 'mass' ? f.ecUg : perArea
+    return x === null ? [] : [{ id: r.id, site: r.site, x, y: f.fabs, color: r.color, tip: [r.id, `${r.site} · ${r.date}`, `EC ${fmt(f.ecUg, 1)} µg on the filter (${fmt(perArea, 2)} µg/cm²)`, `fAbs ${fmt(f.fabs, 1)} Mm⁻¹`] }]
+  }), [filterOf, space])
+  const spartan = useMemo(() => densityOf(concRows), [densityOf, concRows])
+  const marked = useMemo(() => densityOf(markedConc), [densityOf, markedConc])
+  const reasonOf = useMarkReason()
+  const markedPoints = useMemo(() => marked.map((p) => ({ id: p.id, x: p.x, y: p.y, tip: markTip({ id: p.id }, reasonOf(p.id) ?? 'excluded', p.tip.slice(1)) })), [marked, reasonOf])
+  // the sites in view that have a point, and those whose filters lack what the axes need
+  const drawnSites = useMemo(() => new Set(spartan.map((p) => p.site)), [spartan])
+  const undrawn = sites.filter((s) => !drawnSites.has(s))
 
   if (error || !data) return (
     <ChartFrame id="ie-missing" title="Addis against IMPROVE in loading space" provenance={NB.first}>
@@ -101,14 +108,17 @@ export function ImproveEnvelope({ rows, meta }: SectionPageProps) {
   const box = space === 'mass' ? { x: [b.ec_ug.p05, b.ec_ug.p95] as [number, number], y: [b.fabs.p05, b.fabs.p95] as [number, number], label: 'Addis p05–p95', key: 'Addis p05–p95 window (EC and fAbs)' }
     : { x: [b.ec_ug_cm2.p05, b.ec_ug_cm2.p95] as [number, number], y: [b.fabs.p05, b.fabs.p95] as [number, number], label: 'Addis p05–p95', key: 'Addis p05–p95 window (EC and fAbs)' }
   const rt = data.rt?.pairs[pair]
-  const matchedColors = [rows.find((r) => r.code === 'ETAD')?.color ?? '#F39C12', IMPROVE_GREY, '#6a51a3']
-  // the Addis row live (common/envelope); the IMPROVE subsets as saved
-  const matched = [...(optics ? [addisMatched(focus, data.matched[0]?.group)] : data.matched.slice(0, 1)), ...data.matched.slice(1)]
+  // a live row per site in view, Addis first (common/envelope); the IMPROVE subsets as saved
+  const codes = [...new Set(focus.map((f) => f.code))].sort((a, b) => Number(b === 'ETAD') - Number(a === 'ETAD'))
+  const siteRows = codes.map((c) => siteMatched(focus, c, c === 'ETAD' ? data.matched[0]?.group ?? c : rows.find((r) => r.code === c)?.site ?? c))
+  const savedSubsets = data.matched.slice(1)
+  const matched = [...siteRows, ...savedSubsets]
+  const matchedColors = [...codes.map((c) => rows.find((r) => r.code === c)?.color ?? INK.text), ...savedSubsets.map((_, i) => (i ? '#6a51a3' : IMPROVE_GREY))]
   const matchedRows: IntervalRow[] = matched.map((m, i) => ({ key: m.group, label: m.group, labelColor: matchedColors[i], note: `n=${m.fabs.n.toLocaleString()}`,
     marks: [[qMark(m.fabs, matchedColors[i])], [qMark(m.fabs_ec, matchedColors[i])], [qMark(m.ec_conc, matchedColors[i])], [qMark(m.ec_ug, matchedColors[i])]],
     tip: [m.group, `fAbs median ${fmt(m.fabs.p50, 1)} (IQR ${fmt(m.fabs.p25, 1)}–${fmt(m.fabs.p75, 1)})`, `fAbs / EC median ${fmt(m.fabs_ec.p50, 2)}`, `n ${m.fabs.n}`] }))
-  // IMPROVE as saved; the focus sites live from the rows in view (common/envelope)
-  const massSpace = optics ? [...data.mass_space.filter((m) => m.group === 'IMPROVE'), ...siteMassSpace(focus)] : data.mass_space
+  // IMPROVE as saved; the sites live from the rows in view (common/envelope)
+  const massSpace = [...data.mass_space.filter((m) => m.group === 'IMPROVE'), ...siteMassSpace(focus)]
   const quantities = [...new Set(data.mass_space.map((m) => m.quantity))]
   const groups = [...new Set(massSpace.map((m) => m.group))]
   const nameOf = (code: string) => rows.find((r) => r.code === code)?.site ?? code
@@ -129,18 +139,19 @@ export function ImproveEnvelope({ rows, meta }: SectionPageProps) {
         <FixedSetNote what="the Addis p05–p95 windows the exporter screened IMPROVE with (its own exclusion registry, which keeps the PM10 filter the gallery excludes), on IMPROVE filters the gallery does not hold" />
       </ChartFrame>
 
-      <ChartFrame id="ie-density" title="The IMPROVE cloud and the four SPARTAN sites — fAbs against EC on the filter"
-        subtitle={`Every post-2003 IMPROVE filter with a volume, binned (${d.n.toLocaleString()} filters; ${d.beyond.toLocaleString()} beyond the axes), with the focus-site filters in view on top and the Addis p05–p95 window dashed. Linear axes from zero, as the loading-envelope notebook pins them.`}
+      <ChartFrame id="ie-density" title="The IMPROVE cloud and the sites in view — fAbs against EC on the filter"
+        subtitle={`Every post-2003 IMPROVE filter with a volume, binned (${d.n.toLocaleString()} filters; ${d.beyond.toLocaleString()} beyond the axes), with the filters in view under Samples on top and the Addis p05–p95 window dashed. Linear axes from zero, as the loading-envelope notebook pins them.`}
         provenance={<>{NB.anne} · {NB.fed} · {NB.may} §3</>}
         controls={<Segmented label="x" value={space} options={['mass', 'surface'] as const} onChange={setSpace} optionLabel={(o) => (o === 'mass' ? 'EC mass (µg)' : 'EC per area (µg/cm²)')} />}>
         <DensityPlot id="ie-density" cells={d.cells} bins={d.bins} x={[0, d.x_max]} y={[0, d.y_max]} xLabel={xLabel} yLabel="fAbs (Mm⁻¹)"
           cloudLabel="IMPROVE filters per cell (post-2003)" points={spartan} box={box} marks={markedPoints}
-          legend={sites.map((s) => ({ label: s, parent: 'SPARTAN filters', color: colorOf(s) }))} />
+          legend={sites.filter((s) => drawnSites.has(s)).map((s) => ({ label: s, parent: 'Filters in view', color: colorOf(s) }))} />
+        {undrawn.length > 0 && <Note>{undrawn.join(', ')}: no filter in view has HIPS Fabs, EC and a sampled volume together, so {undrawn.length === 1 ? 'it has' : 'they have'} no points here.</Note>}
         <ExcludedNote count={marked.length} drawn />
       </ChartFrame>
 
       <ChartFrame id="ie-matched" title="Matched on EC, do IMPROVE filters absorb like Addis? — EC-mass and EC-concentration matches"
-        subtitle="IMPROVE filters inside the Addis p05–p95 of EC mass on the filter, or of EC concentration (the exporter's saved windows), against the Addis filters in view: median and interquartile range of fAbs, fAbs / EC, EC concentration and EC mass. The same EC can carry much less absorption."
+        subtitle="IMPROVE filters inside the Addis p05–p95 of EC mass on the filter, or of EC concentration (the exporter's saved windows), against each site in view: median and interquartile range of fAbs, fAbs / EC, EC concentration and EC mass. The same EC can carry much less absorption."
         provenance={NB.matched}>
         <IntervalStrip blocks={[{ key: 'm', rows: matchedRows }]} panels={[{ label: 'fAbs (Mm⁻¹)' }, { label: 'fAbs / EC (m²/g)', reference: mac }, { label: 'EC (µg/m³)' }, { label: 'EC mass (µg)' }]}
           labelWidth={150} noteWidth={56} minPanelWidth={140} />
@@ -149,8 +160,8 @@ export function ImproveEnvelope({ rows, meta }: SectionPageProps) {
           { key: 's', label: 'OLS slope, fAbs ~ EC', num: true, value: (r) => fmt(r.fit.slope, 2) }, { key: 'i', label: 'Intercept (Mm⁻¹)', num: true, value: (r) => fmt(r.fit.intercept, 2) },
           { key: 'r2', label: 'R²', num: true, value: (r) => fmt(r.fit.r2, 3) }]} />
         <Note>These subsets are selected on EC, so their slopes are descriptions of the window, not calibrations.</Note>
-        <ExcludedNote count={focusMarked.filter((f) => f.code === 'ETAD').length} />
-        <FixedSetNote subject="each IMPROVE row" what="the subset the exporter's saved Addis windows select (the Addis row is live, on the filters in view)" />
+        <ExcludedNote count={focusMarked.length} />
+        <FixedSetNote subject="each IMPROVE row" what="the subset the exporter's saved Addis windows select (the site rows are live, on the filters in view)" />
       </ChartFrame>
 
       <ChartFrame id="ie-sweep" title="Selecting on fAbs manufactures an intercept — OLS of fAbs on EC above each fAbs threshold"
@@ -197,12 +208,12 @@ export function ImproveEnvelope({ rows, meta }: SectionPageProps) {
         </Grid>
       </ChartFrame>}
 
-      <ChartFrame id="ie-mass" title="The networks in mass on the filter — IMPROVE against each focus site"
+      <ChartFrame id="ie-mass" title="The networks in mass on the filter — IMPROVE against each site in view"
         subtitle={`Median and p05–p95 of EC, OC, iron and PM2.5 mass on the filter (µg) and of fAbs × volume / area, a volume-free optical depth (IMPROVE ≈ 33 m³ a filter, SPARTAN ≈ 7). SPARTAN EC and OC are FTIR's own mass on the filter.`}
         provenance={NB.mass}>
         <IntervalStrip blocks={[{ key: 'mass', rows: massRows }]} panels={quantities.map((q) => ({ label: q }))} labelWidth={150} minPanelWidth={160} />
         <ExcludedNote count={focusMarked.length} />
-        <FixedSetNote subject="the IMPROVE row" what="the exporter's saved network summary (the focus-site rows are live, on the filters in view)" />
+        <FixedSetNote subject="the IMPROVE row" what="the exporter's saved network summary (the site rows are live, on the filters in view)" />
       </ChartFrame>
     </>
   )

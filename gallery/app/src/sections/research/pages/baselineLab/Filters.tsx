@@ -67,10 +67,22 @@ export function BaselineFilterScatter({ rows }: LabChartProps) {
 const VIEWS = ['corrected', 'raw', 'removed'] as const
 const REPEATS = ['mean', 'scans', 'both'] as const
 
-/** Native signed traces and original acquisitions are fetched only for the chosen physical filter. */
-export function BaselineSelectedSpectrum(_props: LabChartProps) {
+/**
+ * Native signed traces and original acquisitions are fetched only for the chosen physical filter. The picker offers the
+ * filters Samples leaves in view (useLabFilters), and the undated ones (field blanks, native samples) of the sites in view,
+ * which no date or season can place. A selection Samples has left out gives way to the first filter in view.
+ */
+export function BaselineSelectedSpectrum({ rows }: LabChartProps) {
   const { data, error } = useLabExport()
-  const [id, setId] = useLabSelection()
+  const inSamples = useLabFilters(data, rows)
+  const [selected, setId] = useLabSelection()
+  const options = useMemo(() => {
+    if (!data) return null
+    const codes = new Set(rows.map(r => r.code))
+    const ids = new Set([...inSamples.counted, ...inSamples.marked, ...data.filters.filter(r => !r.date && codes.has(r.code))].map(r => r.id))
+    return data.spectra_ids.filter(i => ids.has(i))
+  }, [data, rows, inSamples])
+  const id = options && !options.includes(selected) ? inSamples.counted.find(r => options.includes(r.id))?.id ?? options[0] ?? '' : selected
   const [view, setView] = useSearchParam<typeof VIEWS[number]>('blab.spectra.view', 'corrected', VIEWS)
   const [window, setWindow] = useSearchParam<LabWindow>('blab.spectra.window', 'band', WINDOW_KEYS)
   const [method, setMethod] = useSearchParam<string>('blab.spectra.method', 'all')
@@ -95,9 +107,9 @@ export function BaselineSelectedSpectrum(_props: LabChartProps) {
   const showMissing = loaded.data && !curves.length
   return <ChartFrame id="baseline-lab-spectrum" title="Raw, removed and signed spectra"
     source={`${LAB_SOURCE}/Filters.tsx › BaselineSelectedSpectrum`}
-    subtitle="Select any exported physical filter, including field blanks and undated native samples. Original scans remain separate from the physical-filter mean."
+    subtitle="Select any exported physical filter in Samples, or a field blank or undated native sample of a site in view. Original scans remain separate from the physical-filter mean."
     tip={<><p>Raw and corrected absorbance retain their sign and scale. The removed trace is raw minus the matching correction. Packed clipped/normalized AIRSpec display spectra are never used for this subtraction.</p>{loaded.data?.notes?.map((note, i) => <p key={i}>{note}</p>)}</>}
-    controls={<><Select label="Filter" value={id} options={data?.spectra_ids ?? [id]} onChange={setId}
+    controls={<><Select label="Filter" value={id} options={options ?? [id]} onChange={setId}
       optionLabel={key => { const f = data?.filters.find(r => r.id === key); return `${key}${f?.type && f.type !== 'PM2.5' ? ` · ${f.type}` : ''}` }} />
       <Segmented label="Signal" value={effectiveView} options={VIEWS} onChange={setView} optionLabel={v => v === 'corrected' ? 'Signed corrected' : v === 'removed' ? 'Removed' : 'Raw'} />
       <Select label="Window (cm⁻¹)" value={window} options={WINDOW_KEYS} onChange={v => setWindow(v as LabWindow)} optionLabel={v => spectrumWindows[v as LabWindow].label} />
@@ -105,7 +117,8 @@ export function BaselineSelectedSpectrum(_props: LabChartProps) {
         optionLabel={v => v === 'all' ? 'All methods' : data ? labMethodLabel(data, v) : v} />}
       <Select label="Acquisitions" value={repeats} options={[...REPEATS]} onChange={v => setRepeats(v as typeof REPEATS[number])}
         optionLabel={v => v === 'mean' ? 'Physical-filter mean' : v === 'scans' ? 'Original scans' : 'Mean + scans'} /></>}>
-    {!data ? <LoadState what="spectrum index" error={error} /> : !data.spectra_ids.includes(id) ? <Empty>No spectrum exported for {id}. Choose another filter.</Empty>
+    {!data ? <LoadState what="spectrum index" error={error} /> : !id ? <Empty>No filter in Samples has an exported spectrum: pick Addis Ababa, Bishoftu, Beijing, Delhi or JPL.</Empty>
+      : !data.spectra_ids.includes(id) ? <Empty>No spectrum exported for {id}. Choose another filter.</Empty>
       : !loaded.data ? <LoadState what={`spectrum ${id}`} error={loaded.error} /> : <>
         <div className="chart-note">{id} · {row?.date ?? 'date unavailable'} · lot {row?.lot_group ?? 'unknown'} · {loaded.data.source} grid
           {finite(row?.optical_disagreement_ugm3) && <> · FTIR − optical {signed(row!.optical_disagreement_ugm3!, 2)} µg/m³</>}</div>

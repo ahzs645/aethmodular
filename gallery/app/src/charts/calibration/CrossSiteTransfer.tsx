@@ -315,7 +315,7 @@ function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, gallery
                     {ecPair && <IdentityLine x1={x(d0)} y1={y(d0)} x2={x(d1)} y2={y(d1)} />}
                     {yk === RESID && y.domain()[0] < 0 && y.domain()[1] > 0 && <line x1={0} x2={S} y1={y(0)} y2={y(0)} stroke={INK.text} strokeWidth={1.2} />}
                     {pts[k].length === 0 && <text x={S / 2} y={S / 2} textAnchor="middle" fontSize={11} fill={INK.muted}>no filters carry both</text>}
-                    {/* a dot is a filter: hover and click work as on every other crossplot (highlight on every chart, pin, open its record) */}
+                    {/* a dot is a filter: hover and click work as on every other crossplot (highlight across its card, pin on every chart, open its record) */}
                     <TransferPoints pts={pts[k]} x={x} y={y} side={S} color={color} tip={tip}
                       marks={out[k].flatMap((p): MarkPoint[] => {
                         const id = run.eval.id[p.i], [x0, x1] = x.domain(), [y0, y1] = y.domain()

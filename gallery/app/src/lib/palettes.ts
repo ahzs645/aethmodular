@@ -50,6 +50,8 @@ export interface Palette {
    * pair with lib/theme paintPair, so the page shows the twin and an export prints the original.
    */
   dark?: Readonly<Record<string, string>>
+  /** categorical: the colour of one more variable drawn over the stack, as a published figure has it; also in `colours`, so the picker's swatch shows it */
+  overlay?: string
 }
 
 /** a d3 ramp sampled at 8 hex stops between `lo` and `hi`: the palest end of a light-first ramp barely shows on white */
@@ -115,6 +117,8 @@ const FTIR_GROUP_NAMED = Object.fromEntries(Object.entries(FTIR_GROUP_COLOURS).f
   [key, ...(FTIR_GROUP_ALIASES[key] ?? [])].map((label) => [label, colour])))
 /** the stack order of the functional groups, bottom to top, as the reference figure draws them */
 export const FTIR_GROUP_ORDER = Object.keys(FTIR_GROUP_COLOURS)
+/** the olive of the precipitation dots in the PMF paper's Figure 7, read off the figure */
+export const PMF_PAPER_OVERLAY = '#8b7526'
 /** the PMF paper's source colours (Anwar et al., Addis Ababa, Figure 7), keyed by the PMF export's source labels */
 export const PMF_PAPER_COLOURS: Readonly<Record<string, string>> = {
   'Fossil Fuel Combustion': '#f4b6c2', 'Polluted Marine': '#e0191c', 'Sea Salt Mixed': '#0a14d0', 'Wood Burning': '#92e192', Charcoal: '#2e8b2e',
@@ -156,7 +160,7 @@ export const PALETTES: Readonly<Record<PaletteKind, readonly Palette[]>> = {
     // the original Stacked bars range
     { name: 'Gallery', colours: [...schemeTableau10, ...schemeSet3], familyColours: ['#5b6470', '#2171b5', '#b2182b', '#0f766e'], source: 'Tableau 10 followed by ColorBrewer Set3' },
     { name: 'FTIR functional groups', colours: Object.values(FTIR_GROUP_COLOURS), named: FTIR_GROUP_NAMED, source: 'IMPROVE functional-group figure, Atmos. Environ. 2017, Fig. 7 (sampled from the published image)', note: 'fixed group colours; other labels use Gallery colours' },
-    { name: 'PMF paper', colours: Object.values(PMF_PAPER_COLOURS), named: PMF_PAPER_COLOURS, source: 'PMF paper (Anwar et al., Addis Ababa), Figure 7', note: 'fixed source colours; other labels use Gallery colours' },
+    { name: 'PMF paper', colours: [...Object.values(PMF_PAPER_COLOURS), PMF_PAPER_OVERLAY], named: PMF_PAPER_COLOURS, overlay: PMF_PAPER_OVERLAY, dark: { [PMF_PAPER_OVERLAY]: '#d2b64f' }, source: 'PMF paper (Anwar et al., Addis Ababa), Figure 7', note: 'fixed source colours, olive for a variable over the stack; other labels use Gallery colours' },
     // Wong's colours with black moved from first to last, so the first seven categories are hues. On
     // the dark page black shows as a grey near R's Okabe-Ito grey (#999999), one step off it because
     // an export would print every #999999 on the page (Blanks uses it) back as black
@@ -216,6 +220,9 @@ export const hasNamedColours = (name: string) => !!allPalettes('categorical').fi
  * its colour and an unmatched one takes Gallery colours, so an extra measured species is not
  * labelled as a reconstruction component. `role: 'family'` uses the set's family colours if it has them.
  */
+/** the colour a categorical palette gives a variable drawn over its stack, if it names one */
+export const overlayColour = (name: string): string | undefined => getPalette('categorical', name).overlay
+
 export function categoricalScale(name: string, domain: readonly string[], reverse = false, role: 'series' | 'family' = 'series') {
   const set = getPalette('categorical', name)
   const familyStops = role === 'family' ? set.familyColours : undefined

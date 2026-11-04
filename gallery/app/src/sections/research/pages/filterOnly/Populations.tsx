@@ -5,7 +5,7 @@
  */
 import { useMemo } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Note } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { FacetGrid } from '@/components/FacetGrid'
 import { HeatMatrix } from '@/components/HeatMatrix'
 import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
@@ -17,11 +17,11 @@ import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { Grid } from '../../common/ui'
 import { MODELS, POPULATIONS, denominatorSensitivity, evaluate, inPopulation, summarize, type FPoint, type Model, type Population, type Summary } from '../../common/filterOnly'
-import { FoExcludedNote, MODEL_LABEL, NB_DIAG, NB_PROP, NB_STAB, SITES, SOURCE, popLabel, siteColor, type Settings, type SiteRun } from './data'
+import { FoExcludedNote, MODEL_LABEL, NB_DIAG, NB_PROP, NB_STAB, NO_FILTERS, SITES, SOURCE, popLabel, siteColor, type Settings, type SiteRun } from './data'
 
 /** every site × population, leave-quarter-out: the summary and the population size */
 function usePopulationGrid(points: FPoint[], s: Settings) {
-  return useMemo(() => SITES.map((site) => {
+  return useMemo(() => SITES.filter((site) => points.some((p) => p.site === site)).map((site) => {
     const diagnostic = points.filter((p) => p.site === site)
     return { site, cells: POPULATIONS.map(({ key }) => {
       const cohort = diagnostic.filter((p) => inPopulation(p, key))
@@ -43,14 +43,14 @@ export function PopulationHeat({ points, s }: { points: FPoint[]; s: Settings })
       subtitle="Leave quarter out · filter-weighted · 100 × (median MAE − OLS MAE) / median MAE; positive = lower OLS error · n is the whole population"
       provenance={<>{NB_STAB} figure 03</>} source={`${SOURCE}/Populations.tsx › PopulationHeat`}
       tip={<>The memberships are the release's saved ones (EC ≥ k × its reported MDL among the 480 ratio filters); no threshold is chosen from these errors. At the release's settings (with Filters → excluded: Include) JPL keeps 84 ratio filters and 28 at 1.5 × MDL, where the improvement shrinks to 9.6 % and 0.5 %; its seven-filter 2 × population cannot supply ten training filters. Addis's 1.5 ×, 2 × and 3 × populations are the same 189 filters.</>}>
-      <HeatMatrix rows={grid.map((g) => g.site)} rowLabelSize={12} columns={POPULATIONS.map((p) => ({ key: p.key, label: p.label }))} colLabelSize={11.5} colLabels="horizontal"
+      {!grid.length ? <Empty>{NO_FILTERS}</Empty> : <HeatMatrix rows={grid.map((g) => g.site)} rowLabelSize={12} columns={POPULATIONS.map((p) => ({ key: p.key, label: p.label }))} colLabelSize={11.5} colLabels="horizontal"
         cellWidth={[64, 120]} cellHeight={44} gap={2} labelSize={11} cellLabels="always"
         cell={(i, j) => {
           const g = grid[i], c = g.cells[j], v = c.sum.improvementPct, ok = Number.isFinite(v)
           return { fill: ok ? color(v) : null, label: ok ? `${signed(v, 1)}%  n=${c.n}` : `n/a  n=${c.n}`,
             tip: [`${g.site} · ${popLabel(c.population)}`, ok ? `improvement ${signed(v, 1)} %` : 'no evaluated quarter', `OLS MAE ${fmt(c.sum.filters.mae.ols * s.k, 2)} · median MAE ${fmt(c.sum.filters.mae.median * s.k, 2)} ${s.u}`, `${c.sum.filters.n} evaluated of ${c.n} filters · ${c.sum.evaluatedBlocks} quarters`] }
         }}
-        legend={{ scale: color, scheme: colours.scheme, label: 'MAE improvement (%)', format: (v) => fmt(v, 0) }} />
+        legend={{ scale: color, scheme: colours.scheme, label: 'MAE improvement (%)', format: (v) => fmt(v, 0) }} />}
       <Note>An empty cell means no quarter had {s.minTrain} training filters: the population exists but cannot be evaluated.</Note>
       <FoExcludedNote s={s} any />
     </ChartFrame>
@@ -68,14 +68,14 @@ export function PopulationModels({ points, s, meta }: { points: FPoint[]; s: Set
       provenance={<>{NB_PROP} figure 04</>} source={`${SOURCE}/Populations.tsx › PopulationModels`}
       tip={<>Every population is a saved membership. Changing the population changes the EC distribution and the baseline error together, so falling MAE at stricter denominators is not evidence that a method deteriorates at higher EC. No threshold was tuned.</>}>
       <Key items={MODELS.map((m) => ({ label: MODEL_LABEL[m], color: m === 'ols' ? INK.text : STYLE[m].color!, kind: m === 'ols' ? 'line' : 'dash' }))} />
-      <FacetGrid items={grid} minCell={290} maxCols={2} title={(g) => g.site} itemKey={(g) => g.site} site={(g) => g.site} render={(g, w) => {
+      {!grid.length ? <Empty>{NO_FILTERS}</Empty> : <FacetGrid items={grid} minCell={290} maxCols={2} title={(g) => g.site} itemKey={(g) => g.site} site={(g) => g.site} render={(g, w) => {
         const color = siteColor(meta, g.site)
         const series: SweepSeries[] = MODELS.map((m) => ({ id: m, label: MODEL_LABEL[m], color: STYLE[m].color ?? color, dash: STYLE[m].dash, width: m === 'ols' ? 2 : 1.5,
           points: g.cells.map((c) => ({ x: POPULATIONS.find((p) => p.key === c.population)!.short, y: Number.isFinite(c.sum.filters.mae[m]) ? c.sum.filters.mae[m] * s.k : null,
             tip: [`${g.site} · ${popLabel(c.population)} (n ${c.n})`, ...MODELS.map((q) => `${MODEL_LABEL[q]} ${fmt(c.sum.filters.mae[q] * s.k, 2)} ${s.u}`), `${c.sum.filters.n} evaluated filters`] })) }))
         return <SweepPlot series={series} xScale="point" width={w} height={220} yLabel={`Held-out MAE (${s.u})`} include={[0]}
           xFormat={(v) => { const c = g.cells.find((x) => POPULATIONS.find((p) => p.key === x.population)!.short === v); return c ? `${v} ${c.n}` : String(v) }} />
-      }} />
+      }} />}
       <Note>Axis labels give each population and its size. A missing point is a population with no evaluated quarter.</Note>
       <FoExcludedNote s={s} any />
     </ChartFrame>
@@ -101,9 +101,9 @@ export function Weighting({ runs, s, meta }: { runs: SiteRun[]; s: Settings; met
       provenance={<>{NB_PROP} figure 05</>} source={`${SOURCE}/Populations.tsx › Weighting`}
       tip={<>At the release's settings (with Filters → excluded: Include) Delhi's leave-quarter-out intercept bias is −1.779 Mm⁻¹ over filters and +2.151 Mm⁻¹ over quarters; both are kept. Later-period bias stays negative under either weighting. The two marks are two estimands, not an uncertainty range.</>}>
       <Key items={[{ label: 'Each filter weighted equally', color: INK.text, kind: 'dot' }, { label: 'Each evaluated quarter weighted equally', color: INK.text, kind: 'square' }]} />
-      <IntervalStrip labelWidth={110} rowHeight={30} blocks={[{ key: 'sites', rows }]}
+      {!rows.length ? <Empty>{NO_FILTERS}</Empty> : <IntervalStrip labelWidth={110} rowHeight={30} blocks={[{ key: 'sites', rows }]}
         panels={[{ label: `Mean signed error (${s.u})`, heading: 'Withheld quarters', reference: 0, format: (v) => fmt(v, 1) },
-          { label: `Mean signed error (${s.u})`, heading: 'Later-period prediction', reference: 0, format: (v) => fmt(v, 1) }]} />
+          { label: `Mean signed error (${s.u})`, heading: 'Later-period prediction', reference: 0, format: (v) => fmt(v, 1) }]} />}
       <Note>{sums.map((x) => `${x.site} ${signed(x.lqo.filters.mse.ols * s.k, 2)} / ${signed(x.lqo.quarters.mse.ols * s.k, 2)}`).join(' · ')} (leave quarter out, filters / quarters, {s.u}).</Note>
       <FoExcludedNote s={s} />
     </ChartFrame>
@@ -112,7 +112,7 @@ export function Weighting({ runs, s, meta }: { runs: SiteRun[]; s: Settings; met
 
 /** filter_only_diagnostics 05: retained filters and the median HIPS / EC ratio at each stricter denominator rule */
 export function DenominatorSensitivity({ points, s, meta }: { points: FPoint[]; s: Settings; meta: MetaFile }) {
-  const rows = useMemo(() => SITES.map((site) => ({ site, color: siteColor(meta, site), d: denominatorSensitivity(points.filter((p) => p.site === site)) })), [points, meta])
+  const rows = useMemo(() => SITES.filter((site) => points.some((p) => p.site === site)).map((site) => ({ site, color: siteColor(meta, site), d: denominatorSensitivity(points.filter((p) => p.site === site)) })), [points, meta])
   const nSeries: SweepSeries[] = rows.map((r) => ({ id: r.site, label: r.site, color: r.color, points: r.d.map((x) => ({ x: x.multiple, y: x.n, tip: [r.site, `EC ≥ ${x.multiple} × MDL`, `${x.n} filters`] })) }))
   const rSeries: SweepSeries[] = rows.map((r) => ({ id: r.site, label: r.site, color: r.color, fill: 0.06, points: r.d.map((x) => ({ x: x.multiple, y: x.n ? x.median : null, lo: x.n ? x.q25 : null, hi: x.n ? x.q75 : null,
     tip: [r.site, `EC ≥ ${x.multiple} × MDL · n ${x.n}`, x.n ? `median ${fmt(x.median, 2)} m²/g (IQR ${fmt(x.q25, 2)}–${fmt(x.q75, 2)})` : 'no filters left: no median'] })) }))
@@ -122,11 +122,11 @@ export function DenominatorSensitivity({ points, s, meta }: { points: FPoint[]; 
       provenance={<>{NB_DIAG} figure 05</>} source={`${SOURCE}/Populations.tsx › DenominatorSensitivity`}
       tip={<>The 480-pair eligibility is unchanged; each stricter scenario reports its own count and median. A missing median means no retained filters, not a zero ratio. No threshold is optimised for agreement. The ratio is HIPS Fabs (Mm⁻¹) over FTIR EC (µg/m³), in m²/g: the MAC at which HIPS BC would equal FTIR EC on that filter.</>}>
       <Key items={rows.map((r) => ({ label: r.site, color: r.color, kind: 'line' }))} />
-      <Grid min={320}>
+      {!rows.length ? <Empty>{NO_FILTERS}</Empty> : <Grid min={320}>
         <SweepPlot series={nSeries} xScale="linear" xDomain={[0.8, 5.2]} xLabel="Minimum EC / reported MDL" yLabel="Retained filters" include={[0]} height={250} />
         <SweepPlot series={rSeries} xScale="linear" xDomain={[0.8, 5.2]} xLabel="Minimum EC / reported MDL" yLabel="HIPS / FTIR EC (m²/g)" include={[0]} height={250}
           yMarkers={[{ at: s.mac, label: `your MAC ${fmt(s.mac, 1)}`, color: INK.muted }]} />
-      </Grid>
+      </Grid>}
       <Note>Bands are the interquartile range of the ratio. The dashed marker is the reader's MAC (Plot → units): ratios above it mean HIPS BC exceeds FTIR EC at that MAC.</Note>
       <FoExcludedNote s={s} any />
     </ChartFrame>

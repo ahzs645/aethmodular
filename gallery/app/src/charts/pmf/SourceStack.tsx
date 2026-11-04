@@ -6,6 +6,7 @@ import { pct } from '@/lib/format'
 import { ExcludedNote, useCountedFilter, useExclusionSplit } from '@/lib/markedRows'
 
 const PAPER = 'Paper (four seasons)'
+const OPENS_RIGHT = 'Precipitation (station)'
 
 /**
  * Stacked area / streamgraph — PMF source contributions over time.
@@ -22,9 +23,16 @@ const PAPER = 'Paper (four seasons)'
  * µg/m³ divided by their sum (the two differ by up to 25 points); the raw GF1-GF5 columns are
  * PM2.5 mass fractions summing to 0.03-0.46 and would be wrong to stack directly. Sources stack
  * in the paper's order, Fossil Fuel at the bottom up to Charcoal.
+ *
+ * `fieldRows` are the site's filter rows: each PMF day takes that filter's other fields, so the time view's Right
+ * axis can draw any of them over the stack. It opens on the airport station's precipitation, as the paper's Figure 7
+ * draws rain, in the 'PMF paper' palette's olive: the station is the source nearer the paper (More Rainy 2023 means
+ * 7.5 mm/day against the paper's ~8.3; ERA5 12.9).
  */
-export function SourceStack({ pmf, rows: inView, meta, id = 'sourcestack', initialGrouping = 'over time', title = 'Stacked area · Streamgraph — PMF source contributions over time' }: {
+export function SourceStack({ pmf, rows: inView, fieldRows, meta, id = 'sourcestack', initialGrouping = 'over time', title = 'Stacked area · Streamgraph — PMF source contributions over time' }: {
   pmf: PmfFile; rows: PmfRow[]; meta: MetaFile
+  /** the filters' own rows, joined on id: their weather and measurements for the Right axis */
+  fieldRows?: FilterRow[]
   /** a Dashboard tile's own chart: 'sourceseason' opens on the bars by season (the former Source apportionment by season) */
   id?: string; initialGrouping?: 'per site' | 'by season' | 'over time'; title?: string
 }) {
@@ -36,11 +44,13 @@ export function SourceStack({ pmf, rows: inView, meta, id = 'sourcestack', initi
   const labels = useMemo(() => [...pmf.sources].sort((a, b) => PAPER_ORDER.indexOf(a.label) - PAPER_ORDER.indexOf(b.label)).map((s) => s.label), [pmf.sources])
   const byId = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows])
   // each PMF filter as a composition row: its sources' µg/m³ as fields, at the PMF site
+  const fieldsOf = useMemo(() => new Map((fieldRows ?? []).map((r) => [r.id, r])), [fieldRows])
   const asRows = useMemo(() => rows.map((r): FilterRow => ({
+    ...fieldsOf.get(r.id),
     id: r.id, site: pmf.site_name, code: pmf.site, color: '', date: r.date, year: r.year, month: r.month, season: r.season,
     lat: null, lon: null, excluded: false, exclusion_reason: null,
     ...Object.fromEntries(labels.map((l) => [l, r.ugm3[l] ?? null])),
-  })), [rows, labels, pmf.site, pmf.site_name])
+  })), [rows, labels, pmf.site, pmf.site_name, fieldsOf])
   const share = useCallback((row: FilterRow, f: string) => byId.get(row.id)?.fraction[f] ?? null, [byId])
   const labelOfKey = (k: string | null | undefined) => pmf.sources.find((s) => s.key === k)?.label ?? k ?? '—'
   // the export keys the dominant source (polluted_marine); readers see its name
@@ -58,11 +68,12 @@ export function SourceStack({ pmf, rows: inView, meta, id = 'sourcestack', initi
   return <><CompositionTreemap rows={asRows} meta={meta} id={id} species={labels} palette="PMF paper"
     initialGrouping={initialGrouping} dominantOf={dominantOf} initialUnits="composition (%)" share={share} massField={null}
     calendars={[{ value: PAPER, seasons: PAPER_CALENDAR, title: "the PMF paper's four seasons (its 2023 dates)" }]} initialCalendar={PAPER}
+    initialRight={OPENS_RIGHT}
     itemNoun="sources" totalNoun="apportioned" recordSource="the PMF source stack"
     extraTip={(row) => { const [k, v] = dominant(row); return v ? [`${k}: ${v}`] : [] }}
     extraFields={(row) => [dominant(row)]}
     title={title}
-    subtitle={`${pmf.n} ETAD filters with a PMF solution. Share stacks each filter's normalised source mix to 100 % (the paper's fractions); concentration stacks the K_Fn contributions in µg/m³, so a stack's height is the apportioned mass. Per site and by season draw the mean or median over the filters instead (seasons from the Seasons choice) and count the filters one source dominates above a chosen share. Click a source in the legend to drop it from the stack; shares are then of the sources shown.`}
+    subtitle={`${pmf.n} ETAD filters with a PMF solution. Share stacks each filter's normalised source mix to 100 % (the paper's fractions); concentration stacks the K_Fn contributions in µg/m³, so a stack's height is the apportioned mass. Per site and by season draw the mean or median over the filters instead (seasons from the Seasons choice) and count the filters one source dominates above a chosen share. The dots are the rain over each filter's sampling window, on the right axis: the Addis airport station, the source nearer the paper's seasonal rain; Right axis picks ERA5, another variable or None. Click a source in the legend to drop it from the stack; shares are then of the sources shown.`}
     provenance="the estate has exactly 1 stacked-area figure in 827 · react-graph-gallery.com/stacked-area-plot · /streamchart · same chart as Part of whole › Stacked bars" />
     <ExcludedNote count={nMarked} /></>
 }

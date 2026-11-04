@@ -4,7 +4,7 @@ import { AutoThemeIcon, ExplainIcon, MoonIcon, SunIcon, TextSizeIcon, XIcon } fr
 import { useFloatingMenu } from '@/hooks/useFloatingMenu'
 import { EXPLAIN_AVAILABLE, usePrefs } from '@/lib/prefs'
 import { setThemePref, useThemePref } from '@/lib/colorTheme'
-import { DISPLAY_SIDES, mostVisibleChart, type ChartDisplay, type StatsPlace, type VisibleChart } from '@/lib/chartDisplay'
+import { DISPLAY_SIDES, mostVisibleChart, type ChartDisplay, type ControlsSide, type StatsPlace, type VisibleChart } from '@/lib/chartDisplay'
 import { resetChartDisplay, setSharedChartDisplay, setSingleChartDisplay, useChartDisplayPrefs } from '@/lib/chartDisplayPrefs'
 import { useSingleView } from '@/lib/singleView'
 import { SpartanDataSettings, useSpartanSourceLabel } from '@/components/SpartanDataSettings'
@@ -51,9 +51,10 @@ export function DisplayControls() {
   const place = useFloatingMenu(open, root, menu, 560)
   const shared: ChartDisplay = { controlsSide: prefs.controlsSide, statsPlace: prefs.statsPlace ?? 'options', density, explain, theme }
   const override = target ? prefs.charts[target.key] : undefined
-  // a chart can keep its statistics above the plot by default (ChartFrame statsPlace): the frame says what it uses
-  const chartStats = target ? document.querySelector<HTMLElement>(`[data-chart-key="${CSS.escape(target.key)}"]`)?.dataset.statsPlace as StatsPlace | undefined : undefined
-  const settings = scope === 'chart' ? { ...shared, ...(chartStats ? { statsPlace: chartStats } : {}), ...override } : shared
+  // a chart can declare its own default (ChartFrame statsPlace, controlsSide): the frame says what it uses
+  const chartFrame = target ? document.querySelector<HTMLElement>(`[data-chart-key="${CSS.escape(target.key)}"]`)?.dataset : undefined
+  const chartStats = chartFrame?.statsPlace as StatsPlace | undefined, chartSide = chartFrame?.controlsDefault as ControlsSide | undefined
+  const settings = scope === 'chart' ? { ...shared, ...(chartStats ? { statsPlace: chartStats } : {}), ...(chartSide ? { controlsSide: chartSide } : {}), ...override } : shared
   const showMenu = (from: HTMLElement) => {
     returnFocus.current = from
     setTarget(visibleChart())

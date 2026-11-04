@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { styleBrush } from '@/lib/brush'
 import { robustDomain } from '@/lib/axes'
 import * as d3 from 'd3'
@@ -171,7 +171,9 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
   const lines = useMemo(() => allLines.filter((l) => !hidden.has(groupOf(l.row))), [allLines, hidden, colorBy]) // eslint-disable-line react-hooks/exhaustive-deps
   // the hover read for this chart's filters only: a hover on a filter it does not draw leaves it alone
   const keys = useMemo(() => new Set(allLines.map((l) => l.row.id)), [allLines])
-  const hl = useHighlight(keys)
+  // the hook sits above this chart's ChartFrame, so it names the card itself
+  const hoverCard = useId()
+  const hl = useHighlight(keys, hoverCard)
 
   // ---- brushing: a filter survives only if it is inside every active range
   const active = Object.entries(brushes).filter(([f]) => axes.some((a) => a.field === f))
@@ -264,8 +266,9 @@ export function ParallelCoordinates({ rows, meta }: { rows: FilterRow[]; meta: M
   return (
     <ChartFrame
       id="parallel"
+      hoverCard={hoverCard}
       title="Parallel coordinates — every species of a family, every filter"
-      subtitle="One polyline per filter across one axis per species, where the radar shows only a site median per axis: the whole composition of every filter at once, so co-varying species read as parallel strands and a filter that is odd on one axis shows which others it is odd on. Each axis spans the 2–98 % bulk of its species. Drag along an axis to keep only the filters in that range; brush several axes to intersect them. Hover a line to find the filter in every other chart; click it for the full record."
+      subtitle="One polyline per filter across one axis per species, where the radar shows only a site median per axis: the whole composition of every filter at once, so co-varying species read as parallel strands and a filter that is odd on one axis shows which others it is odd on. Each axis spans the 2–98 % bulk of its species. Drag along an axis to keep only the filters in that range; brush several axes to intersect them. Click a line to pin the filter on every chart and open its full record."
       provenance="react-graph-gallery.com/parallel-plot · not in the estate (0 figures)"
       controls={o.controls()}
     >

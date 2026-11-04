@@ -16,8 +16,9 @@ import { INK } from '@/lib/theme'
  *     with a dashed ring when it is the pinned one (PinRing).
  *   - one pointer layer finds the point nearest the pointer (components/HitLayer). The marks take no pointer events,
  *     so a mark redrawn or moved under the pointer cannot leave the hover behind.
- *   - by default a hover shows `tipOf` and lights the filter up on every chart, a click opens its record (pinning
- *     it), and a right-click opens the filter menu (lib/filterEdits). A chart passes its own handlers to differ.
+ *   - by default a hover shows `tipOf` and lights the filter up on the charts of its card, a click opens its record
+ *     (pinning it on every chart), and a right-click opens the filter menu (lib/filterEdits). A chart passes its own
+ *     handlers to differ.
  *
  *   - `marks`: excluded filters under Filters → excluded: Mark (lib/markedRows), drawn under the dots as muted ×. They
  *     are not `items`: the chart fits and counts its items only. The pointer layer finds them too; a hover shows the

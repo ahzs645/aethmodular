@@ -9,12 +9,13 @@ import { BaselineOptionsProvider, BaselinePicker, CountPicker, SeasonPicker, cla
 import { PageToc } from '@/components/PageToc'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { PanelGrid, Panels } from '@/components/Panels'
-import { PanelGroup } from '@/components/PanelGroup'
+import { PanelGroup, PanelSlot } from '@/components/PanelGroup'
 import { Key as SharedKey } from '@/components/Key'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { BandCell, FitCell } from '@/components/TableCells'
 import { ExportState, LoadState } from '@/components/ExportState'
-import { useExport, useLoaded } from '@/lib/data'
+import { loadBinary, loadJson, useExport, useLoaded } from '@/lib/data'
+import { ladderPath, ladderView, type LadderHead, type LadderManifest, type LadderView } from '@/lib/analogLadder'
 import { FullRangeVibesStatus } from '@/components/FullRangeVibesStatus'
 import { MeetingCalibrationDetails } from '@/components/MeetingCalibrationDetails'
 import { SeasonalComposition } from '@/components/SeasonalComposition'
@@ -42,6 +43,7 @@ import { withUnit } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { ExcludedNote, FixedSetNote, useCountedFilter } from '@/lib/markedRows'
 import { usePresentation } from '@/lib/presentation'
+import { useMac } from '@/lib/mac'
 
 /**
  * Click-through for the 2026-09-17 Ann/Satoshi meeting follow-up. Every number
@@ -735,22 +737,48 @@ function RepeatStrip({ data }: { data: MeetingData }) {
 const COLOR_BY = ['grey', 'OP fraction', 'OC/EC'] as const
 const POPULATIONS = ['analogs', 'all held-out IMPROVE'] as const
 const UNITS = ['µg/m³', 'µg per filter'] as const
-function ThreePlots({ data }: { data: MeetingData }) {
+const LADDER = 'meeting-r70/analog_ladder/'
+
+/**
+ * Which analogs a seasonal calibration is fitted on: the rule that ranks them and how many it takes. Each choice is its
+ * own PLS fit, read from the analog ladder (gallery/data/export_analog_ladder.py); the meeting's own choice (the top 500
+ * by the 17 Sep rule) stays the saved calibration, so `view` is null there. Only the rank-70 export has a ladder.
+ */
+function useAnalogChoice(data: MeetingData, { offered, fitId, model, method, group }: { offered: boolean; fitId: string; model: string; method: string; group: string }) {
+  const { data: manifest } = useExport<LadderManifest>(offered && data.summary.background_rank === 70 ? `${LADDER}manifest.json` : null)
+  const [ruleRaw, setRule] = useSearchParam<string>('mrule', 'similarity-sep17')
+  const [nRaw, setN] = useSearchParam<string>('mnan', '500')
+  const rule = manifest?.rules.find((r) => r.key === ruleRaw) ?? manifest?.rules[0] ?? null
+  const n = manifest ? Number(clampCount(nRaw, manifest.n_max, manifest.default_n, manifest.n_min)) : 500
+  const custom = !!manifest && !!rule && (rule.key !== manifest.default_rule || n !== manifest.default_n)
+  const stem = custom ? ladderPath(manifest!, rule!.key, method, group) : null
+  const loaded = useLoaded<[LadderHead, ArrayBuffer]>(stem, () => Promise.all([loadJson<LadderHead>(`${LADDER}${stem}.json`), loadBinary(`${LADDER}${stem}.bin.gz`)]))
+  const view = useMemo<LadderView | null>(() => loaded.data && manifest
+    ? ladderView(loaded.data[0], loaded.data[1], manifest, n, { addis: data.addis, fitId, model, method, group }) : null,
+  [loaded.data, manifest, n, data.addis, fitId, model, method, group])
+  return { manifest, rule, n: String(n), setRule, setN, custom, view, error: loaded.error }
+}
+
+function ThreePlots({ data: saved }: { data: MeetingData }) {
   const methods = useBaselineOptions()
   const fit = FIT_STYLE[useEstimator()]
   // the page's one baseline (PageChoices at the top of the page)
   const { value: method } = usePageChoice('baseline', methods)
-  const [season, setSeason] = useSearchParam<string>('mseason', 'Dry (Oct-Feb)', data.groups)
+  const [season, setSeason] = useSearchParam<string>('mseason', 'Dry (Oct-Feb)', saved.groups)
   const FAMS = ['seasonal calibration', ...MODELS] as const
   const [fam, setFam] = useSearchParam<string>('mfam', 'seasonal calibration', FAMS)
   const [colorBy, setColorBy] = useSearchParam<string>('mcolor', 'grey', COLOR_BY)
   const [popPick, setPop] = useSearchParam<string>('mpop', 'analogs', POPULATIONS)
   const [units, setUnits] = useSearchParam<string>('munits', 'µg/m³', UNITS)
+  const seasonal = fam === 'seasonal calibration'
+  const savedFitId = seasonal ? `seasonal|${method}|locked|${season}` : `allimprove|${method}|${fam}`
+  // the analogs only choose a calibration's training set under a seasonal calibration; an all-IMPROVE model has none to pick
+  const choice = useAnalogChoice(saved, { offered: seasonal, fitId: savedFitId, model: fam, method, group: season })
+  const data = useMemo(() => choice.view ? { ...saved, analogs: choice.view.analogs, addis: choice.view.addis } : saved, [saved, choice.view])
   const analogPts = useAnalogPoints(data)
   const poolPts = usePoolPoints(data)
   const addisPts = useAddisPoints(data)
   const a = data.analogs
-  const seasonal = fam === 'seasonal calibration'
   // a seasonal calibration's held-out split is its own analogs; only the all-IMPROVE models have a wider one
   const canPool = !seasonal && !!data.pool
   const pop = canPool ? popPick : 'analogs'
@@ -765,8 +793,8 @@ function ThreePlots({ data }: { data: MeetingData }) {
   const shade = (op: number | null, ocec: number | null) => colorBy === 'OP fraction' ? (op == null ? INK.neutral : opScale(op))
     : colorBy === 'OC/EC' ? (ocec == null ? INK.neutral : ocScale(Math.max(1.5, ocec))) : IMPROVE_GREY
   const color = (i: number) => shade(a.op_tor_frac[i] as number | null, a.tor_oc_ec[i] as number | null)
-  const fitId = seasonal ? `seasonal|${method}|locked|${season}` : `allimprove|${method}|${fam}`
-  const calibrationFit = data.fits.find(fit => fit.fit_id === fitId)
+  const fitId = savedFitId
+  const calibrationFit = choice.view?.fit ?? data.fits.find(fit => fit.fit_id === fitId)
   const q = (panel: string) => statRow(data.stats, seasonal ? { fit_id: fitId, population: 'analog_test', panel }
     : pooled ? { fit_id: fitId, group: 'IMPROVE pool', population: 'pool_test', panel }
     : { fit_id: fitId, group: season, population: 'analog_test', panel })
@@ -774,47 +802,67 @@ function ThreePlots({ data }: { data: MeetingData }) {
   const only = 'test' as const
   const improve = (y: 'ftir' | 'tor', x: 'fabs' | 'tor') => pooled ? poolPts(fitId, shade, y, x, perFilter) : analogPts(fam, method, season, color, y, x, only, perFilter)
   const unit = perFilter ? 'µg per filter' : 'µg/m³'
-  const hipsLabel = ecAxis('hips', unit)
+  // the HIPS axes follow Plot → units (As presented: the export's MAC). Points carry Fabs / 10 and the saved λ belongs
+  // to that axis, so x rescales by 10 / MAC and λ by MAC² (lib/macMath); a per-filter axis scales both axes alike
+  const mac = useMac()
+  const atMac = <P extends Pt>(pts: P[]): P[] => mac.mac === FABS10_MAC ? pts : pts.map((p) => ({ ...p, x: p.x * FABS10_MAC / mac.mac }))
+  const macLambda = (lambda?: number | null) => lambda == null ? lambda : demingLambda(mac.mac, lambda)
+  const ratio = (panel: 'tor_vs_fabs' | 'ftir_vs_tor' | 'ftir_vs_fabs') => choice.view?.lambda[panel] ?? q(panel)?.deming_lambda
+  const waiting = choice.custom && !choice.view
+  const unfitted = choice.view?.fit.k == null ? choice.view : null
+  const hipsLabel = ecAxis('hips', unit, mac.label)
   const seasonName = isAllAddis(season) ? 'all-Addis' : shortSeason(season)
   const baselineTag = <em className="baseline-tag">{methodName(method)}</em>
-  const torHips = improve('tor', 'fabs'), ftirTor = improve('ftir', 'tor'), ftirHips = improve('ftir', 'fabs')
-  const addis = addisPts(fitId, season, undefined, perFilter)
+  const torHips = atMac(improve('tor', 'fabs')), ftirTor = improve('ftir', 'tor'), ftirHips = atMac(improve('ftir', 'fabs'))
+  const addis = atMac(addisPts(fitId, season, undefined, perFilter))
   return (
     <ChartFrame source="gallery/app/src/pages/MeetingFollowupPage.tsx › ThreePlots" title="Three crossplots per season — TOR EC vs HIPS, FTIR vs TOR and FTIR vs HIPS on held-out IMPROVE filters, beside the Addis test set from the same calibration and the spectra"
       subtitle="Only IMPROVE filters from sites held out of the calibration set are drawn (cross-validation). 'Seasonal calibration' is one model per season from its 500 analogs; the all-IMPROVE models are Ann's reading of the current model (lot 251, or the frozen full-pool model for the selected analysis version). For the all-IMPROVE models, the IMPROVE panels can show either the season's analogs or every held-out IMPROVE filter."
       controls={<>
         <ModelSeg label="Calibration" value={fam} options={FAMS} onChange={setFam} />
         <SeasonPicker value={season} groups={data.groups} onChange={setSeason} />
+        {seasonal && choice.manifest && choice.rule && <>
+          <Select label="Analogs chosen by" value={choice.rule.key} options={choice.manifest.rules.map((r) => r.key)} onChange={choice.setRule}
+            optionLabel={(k) => choice.manifest!.rules.find((r) => r.key === k)?.label ?? k} />
+          <CountPicker label="Analogs" value={choice.n} min={choice.manifest.n_min} max={choice.manifest.n_max} onChange={choice.setN} noun="analogs" verb="fit the calibration on" />
+        </>}
         {canPool && <Segmented label="IMPROVE filters" value={pop as any} options={POPULATIONS} onChange={setPop as any} />}
         {a.vol && <Segmented label="Units" value={units as any} options={UNITS} onChange={setUnits as any} />}
         <Select label="IMPROVE colour" value={colorBy} options={[...COLOR_BY]} onChange={setColorBy} optionLabel={(v) => (v === 'grey' ? 'Grey' : v)} />
       </>}>
       <MeetingCalibrationDetails fit={calibrationFit} />
-      {/* all four panels on one EC range, always (Panel axes fixed at Shared): the IMPROVE and Addis loadings compare by eye */}
-      <PanelGroup share mode="Shared">
+      {waiting ? <LoadState what="that calibration" error={choice.error} command="uv run --no-sync python gallery/data/export_analog_ladder.py" />
+        : unfitted ? <Empty>No calibration at this count: the top {unfitted.n} come from fewer than five sites, so site-grouped cross-validation cannot run. Raise the count.</Empty> : <>
+      {/* the three IMPROVE panels share one EC range and Addis has its own (Panel axes fixed at Per site): on one range the IMPROVE filters collapse into the corner */}
+      <PanelGroup share mode="Per site">
       <div className="plot-groups">
         <section className="plot-group improve">
           <h3>
             {pooled ? 'Every held-out IMPROVE filter' : 'IMPROVE analogs only'} {baselineTag}
+            {choice.view && <em className="baseline-tag">{choice.rule?.label} · top {choice.view.n}</em>}
             <span>{seasonal
               ? `cross-validation · ${seasonName} analogs from sites held out of the season's calibration set`
               : pooled ? `cross-validation · all IMPROVE filters at sites held out of the ${modelLabel(fam).toLowerCase()} calibration set, not only the analogs`
               : `cross-validation · the ${seasonName} analogs at sites held out of the ${modelLabel(fam).toLowerCase()} calibration set`}</span>
           </h3>
           <Panels label="IMPROVE crossplots" letters={false} gap={10} panels={[
-            { key: 'tor-hips', min: 200, render: () => <Crossplot title="TOR EC vs HIPS" points={torHips} errorRatio={q('tor_vs_fabs')?.deming_lambda} xLabel={hipsLabel} yLabel={ecAxis('tor', unit)} /> },
-            { key: 'ftir-tor', min: 200, render: () => <Crossplot title="FTIR EC vs TOR EC" points={ftirTor} errorRatio={q('ftir_vs_tor')?.deming_lambda} xLabel={ecAxis('tor', unit)} yLabel={ecAxis('ftir', unit)} /> },
-            { key: 'ftir-hips', min: 200, render: () => <Crossplot title="FTIR EC vs HIPS" points={ftirHips} errorRatio={q('ftir_vs_fabs')?.deming_lambda} xLabel={hipsLabel} yLabel={ecAxis('ftir', unit)} /> },
+            { key: 'tor-hips', site: 'IMPROVE', min: 200, render: () => <Crossplot title="TOR EC vs HIPS" points={torHips} errorRatio={macLambda(ratio('tor_vs_fabs'))} xLabel={hipsLabel} yLabel={ecAxis('tor', unit)} /> },
+            { key: 'ftir-tor', site: 'IMPROVE', min: 200, render: () => <Crossplot title="FTIR EC vs TOR EC" points={ftirTor} errorRatio={ratio('ftir_vs_tor')} xLabel={ecAxis('tor', unit)} yLabel={ecAxis('ftir', unit)} /> },
+            { key: 'ftir-hips', site: 'IMPROVE', min: 200, render: () => <Crossplot title="FTIR EC vs HIPS" points={ftirHips} errorRatio={macLambda(ratio('ftir_vs_fabs'))} xLabel={hipsLabel} yLabel={ecAxis('ftir', unit)} /> },
           ]} />
         </section>
         <section className="plot-group addis">
           <h3>
             Test set: Addis {baselineTag}
           </h3>
-          <Crossplot title={`Addis ${seasonPhrase(season)}: FTIR vs HIPS`} points={addis} errorRatio={sAd?.deming_lambda ?? data.summary.lambda} xLabel={hipsLabel} yLabel={ecAxis('ftir', unit)} />
+          <PanelSlot panelKey="addis" site="Addis Ababa">
+            <Crossplot title={`Addis ${seasonPhrase(season)}: FTIR vs HIPS`} points={addis} errorRatio={macLambda(sAd?.deming_lambda ?? data.summary.lambda)} xLabel={hipsLabel} yLabel={ecAxis('ftir', unit)} />
+          </PanelSlot>
         </section>
       </div>
       </PanelGroup>
+      </>}
+      {seasonal && choice.rule && <ExplainOnly><Note>Analogs: {choice.rule.note}. Each count and rule is its own PLS fit under the same protocol as the saved calibrations (site-grouped split, k by the protocol's rule), so the top 87 are not the top 500's points filtered down{choice.view ? '. The season table and the spectra below stay on the saved top 500' : ''}. One split at one size is fragile: neighbouring counts can land on a different k.</Note></ExplainOnly>}
       <Key items={[
         ...(colorBy === 'grey' ? [{ label: pooled ? 'every held-out IMPROVE filter' : `IMPROVE analogs of ${isAllAddis(season) ? 'all Addis' : shortSeason(season)}, cross-validation sites`, color: IMPROVE_GREY }] : []),
         ...(isAllAddis(season)
@@ -827,12 +875,12 @@ function ThreePlots({ data }: { data: MeetingData }) {
         {colorBy === 'OC/EC' && <ColorLegend scale={ocScale} scheme={ocColours.scheme} label="IMPROVE: TOR OC/EC" width={200} format={(v) => fmt(v, 0)} />}
       </Key>
       {perFilter && <ExplainOnly><Note>Mass per filter = concentration × sampled air volume, filter by filter. IMPROVE samples about 33 m³ per filter, SPARTAN at Addis about 7 m³, so Addis is far less extreme in mass than in concentration: its median HIPS loading is about 9× the IMPROVE median (41× in µg/m³), though still above IMPROVE's 99th percentile. Fit lines are refitted on the converted points with the same error ratio.</Note></ExplainOnly>}
-      <SpectraPanel data={data} method={method} group={season} />
+      <SpectraPanel data={saved} method={method} group={season} />
       <ExplainOnly>
-        <AcrossSeasons data={data} fitPrefix={seasonal ? `seasonal|${method}|locked` : fitId} seasonal={seasonal} />
+        <AcrossSeasons data={saved} fitPrefix={seasonal ? `seasonal|${method}|locked` : fitId} seasonal={seasonal} />
       </ExplainOnly>
       {colorBy !== 'grey' && <ExplainOnly><Note>{colorBy === 'OP fraction' ? `OP fraction = OPTR / (EC + OPTR), ${opColours.name}${opColours.reverse ? ' reversed' : ''} 0.1 → 0.8.` : `TOR OC/EC, log ${ocColours.name}${ocColours.reverse ? ' reversed' : ''} 1.5 → 12.`} Grey: missing.</Note></ExplainOnly>}
-      {q('tor_vs_fabs') && <ExplainOnly><Note>TOR EC vs Fabs/10 slope {coef(q('tor_vs_fabs')?.deming_slope)} implies MAC ≈ {f2(q('tor_vs_fabs')?.implied_mac_deming)} m²/g (Deming); median Fabs/EC ratio {f2(q('tor_vs_fabs')?.mac_ratio_median)}, at the {f2(q('tor_vs_fabs')?.mac_percentile_median)}th percentile of the IMPROVE pool.</Note></ExplainOnly>}
+      {!choice.view && q('tor_vs_fabs') && <ExplainOnly><Note>TOR EC vs Fabs/10 slope {coef(q('tor_vs_fabs')?.deming_slope)} implies MAC ≈ {f2(q('tor_vs_fabs')?.implied_mac_deming)} m²/g (Deming); median Fabs/EC ratio {f2(q('tor_vs_fabs')?.mac_ratio_median)}, at the {f2(q('tor_vs_fabs')?.mac_percentile_median)}th percentile of the IMPROVE pool.</Note></ExplainOnly>}
     </ChartFrame>
   )
 }

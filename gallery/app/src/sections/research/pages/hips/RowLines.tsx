@@ -1,4 +1,4 @@
-import { ChartFrame } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Crossplot, crossSpan, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { Key } from '@/components/Key'
@@ -7,9 +7,9 @@ import { ExcludedNote } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 
 import { lineKey, rSuppression } from '../../common/blankLines'
-import type { Optics } from '../../common/optics'
+import { OPTICS_SITES, type Optics } from '../../common/optics'
 import { quantile } from '@/lib/stats'
-import { line, point } from '../../common/ui'
+import { SitesNote, line, point } from '../../common/ui'
 import { refOf, type LinePalette } from './lines'
 import { useMarkedPairs } from './marked'
 import type { Paired } from './TauViews'
@@ -20,9 +20,10 @@ const keyOf = (o: Optics) => { const ref = refOf(o); return ref ? lineKey(ref) :
 /**
  * warren_meeting_slides [30] (slide 10c): per site, raw R1 against T1 with every filter on the calibration line it
  * was reduced with (T1 = Intercept + Slope·R1). The red marker is the site's median sample; the bar runs from it to
- * the R1 its line expects at that T1, and the shortfall is the median R suppression.
+ * the R1 its line expects at that T1, and the shortfall is the median R suppression. The lines are in the optics export
+ * only: `sites` are the focus sites in view, `others` the sites in view it cannot draw.
  */
-export function RowLines({ pairs, blanks, sites, palette, colorOfSite }: { pairs: Paired[]; blanks: Optics[]; sites: string[]; palette: LinePalette; colorOfSite: (s: string) => string }) {
+export function RowLines({ pairs, blanks, sites, others, palette, colorOfSite }: { pairs: Paired[]; blanks: Optics[]; sites: string[]; others: string[]; palette: LinePalette; colorOfSite: (s: string) => string }) {
   // Filters → excluded: Mark: each site's excluded samples on their line, as ×; in no median, count or axis range
   const markedAll = useMarkedPairs()
   const sample = (p: Paired) => point(p.r, p.o.R1!, p.o.T1!, palette.color(keyOf(p.o)), 'R1', 'T1', 'Research · HIPS optics', [`line ${palette.label(keyOf(p.o))}`, `tau ${fmt(p.o.tau, 3)}`])
@@ -49,7 +50,7 @@ export function RowLines({ pairs, blanks, sites, palette, colorOfSite }: { pairs
       subtitle="Samples filled and field blanks hollow, both coloured by the deployed line they were reduced with; each line present at the site is drawn as T1 = Intercept + Slope·R1. The red diamond is the site's median sample and the bar runs to the R1 its line expects at that T1: the median R suppression, (1 − R1 / R1 expected). Shared axes, as the notebook's 2 × 2."
       provenance={`${WARREN_NB} [30] (slide 10c, per-site R1/T1 against each row's line)`}>
       {/* shared axes, always, as the notebook's 2 × 2 (the panel group, Panel axes fixed at Shared) */}
-      <FacetGrid items={facets} minCell={280} title={(f) => f.s} itemKey={(f) => f.s} mode="Shared"
+      {!facets.length ? <Empty>No filter in view has a deployed calibration line: pick {OPTICS_SITES} under Samples.</Empty> : <FacetGrid items={facets} minCell={280} title={(f) => f.s} itemKey={(f) => f.s} mode="Shared"
         share={{ x: (u) => crossSpan([...u, ...medX]), y: (u) => crossSpan([...u, ...medY]) }} note={(f) => (f.med ? `R suppression ${fmt(f.med.pct, 0)} % · tau ${fmt(f.med.tau, 2)}` : '')} render={(f, w) => (
         <div style={{ width: w }}>
           <Crossplot sameScale={false} fit={false} maxSide={w - 72}
@@ -63,11 +64,12 @@ export function RowLines({ pairs, blanks, sites, palette, colorOfSite }: { pairs
             </g>}
             points={f.points} marked={f.marked} />
         </div>
-      )} />
-      <Key items={[...used.map((k) => ({ label: palette.label(k), color: palette.color(k), kind: 'dash' as const })), { label: 'field blank', color: INK.muted, kind: 'hollow' as const },
-        { label: 'median sample → R1 its line expects', color: INK.negative, kind: 'diamond' as const }]} />
+      )} />}
+      {facets.length > 0 && <Key items={[...used.map((k) => ({ label: palette.label(k), color: palette.color(k), kind: 'dash' as const })), { label: 'field blank', color: INK.muted, kind: 'hollow' as const },
+        { label: 'median sample → R1 its line expects', color: INK.negative, kind: 'diamond' as const }]} />}
       <ExcludedNote count={facets.reduce((a, f) => a + f.marked.length, 0)} drawn />
-      <p className="chart-note">Here colour is the calibration line, not the site. {facets.map((f, i) => <span key={f.s}>{i ? ' · ' : ''}<span style={{ color: colorOfSite(f.s), fontWeight: 600 }}>{f.s}</span>: {f.keys.length} line{f.keys.length === 1 ? '' : 's'}{f.med ? `, median R1 ${fmt(f.med.R1, 0)} where its line expects ${fmt(f.med.rExp, 0)}` : ''}</span>)}.</p>
+      <SitesNote sites={others} why="the deployed calibration lines are in the HIPS optics export only, so this chart stays on the four focus sites" />
+      {facets.length > 0 && <p className="chart-note">Here colour is the calibration line, not the site. {facets.map((f, i) => <span key={f.s}>{i ? ' · ' : ''}<span style={{ color: colorOfSite(f.s), fontWeight: 600 }}>{f.s}</span>: {f.keys.length} line{f.keys.length === 1 ? '' : 's'}{f.med ? `, median R1 ${fmt(f.med.R1, 0)} where its line expects ${fmt(f.med.rExp, 0)}` : ''}</span>)}.</p>}
     </ChartFrame>
   )
 }

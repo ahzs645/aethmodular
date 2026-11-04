@@ -71,9 +71,9 @@ def _year_path(cache: Path, code: str, year: int) -> Path:
     return Path(cache) / code / f"{year}.parquet"
 
 
-def _request(lat: float, lon: float, start: str, end: str) -> dict:
+def _request(lat: float, lon: float, start: str, end: str, variable: str = "boundary_layer_height") -> dict:
     query = urllib.parse.urlencode({"latitude": f"{lat:.4f}", "longitude": f"{lon:.4f}", "start_date": start,
-                                    "end_date": end, "hourly": "boundary_layer_height", "models": MODEL,
+                                    "end_date": end, "hourly": variable, "models": MODEL,
                                     "timezone": "UTC"})
     for attempt in range(6):
         try:

@@ -29,7 +29,7 @@ const kOf = (label: unknown) => Number(/k=(\d+)/.exec(String(label))?.[1] ?? NaN
  * against HIPS follow the MAC set under Plot → units (slope × MAC/10); RMSE follows it through the evaluation
  * set's HIPS BC mean and variance, which calibration_runs.json's per-filter Fabs give exactly (lib/mac rmseAtMac);
  * intercepts do not move. A residual correlation or spread needs the per-filter residuals and stays at MAC 10.
- * Filters → excluded acts on the AIRSpec crossplot only (its per-filter predictions, by filter id); the tables are
+ * Filters → excluded acts on the crossplots by spectra only (their per-filter predictions, by filter id); the tables are
  * the notebooks' on their fixed Addis sets (FixedSetNote in the intro).
  */
 export function Protocols(_props: SectionPageProps) {
@@ -66,7 +66,11 @@ export function Protocols(_props: SectionPageProps) {
   // explorer: every cohort × spectra under the three protocols, at the rule k (calibration.json grid)
   const strip = useMemo(() => (calib ? ruleRows(calib) : []), [calib])
   // ftir_13 [17]'s per-filter predictions, split by Filters → excluded (ExternalFilterId "ETAD-0017-1" → "ETAD-0017")
-  const airspecRows = useMemo(() => (data ? rows(data, 'airspec_filters') : []), [data])
+  // and the raw and VIBES refits of the same two calibrations, joined by filter
+  const airspecRows = useMemo(() => {
+    const refits = new Map(rows(data, 'spectra_filters').map((r) => [String(r.ExternalFilterId), r]))
+    return rows(data, 'airspec_filters').map((r): Row => ({ ...refits.get(String(r.ExternalFilterId)), ...r }))
+  }, [data])
   const airspecSplit = useExclusionSplit(airspecRows, (r) => String(r.ExternalFilterId).replace(/-\d+$/, ''))
   const stripAt = strip.map((r): Row => ({ ...r, slope: m.slope(num(r.slope10), 10), rmseAt: rmseAt(r.slope10, r.intercept, r.rmse) }))
 
@@ -131,15 +135,24 @@ export function Protocols(_props: SectionPageProps) {
       RMSE: native ? (num(r.RMSE) == null ? null : (num(r.RMSE) as number) * c) : rmseAt(r.slope, r.intercept, r.RMSE, set) }
   })
 
-  // ftir_13 [17]: the tracked per-filter AIRSpec predictions, every panel at the reader's MAC
-  const COLS: [string, string, string][] = [['lowest-OCEC 800, AIRSpec df1=6', 'Lowest-OC/EC (800)', 'df1 = 6'], ['Smoke 906, AIRSpec df1=6', 'Biomass-smoke (906)', 'df1 = 6'],
-    ['lowest-OCEC 800, AIRSpec df1=8', 'Lowest-OC/EC (800)', 'df1 = 8'], ['Smoke 906, AIRSpec df1=8', 'Biomass-smoke (906)', 'df1 = 8']]
+  // ftir_13 [17] by spectra, every panel at the reader's MAC: one panel per spectra type, each named with the k its
+  // rule took. AIRSpec is the tracked per-filter file (k = 5 on both calibrations at both df1); raw and VIBES are the
+  // same setup refitted (research/ftir_hips_chem/workflows/run_ftir13_spectra_20261104.py).
+  const CALIBRATIONS = [['lowest-OCEC 800', 'Lowest-OC/EC (800)'], ['Smoke 906', 'Biomass-smoke (906)']]
+  const refitK = (cohort: string, spectra: string) => rows(data, 'spectra_fits').find((r) => r.cohort === cohort && r.spectra === spectra
+    && r.filters === (spectra === 'VIBES' ? 'VIBES-covered' : 'cohort'))?.k
+  const panelsOf = (cohort: string, df1: number): [string, string][] => [
+    [`${cohort}, raw`, `No baseline (raw), k = ${refitK(cohort, 'raw')}`],
+    [`${cohort}, AIRSpec df1=${df1}`, 'AIRSpec, k = 5'],
+    [`${cohort}, VIBES`, `VIBES, k = ${refitK(cohort, 'VIBES')}`],
+  ]
   const sets = fixedIds ? ['fixed 190 (as drawn)', 'all 239'] : ['all 239']
   const airspecOf = (src: Row[]) => src.flatMap((r) => {
     const fabs = num(r.Fabs), id = String(r.ExternalFilterId), base = id.replace(/-\d+$/, '')
     if (fabs == null) return []
-    return COLS.flatMap(([col, calibration, baseline]) => sets.filter((s) => s === 'all 239' || fixedIds?.has(base))
-      .map((set): Row => ({ id, calibration, baseline, set, x: fabs / m.mac, y: num(r[col]) })))
+    return CALIBRATIONS.flatMap(([cohort, calibration]) => [6, 8].flatMap((df1) => panelsOf(cohort, df1).flatMap(([col, spectra]) =>
+      num(r[col]) == null ? [] : sets.filter((s) => s === 'all 239' || fixedIds?.has(base))
+        .map((set): Row => ({ id, calibration, baseline: `df1 = ${df1}`, spectra, set, x: fabs / m.mac, y: num(r[col]) })))))
   })
   const airspec = airspecOf(airspecSplit.counted)
   // the excluded filters, built the same way, drawn as × by the Figure's crossplot (never fitted)
@@ -165,7 +178,7 @@ export function Protocols(_props: SectionPageProps) {
         Drawn elsewhere: the cohort-size sweep at every N under each protocol (<a href="#tab=calibration">Calibration tab</a>), the MAC pivot
         (ftir_22 [18]; <a href="#tab=research&amp;aep=mac-choice">MAC 6 vs 10</a>), ftir_51's protocol swing (<a href="#tab=research&amp;aep=generalise">Does it generalise</a>)
         and the provisional offset's bootstrap (<a href="#tab=research&amp;aep=provisional-ec">Provisional Addis EC</a>).</p>
-      <FixedSetNote subject="this page" what="the notebooks' tables, on their own fixed Addis filters (the AIRSpec crossplot, drawn per filter, follows the switch)" />
+      <FixedSetNote subject="this page" what="the notebooks' tables, on their own fixed Addis filters (the crossplots by spectra, drawn per filter, follow the switch)" />
     </PageIntro>
 
     {stripAt.length > 0 && <Figure kind="intervals" id="ml-protocols-strip" data={stripAt} row="cohort" series="protocol" colors={PROTOCOL_COLOR}
@@ -251,12 +264,12 @@ export function Protocols(_props: SectionPageProps) {
       subtitle="Trained on IMPROVE filters' HIPS absorption and applied to Addis: baseline correction does not rescue the transfer. In Fabs units, so it does not depend on the MAC."
       provenance={provenance(data, ['hips_transfer'])} />
 
-    {airspec.length > 0 && <Figure kind="crossplot" id="ml-protocols-airspec" data={airspec} markedData={airspecMarked} x="x" y="y" facet="calibration" idColumn="id"
-      choose={[{ column: 'baseline', label: 'AIRSpec baseline' }, { column: 'set', label: 'Filters' }]}
+    {airspec.length > 0 && <Figure kind="crossplot" id="ml-protocols-airspec" data={airspec} markedData={airspecMarked} x="x" y="y" facet="spectra" idColumn="id"
+      choose={[{ column: 'calibration', label: 'Calibration' }, { column: 'baseline', label: 'AIRSpec baseline' }, { column: 'set', label: 'Filters' }]}
       xLabel={`HIPS Fabs / ${m.mac} (µg/m³)`} yLabel="Predicted EC (µg/m³)" sameScale
-      title="AIRSpec crossplots (ftir_13 [17]) — on AIRSpec spectra both calibrations flatten at Addis; the Smoke-906 model reads nearly flat"
-      subtitle={`Each Addis filter's prediction from the AIRSpec-corrected Lowest-OC/EC (800) and Biomass-smoke (906) calibrations against HIPS Fabs/${m.mac}; the fit line is the gallery's estimator. The OC/EC panel is the Calibration tab's ocec800_airspec preset; the Smoke-906 panel is in no other export. df1 = 8 changes nothing visible. The fixed 190 are the filters the notebook drew (they need calibration_runs.json; all 239 otherwise).`}
-      provenance={provenance(data, ['airspec_filters'])} aside={<ExcludedNote count={airspecSplit.marked.length} drawn />} />}
+      title="Crossplots by spectra (ftir_13 [17]) — AIRSpec alone flattens the OC/EC calibration at Addis; VIBES stays near raw, and the smoke slope follows its k"
+      subtitle={`Each Addis filter's prediction from one calibration against HIPS Fabs/${m.mac}, in ftir_13's setup with only the spectra changed: same cohorts, TOR target, seed and component rule, OC/EC fitted on its site-disjoint training side and smoke on every filter. Each panel names the k its rule took. Raw reproduces ftir_11's OC/EC filter by filter. VIBES is full range (4000–500 cm⁻¹) and has 762 of the 800 OC/EC and 887 of the 906 smoke filters; the rest are field blanks or unverified filters, which the VIBES run left out and which change little at a fixed k. Its six PM10 Addis filters come from the 19 Oct network run. The smoke CV curves are noisy, so the rule's k is fragile: raw smoke drops from k = 7 to k = 3 without those 19 filters. The OC/EC AIRSpec panel is the Calibration tab's ocec800_airspec preset. df1 = 8 changes nothing visible. The fixed 190 are the filters the notebook drew (they need calibration_runs.json; all 239 otherwise).`}
+      provenance={provenance(data, ['airspec_filters', 'spectra_filters', 'spectra_fits'])} aside={<ExcludedNote count={airspecSplit.marked.length} drawn />} />}
 
     {explain && <Figure kind="table" id="ml-protocols-index" data={rows(data, 'figure_index')}
       columns={[{ key: 'notebook', label: 'Notebook' }, { key: 'original figure', label: 'Original figure' }, { key: 'sensitivity', label: 'Depends on k?' }, { key: 'updated version', label: 'Protocol-checked version' }]}

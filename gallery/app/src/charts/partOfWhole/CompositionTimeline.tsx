@@ -11,6 +11,8 @@ import { fmt } from '@/lib/stats'
 import { num } from '@/lib/table'
 import { pct as pctOf } from '@/lib/format'
 import { fitsWidth } from '@/lib/fitLabel'
+import { rightAxisDomain } from '@/lib/axes'
+import { dotRim } from '@/lib/highlight'
 import { FONT, INK, MARGIN } from '@/lib/theme'
 import { useFitHeight } from '@/lib/chartFit'
 import { useSingleView } from '@/lib/singleView'
@@ -22,12 +24,21 @@ export type TimeShape = (typeof TIME_SHAPES)[number]
 export const TIME_AXES = ['Calendar dates', 'Seasons side by side'] as const
 export type TimeAxis = (typeof TIME_AXES)[number]
 const DAY = 86_400_000
+/** how a second variable is drawn over the stack, against the right axis */
+export const RIGHT_MARKS = ['Points', 'Line'] as const
+export type RightMark = (typeof RIGHT_MARKS)[number]
+/** one more variable on each filter, drawn over the stack on its own axis: its field, its name and unit, the axis title, its colour */
+export interface RightVariable { field: string; label: string; unit: string; title: string; mark: RightMark; color: string }
+/** room for the right axis's ticks and title */
+const RIGHT_MARGIN = 62
 /** a season's next occurrence starts after a sampling gap this long (a season is a few months; its next year's is ~a year on) */
 const SEASON_BREAK = 150 * DAY
 /** px between two season blocks */
 const SEG_GAP = 10
 /** FacetGrid's default gap between two panels */
 const FACET_GAP = 16
+/** a right-axis tick: no trailing zeros, no exponent short of a million */
+const RIGHT_TICK = (v: number) => d3.format('~g')(v)
 /** the reader's panel size (Panel size): each panel's width and height in px, 0 for Auto */
 export interface TimelineSize { w: number; h: number }
 export const TIMELINE_W: [number, number] = [400, 12000]
@@ -118,6 +129,10 @@ function seasonSegments(points: TimePoint[], seasons: readonly SeasonMeta[]): { 
  * adds nothing to its stack (the tooltip names it). Negative values stack as zero. An area is broken
  * across a sampling gap rather than drawn through it.
  *
+ * `right` draws one more variable (the sampling window's precipitation, any measurement) over the stack on a
+ * right-hand axis of its own, each filter's value at its own date; a filter without it draws nothing there. The
+ * axis's range follows Panel axes, as the left one's does.
+ *
  * Seasons side by side (`timeAxis`) cuts the date axis into one block per season occurrence (Belg 2023,
  * Belg 2024 …), each as wide as its own dates, grouped by season and then by year, with the months between
  * dropped: filter a single season in the sidebar to read it year over year. Each panel keeps its own blocks.
@@ -126,7 +141,7 @@ function seasonSegments(points: TimePoint[], seasons: readonly SeasonMeta[]): { 
  * rects, each with handlers and the `.animated` transition), and one transparent rect over the plot answers the
  * pointer with the nearest sampling day, as the areas always did.
  */
-export function CompositionTimeline({ rows, sites, species, color, dim, pct, share, shape, timeAxis = 'Calendar dates', completeOnly, sharedAxes, seasonsFor, strip = false, size = { w: 0, h: 0 }, tip, units, itemNoun, onRecord, extraTip }: {
+export function CompositionTimeline({ rows, sites, species, color, dim, pct, share, shape, timeAxis = 'Calendar dates', completeOnly, sharedAxes, seasonsFor, strip = false, size = { w: 0, h: 0 }, right = null, tip, units, itemNoun, onRecord, extraTip }: {
   rows: FilterRow[]
   sites: { name: string; color: string }[]
   /** bottom of the stack first */
@@ -144,6 +159,8 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
   strip?: boolean
   /** the reader's panel size (0 for Auto): wider than the chart, the panels scroll sideways together */
   size?: TimelineSize
+  /** a second variable over the stack, on a right-hand axis */
+  right?: RightVariable | null
   tip: ReturnType<typeof useTooltip>
   units: string
   itemNoun: string
@@ -189,6 +206,9 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
   ]
   const xAll = d3.extent(panels.flatMap((p) => p.points), (p) => p.d) as [Date, Date]
   const yAll: [number, number] = [d3.min(panels, (p) => yExtent(p)[0]) ?? 0, d3.max(panels, (p) => yExtent(p)[1]) ?? 1]
+  const rightOf = (q: TimePoint) => (right ? num(q.row[right.field]) : null)
+  const rightValues = (ps: TimePoint[]) => ps.map(rightOf).filter((v): v is number => v !== null)
+  const rightAll = rightValues(panels.flatMap((p) => p.points))
   const several = panels.length > 1
   const autoH = timelineAutoHeight(fit, panels.length, single)
 
@@ -199,11 +219,15 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
     <FacetGrid items={panels} maxCols={1} minCell={240}
       title={several ? (p) => p.site : undefined}
       label={(p) => p.site}
-      note={(p) => p.points.length < p.nRows ? `${p.points.length} of ${p.nRows} filters` : `${p.points.length} filters`}
+      note={(p) => {
+        const n = p.points.length < p.nRows ? `${p.points.length} of ${p.nRows} filters` : `${p.points.length} filters`
+        const withRight = rightValues(p.points).length
+        return right && withRight < p.points.length ? `${n}, ${withRight} with ${right.label}` : n
+      }}
       render={(p, cellW, i) => {
         const width = size.w || cellW
         const height = size.h || autoH
-        const innerW = Math.max(200, width - MARGIN.left - MARGIN.right)
+        const innerW = Math.max(200, width - MARGIN.left - (right ? RIGHT_MARGIN : MARGIN.right))
         const innerH = Math.max(60, height - MARGIN.top - MARGIN.bottom)
         const x = d3.scaleTime().domain(sharedAxes ? xAll : (d3.extent(p.points, (q) => q.d) as [Date, Date])).range([0, innerW])
         // seasons side by side: each block as wide as its dates (half a day either side of its first and last), at one px per day
@@ -219,6 +243,8 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
         const [lo, hi] = sharedAxes ? yAll : yExtent(p)
         const y = d3.scaleLinear().domain([lo, hi * (stream || pct ? 1 : 1.02)]).range([innerH, 0]).nice()
         const area = d3.area<d3.SeriesPoint<TimePoint>>().x((d) => px(d.data)).y0((d) => y(d[0])).y1((d) => y(d[1])).curve(d3.curveMonotoneX)
+        const rightDomain = rightAxisDomain(sharedAxes ? rightAll : rightValues(p.points))
+        const yRight = rightDomain && d3.scaleLinear().domain(rightDomain).range([innerH, 0]).nice()
         const bands: SeasonBand[] = !strip ? [] : bySeason
           ? segs.map((g, k) => ({ x: segX[k], w: segW(k), color: g.color, name: g.name }))
           : timeSeasonBands(x, p.seasons, innerW)
@@ -226,6 +252,9 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
         // a bar per sampling day: three-quarters of the typical spacing between samples, so gaps read as gaps
         const spacing = d3.median(p.points.slice(1).filter((q, j) => q.seg === p.points[j].seg).map((q, j) => px(q) - px(p.points[j]))) ?? 6
         const barW = Math.max(1.5, Math.min(18, spacing * 0.75, 3 * pxPerDay))
+        // a dot as big as the sampling leaves room for: years of filters in one panel would otherwise hide the stack under them
+        const rightR = Math.max(1.6, Math.min(right?.mark === 'Line' ? 1.8 : 3, spacing * 0.6))
+        const rightLine = yRight && d3.line<TimePoint>().defined((q) => rightOf(q) !== null).x(px).y((q) => yRight(rightOf(q) ?? 0))
         // the area breaks across a sampling gap (four times the usual spacing, a month at least) instead of drawing through it
         const gapMs = Math.max(30 * DAY, 4 * (d3.median(p.points.slice(1).map((q, j) => +q.d - +p.points[j].d)) ?? DAY))
         const runs: [number, number][] = []
@@ -246,6 +275,7 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
             const other = pct ? (c !== null ? ` (${fmt(c, 2)} ${units})` : '') : sh != null ? ` (${pctOf(sh, 1)})` : ''
             return q.missing.includes(f) ? `${f}: not measured` : `${f}: ${shown}${other}`
           }),
+          ...(right ? [`${right.label}: ${rightOf(q) === null ? 'not available' : `${fmt(rightOf(q), 2)}${right.unit ? ` ${right.unit}` : ''}`}`] : []),
           ...(extraTip?.(q.row) ?? []),
           'click for the filter record',
         ]
@@ -293,6 +323,17 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
                   onMouseLeave={tip.hide}
                   onClick={(e) => { const q = nearestTo(e); if (q) { e.stopPropagation(); onRecord(q, seasonOf(q)) } }} />
               </g>
+              {/* over the stack and outside its clip, so a value at either end of the axis keeps its whole dot; the hit rect still answers */}
+              {right && yRight && rightLine && (
+                <g pointerEvents="none">
+                  <YAxis scale={yRight} x={innerW} side="right" wrapLabel label={right.title} format={RIGHT_TICK} />
+                  {right.mark === 'Line' && <path d={runs.map(([a, b]) => rightLine(p.points.slice(a, b)) ?? '').join('')} fill="none" stroke={right.color} strokeWidth={1.4} strokeLinejoin="round" />}
+                  {p.points.map((q, j) => {
+                    const v = rightOf(q)
+                    return v === null ? null : <circle key={j} cx={px(q)} cy={yRight(v)} r={rightR} fill={right.color} {...dotRim()} />
+                  })}
+                </g>
+              )}
             </g>
           </svg>
         )

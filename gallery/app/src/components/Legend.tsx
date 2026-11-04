@@ -3,6 +3,9 @@ import { chemText } from '@/lib/format'
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { usePrefs } from '@/lib/prefs'
 import { useChartLabel, useFitHeight, useTileLegend } from '@/lib/chartFit'
+import { useExportRender } from '@/lib/exportRender'
+import { orderBy } from '@/lib/legendOrder'
+import { useLegendOrder } from '@/lib/legendOrderPrefs'
 
 /**
  * The event that holds a legend's hovered view (detail: an item's label, or null to let go), dispatched on the chart's
@@ -72,7 +75,14 @@ export function Legend({
   group?: boolean
 }) {
   const label = useChartLabel()
-  const displayItems = items.filter(it => label(it.label))
+  const [root, setRoot] = useState<HTMLDivElement | null>(null)
+  // the order set in the export dialog (lib/legendOrder): for the file while the dialog is open, on the page if asked.
+  // A sorted copy, so nothing the chart draws from changes
+  const panel = root?.closest<HTMLElement>('section.panel') ?? null
+  const saved = useLegendOrder(panel?.dataset.chartKey)
+  const drawing = useExportRender()
+  const order = saved && (saved.page || drawing?.panel === panel) ? saved.order : undefined
+  const displayItems = orderBy(items.filter(it => label(it.label)), order, (it) => it.label)
   const method = useEstimator()
   const { explain } = usePrefs()
   const live = !!(onToggle || onHover)
@@ -82,7 +92,6 @@ export function Legend({
   const [all, setAll] = useState(false)
   // a held hover (LEGEND_FOCUS, or shift-click): leaving an item goes back to it rather than to none
   const [pinned, setPinned] = useState<string | null>(null)
-  const [root, setRoot] = useState<HTMLDivElement | null>(null)
   const live$ = useRef({ onHover, items, pinned })
   live$.current = { onHover, items, pinned }
   const pin = (l: string | null) => { setPinned(l); live$.current.onHover?.(l) }
@@ -128,7 +137,7 @@ export function Legend({
     return (
       <span
         key={it.label}
-        data-export-series={it.label} data-export-color={it.color}
+        data-export-series={it.label} data-export-color={it.color} data-legend-text={relabel(text)}
         className={cls}
         onClick={click}
         onKeyDown={onToggle ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(it.label) } } : undefined}

@@ -15,7 +15,7 @@ import {
   CONSTRUCTION_LABEL, exposeSamples, fitBlankLines, lineBreakdown, lineKey, lineLabel, networkLines, polyval, poolLots, recomputeCheck, siteExposure,
   type BlankLine, type BlankPoint, type Construction, type NetworkBlankLine, type SamplePoint,
 } from '../common/blankLines'
-import { useOptics, OPTICS_COMMAND, type Optics } from '../common/optics'
+import { useOptics, OPTICS_COMMAND, OPTICS_SITES, type Optics } from '../common/optics'
 import { DataTable, SitePick, useSite } from '../common/ui'
 import { curvePath, linePalette, refOf } from './hips/lines'
 import { useCalibRuns } from './spectralCommon'
@@ -55,7 +55,9 @@ export function BlankLines({ rows }: SectionPageProps) {
   const [set, setSet] = useSearchParam<BlankSet>('bl.set', 'network', ['network', 'focus'])
   const [withSamples, setWithSamples] = useSearchParam<'0' | '1'>('bl.samples', '0', ['0', '1'])
   const [cons, setCons] = useSearchParam<Exclude<Construction, 'deployed'>>('bl.cons', 'line_quad', ['line_lin', 'line_quad', 'lot_quad'])
-  const [site, setSite, sites] = useSite(rows, 'bl')
+  // bl-fabs can draw only a site the optics export holds, so the site control offers no other
+  const opticsRows = useMemo(() => { if (!optics) return rows; const held = new Set(optics.map((o) => o.code)); return rows.filter((r) => held.has(r.code)) }, [rows, optics])
+  const [site, setSite, sites] = useSite(opticsRows, 'bl')
 
   const ids = useMemo(() => new Set(rows.map((r) => r.id)), [rows])
   // Filters → excluded: Mark (lib/markedRows): the excluded samples in view, drawn as × on the R1 crossplots and
@@ -231,11 +233,11 @@ export function BlankLines({ rows }: SectionPageProps) {
         </>}
       </ChartFrame>
 
-      <ChartFrame id="bl-fabs" title={`The Fabs each line implies — ${site}`}
+      <ChartFrame id="bl-fabs" title={`The Fabs each line implies — ${site || 'no site in view'}`}
         subtitle={`Each sample's Fabs recomputed as 100·ln(top / T1)·A / V with top the chosen curve at its R1 (its own line's refit, or its lot's pooled quadratic), minus the shipped deployed-line Fabs, against R1 and coloured by line; the bars along the top are each line's blank R1 range, so a sample left of its bar is heavier than any blank its line was fitted on. The table gives the median Fabs per line under every construction (ftir_47's Pasadena breakdown, for any site). Fabs in Mm⁻¹, before any MAC. ${setNote}`}
         provenance={`${NB47} [16] (pasadena_per_line_breakdown.csv) and §2`}
         controls={<><SitePick value={site} options={sites} onChange={setSite} /><Segmented label="Recomputed with" value={cons} options={['line_lin', 'line_quad', 'lot_quad'] as const} onChange={setCons} optionLabel={(o) => CONSTRUCTION_LABEL[o]} />{setControl}</>}>
-        {!siteExps.length ? <Empty>No {site} samples in view with a deployed line, a shipped Fabs and a sampled volume.</Empty> : <>
+        {!siteExps.length ? <Empty>No {site} samples in view with a deployed line, a shipped Fabs and a sampled volume: pick {OPTICS_SITES} under Samples.</Empty> : <>
           {!fabsPts.length ? <Empty>No {site} sample is on a line with a {CONSTRUCTION_LABEL[cons]} refit under the {SET_LABEL[set]}.</Empty> :
             <Crossplot sameScale={false} fit={false} maxSide={520} domain={[Math.floor((r1Lo - 5) / 10) * 10, Math.ceil((r1Hi + 5) / 10) * 10]} yDomain={[-dMax, dMax]}
               title={`${fabsPts.length} of ${siteExps.length} samples recomputed`} xLabel="Sample R1 (counts)" yLabel={`ΔFabs, ${CONSTRUCTION_LABEL[cons]} − deployed (Mm⁻¹)`}

@@ -144,11 +144,14 @@ export function YAxis({
   labelX,
   wrapLabel = false,
   pick,
+  side = 'left',
 }: {
   scale: AnyScale
   x: number
   label?: string
   wrapLabel?: boolean
+  /** which side of the plot the axis is on: on 'right' the ticks, labels and title face outwards from `x`, the title reading downwards */
+  side?: 'left' | 'right'
   /** the shared field this axis shows; its title then opens a field picker (AxisFieldPopover) */
   pick?: AxisRole
   tickCount?: number
@@ -179,7 +182,9 @@ export function YAxis({
   }, [tickText]) // eslint-disable-line react-hooks/exhaustive-deps
   const spread = titleLines.length > 1 ? ((titleLines.length - 1) / 2) * 14 : 0
   // never further out than the 50 px the charts' left margins allow for
-  const titleX = labelX ?? (tickW === null ? x - 50 : Math.max(x - 50, x - 9 - tickW - 15 - spread))
+  const out = side === 'right' ? 1 : -1
+  const titleOut = tickW === null ? 50 : Math.min(50, 9 + tickW + 15 + spread)
+  const titleX = labelX ?? x + out * titleOut
   return (
     <g fontFamily={FONT.family}>
       <line x1={x} x2={x} y1={y0} y2={y1} stroke={INK.axis} strokeWidth={1} />
@@ -189,8 +194,8 @@ export function YAxis({
           {gridWidth ? (
             <line x1={gridFrom ?? x} x2={(gridFrom ?? x) + gridWidth} stroke={INK.grid} strokeWidth={1} />
           ) : null}
-          <line x1={x - 5} x2={x} stroke={INK.axis} />
-          <text x={x - 9} dy="0.32em" textAnchor="end" fontSize={11} fill={INK.muted}>
+          <line x1={x + out * 5} x2={x} stroke={INK.axis} />
+          <text x={x + out * 9} dy="0.32em" textAnchor={side === 'right' ? 'start' : 'end'} fontSize={11} fill={INK.muted}>
             {format ? format(v) : String(v)}
           </text>
         </g>
@@ -199,7 +204,7 @@ export function YAxis({
       {label && (
         <AxisTitle pick={pick}>
           <text
-            transform={`translate(${titleX},${(y0 + y1) / 2}) rotate(-90)`}
+            transform={`translate(${titleX},${(y0 + y1) / 2}) rotate(${side === 'right' ? 90 : -90})`}
             textAnchor="middle"
             fontSize={12}
             fontWeight={600}

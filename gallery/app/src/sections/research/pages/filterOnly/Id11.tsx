@@ -15,17 +15,17 @@ import type { MetaFile } from '@/lib/types'
 import { usePageSite } from '@/lib/siteFocus'
 import { id11Sensitivity, type Id11Row } from '../../common/filterOnly'
 import { Grid, SitePick } from '../../common/ui'
-import { FoExcludedNote, NB_PROP, SITES, SOURCE, barLayer, popLabel, shortQ, siteColor, type Settings, type SiteRun } from './data'
+import { FoExcludedNote, NB_PROP, NO_FILTERS, SITES, SOURCE, barLayer, popLabel, shortQ, siteColor, type Settings, type SiteRun } from './data'
 
 const GREY = '#8a8a8a'
 
 function useId11(runs: SiteRun[], s: Settings, meta: MetaFile): [string, (v: string) => void, Id11Row[]] {
-  // the gallery's page site (lib/siteFocus; `fo.id11.site` from older links), among the four release sites
-  const sites = useMemo(() => SITES.map((name) => ({ name, code: meta.sites.find((x) => x.name === name)?.code ?? name })), [meta.sites])
+  // the gallery's page site (lib/siteFocus; `fo.id11.site` from older links), among the release sites in Samples
+  const sites = useMemo(() => runs.map((r) => ({ name: r.site, code: meta.sites.find((x) => x.name === r.site)?.code ?? r.site })), [runs, meta.sites])
   const pick = usePageSite(sites, { legacy: ['fo.id11.site'] })
-  const site = pick.site?.name ?? SITES[0]
+  const site = pick.site?.name ?? runs[0]?.site ?? SITES[0]
   const setSite = (name: string) => pick.set(sites.find((x) => x.name === name)?.code ?? name)
-  const rows = useMemo(() => { const r = runs.find((x) => x.site === site)!; return id11Sensitivity(r.later, r.cohort, s.minTrain) }, [runs, site, s.minTrain])
+  const rows = useMemo(() => { const r = runs.find((x) => x.site === site); return r ? id11Sensitivity(r.later, r.cohort, s.minTrain) : [] }, [runs, site, s.minTrain])
   return [site, setSite, rows]
 }
 
@@ -47,7 +47,7 @@ export function Id11Errors({ runs, s, meta }: { runs: SiteRun[]; s: Settings; me
       subtitle={`${site} · ${popLabel(s.population)} population · later period · OLS with intercept · identifier and date stay confounded`}
       provenance={<>{NB_PROP} figure 06 (Addis)</>} source={`${SOURCE}/Id11.tsx › Id11Errors`}
       tip={<>At the release's settings (with Filters → excluded: Include) the same 127 later Addis ID-11 filters are compared under both choices: OLS MAE falls from 4.009 to 3.884 Mm⁻¹ and mean error from +1.621 to +0.619 Mm⁻¹. It is a bounded predictive sensitivity; because ID 11 begins on a date, the change cannot be attributed to a model change. No residual means are subtracted.</>}
-      controls={<SitePick value={site} options={SITES} onChange={setSite} />}>
+      controls={<SitePick value={site} options={runs.map((r) => r.site)} onChange={setSite} />}>
       {common.length ? <>
         <Key items={[{ label: 'All earlier training', color: GREY, kind: 'dash' }, { label: 'Earlier ID 11 only', color, kind: 'line' }]} />
         <Grid min={320}>
@@ -55,7 +55,7 @@ export function Id11Errors({ runs, s, meta }: { runs: SiteRun[]; s: Settings; me
           <SweepPlot series={series('mse')} xScale="point" height={240} xFormat={shortQ} yLabel={`Mean signed error (${s.u})`} reference={0} />
         </Grid>
         <Note>{nCommon} common filters in {common.length} quarters: MAE {fmt(pool('all', 'mae') * s.k, 3)} → {fmt(pool('id11', 'mae') * s.k, 3)} {s.u}, mean error {signed(pool('all', 'mse') * s.k, 3)} → {signed(pool('id11', 'mse') * s.k, 3)}.</Note>
-      </> : <Empty>No later quarter at {site} has ID-11 test filters with both training choices fitted.</Empty>}
+      </> : <Empty>{runs.length ? `No later quarter at ${site} has ID-11 test filters with both training choices fitted.` : NO_FILTERS}</Empty>}
       <FoExcludedNote s={s} site={site} />
     </ChartFrame>
   )
@@ -76,7 +76,8 @@ export function Id11Support({ runs, s, meta }: { runs: SiteRun[]; s: Settings; m
       subtitle={`${site} · ${popLabel(s.population)} population · later period · a quarter is compared only when both training choices meet the same minimum (${s.minTrain})`}
       provenance={<>{NB_PROP} figure 07 (Addis)</>} source={`${SOURCE}/Id11.tsx › Id11Support`}
       tip={<>At the release's settings (with Filters → excluded: Include) the first two Addis ID-11 test quarters cannot be compared; common support begins in 2023Q3 and covers five quarters. Compare those same filters, not the earlier 155-filter later-period aggregate.</>}
-      controls={<SitePick value={site} options={SITES} onChange={setSite} />}>
+      controls={<SitePick value={site} options={runs.map((r) => r.site)} onChange={setSite} />}>
+      {!runs.length ? <Empty>{NO_FILTERS}</Empty> : <>
       <Key items={[{ label: 'All earlier', color: GREY, kind: 'dash' }, { label: 'Earlier ID 11', color, kind: 'line' }, { label: 'Test quarter compared', color, kind: 'bar' }, { label: 'Not compared', color, kind: 'faded' }]} />
       <Grid min={320}>
         <SweepPlot series={train} xScale="point" height={240} xFormat={shortQ} yLabel="Training filters" include={[0]} yMarkers={[{ at: s.minTrain, label: `minimum ${s.minTrain}`, color: INK.muted }]} />
@@ -85,6 +86,7 @@ export function Id11Support({ runs, s, meta }: { runs: SiteRun[]; s: Settings; m
           children={({ x, ih }) => <g>{rows.filter((r) => r.testN && !r.common).map((r) => <text key={r.block} x={(x as ScalePoint<string>)(r.block) ?? 0} y={ih - 4} textAnchor="middle" fontSize={9} fill={INK.muted}>NA</text>)}</g>} />
       </Grid>
       <Note>{first ? `Common support begins in ${first.block} and covers ${rows.filter((r) => r.common).length} quarters.` : 'No quarter is supported under both choices.'}</Note>
+      </>}
       <FoExcludedNote s={s} site={site} />
     </ChartFrame>
   )

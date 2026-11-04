@@ -5,14 +5,17 @@
  * (calibration_runs.json), and the intro panel that says what each page reproduces,
  * where every table was read from, and what a Drive re-run would add.
  */
-import { type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { ChartFrame } from '@/components/ChartFrame'
 import { ExportState } from '@/components/ExportState'
 import { useCalibrationRuns } from '@/lib/calibrationFiles'
 import { useExport } from '@/lib/data'
+import { usePlaceFilter } from '@/lib/markedRows'
 import { Markdown } from '@/lib/markdown'
 import { usePrefs } from '@/lib/prefs'
 import { rowsOf, type Row, type Table } from '@/lib/table'
+import type { CalibRunsFile, FilterRow, MetaFile } from '@/lib/types'
+import { useSiteNames } from '../common/ui'
 
 export interface SpectralSource { table: string; rows: number; notebook: string; read: string; path: string; cell?: string; source_export_generated?: string }
 export interface SpectralMissing { table: string; what: string; needs: string; run: string; after?: string | null }
@@ -43,6 +46,29 @@ export const rows = (data: SpectralExport | null, name: string): Row[] => rowsOf
 export function useCalibRuns() {
   const { data, error } = useCalibrationRuns()
   return { runs: data, error }
+}
+
+/**
+ * Does Samples (sites, dates, calendar, season chips, PMF pick) leave a filter of a calibration_runs target in view?
+ * Its site is the target's and its date the run's eval.date, so the many explorer filters with no gallery row follow it
+ * too (lib/markedRows usePlaceFilter, the placement inside useSampleSplit: a page's runs are looped over in its fits,
+ * so it reads this with useCountedFilter, by index). Every saved eval is dated; an undated one is out.
+ */
+export function useRunPlace(runs: CalibRunsFile | null, rows: readonly FilterRow[], meta: MetaFile): (target: string, date: string | null | undefined) => boolean {
+  const place = usePlaceFilter()
+  const names = useSiteNames(rows, meta)
+  return useMemo(() => {
+    // a chart asks for every filter of every preset, on every render of its legend
+    const seen = new Map<string, boolean>()
+    return (target, date) => {
+      const code = runs?.targets[target]?.code
+      if (!code || !date) return false
+      const key = `${code}|${date}`
+      let ok = seen.get(key)
+      if (ok === undefined) seen.set(key, ok = place(names(code), code, date, Number(date.slice(5, 7))) !== null)
+      return ok
+    }
+  }, [runs, place, names])
 }
 
 /** The provenance line: the notebooks a chart stands in for, and where its numbers were read. */

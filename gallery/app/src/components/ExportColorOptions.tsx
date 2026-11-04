@@ -155,7 +155,7 @@ export function ColorPopover({ anchor, onClose, children, title = 'Colors', labe
   // Keep the popover inside the export dialog's accessible modal, outside its scrolling settings.
   return createPortal(<div ref={box} className="export-color-popover" role="dialog" aria-label={label}
     style={pos ?? { left: 0, top: 0, visibility: 'hidden' }}>
-    <header><strong>{title}</strong><button type="button" className="btn quiet x-btn" aria-label="Close color options" title="Close colors (Esc)"
+    <header><strong>{title}</strong><button type="button" className="btn quiet x-btn" aria-label={`Close ${title.toLowerCase()}`} title={`Close ${title.toLowerCase()} (Esc)`}
       onClick={() => { onClose(); anchor.focus() }}><XIcon /></button></header>
     <div className="export-color-popover-body">{children}</div>
     <footer><button type="button" className="btn" onClick={() => { onClose(); anchor.focus() }}>Done</button></footer>

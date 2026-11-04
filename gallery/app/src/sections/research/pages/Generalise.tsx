@@ -3,6 +3,7 @@ import { meanBcFromResidual, meanResidualAtMac, useMac } from '@/lib/mac'
 import { FixedSetNote } from '@/lib/markedRows'
 import { num, type Row } from '@/lib/table'
 import type { SectionPageProps } from '../../types'
+import { PICK_SAVED_SITE, samplesCodes, savedSiteCode, savedSites } from '../common/savedSites'
 import { PageIntro, provenance, rows, useSpectral, Waiting } from './spectralCommon'
 
 const ci = (r: Row, v: string, se: string): Row => {
@@ -15,13 +16,16 @@ const ci = (r: Row, v: string, se: string): Row => {
  * calibrations applied unchanged to five SPARTAN sites, Bishoftu's replication, and the two
  * deck lessons restated precisely. Every number is the executed notebook's table, at HIPS Fabs/10;
  * slopes (and their SEs) follow the MAC set under Plot → units. That is exact for OLS, and for York
- * too, since σx = σFabs/MAC rescales with x (lib/mac); intercepts do not move.
+ * too, since σx = σFabs/MAC rescales with x (lib/mac); intercepts do not move. The per-site figures keep the sites
+ * picked under Samples; the numbers themselves are the notebook's whatever else Samples says.
  */
-export function Generalise(_props: SectionPageProps) {
+export function Generalise({ picked, rows: viewRows }: SectionPageProps) {
   const { data, error } = useSpectral('committee')
   const m = useMac()
   if (!data) return <Waiting error={error} />
-  const five = rows(data, 'five_site').map((r): Row => {
+  const codes = samplesCodes(picked, viewRows)
+  const fiveSites = savedSites(rows(data, 'five_site'), codes, (r) => r.site)
+  const five = fiveSites.map((r): Row => {
     const at = { ...r, slope: m.slope(num(r.slope), 10), slope_se: m.slope(num(r.slope_se), 10) }
     return { ...at, ...ci(at, 'intercept', 'intercept_se'), ...ci(at, 'slope', 'slope_se'), site: `${r.site} (n = ${r.n_used})` }
   })
@@ -40,7 +44,8 @@ export function Generalise(_props: SectionPageProps) {
     <Figure kind="intervals" id="generalise-five" data={five} row="site" series="config"
       panels={[{ value: 'intercept', lo: 'intercept_lo', hi: 'intercept_hi', label: 'Intercept (µg/m³; ±1.96 SE)', reference: 0 },
         { value: 'slope', lo: 'slope_lo', hi: 'slope_hi', label: `Slope vs Fabs/${m.mac} (±1.96 SE)`, reference: 1 }]} labelWidth={170}
-      title="Five sites, one calibration — the intercept anomaly is Addis (and Delhi), the slope anomalies are Delhi and JPL"
+      title={`${new Set(fiveSites.map((r) => savedSiteCode(r.site))).size === 5 ? 'Five sites, one calibration' : 'One calibration, the sites in view'} — the intercept anomaly is Addis (and Delhi), the slope anomalies are Delhi and JPL`}
+      empty={PICK_SAVED_SITE}
       subtitle="York (errors-in-variables) fits of each locked configuration's predictions against HIPS with the per-deployed-line quadratic blank line (ftir_47), all matched filters per site. Near-zero intercepts at Bishoftu, Beijing and JPL; Delhi's intercept is poorly determined, so do not call it Addis-sized without its SE."
       provenance={provenance(data, ['five_site'])} />
 
@@ -62,7 +67,7 @@ export function Generalise(_props: SectionPageProps) {
       subtitle="ftir_51's seven variants (Option A, MAC 10). The Provisional Addis EC page draws the same ratio for the gallery's nine explorer presets."
       provenance={provenance(data, ['kiremt_dry'])} />
 
-    <Figure kind="intervals" id="generalise-mass" data={rows(data, 'mass_term')} row="site"
+    <Figure kind="intervals" id="generalise-mass" data={savedSites(rows(data, 'mass_term'), codes, (r) => r.site)} row="site" empty={PICK_SAVED_SITE}
       panels={[{ value: 'mass_coef_addis_range', lo: 'mass_coef_addis_range_lo', hi: 'mass_coef_addis_range_hi', label: 'HIPS Fabs per unit filter mass at fixed FTIR EC (bootstrap 95 %)', reference: 0 }]} labelWidth={220}
       title="Speaker-notes backup — Ethiopian filters carry two to three times the mass term of the other sites"
       subtitle="ftir_46: the coefficient on gravimetric mass in Fabs ~ f(X) + mass, with the locked Lowest-OC/EC 800 × spline-baseline f(X), inside the Addis loading range. A within-project result; keep it in notes, not on a slide."

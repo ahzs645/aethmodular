@@ -9,9 +9,10 @@ import { useSystemDark } from '@/lib/colorTheme'
 import { useParamScope } from '@/lib/url'
 import { useFloatingMenu } from '@/hooks/useFloatingMenu'
 import { AsideSlotCtx, TILE_CORNER_WIDTH, TILE_FIT_MODES, TileStatsCtx, type TileFitMode, ChartAside, SingleViewNav, SingleViewStats, StatsInPlotCtx, useSingleView } from '@/lib/singleView'
-import type { StatsPlace } from '@/lib/chartDisplay'
+import type { ControlsSide, StatsPlace } from '@/lib/chartDisplay'
 import { useExportRender } from '@/lib/exportRender'
 import { FrameSlotProvider, useFrameSlot } from '@/lib/frameControls'
+import { HOVER_CARD_ATTR, HoverCardContext } from '@/lib/highlight'
 
 // the option controls live in Controls.tsx; re-exported so the many imports from ChartFrame keep working
 export { Select, Segmented, Toggle, sentence } from '@/components/Controls'
@@ -58,7 +59,9 @@ export function ChartFrame({
   source,
   about,
   statsPlace,
+  controlsSide,
   pageOnly = false,
+  hoverCard,
 }: {
   /** "Short name — longer clause": only the short name shows unless explaining */
   title: string
@@ -79,9 +82,17 @@ export function ChartFrame({
   about?: ReactNode
   /** where this chart's fit statistics go in the single-chart view unless the viewer set it for this chart; else the shared setting */
   statsPlace?: StatsPlace
+  /** where this chart's options sit unless the viewer set it for this chart; else the shared setting. A tile and the single-chart view keep their own placement */
+  controlsSide?: ControlsSide
   /** a summary of the page's settings rather than a chart: the single-chart view does not step to it, and hides it */
   pageOnly?: boolean
+  /** this card's id for the linked hover, for a chart that reads the hover above this frame (lib/highlight useHighlight); default: its own */
+  hoverCard?: string
 }) {
+  const ownCard = useId()
+  // a hovered filter lights up the charts of this card only (lib/highlight)
+  const card = hoverCard ?? ownCard
+  const cardAttrs = { [HOVER_CARD_ATTR]: card }
   const method = useEstimator()
   const extras = useContext(FrameExtrasContext)
   // inside a Dashboard tile the anchor carries the tile's prefix: two tiles, two ids
@@ -120,7 +131,8 @@ export function ChartFrame({
   // its notes and readouts go to the stats box too, except while an export copies the chart (they belong in the file)
   const exportRender = useExportRender()
   const asideSlot = inView && !(exportRender && exportRender.panel === ref.current) ? single.slot : null
-  const side = own?.controlsSide ?? (inView ? single.side : display.controlsSide)
+  const ownSide = compact ? undefined : controlsSide
+  const side = own?.controlsSide ?? (inView ? single.side : ownSide ?? display.controlsSide)
   const stats = own?.statsPlace ?? statsPlace ?? display.statsPlace ?? 'options'
   const info = EXPLAIN_AVAILABLE && (own?.explain ?? explain)
   const readable = (own?.density ?? density) === 'readable'
@@ -131,7 +143,7 @@ export function ChartFrame({
     '--text-scale': readable ? 1.15 : 1,
     '--chart-text-scale': readable ? 1.12 : 1,
   } as CSSProperties
-  const displayAttrs = { 'data-chart-key': chartKey, 'data-chart-title': short, 'data-stats-place': stats, 'data-chart-theme': theme, 'data-chart-explain': info ? '1' : '0', style: appearance }
+  const displayAttrs = { 'data-chart-key': chartKey, 'data-chart-title': short, 'data-controls-default': ownSide, 'data-stats-place': stats, 'data-chart-theme': theme, 'data-chart-explain': info ? '1' : '0', style: appearance }
   // focus mode: this chart alone, centred over the page with its options; `focus=<key>` in the URL, so a copied link
   // reopens it exactly as it is (every other setting already lives in the URL)
   const focusKey = anchor ?? slug(short)
@@ -147,8 +159,8 @@ export function ChartFrame({
   const fitMode = extras?.fitStats?.mode ?? 'corner'
   const tileNotes = compact && !tileExporting ? noteBox : null
   const tileStats = !compact || tileExporting ? null : fitMode === 'corner' ? statsBox : fitMode === 'beside' ? sideBox : null
-  if (compact) return (<FrameSlotProvider value={hoist.value}>
-    <section className="panel compact" ref={ref} id={anchor} {...displayAttrs}>
+  if (compact) return (<HoverCardContext.Provider value={card}><FrameSlotProvider value={hoist.value}>
+    <section className="panel compact" ref={ref} id={anchor} {...cardAttrs} {...displayAttrs}>
       {/* "About this chart" in the ⋯ menu follows Explain like every other explanation: off by default */}
       <TileMenu name={short} extras={extras!} about={info && hasInfo ? <>{rest && <p>{rest}</p>}{about && <div className="frame-about">{about}</div>}{subtitle && <p className="subtitle">{subtitle}</p>}{provenance && <p className="provenance">{provenance}</p>}</> : null}
         tip={tip} onNoteBox={setNoteBox} onStatsBox={setStatsBox} controls={side === 'top' ? allControls : null} export={exportable ? <ExportButton panelRef={ref} title={short} /> : null} onCopyRef={copyRef} copied={refCopied} />
@@ -162,7 +174,7 @@ export function ChartFrame({
         </div>
       </div>
     </section>
-  </FrameSlotProvider>)
+  </FrameSlotProvider></HoverCardContext.Provider>)
   // single-chart view with its options in a column: the title bar heads that column, so the plot takes the panel's full height
   const headInColumn = inView && !!controls && side !== 'top' && !focused
   const head = (
@@ -202,9 +214,9 @@ export function ChartFrame({
       </div>
     </header>
   )
-  return (<FrameSlotProvider value={hoist.value}>
+  return (<HoverCardContext.Provider value={card}><FrameSlotProvider value={hoist.value}>
     {focused && <div className="focus-scrim" onClick={() => setFocused(false)} />}
-    <section className={`panel${focused ? ' focused' : ''}`} ref={ref} id={anchor} {...(pageOnly ? {} : { 'data-frame': '', 'data-frame-title': short, 'data-frame-key': focusKey })} {...displayAttrs}>{/* data-frame: a chart the single-chart view steps through (lib/singleView) */}
+    <section className={`panel${focused ? ' focused' : ''}`} ref={ref} id={anchor} {...(pageOnly ? {} : { 'data-frame': '', 'data-frame-title': short, 'data-frame-key': focusKey })} {...cardAttrs} {...displayAttrs}>{/* data-frame: a chart the single-chart view steps through (lib/singleView) */}
       {!headInColumn && head}
       {/* the fit statistics in single-chart view: at the head of an options column, else above the options row */}
       {inView && (!controls || side === 'top') && <SingleViewStats />}
@@ -215,7 +227,7 @@ export function ChartFrame({
         <div className="frame-chart"><AsideSlotCtx.Provider value={asideSlot}><StatsInPlotCtx.Provider value={stats === 'plot'}>{children}</StatsInPlotCtx.Provider></AsideSlotCtx.Provider></div>
       </div>
     </section>
-  </FrameSlotProvider>)
+  </FrameSlotProvider></HoverCardContext.Provider>)
 }
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48)

@@ -97,6 +97,21 @@ export function useExclusionSplit<T>(items: readonly T[], idOf: (t: T) => string
   }, [items, mode, counts]) // eslint-disable-line react-hooks/exhaustive-deps
 }
 
+/**
+ * Per-filter items that are not gallery rows, through every Samples setting: the sites, date range and season chips
+ * (usePlaceFilter), then Filters → excluded (useExclusionSplit). `at` gives an item's filter id, site name, site code
+ * and sampling date (YYYY-MM-DD). An item with no date gets null from `at` and stays out. Keep `at` stable: it is a
+ * dependency, so a join that loads later is picked up.
+ */
+export function useSampleSplit<T>(items: readonly T[], at: (t: T) => { id: string | null | undefined; site: string; code: string; date: string } | null): { counted: T[]; marked: T[]; nOut: number } {
+  const place = usePlaceFilter()
+  const inView = useMemo(() => items.filter((t) => {
+    const a = at(t)
+    return !!a && place(a.site, a.code, a.date, Number(a.date.slice(5, 7))) !== null
+  }), [items, at, place])
+  return useExclusionSplit(inView, (t) => at(t)?.id)
+}
+
 /** one excluded filter drawn as a × at plot pixels `at` (components/ScatterLayer); `tip` is its hover */
 export interface MarkPoint { id: string; at: readonly [number, number]; tip: string[] }
 

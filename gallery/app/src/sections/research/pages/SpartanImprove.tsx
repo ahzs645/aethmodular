@@ -22,8 +22,14 @@ const color = (net: unknown) => (net === 'SPARTAN' ? SPARTAN : IMPROVE_GREY)
  * SPARTAN against IMPROVE on the quantities both networks carry (EC, OC, fAbs, iron, PM2.5) as one set of
  * panels: distributions, the volume-free ratios (OC/EC, fAbs/EC ≈ MAC, Fe/PM2.5), per-network fits, and the
  * IMPROVE sites whose fAbs/EC and OC/EC sit closest to Addis. From the notebooks' saved tables.
+ *
+ * The SPARTAN side stays saved: no chart here can be redrawn from `rows` on the page's preset. The page's rows hide the
+ * export's exclusions and hold 251 public filters filters.json lacks, so fAbs is 722 filters against the saved 546 (median
+ * 26.35 against 18.62) and the fAbs ~ EC slope 7.75 against 5.67. filters.json alone reaches si-dist only with the
+ * exclusions counted, and si-ratios and si-fits under neither setting. So Samples acts here only on si-analogs, through
+ * any IMPROVE site picked.
  */
-export function SpartanImprove(_props: SectionPageProps) {
+export function SpartanImprove({ rows }: SectionPageProps) {
   const { data, error } = useExport<Tables>('research/spartan_improve/tables.json')
   if (error || !data) return <ChartFrame id="si-missing" title="SPARTAN against IMPROVE" provenance={NB}><LoadState error={error} failed={<>Not exported ({error}). Run <code>{COMMAND}</code>.</>} /></ChartFrame>
   const t = data.tables
@@ -37,6 +43,8 @@ export function SpartanImprove(_props: SectionPageProps) {
   const ratioRows: IntervalRow[] = nets.map((net) => ({ key: net, label: net, labelColor: color(net),
     marks: ratioNames.map((q) => { const r = t.ratios.find((d) => d.network === net && d.ratio === q); return r ? [{ mid: n(r.median), lo: n(r.p25), hi: n(r.p75), color: color(net) }] : [] }) }))
   const unitOf = (q: string) => String(t.distribution.find((d) => d.quantity === q)?.units ?? '')
+  // the IMPROVE sites picked under Samples, where they are on the list; else the whole list
+  const pickedAnalogs = t.analogs.filter((a) => rows.some((r) => r.code === a.SiteCode))
   return (
     <>
       <ChartFrame id="si-dist" title="The shared parameters, network against network — median, IQR and p05–p95"
@@ -81,7 +89,7 @@ export function SpartanImprove(_props: SectionPageProps) {
       <ChartFrame id="si-analogs" title="IMPROVE sites that look like Addis — fAbs/EC and OC/EC by site, nearest first"
         subtitle="Each IMPROVE site's median fAbs/EC and OC/EC, and its distance to Addis in those two (scaled) coordinates. Mostly urban eastern sites; several were discontinued before the FED export carries flow, so they drop out of the mass-on-filter figures."
         provenance={FOLLOW} exportable={false}>
-        <DataTable rows={t.analogs} rowKey={(r) => String(r.SiteCode)} columns={[
+        <DataTable rows={pickedAnalogs.length ? pickedAnalogs : t.analogs} rowKey={(r) => String(r.SiteCode)} columns={[
           { key: 'c', label: 'Site', value: (r) => `${r.SiteName ?? ''} (${r.SiteCode}${r.State ? `, ${r.State}` : ''})` }, { key: 'n', label: 'n', num: true, value: (r) => n(r.n)?.toLocaleString() ?? '—' },
           { key: 'f', label: 'Median fAbs / EC', num: true, value: (r) => fmt(r.Fabs_EC_med, 2) }, { key: 'o', label: 'Median OC / EC', num: true, value: (r) => fmt(r.OC_EC_med, 2) },
           { key: 'd', label: 'Distance to Addis', num: true, value: (r) => fmt(r.dist_to_ETAD, 2) }]} />

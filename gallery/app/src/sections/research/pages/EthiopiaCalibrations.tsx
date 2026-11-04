@@ -7,7 +7,7 @@ import { num, type Row } from '@/lib/table'
 import type { SectionPageProps } from '../../types'
 import { PageIntro, provenance, rows, useSpectral, Waiting } from './spectralCommon'
 import { AdamaFigures } from './ethiopia/Adama'
-import { ComponentSweep, LotsPaired, VariantsVsCal0, scanTip, useEtadSpectra } from './ethiopia/Paired'
+import { ComponentSweep, LotsPaired, NO_SPECTRA, VariantsVsCal0, scanTip, useEtadSpectra } from './ethiopia/Paired'
 import { scansOf } from './ethiopia/variants'
 import { CleaningResiduals } from './ethiopia/Residuals'
 import { SmokeFigures } from './ethiopia/Smoke'
@@ -18,7 +18,8 @@ import { AdamaSpectra, BandProfile, DerivativeSpectra, EtadSpectra, SpectraMissi
  * 15) and the cleaning explainer they rest on (research/spartan_ec_2026_06_16/08), plus the June notebooks that
  * draw spectra rather than models (01, 04, 06 [21], 13 [9]; ethiopia/Spectra, from the Drive's spectra) and the
  * paired views of the per-spectrum EC (07 [11], 09 [12] C, 10 [12] B; ethiopia/Paired). Their per-spectrum
- * ETAD EC tables are tracked, so every calibration's Addis EC is drawn per filter and against HIPS.
+ * ETAD EC tables are tracked, so every calibration's Addis EC is drawn per filter and against HIPS, for the spectra
+ * Samples leaves in view (their dates come from etad_spectra_meta; at this page's preset, all 319, undated ones included).
  * The notebooks used HIPS Fabs/10; the HIPS axis and the saved slopes follow the MAC set under
  * Plot → units (lib/mac: x rescales, slopes scale by MAC/10, intercepts and R² stay).
  * Also: SPARTAN's lot-251 biomass tool calibration at Addis (July07, spartan_ec 02; ethiopia/Smoke, joined to
@@ -28,8 +29,8 @@ import { AdamaSpectra, BandProfile, DerivativeSpectra, EtadSpectra, SpectraMissi
 export function EthiopiaCalibrations({ rows: galleryRows }: SectionPageProps) {
   const { data, error } = useSpectral('ethiopia_calibrations')
   const m = useMac()
-  // Filters → excluded acts on the ETAD spectra by filter id: the distributions and counts use the spectra that count;
-  // the crossplots get every spectrum and Crossplot leaves out (or under Mark crosses) the rest
+  // Samples acts on the ETAD spectra by date, Filters → excluded by filter id: the distributions and counts use the
+  // spectra in view that count; the crossplots get every spectrum in view and Crossplot leaves out (or under Mark crosses) the rest
   const etad = useEtadSpectra(data)
 
   // the export keeps one row per spectrum and one column per calibration; the figures want one row per point
@@ -63,23 +64,24 @@ export function EthiopiaCalibrations({ rows: galleryRows }: SectionPageProps) {
     <PageIntro id="ethiopia-intro" title="Ethiopia (ETAD) EC under the June 2026 calibrations — which samples, how many components, which lots" data={data}
       notebooks="research/ftir_ec_calibration_2026_06_25/01_adama_spectra, 02_adama_tor_vs_ftir, 03_adama_char_soot, 04_ethiopia_etad_spectra, 06_calibration_variants_components [12], [21], 07_ethiopia_variant_ec, 08_adama_hips_crossplots, 09_ethiopia_component_ec, 10_ethiopia_ec_both_lots, 12_dedicated_ethiopia_calibration, 13_chase_origin_and_biomass [9], 15_downstream_recommended_calibration; research/spartan_ec_2026_06_16/02_biomass_calibration_comparison, 03_adama_han_char_soot, 05_calibration_optimization, 07_calibration_optimization_story, 08_outlier_removal_explainer; research/July07/regular_before_cal0_vs_smoke_hips, regular_vs_smoke_ec_vs_hips">
       <p>All of these apply PLS calibrations trained on IMPROVE to the 319 ETAD spectra of 296 filters (22 filters scanned two or three times; one point per spectrum, as the notebooks do, and a filter's scans ring together on hover). None has an Ethiopian thermal EC reference: they are judged by agreement with HIPS Fabs/MAC (the notebooks: MAC 10; here the MAC set under Plot → units, now {m.mac}) and by physical sense. Notebook 07 left the HIPS comparison as a to-do; the crossplots here add it from the HIPS Fabs carried in notebook 15's table.</p>
-      <FixedSetNote subject="each saved-table chart (the variants' HIPS fits, training-set medians, progression, mean spectra, Adama and cleaning figures)" what="the notebooks' saved statistics (the charts of the 319 ETAD spectra and of the gallery's Addis rows follow it)" />
+      <FixedSetNote subject="each saved-table chart (the variants' HIPS fits, training-set medians, progression, mean spectra, Adama and cleaning figures)" what="the notebooks' saved statistics (the charts of the ETAD spectra and of the gallery's Addis rows follow it, as they follow Samples)" />
       <p>A naming hazard runs through the July07 and spartan_ec notebooks: their "regular CAL-0" is the 906-filter IMPROVE set (the set the gallery's "Biomass-smoke (906)" calibration preset trains on), while their "smoke" or "biomass tool" calibration is a different model, the coefficients SPARTAN's calibration tool exported for filter lot 251. The page names them that way. The only thermal EC in Ethiopia is the five Adama quartz filters, read against every calibration below.</p>
     </PageIntro>
 
     <Figure kind="intervals" id="ethiopia-dist" data={counted} row="calibration" block="family"
       panels={[{ value: 'EC', label: 'Predicted ETAD EC (µg/m³; median and IQR over spectra)', reference: 0 }]} labelWidth={300}
-      title="How far the calibration choice moves the Ethiopia EC — about 2× by sample choice, up to 5× by component count"
+      title={etad.narrowed ? `How far the calibration choice moves the Ethiopia EC — the ${etad.all.length} spectra in these Samples` : 'How far the calibration choice moves the Ethiopia EC — about 2× by sample choice, up to 5× by component count'}
       subtitle={`07: the 906-filter IMPROVE set at k = 20, kept whole (CAL-0), 3σ-cleaned (CAL-1), or cut to sub-populations; CAL-2 and CAL-4 are tiny-sample fits that predict negative EC (${negative('07')} negative spectra in 07) and are diagnostics, not candidates. 09: the whole set at six component counts. 10: the 935-filter export spanning both ETAD filter lots. 15: the old calibration against the validated lot-248+251 mirror.`}
-      provenance={provenance(data, ['per_filter', 'calibrations'])} aside={<ExcludedNote count={etad.marked} />} />
+      provenance={provenance(data, ['per_filter', 'calibrations'])} empty={NO_SPECTRA} aside={<ExcludedNote count={etad.marked} />} />
 
     <VariantsVsCal0 data={data} />
     <ComponentSweep data={data} />
 
     <Figure kind="crossplot" id="ethiopia-hips" data={points} x="HIPS" y="EC" idColumn="id" tipColumns={['scan']} choose={[{ column: 'which', label: 'Calibration', default: '15 · recommended — NEW lot-248+251, flag-filtered, k10' }]}
       xLabel={`HIPS Fabs / ${m.mac} (µg/m³)`} yLabel="Predicted FTIR EC (µg/m³)" maxSide={460} errorRatio={m.lambda}
-      title="Each calibration against HIPS — the old set is steep and offset, the lot-248+251 mirror moves toward 1:1"
-      subtitle={`ETAD spectra with a HIPS Fabs, against Fabs ÷ ${m.mac} (the MAC set under Plot → units; the notebooks used 10). The notebooks fitted OLS (08's table below; 15: 2.27x − 5.25 old, about 1.2x − 2.2 new, at MAC 10); the line here is the gallery's estimator on the same points, Deming with the explorer's λ at this MAC (${f2(m.lambda)}).`}
+      title={etad.narrowed ? `Each calibration against HIPS — the ${etad.all.length} spectra in these Samples` : 'Each calibration against HIPS — the old set is steep and offset, the lot-248+251 mirror moves toward 1:1'}
+      empty={NO_SPECTRA}
+      subtitle={`ETAD spectra with a HIPS Fabs, against Fabs ÷ ${m.mac} (the MAC set under Plot → units; the notebooks used 10). The notebooks fitted OLS${etad.narrowed ? ' on all their spectra' : ''} (08's table below; 15: 2.27x − 5.25 old, about 1.2x − 2.2 new, at MAC 10); the line here is the gallery's estimator on the same points, Deming with the explorer's λ at this MAC (${f2(m.lambda)}).`}
       provenance={provenance(data, ['per_filter'])} />
 
     <Figure kind="table" id="ethiopia-variant-fits" data={atMac(rows(data, 'variant_hips_fits'))}

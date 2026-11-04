@@ -1,13 +1,15 @@
 /**
  * Filters → excluded: Mark (lib/markedRows) for the hips/ views. HipsEnvelope hands them the counted filters only, so
  * each view joins the excluded filters in view to their optics row here, the way the page joins its own (µg/m³
- * whatever the basis), and draws them as × on its crossplots, in no fit, median or count.
+ * whatever the basis; a site the export does not hold through its stand-in, common/envelope opticsJoin), and draws
+ * them as × on its crossplots, in no fit, median or count.
  */
 import { useMemo } from 'react'
 import { useMarkedRows } from '@/lib/markedRows'
 import type { MetaFile } from '@/lib/types'
 import { readParams } from '@/lib/url'
 
+import { opticsJoin } from '../../common/envelope'
 import { useOptics } from '../../common/optics'
 import { useConcRows } from '../../common/ui'
 import type { Paired } from './TauViews'
@@ -15,7 +17,7 @@ import type { Paired } from './TauViews'
 /** the row fields these views read; Plot → units: mass per filter turns them into µg/filter */
 const CONC_FIELDS = ['EC (FTIR)', 'OC (FTIR)', 'OM (FTIR)', 'PM2.5 mass', 'Iron']
 
-/** the excluded filters in view with a (non-blank) optics row; empty unless Filters → excluded is Mark */
+/** the excluded filters in view with an optics row or its stand-in; empty unless Filters → excluded is Mark */
 export function useMarkedPairs(): Paired[] {
   const rows = useMarkedRows()
   const { rows: optics } = useOptics()
@@ -25,7 +27,7 @@ export function useMarkedPairs(): Paired[] {
   const conc = useConcRows(rows, meta)
   return useMemo(() => {
     if (!conc.length || !optics) return []
-    const byId = new Map(optics.filter((o) => o.type !== 'FB').map((o) => [o.id, o]))
-    return conc.flatMap((r) => { const o = byId.get(r.id); return o ? [{ r, o }] : [] })
+    const opticsOf = opticsJoin(optics)
+    return conc.flatMap((r) => { const o = opticsOf(r); return o ? [{ r, o }] : [] })
   }, [conc, optics])
 }

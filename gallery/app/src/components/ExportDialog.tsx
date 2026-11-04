@@ -14,6 +14,8 @@ import { XIcon } from '@/components/Icons'
 import { fmt } from '@/lib/format'
 import { ScrubField } from '@/components/ScrubField'
 import { LEGEND_FOCUS } from '@/components/Legend'
+import { LegendOrderPicker } from '@/components/ExportLegendOrder'
+import { useLegendOrder } from '@/lib/legendOrderPrefs'
 
 /**
  * One export control per chart: the button names the format it will save (PNG by
@@ -164,8 +166,14 @@ function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: st
   const [focus, setFocus] = useState(() => panel.querySelector<HTMLElement>('.legend-item.pinned')?.dataset.exportSeries ?? '')
   const chooseFocus = (v: string) => { setFocus(v); panel.dispatchEvent(new CustomEvent(LEGEND_FOCUS, { detail: v || null })) }
   const drawing = `${pub ? `${s.column}|${s.stats}|${s.textPt}` : 'screen'}|${focus}`
+  // the legend's order (components/ExportLegendOrder) moves its items and nothing else, so a new order only waits for them
+  const chartKey = panel.dataset.chartKey
+  const legendOrder = useLegendOrder(chartKey)?.order.join('\n')
+  const drawn = useRef(drawing)
   useEffect(() => {
     let live = true
+    const reorder = base.current !== null && drawn.current === drawing
+    drawn.current = drawing
     ;(async () => {
       if (base.current === null) {
         setExportRender({ panel, width: null, statsInside: false })
@@ -177,12 +185,15 @@ function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: st
       }
       // the column's width in pt, at the chosen size for the chart's usual text; the dialog's pad of 8 px a side comes off
       const width = widthMm ? (widthMm / 25.4 * 72) * base.current / Number(s.textPt) - 16 : null
-      setExportRender({ panel, width, statsInside: pub && s.stats !== 'above' })
-      await settled(panel, width)
+      if (reorder) await settled(panel, width, 50, 0)
+      else {
+        setExportRender({ panel, width, statsInside: pub && s.stats !== 'above' })
+        await settled(panel, width)
+      }
       if (live) setFig(composeFigure(panel, sites, seasons))
     })()
     return () => { live = false }
-  }, [drawing]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [drawing, legendOrder]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasLegend = !!fig && fig.legends.length > 0
   // the legend items a hover picks out (charts whose legend reports its hover), hidden ones aside
@@ -352,6 +363,7 @@ function ExportDialog({ panel, title, onClose }: { panel: HTMLElement; title: st
                     {s.legendSize !== 100 && legend !== 'shown' && <button type="button" className="btn quiet" onClick={() => set({ legendSize: 100 })}>Reset</button>}
                   </div>
                 </div>}
+                {hasLegend && legend !== 'none' && chartKey && <LegendOrderPicker panel={panel} chart={chartKey} drawn={fig} />}
                 {focusable.length > 0 && <div className="export-row">
                   <Combobox label="Focus" value={focusable.includes(focus) ? focus : ''} onChange={chooseFocus}
                     title="Draw the file as hovering a legend item shows it: that series in full, the others faded. Held on the page too; shift-click a legend item there to hold or let go"

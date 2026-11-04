@@ -10,18 +10,16 @@ import { Key } from '@/components/Key'
 import { fmt } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
-import { boxStats, defaultSeason, lotContrast, lotsOf, seasonAt, type LotExport, type Member } from '../../common/lotSpectra'
-import { DataTable, pText, shortSeason } from '../../common/ui'
-import { EXPORTER, FOLDER, LotNote, lotColor, NB, type Lots } from './data'
+import { boxStats, lotContrast, lotsOf, seasonAt, type LotExport, type Member } from '../../common/lotSpectra'
+import { DataTable, pText } from '../../common/ui'
+import { EXPORTER, FOLDER, LotNote, lotColor, NB, useHeldSeason, type Lots } from './data'
 
 type Split = 'held' | 'each'
 
 export function EscapeByLot({ exp, lots }: { exp: LotExport; lots: Lots }) {
   const [split, setSplit] = useSearchParam<Split>('ls.e.split', 'held', ['held', 'each'])
   const [layout, setLayout] = useSearchParam<'pooled' | 'site'>('ls.e.layout', 'site', ['pooled', 'site'])
-  const seasonNames = lots.seasons.map((s) => s.name)
-  const [seasonPick, setSeason] = useSearchParam<string>('ls.e.season', '', seasonNames)
-  const season = seasonNames.includes(seasonPick) ? seasonPick : defaultSeason(seasonNames)
+  const { seasonNames, season, setSeason } = useHeldSeason(lots, 'ls.e.season')
   const shown = useMemo(() => lots.members.filter((m) => m.lot !== null), [lots.members])
   const lotOrder = useMemo(() => lotsOf(shown).sort((a, b) => a - b), [shown])
   const groups = useMemo(() => layout === 'pooled'
@@ -31,9 +29,9 @@ export function EscapeByLot({ exp, lots }: { exp: LotExport; lots: Lots }) {
   // per site, a site whose calendar lacks the picked season holds its own (common/lotSpectra seasonAt)
   const heldAt = (ms: Member[]) => (layout === 'site' ? seasonAt(ms, season) : season)
   const seasonGroups = (ms: Member[], held: string) => split === 'each'
-    ? lots.seasons.map((s) => ({ key: s.name, label: shortSeason(s.name), members: ms.filter((m) => m.season === s.name) }))
-    : [{ key: 'in', label: shortSeason(held), members: ms.filter((m) => m.season === held) },
-      { key: 'out', label: `not ${shortSeason(held)}`, members: ms.filter((m) => m.season !== held) }]
+    ? lots.seasons.map((s) => ({ key: s.name, label: s.name, members: ms.filter((m) => m.season === s.name) }))
+    : [{ key: 'in', label: held, members: ms.filter((m) => m.season === held) },
+      { key: 'out', label: `not ${held}`, members: ms.filter((m) => m.season !== held) }]
 
   const blocks: IntervalBlock[] = groups.map((g) => ({ key: g.key, title: g.label, color: layout === 'site' ? lots.siteColor(g.key) : undefined,
     rows: lotsOf(g.members).sort((a, b) => a - b).flatMap((lot) => seasonGroups(g.members.filter((m) => m.lot === lot), heldAt(g.members)).filter((s) => s.members.length).map((s) => {
@@ -48,7 +46,7 @@ export function EscapeByLot({ exp, lots }: { exp: LotExport; lots: Lots }) {
     const [a, b] = lotsOf(g.members).slice(0, 2).sort((x, y) => x - y)
     if (b === undefined) return []
     const held = heldAt(g.members)
-    return [{ k: 'all', subset: 'All filters', ms: g.members }, { k: 'in', subset: `${shortSeason(held)} only`, ms: g.members.filter((m) => m.season === held) }]
+    return [{ k: 'all', subset: 'All filters', ms: g.members }, { k: 'in', subset: `${held} only`, ms: g.members.filter((m) => m.season === held) }]
       .map((s) => ({ key: `${g.key}-${s.k}`, site: g.label, subset: s.subset, a, b, ...lotContrast(s.ms, a, b) }))
       .filter((r) => r.na + r.nb > 0)
   })
@@ -74,8 +72,8 @@ export function EscapeByLot({ exp, lots }: { exp: LotExport; lots: Lots }) {
   return (
     <ChartFrame id="ls-escape" title={title}
       controls={<>
-        {seasonNames.length > 1 && <Select label="Season" value={season} options={seasonNames} onChange={setSeason} optionLabel={shortSeason} title="The season held fixed (char_12: the dry season)" />}
-        <Segmented label="Split" value={split} options={['held', 'each'] as const} onChange={setSplit} optionLabel={(o) => (o === 'held' ? `${shortSeason(season)} vs the rest` : 'Each season')} />
+        {seasonNames.length > 1 && <Select label="Season" value={season} options={seasonNames} onChange={setSeason} title="The one season the lots are compared within. char_12 used the dry season." />}
+        <Segmented label="Split" value={split} options={['held', 'each'] as const} onChange={setSplit} optionLabel={(o) => (o === 'held' ? `${season} vs the rest` : 'Each season')} />
         <Segmented label="Layout" value={layout} options={['site', 'pooled'] as const} onChange={setLayout} optionLabel={(o) => (o === 'pooled' ? 'Sites pooled' : 'Per site')} />
       </>}
       subtitle={`char_12's envelope-escape score: the share of the C–H (2800–3000) and C=O / aromatic (1450–1850 cm⁻¹) wavenumbers where a filter's second-derivative spectrum leaves the 5–95 % envelope of ${exp.improve.n} IMPROVE spectra; an IMPROVE filter escapes about 10 % of the time (dashed line; the IMPROVE median is ${fmt(exp.improve.escape_median, 3)}). Per PTFE lot and season: square at the median, bar the interquartile range, thin line the 1.5 × IQR whiskers (char_12 draws box plots). char_12 scored Addis only; the other sites' scores are this export's, with the same processing and envelope.`}
@@ -100,7 +98,7 @@ export function EscapeByLot({ exp, lots }: { exp: LotExport; lots: Lots }) {
           ...(groups.length > 1 || layout === 'site' ? [{ key: 's', label: 'Site', value: (r: (typeof cross)[number]) => r.site }] : []),
           { key: 'l', label: 'Lot', value: (r) => <span style={{ color: lotColor(r.lot, lotOrder.indexOf(r.lot)) }}>{r.lot}</span> },
           { key: 'n', label: 'n', num: true, value: (r) => r.n },
-          { key: 'se', label: 'By season', value: (r) => r.bySeason.map((s, i) => <span key={s.name}>{i ? ', ' : ''}<span style={{ color: s.color }}>{shortSeason(s.name)}</span> {s.n}</span>) },
+          { key: 'se', label: 'By season', value: (r) => r.bySeason.map((s, i) => <span key={s.name}>{i ? ', ' : ''}<span style={{ color: s.color }}>{s.name}</span> {s.n}</span>) },
           { key: 'i', label: 'Instrument: n', value: (r) => r.inst },
         ]} />
       </>}

@@ -6,16 +6,13 @@
 import { useMemo } from 'react'
 import { ChartFrame, Empty, Note, Select } from '@/components/ChartFrame'
 import { fmt } from '@/lib/format'
-import { useSearchParam } from '@/lib/url'
 import { ALL_SITES, SitePicker, usePageSite } from '@/lib/siteFocus'
-import { defaultSeason, lotContrast, lotsOf, type LotExport } from '../../common/lotSpectra'
-import { DataTable, pText, shortSeason } from '../../common/ui'
-import { EXPORTER, FOLDER, LotNote, lotColor, NB, type Lots } from './data'
+import { lotContrast, lotsOf, type LotExport } from '../../common/lotSpectra'
+import { DataTable, pText } from '../../common/ui'
+import { EXPORTER, FOLDER, LotNote, lotColor, NB, useHeldSeason, type Lots } from './data'
 
 export function BandMeans({ exp, lots }: { exp: LotExport; lots: Lots }) {
-  const seasonNames = lots.seasons.map((s) => s.name)
-  const [seasonPick, setSeason] = useSearchParam<string>('ls.b.season', '', seasonNames)
-  const season = seasonNames.includes(seasonPick) ? seasonPick : defaultSeason(seasonNames)
+  const { seasonNames, season, setSeason } = useHeldSeason(lots, 'ls.b.season')
   const codes = useMemo(() => [...new Set(lots.members.map((m) => m.code))], [lots.members])
   // this chart's own site choice (lib/siteFocus usePageSite under `ls.b.site`): the lots' sites pooled by default
   const pick = usePageSite(useMemo(() => codes.map((c) => ({ code: c, name: lots.siteName(c) })), [codes, lots]), { key: 'ls.b.site', all: 'Sites pooled', prefer: ALL_SITES })
@@ -30,17 +27,17 @@ export function BandMeans({ exp, lots }: { exp: LotExport; lots: Lots }) {
   })
   const sig = rows.filter((r) => r.c?.test && r.c.test.p < 0.05)
   const title = pair.length < 2 ? 'Band means by lot'
-    : sig.length ? `Within ${shortSeason(season)}, lots ${pair[0]} and ${pair[1]} differ in ${sig.length} of ${rows.length} bands (${sig.map((r) => r.band).join(', ')}; p < 0.05)`
-    : `Within ${shortSeason(season)}, lots ${pair[0]} and ${pair[1]} do not differ in any band (p ≥ 0.05)`
+    : sig.length ? `Within ${season}, lots ${pair[0]} and ${pair[1]} differ in ${sig.length} of ${rows.length} bands (${sig.map((r) => r.band).join(', ')}; p < 0.05)`
+    : `Within ${season}, lots ${pair[0]} and ${pair[1]} do not differ in any band (p ≥ 0.05)`
   return (
     <ChartFrame id="ls-bands" title={title}
       controls={<>
-        {seasonNames.length > 1 && <Select label="Season" value={season} options={seasonNames} onChange={setSeason} optionLabel={shortSeason} />}
+        {seasonNames.length > 1 && <Select label="Season" value={season} options={seasonNames} onChange={setSeason} />}
         {codes.length > 1 && <SitePicker as="select" {...pick.picker} />}
       </>}
       subtitle="The AIRSpec-baselined, clipped, unit-area spectra (as 04b) reduced to each filter's mean value in char_10's bands (×10⁻⁴; charcoal_spectra.band_area on the unbinned spectrum), median per lot within one season, Mann–Whitney between the two largest lots. char_12 finds two bands separating mildly within the Addis dry season (lot 248 ~14 % higher in O–H/N–H, ~7 % lower in aliphatic C–H), an order of magnitude below the seasonal contrasts, and notes the two lots were not deployed over the same dates."
       provenance={<>{NB} §4b, lot_bands_within_dry.csv. Band means: <code>{EXPORTER}</code> → <code>{FOLDER}/lot_spectra.json</code> (band_means); medians and tests recomputed here.</>}>
-      {pair.length < 2 ? <Empty>Fewer than two lots among the {shortSeason(season)} filters shown.</Empty> : <>
+      {pair.length < 2 ? <Empty>Fewer than two lots among the {season} filters shown.</Empty> : <>
         <DataTable rows={rows} rowKey={(r) => r.band} columns={[
           { key: 'b', label: 'Band', value: (r) => r.band },
           { key: 'w', label: 'Window (cm⁻¹)', value: (r) => `${r.w[0]}–${r.w[1]}` },

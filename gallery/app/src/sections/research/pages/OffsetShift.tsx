@@ -67,13 +67,13 @@ export function OffsetShift({ rows: viewRows, meta }: SectionPageProps) {
     <Segmented label="σ EC (µg/m³)" value={sEcParam} options={['0.1', '0.2', '0.5']} onChange={setSEc} />
     <Segmented label="σ fAbs (Mm⁻¹)" value={sFabsParam} options={['0.5', '1', '2']} onChange={setSFabs} />
   </>
-  if (pts.length < 10 || !fit) return <ChartFrame id="os-empty" title="The EC shift that zeros the intercept" provenance={DEMING_NB} controls={controls}><Empty>Fewer than 10 filters at {site} carry {FABS} and {EC}.</Empty></ChartFrame>
+  if (pts.length < 10 || !fit) return <ChartFrame id="os-empty" title="The EC shift that zeros the intercept" provenance={DEMING_NB} controls={controls} controlsSide="left"><Empty>Fewer than 10 filters at {site} carry {FABS} and {EC}.</Empty></ChartFrame>
   const ecLabel = 'FTIR EC (µg/m³)', fabsLabel = 'HIPS Fabs (Mm⁻¹)'
   return (
     <>
       <ChartFrame id="os-lambda" title={`Errors in both variables — the Deming line against the assumed error ratio, ${site}`}
         subtitle={`Deming regression of fAbs on FTIR EC with λ = (σ_fAbs / σ_EC)². Large ratios approach OLS (all error in fAbs), small ones the inverse OLS (all error in EC); 1 is orthogonal regression. The marker is the assumed σ_fAbs / σ_EC = ${sFabsParam} / ${sEcParam}.${meta.basis === 'mass' ? ` ${BASIS_NOTE}` : ''}`}
-        provenance={`${DEMING_NB} (steps 1–2)`} controls={controls}>
+        provenance={`${DEMING_NB} (steps 1–2)`} controls={controls} controlsSide="left">
         <Grid>
           <SweepPlot series={[{ id: 's', label: 'Deming slope', color: INK.good, marks: false, points: sweep.map((s) => ({ x: s.q, y: s.d?.slope })) }]} xScale="log" xLabel="σ_fAbs / σ_EC" yLabel="Slope (Mm⁻¹ per µg/m³)"
             xMarkers={[{ at: ratio, label: 'assumed', color: INK.negative }]} yMarkers={[{ at: fit.slope, label: `OLS ${fmt(fit.slope, 2)}`, color: INK.muted }]} title="Slope" />

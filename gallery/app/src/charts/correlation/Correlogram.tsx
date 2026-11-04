@@ -365,7 +365,7 @@ function ScatterMatrix({ rows, fields, width, tip, hl, units, dim, dimKey, meta,
 
 /**
  * One off-diagonal panel of the scatter matrix. Thirty of these hold a thousand dots each, so the dots are drawn
- * once and do not follow the hover: a hover anywhere (this panel, another, another chart) dims them under a veil
+ * once and do not follow the hover: a hover in this card (this panel, another, another chart) dims them under a veil
  * and draws the focused filter again on top (lib/highlight FocusLayer), and one hit layer finds the dot under the
  * pointer (components/HitLayer). Those, a veil that does the dimming and the fits are portalled into the matrix's
  * overlay <svg>, so a hover never touches the <svg> that holds the dots. Hovering a dot lights the same filter up in every panel and chart; clicking pins it

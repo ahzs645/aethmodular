@@ -7,8 +7,9 @@ import { useMemo } from 'react'
 import { useCountedFilter, useExclStatus, useKnownFilter, useMarkedRows, usePlaceFilter } from '@/lib/markedRows'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { rowsOf } from '@/lib/table'
+import { siteColor } from '@/lib/siteColours'
 import { INK } from '@/lib/theme'
-import { dryOf, joinScores, markedScores, type CharcoalScore, type Scored } from '../../common/charcoal'
+import { dryOf, joinNetworkScores, joinScores, markedScores, type CharcoalScore, type NetworkScore, type Scored } from '../../common/charcoal'
 import { ADDIS, SERIES, shortSeason, useConcRows } from '../../common/ui'
 
 /** Addis Ababa's SPARTAN site code (the PMF site; the Samples picker's code) */
@@ -46,6 +47,14 @@ export interface Charcoal {
    * median, share, test or count.
    */
   marked: Scored<FilterRow>[]
+  /** the other sites in view, scored by char_05's recipe (network_char_scores.py): the raw-vs-char chart's, not the Addis charts' */
+  others: Scored<FilterRow>[]
+  othersMarked: Scored<FilterRow>[]
+  /** the sites of `others`, with filters in view that have no FTIR spectrum to score */
+  otherSites: Season[]
+  unscored: number
+  /** a site's colour by the name its rows carry */
+  siteColorOf: (site: string) => string
   /** scored filters with no gallery Addis row in view */
   outside: number
   total: number
@@ -68,7 +77,7 @@ export function useCharcoalExport() {
   return useSpectral('scores', 'research/charcoal')
 }
 
-export function useCharcoal(viewRows: FilterRow[], meta: MetaFile, scoresTable: Parameters<typeof rowsOf>[0]): Charcoal {
+export function useCharcoal(viewRows: FilterRow[], meta: MetaFile, scoresTable: Parameters<typeof rowsOf>[0], networkTable?: Parameters<typeof rowsOf>[0]): Charcoal {
   // EC against loading is a µg/m³ reproduction: rows in concentration whatever the basis
   const concRows = useConcRows(viewRows, meta)
   const markedRows = useConcRows(useMarkedRows(), meta)
@@ -111,6 +120,15 @@ export function useCharcoal(viewRows: FilterRow[], meta: MetaFile, scoresTable: 
     const nbSeason = (season: string) => nbByMonths.get(monthsOf.get(season) ?? '') ?? (NOTEBOOK_SEASONS.some((s) => s.name === season) ? season : null)
     const nbOwn = new Map(scores.map((s) => [s.FilterId, s.season]))
     const notebook = scored.length === scores.length && scored.every((s) => nbSeason(s.season) === nbOwn.get(s.filterId))
-    return { scored, marked, outside, total: scores.length, notebook, nbSeason, seasons: names.map((name) => ({ name, color: colorOf(name) })), colorOf, isDry, dryName: shortSeason(dryName).replace(/\s+(Rainy\s+)?Season$/, ''), drySeasons }
-  }, [scoresTable, concRows, markedRows, meta, known, counts, status, place])
+    // every other site in view: rows and their exclusions as they stand, in the order of the most filters first
+    const network = rowsOf(networkTable) as unknown as NetworkScore[]
+    const otherRows = concRows.filter((r) => r.site !== ADDIS)
+    const others = joinNetworkScores(network, otherRows)
+    const othersMarked = joinNetworkScores(network, markedRows.filter((r) => r.site !== ADDIS))
+    const siteColorOf = (site: string) => siteColor(meta, site)
+    const siteCounts = new Map<string, number>()
+    for (const s of others) siteCounts.set(s.row!.site, (siteCounts.get(s.row!.site) ?? 0) + 1)
+    const otherSites = [...siteCounts.keys()].sort((a, b) => siteCounts.get(b)! - siteCounts.get(a)!).map((name) => ({ name, color: siteColorOf(name) }))
+    return { scored, others, othersMarked, otherSites, unscored: network.length ? otherRows.length - others.length : 0, siteColorOf, marked, outside, total: scores.length, notebook, nbSeason, seasons: names.map((name) => ({ name, color: colorOf(name) })), colorOf, isDry, dryName: shortSeason(dryName).replace(/\s+(Rainy\s+)?Season$/, ''), drySeasons }
+  }, [scoresTable, networkTable, concRows, markedRows, meta, known, counts, status, place])
 }

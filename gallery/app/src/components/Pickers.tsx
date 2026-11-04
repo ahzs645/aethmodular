@@ -68,24 +68,24 @@ export function BankPicker({ value, onChange, banks, labels, ranks, label = 'Bac
 }
 
 /** A count from a URL value, kept to 1..max (anything unreadable falls back). */
-export const clampCount = (v: string, max: number, fallback: number) => {
+export const clampCount = (v: string, max: number, fallback: number, min = 1) => {
   const n = Math.round(Number(v))
-  return String(Number.isFinite(n) && n >= 1 ? Math.min(max, n) : fallback)
+  return String(Number.isFinite(n) && n >= min ? Math.min(max, n) : fallback)
 }
 
 /**
  * How many of a ranked list to draw, as a scrub field (like MAC): drag sideways across 1–max, click
  * to type, arrow keys to step (Shift ×10). The value is a string, as kept in the URL.
  */
-export function CountPicker({ label, value, max, onChange, noun = 'items', width = 72 }: {
-  label: string; value: string; max: number; onChange: (v: string) => void; noun?: string; width?: number
+export function CountPicker({ label, value, min = 1, max, onChange, noun = 'items', width = 72, verb = 'draw' }: {
+  label: string; value: string; min?: number; max: number; onChange: (v: string) => void; noun?: string; width?: number; verb?: string
 }) {
   return (
-    <span className="control" title={`How many ${noun} to draw, 1–${max}. Drag sideways or click to type.`}>
+    <span className="control" title={`How many ${noun} to ${verb}, ${min}–${max}. Drag sideways or click to type.`}>
       {label}
-      <ScrubField label={`${label}: number of ${noun}`} value={Number(value)} min={1} max={max} step={1}
+      <ScrubField label={`${label}: number of ${noun}`} value={Number(value)} min={min} max={max} step={1}
         format={(n) => String(Math.round(n))} width={width}
-        onChange={(n) => onChange(String(Math.min(max, Math.max(1, Math.round(n)))))} />
+        onChange={(n) => onChange(String(Math.min(max, Math.max(min, Math.round(n)))))} />
     </span>
   )
 }

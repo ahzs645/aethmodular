@@ -7,9 +7,11 @@ import { Legend, useLegend } from '@/components/Legend'
 import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { fmt } from '@/lib/stats'
-import { INK, FONT, inkOnFill } from '@/lib/theme'
+import { FieldSelect } from '@/components/FieldSelect'
+import { pickerName } from '@/lib/pmfGroups'
+import { INK, FONT, inkOnFill, prettyUnit, withUnit } from '@/lib/theme'
 import { useColourScheme } from '@/lib/colourSchemes'
-import { categoricalScale, hasNamedColours } from '@/lib/palettes'
+import { categoricalScale, overlayColour, hasNamedColours } from '@/lib/palettes'
 import type { FilterRow, MetaFile, SeasonMeta } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
 import { useChartLabel, useFitHeight } from '@/lib/chartFit'
@@ -20,7 +22,7 @@ import { useHighlightActions } from '@/lib/highlight'
 import { PanelAxesControl, usePanelAxes } from '@/lib/panelAxes'
 import { collapsePanelAxes } from '@/lib/axes'
 import { calendarShortName, seasonOfDate, seasonOnly } from '@/lib/seasons'
-import { CompositionTimeline, stripSeasons, TIME_AXES, TIMELINE_H, TIME_SHAPES, TIMELINE_W, TimelineSizeControl, timelineAutoHeight, type TimeAxis, type TimePoint, type TimeShape, type TimelineSize } from '@/charts/partOfWhole/CompositionTimeline'
+import { CompositionTimeline, RIGHT_MARKS, stripSeasons, TIME_AXES, TIMELINE_H, TIME_SHAPES, TIMELINE_W, TimelineSizeControl, timelineAutoHeight, type RightMark, type RightVariable, type TimeAxis, type TimePoint, type TimeShape, type TimelineSize } from '@/charts/partOfWhole/CompositionTimeline'
 import { useSingleView } from '@/lib/singleView'
 import { ComponentSetBar, ComponentSetPicker, insertInOrder, useComponentSets, useSetEditor, type BasisInfo, type Underlying } from '@/components/ComponentSetPicker'
 import { describeField, fieldOrigin } from '@/lib/glossary'
@@ -36,6 +38,8 @@ const GROUPINGS = ['per site', 'by season', 'over time'] as const
 const VIEW_LABEL: Record<string, string> = { 'over time': 'over time (each filter)' }
 // sparse species (nitrite, bromide) leave few complete filters, so every filter with any is drawn by default
 const MISSING = ['Leave missing out', 'Complete filters only'] as const
+/** the Right axis picker's 'nothing there' */
+const NO_RIGHT = 'none'
 const SIDEBAR = 'Season calendar'
 const UNIT_MODES = ['concentration (µg/m³)', 'composition (%)'] as const
 /** the carbon at the foot of each bar, OC under EC */
@@ -71,7 +75,7 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
   title = 'Stacked bars — what the PM2.5 is made of, per site and season', species: speciesOverride, notes, stackedOnly = false,
   palette = 'SPARTAN composition', subtitle, provenance, legendTopDown = false, views = GROUPINGS,
   initialUnits = 'concentration (µg/m³)', initialShape = 'Stacked area', share, massField = 'PM2.5 mass', calendars = [], initialCalendar = SIDEBAR,
-  itemNoun = 'species', totalNoun = 'speciated', recordSource = 'the composition chart', extraTip, extraFields, dominantOf,
+  itemNoun = 'species', totalNoun = 'speciated', recordSource = 'the composition chart', extraTip, extraFields, dominantOf, initialRight = NO_RIGHT,
 }: { rows: FilterRow[]; meta: MetaFile; initialGrouping?: (typeof GROUPINGS)[number]; id?: string;
   /** the views offered (the meeting page keeps its per-site and per-season bars) */
   views?: readonly (typeof GROUPINGS)[number][]
@@ -80,6 +84,8 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
   share?: (row: FilterRow, field: string) => number | null
   /** the measured mass the bars are read against; null for none (PMF sources) */
   massField?: string | null
+  /** the variable the time view's right axis opens on, if any */
+  initialRight?: string
   /** season strips for the time view besides the sidebar's calendar */
   calendars?: { value: string; seasons: SeasonMeta[]; title?: string }[]
   initialCalendar?: string
@@ -111,6 +117,8 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
   const [setId, setSetId] = useSearchParam<string>(`${id}.parts`, BUILT_IN_SETS[0].id)
   // over time, the reader's panel size: `<width>x<height>` in px, either 0 for Auto, '' for both Auto
   const [sizeParam, setSizeParam] = useSearchParam<string>(`${id}.size`, '')
+  // over time, one more variable on a right-hand axis
+  const [rightField, setRightField] = useSearchParam<string>(`${id}.right`, initialRight)
   const timeSize = useMemo((): TimelineSize => {
     const [w, h] = sizeParam.split('x').map((v) => Math.round(Number(v)) || 0)
     const clamp = (v: number | undefined, [lo, hi]: [number, number]) => (v ? Math.min(hi, Math.max(lo, v)) : 0)
@@ -194,13 +202,17 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
     { key: 'calendar', label: 'Seasons', choices: [{ value: SIDEBAR, label: `Sidebar: ${calendarShortName(meta.season_convention)}` }, ...calendars.map((c) => ({ value: c.value }))], default: initialCalendar, style: 'select',
       when: (c) => (c.bars === 'over time' && !!c.strip) || (c.bars === 'by season' && calendars.length > 0),
       title: "The seasons of the bars by season and of the strip over time: the Filters sidebar's season calendar (it follows any change there)" + calendars.map((c) => `, or ${c.title ?? c.value}`).join('') },
+    { key: 'right', node: () => <FieldSelect label="Right axis" value={rightField} meta={meta} onChange={setRightField} extraOptions={[NO_RIGHT]}
+      title="One more variable over the stack, on its own axis at the right: each filter's value at its date. Weather is over the filter's sampling window" />, when: (c) => c.bars === 'over time' },
+    { key: 'rightMark', label: 'Drawn as', choices: RIGHT_MARKS, default: 'Points', when: (c) => c.bars === 'over time' && !!c.hasRight,
+      title: 'Points: a dot per filter. Line: the filters joined in date order, broken across a sampling gap' },
     { key: 'above', label: 'Count filters dominated above', choices: DOMINANCE.map((v) => ({ value: v, label: `${v} %` })), default: '30', style: 'select',
       when: (c) => !!dominantOf && c.bars !== 'over time' && c.mode === 'Stacked bars',
       title: `The share one ${itemNoun.replace(/s$/, '')} needs before a filter counts as dominated by it: counted under each bar and in the note below` },
     { key: 'pax', node: () => <PanelAxesControl dims={['site']} />, when: (c) => c.bars === 'over time' && (c.nSites as number) > 1 },
     { key: 'size', node: () => <TimelineSizeControl size={timeSize} auto={{ w: width, h: timelineAutoHeight(fit, composition.sites.length, single) }}
       onChange={(s) => setSizeParam(s.w || s.h ? `${s.w}x${s.h}` : '')} />, when: (c) => c.bars === 'over time' },
-  ], { reconAvailable, nSeasons: new Set(rows.map((r) => r.season)).size, nFamilies: families.length, incomplete, nSites: new Set(rows.map((r) => r.site)).size })
+  ], { reconAvailable, nSeasons: new Set(rows.map((r) => r.season)).size, nFamilies: families.length, incomplete, nSites: new Set(rows.map((r) => r.site)).size, hasRight: rightField !== NO_RIGHT })
   const mode = o.values.mode as (typeof MODES)[number]
   const stat = o.values.stat as (typeof STATS)[number]
   const grouping = o.values.bars as (typeof GROUPINGS)[number]
@@ -344,6 +356,12 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
   // the time view: the shown species bottom first, each site's season strip, the filter record on a click
   const timeSpecies = speciesFields.filter((f) => lg.show(f) && (!famOn || fam.show(familyOf(f))))
   const seasonsFor = useCallback((site: string): readonly SeasonMeta[] => strip?.seasons ?? seasonsForSite(meta, site), [strip, meta])
+  const right = useMemo((): RightVariable | null => !overTime || rightField === NO_RIGHT ? null : {
+    field: rightField, label: pickerName(rightField), unit: prettyUnit(meta.field_units?.[rightField]),
+    title: withUnit(pickerName(rightField), meta.field_units), mark: o.values.rightMark as RightMark,
+    // the palette's own colour for it (the PMF paper's olive); on any other palette the ink, which reads over every band
+    color: overlayColour(colours.name) ?? INK.text,
+  }, [overTime, rightField, meta.field_units, o.values.rightMark, colours.name])
   const showStrip = overTime && (o.values.strip as boolean)
   const stripKey = showStrip ? stripSeasons(composition.sites.map((s) => seasonsFor(s.name))) : []
   const recordOf = (p: TimePoint, seasonName: string) => hl.openRecord({
@@ -355,6 +373,7 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
         const sh = share?.(p.row, f)
         return [f, c === null && sh == null ? '—' : [sh != null ? pctOf(sh, 1) : null, c !== null ? `${fmt(c, 2)} ${UNITS}` : null].filter(Boolean).join(' · ')]
       }),
+      ...(right ? [[right.label, typeof p.row[right.field] === 'number' ? `${fmt(p.row[right.field] as number, 2)} ${right.unit}`.trim() : '—'] as [string, string]] : []),
       ...(extraFields?.(p.row) ?? []),
       // the measured species under the reconstructed components shown, from the filter's own row
       ...(reconOn ? [...new Set(timeSpecies.flatMap((l) => RECON_SOURCE[origOf(l)]?.measured ?? []))].filter((m) => meta.fields.includes(m)).map((m): [string, string] => {
@@ -407,7 +426,7 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
           <div style={{ width: '100%' }}>
             <CompositionTimeline rows={rows} sites={composition.sites} species={timeSpecies} color={color} dim={(f) => dimK({ name: f, family: familyOf(f) })}
               pct={pct} share={share} shape={shape} timeAxis={o.values.axis as TimeAxis} completeOnly={o.values.missing === 'Complete filters only'} sharedAxes={collapsePanelAxes(panelAxes, 'site') === 'Shared'}
-              seasonsFor={seasonsFor} strip={showStrip} size={timeSize} tip={tip} units={UNITS} itemNoun={itemNoun} onRecord={recordOf} extraTip={extraTip} />
+              seasonsFor={seasonsFor} strip={showStrip} size={timeSize} right={right} tip={tip} units={UNITS} itemNoun={itemNoun} onRecord={recordOf} extraTip={extraTip} />
           </div>
         ) : mode === 'Stacked bars' ? (
           <div style={{ width: '100%' }}>
@@ -534,6 +553,7 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
       {showDominance && <Note>{dominated(rows)} of {rows.length} filters have one {itemNoun.replace(/s$/, '')} above {o.values.above} % of the filter's {totalNoun} total (the count under each bar is that bar's).</Note>}
       {overTime && stripKey.length > 0 && <Legend items={stripKey.map((s) => ({ label: seasonOnly(s.name), color: s.color, shape: 'square' as const }))}
         note={`top strip: ${strip ? strip.title ?? strip.value : meta.season_convention === 'rain_rule' ? "the rain rule, from this year's rain" : 'the selected season calendar'}`} />}
+      {right && <Legend items={[{ label: right.title, color: right.color, shape: 'dot' as const }]} note="right axis" />}
       {notes}
     </ChartFrame>
   )

@@ -51,10 +51,24 @@ test('marks do not set the gallery hover from their own mouse handlers', () => {
 test('charts read the gallery hover only for their own filters', () => {
   const ALLOWED = {
     'lib/highlight.tsx': 'defines it',
-    'pages/MeetingFollowupPage.tsx': 'feeds SpectrumPlot, whose traces follow every hover on the page',
+    'pages/MeetingFollowupPage.tsx': 'feeds SpectrumPlot, whose traces follow every hover in the card',
   }
   assert.deepEqual(offenders(/\buseHighlight\(\)/, ALLOWED), [],
     'useHighlight() with no keys re-renders the chart on every hover in the gallery: useHighlightActions() to pin/open/brush, useHighlight(keys) to read a hover of your own filters (ScatterLayer does this for points)')
+})
+
+test('a hover stays in its card', () => {
+  const frame = fs.readFileSync(path.join(src, 'components/ChartFrame.tsx'), 'utf8')
+  assert.equal((frame.match(/<section className=[^\n]*\{\.\.\.cardAttrs\}/g) ?? []).length, 2,
+    'both ChartFrame roots carry the card id: lib/highlight reads it off the element under the pointer')
+  // the context only reaches hooks below the frame; a chart reading the hover in the component that renders its own
+  // ChartFrame would see every card's hover
+  const ALLOWED = {
+    'pages/MeetingFollowupPage.tsx': 'SpectraPanel, which reads the hover, renders inside ThreePlots\' ChartFrame',
+    'charts/correlation/Scatterplot.tsx': 'NO_KEYS: never reads a hover, it only sets one',
+  }
+  const above = files.filter((p) => !(rel(p) in ALLOWED) && /\buseHighlight\(/.test(code(p)) && /<ChartFrame\b/.test(code(p)) && !/\bhoverCard=/.test(code(p))).map(rel)
+  assert.deepEqual(above, [], 'name the card: const hoverCard = useId(); useHighlight(keys, hoverCard); <ChartFrame hoverCard={hoverCard}>')
 })
 
 test('no :has() on the page root', () => {

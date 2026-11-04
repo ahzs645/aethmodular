@@ -2,7 +2,7 @@
  * Research → Python PMF, the fits themselves (charts 1–4): the five normalised profiles with the bootstrap band, the
  * per-filter contributions over time, the rank screen, and why more factors cannot fix the residuals. Profiles,
  * contributions and fit statistics are the package's saved results; only which filters the contribution chart draws
- * follows Filters → excluded (the fits were made on every modelled filter).
+ * follows Samples (by each filter's site and date) and Filters → excluded (the fits were made on every modelled filter).
  */
 import { useMemo } from 'react'
 import type { ScaleTime } from 'd3'
@@ -20,12 +20,12 @@ import { markTip } from '@/lib/exclusionMode'
 import { ExcludedNote, FixedSetNote, useExclusionSplit, useKnownFilter, useMarkReason } from '@/lib/markedRows'
 import { num, type Row } from '@/lib/table'
 import { INK } from '@/lib/theme'
-import type { MetaFile } from '@/lib/types'
+import type { FilterRow, MetaFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
-import { DataTable, shortSeason } from '../../common/ui'
+import { DataTable, shortSeason, useInSamples, useSiteNames } from '../../common/ui'
 import { gapAfter } from '../../common/pythonPmf'
 import {
-  CasePick, FACTOR_COLOR, FACTORS, REPORT, addisCalendar, archivedFor, caseFilters, caseLabel, closest, factorName, tableRows, useProfiles,
+  CasePick, FACTOR_COLOR, FACTORS, REPORT, addisCalendar, archivedFor, caseFilterAt, caseFilters, caseLabel, closest, factorName, noCaseFilters, tableRows, useProfiles,
   type CaseFilter, type PmfCase, type PythonPmfExport,
 } from './data'
 import { RESEARCH_SERIES } from '@/lib/palettes'
@@ -90,19 +90,20 @@ export function Profiles({ data, c, setCase }: { data: PythonPmfExport; c: PmfCa
 
 // --------------------------------------------------------------------------------------------- 2. contributions
 
-export function Contributions({ data, c, setCase, meta }: { data: PythonPmfExport; c: PmfCase; setCase: (k: string) => void; meta: MetaFile }) {
+export function Contributions({ data, c, setCase, rows, meta }: { data: PythonPmfExport; c: PmfCase; setCase: (k: string) => void; rows: FilterRow[]; meta: MetaFile }) {
   const calendar = useMemo(() => addisCalendar(meta), [meta])
   const items = useMemo(() => caseFilters(data, c.key, calendar), [data, c.key, calendar])
-  const split = useExclusionSplit(items, (f) => f.base)
+  const placed = useInSamples(items, caseFilterAt, useSiteNames(rows, meta))
+  const split = useExclusionSplit(placed, (f) => f.base)
   const reasonOf = useMarkReason()
   const known = useKnownFilter()
   const archived = archivedFor(data, c.key)
-  const seasons = useMemo(() => calendar.filter((s) => items.some((f) => f.season === s.name)), [calendar, items])
+  const seasons = useMemo(() => calendar.filter((s) => placed.some((f) => f.season === s.name)), [calendar, placed])
   const xDomain = useMemo((): [Date, Date] | undefined => {
-    if (!items.length) return undefined
-    const t = items.map((f) => Date.parse(f.date))
+    if (!placed.length) return undefined
+    const t = placed.map((f) => Date.parse(f.date))
     return [new Date(Math.min(...t) - 5 * 864e5), new Date(Math.max(...t) + 5 * 864e5)]
-  }, [items])
+  }, [placed])
   const panels = useMemo(() => {
     const counted = [...split.counted].sort((a, b) => a.date.localeCompare(b.date))
     const breaks = gapAfter(counted.map((f) => f.date), 14)
@@ -122,13 +123,13 @@ export function Contributions({ data, c, setCase, meta }: { data: PythonPmfExpor
       return { k, series, marks, m: archived.get(k) }
     })
   }, [split, seasons, archived, reasonOf])
-  const noGallery = items.filter((f) => !known(f.base)).length
+  const noGallery = placed.filter((f) => !known(f.base)).length
   return (
-    <ChartFrame id="ppmf-contributions" title={`Contributions over time — every modelled filter, ${caseLabel(c)}`}
+    <ChartFrame id="ppmf-contributions" title={`Contributions over time — ${placed.length < items.length ? 'the modelled filters in these Samples' : 'every modelled filter'}, ${caseLabel(c)}`}
       subtitle={`Each filter's contribution G to each factor at its sampling date (${split.counted.length} of ${items.length} filters drawn; dots coloured by the season of the date under your Addis calendar${c.cohort === 'etbi53' ? ', which Bishoftu, 45 km away, takes too' : ''}). The line breaks across sampling gaps longer than 14 days, the package's own segment rule. G is summed-channel spectral amplitude per sampled m³, not µg/m³: no factor here has a mass calibration.${noGallery ? ` ${noGallery} of these filters have no gallery row (${c.cohort === 'etbi53' ? 'Bishoftu is not a gallery site' : 'sampled after the gallery\'s Addis series ends'}); they are drawn, and count, but cannot be excluded except by hand.` : ''}`}
       provenance={<>Reproduces the contribution panels of {REPORT} §3. Data: python_pmf/results/{c.folder}/{c.key}/k05/contributions.csv → <code>research/python_pmf/python_pmf.json</code>.</>}
       controls={<CasePick data={data} value={c} onChange={setCase} />}>
-      {!items.length ? <Empty>No contributions for this case.</Empty> : <>
+      {!items.length ? <Empty>No contributions for this case.</Empty> : !placed.length ? <Empty>{noCaseFilters(c)}</Empty> : <>
         <FacetGrid items={panels} minCell={300} maxCols={1} title={(p) => factorName(p.k)} note={(p) => closest(p.m)}
           render={(p, w) => <SweepPlot series={p.series} marks={p.marks} xScale="time" xDomain={xDomain} yLabel="G" height={130} width={w} include={[0]}
             background={({ x, iw, ih }) => timeSeasonBands(x as ScaleTime<number, number>, seasons, iw).map((b, i) => <rect key={i} x={b.x} y={0} width={b.w} height={ih} fill={b.color} opacity={0.08} />)} />} />

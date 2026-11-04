@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { DEFAULT_AXES, PANEL_AXES, PAX_PARAM, axesForUnits, collapsePanelAxes, pairDomain, panelAxesKey, paxFromParam, sameUnits } from './axes.ts'
+import { DEFAULT_AXES, PANEL_AXES, PAX_PARAM, axesForUnits, collapsePanelAxes, pairDomain, panelAxesKey, paxFromParam, rightAxisDomain, sameUnits } from './axes.ts'
 
 test('default origin axes hide negative points only from display and count them', () => {
   const d = pairDomain([1, 2, 3], [-4, 2, 5], DEFAULT_AXES)
@@ -64,4 +64,14 @@ test('a pair in different units drops the 1:1 line and floats each axis to its o
   assert.ok(d.x[0] > 300 && d.x[1] < 1100, 'x floats to the BLH range, not from 0')
   assert.ok(d.y[0] > 1 && d.y[1] < 7, 'y floats to its own range')
   assert.equal(d.dropped, 0)
+})
+
+test('a right-hand axis starts at 0 where the values come near it, otherwise spans them', () => {
+  assert.deepEqual(rightAxisDomain([0, 0, 3, 30]), [0, 30])
+  assert.deepEqual(rightAxisDomain([12, 30]), [0, 30])
+  assert.deepEqual(rightAxisDomain([770, 775]), [770, 775])
+  assert.deepEqual(rightAxisDomain([-4, 9]), [-4, 9])
+  assert.deepEqual(rightAxisDomain([0, 0]), [0, 1])
+  assert.deepEqual(rightAxisDomain([5, 5]), [5, 6])
+  assert.equal(rightAxisDomain([]), null)
 })

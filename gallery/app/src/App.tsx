@@ -1,6 +1,6 @@
 import { lazyView } from '@/components/LazyView'
 import { RegressionProvider, RegressionControls, parseEstimators, estimatorParam, type Estimator } from '@/lib/regressionPrefs'
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useGalleryData } from '@/hooks/useGalleryData'
 import { replacePublicFilter, supplementFilter } from '@/lib/filterMerge'
 import { useSpartanSource } from '@/lib/spartanSource'
@@ -10,6 +10,7 @@ import { NO_PMF, PMF_GROUP, PMF_SOURCE, isPmfField, pmfGroups, pmfKeyByDate, pmf
 import { PrefsProvider, usePrefs } from '@/lib/prefs'
 import { PanelAxesProvider } from '@/lib/panelAxes'
 import { listParam, listToParam, readParams, writeParams } from '@/lib/url'
+import { linkSetsSamples, NO_PRESET_KEY, noPresetMark, sampleParams, sameSamples, samplesFor, samplesIn, withPreset, type SampleSet } from '@/lib/samplePresets'
 import { useShared } from '@/lib/stable'
 import { PAPER_CALENDAR } from '@/lib/pmfPaper'
 import { NO_WEATHER, isDatedCalendar, seasonOfDate } from '@/lib/seasons'
@@ -241,6 +242,13 @@ const NAV_TABS = TABS.filter((t) => shared(t.key) && !('hidden' in t && t.hidden
 // Keep existing #tab=satoshi links working under the shared Meeting tab.
 const tabFromParams = (p: URLSearchParams): TabKey =>
   p.get('tab') === 'satoshi' && shared('meeting') ? 'meeting' : isTab(p.get('tab')) ? p.get('tab') as TabKey : LANDING_TAB
+/** the open page of a flagged section, with the Samples it is presented on (lib/samplePresets); null elsewhere */
+const presetPage = (tab: string, page: string) => {
+  const t = SECTION_TABS.get(tab)
+  const key = t?.pages.some((p) => p.key === page) ? page : t ? defaultPage(t.pages) : ''
+  const preset = t?.pages.find((p) => p.key === key)?.samples
+  return preset ? { scope: `${tab}/${key}`, preset } : null
+}
 const experimentFromParams = (p: URLSearchParams): string => EXPERIMENTS.find((e) => e.key === p.get('xp'))?.key ?? DEFAULT_EXPERIMENT
 const meetingFromParams = (p: URLSearchParams): MeetingKey =>
   p.get('tab') === 'satoshi' ? 'satoshi' : MEETINGS.find((m) => m.key === p.get('meeting'))?.key ?? 'followup'
@@ -390,7 +398,8 @@ function measuredCount(rows: readonly FilterRow[], field: string): number {
 export default function App() {
   const builderEnabled = useChartBuilderEnabled()
   const navTabs = useMemo(() => NAV_TABS.filter(t => t.key !== 'builder' || builderEnabled), [builderEnabled])
-  const init = useMemo(() => readParams(), [])
+  // a link that does not say which samples it wants opens on the page's own (lib/samplePresets)
+  const init = useMemo(() => { const p = readParams(); return withPreset(p, presetPage(tabFromParams(p), p.get('aep') ?? '')?.preset) }, [])
   const [tab, setTab] = useState<TabKey>(() => tabFromParams(init))
   const [dashboardCalibration, setDashboardCalibration] = useState(false)
   const { data, error, calibrationLoading, calibrationError, retryCalibration } = useGalleryData(
@@ -583,6 +592,71 @@ export default function App() {
   const setAxisField = useCallback((role: AxisRole, f: string) => (role === 'x' ? chooseX : role === 'y' ? chooseY : setField)(f), [chooseX, chooseY])
   const axisValues = useMemo(() => ({ x: xField, y: yField, field }), [xField, yField, field])
 
+  // the Samples settings in the URL's form (lib/samplePresets SAMPLE_KEYS)
+  const sampleValues = useMemo<Record<string, string | null | undefined>>(() => ({
+    cal: convention,
+    cs: convention === 'custom' ? customSeasonsParam(customSeasons) : null,
+    rr: convention === 'rain_rule' && rainRuleParam(rainRule) !== rainRuleParam(DEFAULT_RAIN_RULE) ? rainRuleParam(rainRule) : null,
+    cv: Object.keys(calVariants).length ? Object.entries(calVariants).map(([c, k]) => `${c}:${k}`).join(',') : null,
+    seasons: listToParam(activeSeasons),
+    sites: listToParam(activeSites),
+    net: network !== 'spartan' ? network : null,
+    ssites: spartanSel === null ? null : spartanSel === 'all' ? '*' : spartanSel.length ? spartanSel.join(',') : '-',
+    isites: improveSites.length ? improveSites.join(',') : null,
+    pmfg: pmfScheme === 'Marine vs combustion' ? 'class' : null,
+    pmf: listToParam(activePmf),
+    seas: seasonsOn ? null : '0',
+    pmfon: pmfOn ? '1' : null,
+    pmfonly: pmfOnly ? '1' : null,
+    ssr: ssrHide || null,
+    from: dateRange?.[0],
+    to: dateRange?.[1],
+    excl: exclModeParam(exclMode),
+    incl: !includeExcluded && inclIds.size ? [...inclIds].join(',') : null,
+  }), [convention, customSeasons, rainRule, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, ssrHide, dateRange, exclMode, includeExcluded, inclIds])
+  const samplesNow = useMemo(() => samplesIn({ get: (k) => sampleValues[k] ?? null }), [sampleValues])
+  const openPreset = useMemo(() => presetPage(tab, sectionPage), [tab, sectionPage])
+
+  // set the Samples from a URL's keys (a link, a page's preset, a remembered set); hand exclusions stay as they are
+  const applySamples = useCallback((p: URLSearchParams) => {
+    setConvention(p.get('cal'))
+    setCustomSeasons(parseCustomSeasons(p.get('cs')) ?? DEFAULT_CUSTOM)
+    setRainRule(parseRainRule(p.get('rr')) ?? DEFAULT_RAIN_RULE)
+    setCalVariants(parseVariants(p.get('cv')))
+    setActiveSeasons(listParam(p.get('seasons')))
+    setActiveSites(listParam(p.get('sites')))
+    setNetwork(isNetwork(p.get('net')) ? p.get('net') as Network : 'spartan')
+    setSpartanSel(parseSpartanSel(p.get('ssites')))
+    setImproveSites((p.get('isites') ?? '').split(',').filter(Boolean).slice(0, MAX_IMPROVE_SITES))
+    setPmfScheme(p.get('pmfg') === 'class' ? 'Marine vs combustion' : 'Dominant source')
+    setActivePmf(listParam(p.get('pmf')))
+    setSeasonsOn(p.get('seas') !== '0')
+    setPmfOn(p.get('pmfon') === '1')
+    setPmfOnly(p.get('pmfonly') === '1')
+    setSsrHide(parseSsrHide(p.get('ssr')))
+    setDateRange(p.get('from') && p.get('to') ? [p.get('from')!, p.get('to')!] : null)
+    setExclMode(parseExclMode(p.get('excl')))
+    setInclIds(idSet(p.get('incl')) ?? new Set())
+  }, [setExclMode])
+
+  // Each page with a preset keeps its own Samples, and the rest of the gallery its own (lib/samplePresets): moving
+  // between them keeps what was left and opens on what the page last had, or its preset. A link that spells out its
+  // samples wins (hashchange below records them in `linkSamples`). A layout effect, so nothing paints between.
+  const scope = openPreset?.scope ?? ''
+  const shownScope = useRef(scope)
+  const heldSamples = useRef(samplesNow)
+  const pageSamples = useRef(new Map<string, SampleSet>())
+  const linkSamples = useRef<{ scope: string; samples: SampleSet } | null>(null)
+  useLayoutEffect(() => {
+    if (shownScope.current !== scope) {
+      pageSamples.current.set(shownScope.current, heldSamples.current)
+      shownScope.current = scope
+      const link = linkSamples.current?.scope === scope ? linkSamples.current.samples : null
+      applySamples(sampleParams(samplesFor(scope, openPreset?.preset, pageSamples.current, link)))
+    } else heldSamples.current = samplesNow
+    linkSamples.current = null
+  }, [scope, samplesNow, openPreset, applySamples])
+
   useEffect(() => {
     writeParams({
       tab,
@@ -591,27 +665,10 @@ export default function App() {
       aep: SECTION_TABS.has(tab) && sectionPage && sectionPage !== defaultPage(SECTION_TABS.get(tab)!.pages) ? sectionPage : null,
       fits: estimatorParam(estimators),
       ci: showCI ? '1' : null,
-      cal: convention,
-      cs: convention === 'custom' ? customSeasonsParam(customSeasons) : null,
-      rr: convention === 'rain_rule' && rainRuleParam(rainRule) !== rainRuleParam(DEFAULT_RAIN_RULE) ? rainRuleParam(rainRule) : null,
-      cv: Object.keys(calVariants).length ? Object.entries(calVariants).map(([c, k]) => `${c}:${k}`).join(',') : null,
+      ...sampleValues,
+      [NO_PRESET_KEY]: noPresetMark(samplesNow, openPreset?.preset),
       sse: siteSeasonsParam(siteSeasons),
       dyn: siteRulesParam(siteRules),
-      seasons: listToParam(activeSeasons),
-      sites: listToParam(activeSites),
-      net: network !== 'spartan' ? network : null,
-      ssites: spartanSel === null ? null : spartanSel === 'all' ? '*' : spartanSel.length ? spartanSel.join(',') : '-',
-      isites: improveSites.length ? improveSites.join(',') : null,
-      pmfg: pmfScheme === 'Marine vs combustion' ? 'class' : null,
-      pmf: listToParam(activePmf),
-      seas: seasonsOn ? null : '0',
-      pmfon: pmfOn ? '1' : null,
-      pmfonly: pmfOnly ? '1' : null,
-      ssr: ssrHide || null,
-      from: dateRange?.[0],
-      to: dateRange?.[1],
-      excl: exclModeParam(exclMode),
-      incl: !includeExcluded && inclIds.size ? [...inclIds].join(',') : null,
       drop: dropIds.size ? [...dropIds].join(',') : null,
       dropwhy: dropWhyParam,
       fb: ftirBaseline !== 'none' ? ftirBaseline : null,
@@ -630,13 +687,15 @@ export default function App() {
       log: axes.log ? '1' : null,
       pax: PAX_PARAM[axes.panels ?? 'Shared'],
     })
-  }, [tab, meeting, experiment, sectionPage, estimators, showCI, convention, calVariants, siteSeasons, siteRules, activeSeasons, activeSites, network, spartanSel, improveSites, dropIds, dropWhyParam, keepIds, ftirBaseline, customSeasons, rainRule, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, ssrHide, dateRange, exclMode, inclIds, xField, yField, field, dash, ratios, groupings, mac, basis, pinnedId, axes])
+  }, [tab, meeting, experiment, sectionPage, estimators, showCI, sampleValues, samplesNow, openPreset, siteSeasons, siteRules, dropIds, dropWhyParam, keepIds, ftirBaseline, xField, yField, field, dash, ratios, groupings, mac, basis, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
   useEffect(() => {
     const onHash = () => {
       const p = readParams()
+      const page = presetPage(tabFromParams(p), p.get('aep') ?? '')
+      linkSamples.current = linkSetsSamples(p) ? { scope: page?.scope ?? '', samples: samplesIn(p) } : null
       setEstimators(parseEstimators(p.get('fits')))
       setShowCI(p.get('ci') === '1')
       if (isTab(p.get('tab')) || p.get('tab') === 'satoshi') {
@@ -645,26 +704,9 @@ export default function App() {
         if (tabFromParams(p) === 'experimental') setExperiment(experimentFromParams(p))
         if (SECTION_TABS.has(tabFromParams(p))) setSectionPage(p.get('aep') ?? '')
       }
-      setConvention(p.get('cal'))
-      setCustomSeasons(parseCustomSeasons(p.get('cs')) ?? DEFAULT_CUSTOM)
-      setRainRule(parseRainRule(p.get('rr')) ?? DEFAULT_RAIN_RULE)
-      setCalVariants(parseVariants(p.get('cv')))
       setSiteSeasons(parseSiteSeasons(p.get('sse')) ?? readSavedSiteSeasons())
       setSiteRules(parseSiteRules(p.get('dyn')) ?? readSavedSiteRules())
-      setActiveSeasons(listParam(p.get('seasons')))
-      setActiveSites(listParam(p.get('sites')))
-      setNetwork(isNetwork(p.get('net')) ? p.get('net') as Network : 'spartan')
-      setSpartanSel(parseSpartanSel(p.get('ssites')))
-      setImproveSites((p.get('isites') ?? '').split(',').filter(Boolean).slice(0, MAX_IMPROVE_SITES))
-      setPmfScheme(p.get('pmfg') === 'class' ? 'Marine vs combustion' : 'Dominant source')
-      setActivePmf(listParam(p.get('pmf')))
-      setSeasonsOn(p.get('seas') !== '0')
-      setPmfOn(p.get('pmfon') === '1')
-      setPmfOnly(p.get('pmfonly') === '1')
-      setSsrHide(parseSsrHide(p.get('ssr')))
-      setDateRange(p.get('from') && p.get('to') ? [p.get('from')!, p.get('to')!] : null)
-      setExclMode(parseExclMode(p.get('excl')))
-      setInclIds(idSet(p.get('incl')) ?? new Set())
+      applySamples(p)
       setDropIds(idSet(p.get('drop')) ?? new Set())
       setDropWhy(parseWhy(p.get('dropwhy')))
       setFtirBaseline(FTIR_BASELINES.includes(p.get('fb') ?? '') ? p.get('fb') as FtirBaseline : 'none')
@@ -687,7 +729,7 @@ export default function App() {
     }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
-  }, [])
+  }, [applySamples])
 
   // The network only applies on the chart tabs; everything else always shows the focus sites.
   const net: Network = (NETWORK_TABS as readonly string[]).includes(tab) ? network : 'focus'
@@ -1264,6 +1306,7 @@ export default function App() {
       })
 
     const state: SubsetState = {
+      pagePreset: openPreset && { label: openPreset.preset.label, at: sameSamples(samplesNow, openPreset.preset.samples) && !dropIds.size && !keepIds },
       basis, mac: viewOpts.mac, exportMac,
       pmfNote: chartTab && pmfSiteInView ? (pmfOnly ? `Only ${pmf?.site_name ?? 'the PMF site'}'s filters with a PMF day (${pmf?.n ?? 0} days) are drawn; sites without PMF are hidden.` : `Narrows ${pmf?.site_name ?? 'the PMF site'}'s filters only (${pmf?.n ?? 0} PMF days); other sites are unaffected.`) + ' Each source\'s share is also a measurement (PMF sources), and the scatterplot can colour by PMF source (Colour → Value).' : undefined,
       pmfOnly,
@@ -1473,6 +1516,8 @@ export default function App() {
         setExclMode('hide')
         setInclIds(new Set())
         setConvention(null)
+        // a page with a preset resets to it
+        if (openPreset) applySamples(sampleParams(openPreset.preset.samples))
       },
     }
     if (tab === 'dashboard') dashFilters = { state, actions, brushRows }
@@ -1628,7 +1673,7 @@ export default function App() {
         {tab === 'pmf' &&
           (pmf ? (
             // the stack (its View 'by season' is the former Source apportionment by season), then coverage and dominance
-            <><SourceStack pmf={pmf} rows={pmfRows} meta={meta} /><PmfDiagnostics pmf={pmf} rows={pmfRows} meta={meta} /></>
+            <><SourceStack pmf={pmf} rows={pmfRows} fieldRows={sourceRows} meta={meta} /><PmfDiagnostics pmf={pmf} rows={pmfRows} meta={meta} /></>
           ) : (
             <p style={{ fontSize: 13, color: 'var(--ink-muted)' }}>
               No PMF solution exported. Run <code>python gallery/data/export_data.py</code> with the ETAD factor CSVs present.

@@ -1665,6 +1665,21 @@ html.dash-present .container.dash { padding-top: 10px; }
 .export-color-popover .export-colors { border: 0; padding: 0; }
 .export-color-popover .export-colors > legend { display: none; }
 .export-color-popover .export-site-colors { max-height: none; overflow: visible; }
+.legend-order-list { display: flex; flex-direction: column; gap: 1px; }
+.legend-order-group { margin-top: 6px; }
+.legend-order-row { display: flex; align-items: center; gap: 7px; padding: 1px 2px; border-radius: 4px; font-size: 12px; color: var(--ink-text); cursor: grab; }
+.legend-order-row:hover { background: color-mix(in srgb, var(--ink-text) 6%, transparent); }
+.legend-order-row.head { font-weight: 600; }
+.legend-order-group > .legend-order-row:not(.head) { margin-left: 12px; }
+.legend-order-row.off .legend-order-label { opacity: 0.5; text-decoration: line-through; }
+.legend-order-row.dragging { opacity: 0.45; }
+.legend-order-row.over-before { box-shadow: 0 -2px 0 var(--accent); }
+.legend-order-row.over-after { box-shadow: 0 2px 0 var(--accent); }
+.legend-order-grip { color: var(--ink-muted); font-size: 11px; }
+.legend-order-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legend-order-row > .btn { padding: 0 5px; line-height: 1.5; }
+.legend-order-list + .export-color-actions { margin-top: 10px; }
+.legend-order-list ~ .export-same-color { margin-top: 8px; }
 
 /* ---------- guardrail editor (components/GuardrailEditor; react-querybuilder's layout sheet underneath) ---------- */
 /* a wide popup: the live curve stays pinned at the top while the options below scroll */

@@ -10,7 +10,7 @@ import { num, type Row } from '@/lib/table'
 import type { CalibRun, CalibRunsFile } from '@/lib/types'
 import type { SectionPageProps } from '../../types'
 import { plausibilityOf } from '../common/explorerFit'
-import { PageIntro, presetName, provenance, rows, useCalibRuns, useSpectral, Waiting } from './spectralCommon'
+import { PageIntro, presetName, provenance, rows, useCalibRuns, useRunPlace, useSpectral, Waiting } from './spectralCommon'
 
 const PROVISIONAL = 'ocec800_airspec', RAW = 'ocec800_raw'
 const SERIES = { prov: 'provisional (Lowest-OC/EC 800 × spline baseline)', raw: 'raw-spectra model (MAC 6 branch)', dep: 'deployed SPARTAN EC' }
@@ -19,11 +19,15 @@ const hipsSeries = (mac: number) => `HIPS Fabs / ${mac}`
 const finite = (v: number | null | undefined): v is number => v != null && Number.isFinite(v)
 const runAt = (runs: CalibRunsFile, preset: string): CalibRun | undefined => runs.runs.find((r) => r.preset === preset && r.target === 'addis')
 const seasonOf = (g: string) => g.split(' (')[0]
+const NONE = 'No dated Addis filter is in these Samples: pick Addis Ababa (ETAD) in the Samples panel, or widen its dates and seasons.'
 
 /**
  * ftir_29 and ftir_30: what the locked corrected calibration says Addis EC is, as a product. The
  * explorer's per-filter readouts (calibration_runs.json) reproduce ftir_29's series exactly; the
  * bootstrap CI on the HIPS-axis offset and ftir_51's variant ratios come from the notebooks' outputs.
+ * The series, its season intervals, the crossplot, the presets' Kiremt/Dry ratios and the readout's medians follow
+ * Samples, each explorer filter placed by its site and eval date (its page opens on the explorer's own filters and
+ * calendar, where they are the saved numbers); ftir_51's rows, the TOR and OOD columns and the offset stay saved.
  */
 export function ProvisionalSeries(props: SectionPageProps) {
   const { data, error } = useSpectral('provisional_series')
@@ -34,6 +38,8 @@ export function ProvisionalSeries(props: SectionPageProps) {
   // intervals and the presets' Kiremt/Dry ratios use the filters that count; the crossplot crosses the rest under Mark
   const counts = useCountedFilter()
   const status = useExclStatus()
+  // Samples: which of the explorer's Addis filters are in view, by eval date (runs[].eval has every filter)
+  const inView = useRunPlace(runs, props.rows, props.meta)
 
   const view = useMemo(() => {
     if (!runs) return null
@@ -43,7 +49,7 @@ export function ProvisionalSeries(props: SectionPageProps) {
     const perFilter: Row[] = [], pairs: Row[] = []
     let marked = 0
     prov.eval.pred.forEach((p, i) => {
-      if (!prov.eval.date?.[i]) return
+      if (!inView('addis', prov.eval.date?.[i])) return
       const id = prov.eval.id[i]
       // the crossplot gets every filter with its id (Crossplot applies the setting itself); the summaries the counted
       const season = seasonOf(prov.eval.group[i]), dep = prov.eval.deployed?.[i], r = byId.get(id)
@@ -54,10 +60,10 @@ export function ProvisionalSeries(props: SectionPageProps) {
       if (finite(r)) perFilter.push({ season, series: SERIES.raw, value: r })
       if (finite(dep)) perFilter.push({ season, series: SERIES.dep, value: dep })
     })
-    const values = prov.eval.pred.filter((v, i) => finite(v) && prov.eval.date?.[i] && counts(prov.eval.id[i])).sort(d3.ascending)
-    // the explorer's plausibility card per preset, recomputed on its dated Addis filters that count (common/explorerFit;
-    // on all of them it is the saved card)
-    const cardOf = (r: CalibRun) => plausibilityOf(r.eval, (i) => counts(r.eval.id[i]))
+    const values = prov.eval.pred.filter((v, i) => finite(v) && inView('addis', prov.eval.date?.[i]) && counts(prov.eval.id[i])).sort(d3.ascending)
+    // the explorer's plausibility card per preset, recomputed on its dated Addis filters in view that count
+    // (common/explorerFit; on all of them it is the saved card)
+    const cardOf = (r: CalibRun) => plausibilityOf(r.eval, (i) => inView('addis', r.eval.date?.[i]) && counts(r.eval.id[i]))
     const ratios: Row[] = runs.presets.flatMap((pre) => {
       const r = runAt(runs, pre.key)
       const g = r?.plausibility ? cardOf(r).group_medians : null
@@ -70,13 +76,18 @@ export function ProvisionalSeries(props: SectionPageProps) {
         median: card?.median ?? null, negative: card?.negative_pct ?? null, above8: card?.above_8_pct ?? null }] : []
     })
     const card = cardOf(prov)
-    return { prov, raw, perFilter, pairs, ratios, readout, card, marked, dated: prov.eval.date?.filter(Boolean).length ?? 0,
+    const dated = prov.eval.date?.filter(Boolean).length ?? 0, placed = prov.eval.date?.filter((d) => inView('addis', d)).length ?? 0
+    // the series chart reads eval.date: a filter out of Samples loses it there, so its seasons and legend stay whole
+    const series = placed === dated ? prov : { ...prov, eval: { ...prov.eval, date: prov.eval.date?.map((d) => (inView('addis', d) ? d : null)) ?? null } }
+    return { prov, series, raw, perFilter, pairs, ratios, readout, card, marked, dated, placed,
       n: values.length, median: d3.quantile(values, 0.5)!, q1: d3.quantile(values, 0.25)!, q3: d3.quantile(values, 0.75)!, max: values[values.length - 1] }
-  }, [runs, mac, counts, status])
+  }, [runs, mac, counts, status, inView])
 
   if (!data || !runs) return <Waiting error={error || runsError} />
   if (!view) return <Waiting error="calibration_runs.json has no Addis run for the locked Lowest-OC/EC 800 presets" />
   const committed = rows(data, 'summary')[0]
+  // Samples narrows the explorer's filters: what the notebooks say of all of them is not said of these
+  const narrowed = view.placed < view.dated
   const ratios = [...view.ratios, ...rows(data, 'kiremt_dry_ftir51').map((r): Row => ({ block: 'ftir_51 variants (Option A, site-grouped 5-fold CV)', row: `${r.variant} (k = ${r.k})`, ratio: num(r['Kiremt/Dry']) }))]
   const seasons = view.card.group_medians
   // the offset c is an x-intercept on the HIPS axis: fixed in Fabs (Mm⁻¹), so in µg/m³ it is c(Mm⁻¹) / MAC
@@ -90,28 +101,28 @@ export function ProvisionalSeries(props: SectionPageProps) {
   return <>
     <PageIntro id="provisional-intro" title="The provisional Addis EC series — what the corrected calibration gives" data={data}
       notebooks="research/ftir_ec_phase3/ftir_29_provisional_addis_ec_series, ftir_30_composition_case_and_its_limits; ftir_53 §4 (Kiremt/Dry across variants)">
-      <p>The locked Lowest-OC/EC 800 × spline-baseline calibration (k = {view.prov.k}) over {view.n === view.dated ? `all ${view.n}` : `${view.n} of the ${view.dated}`} dated Addis filters{view.n === view.dated ? '' : ' (the rest excluded under Filters → excluded)'}: median {f2(view.median)} µg/m³ (IQR {f2(view.q1)}–{f2(view.q3)}), maximum {f2(view.max)},
-        {' '}{fmt(view.card.negative_pct, 2)} % negative and {fmt(view.card.above_8_pct, 2)} % above 8 µg/m³. ftir_29's committed summary gives median {f2(committed?.median_ugm3)} and maximum {f2(committed?.max)} on its {committed?.n_dated} filters: {view.n === committed?.n_dated ? 'the explorer readouts reproduce it on the same filters' : 'on the same filters (Filters → excluded: Include, nothing excluded by hand) the explorer readouts reproduce it'}.
+      <p>The locked Lowest-OC/EC 800 × spline-baseline calibration (k = {view.prov.k}) over {view.n === view.dated ? `all ${view.n}` : `${view.n} of the ${view.dated}`} dated Addis filters{view.n === view.dated ? '' : ' (the rest out of these Samples or excluded under Filters → excluded)'}: median {f2(view.median)} µg/m³ (IQR {f2(view.q1)}–{f2(view.q3)}), maximum {f2(view.max)},
+        {' '}{fmt(view.card.negative_pct, 2)} % negative and {fmt(view.card.above_8_pct, 2)} % above 8 µg/m³. ftir_29's committed summary gives median {f2(committed?.median_ugm3)} and maximum {f2(committed?.max)} on its {committed?.n_dated} filters: {view.n === committed?.n_dated ? 'the explorer readouts reproduce it on the same filters' : 'on the same filters (this page\'s Samples, nothing excluded by hand) the explorer readouts reproduce it'}.
         {' '}No MAC enters the series (predicted µg per filter ÷ sampled volume). Season medians: {Object.entries(seasons).map(([g, v]) => `${seasonOf(g)} ${f2(v)}`).join(', ')}.</p>
       <p>Held out at IMPROVE sites the model never saw, at Addis-like composition, it reproduces TOR EC at {fitSummary({ slope: view.prov.heldout?.slope, r2: view.prov.heldout?.R2 }, { digits: 2, r2Digits: 2, sep: ', ' })}; {fmt(view.prov.extrap_pct, 2)} % of Addis filters sit beyond its training score envelope, against {fmt(view.raw.extrap_pct, 2)} % for the raw-spectra model (ftir_30).
         {' '}What it cannot claim: no Addis filter has thermal EC, so the validation is the right composition on the wrong continent. Say “provisional” with every number.</p>
-      <FixedSetNote subject="the offset figure" what="ftir_15's saved bootstrap intervals (the series, its summaries here, the season intervals, the crossplot and the explorer's Kiremt/Dry ratios follow it)" />
+      <FixedSetNote subject="the offset figure" what="ftir_15's saved bootstrap intervals (the series, its summaries here, the season intervals, the crossplot and the explorer's Kiremt/Dry ratios follow it, as they follow Samples)" />
     </PageIntro>
 
-    <RunSeries run={view.prov} runs={runs} meta={props.meta} knownIds={knownIds} />
+    <RunSeries run={view.series} runs={runs} meta={props.meta} knownIds={knownIds} empty={NONE} />
 
     <Figure kind="intervals" id="provisional-seasons" data={view.perFilter} row="season" series="series"
       panels={[{ value: 'value', label: 'µg/m³ (median and IQR over dated filters)', reference: 0 }]} labelWidth={110}
       title="Season by season — the provisional series, the raw-model envelope, deployed EC and HIPS"
-      subtitle={`Dry (Oct–Feb), Belg (Mar–May), Kiremt (Jun–Sep): the explorer's Ethiopian calendar, February in Dry. The provisional series keeps the Kiremt ≈ 2 × Dry ordering at about half the deployed level; the raw-spectra model is the upper envelope (the unresolved MAC-6 branch). HIPS Fabs / ${mac} (the MAC set under Plot → units) is the optical axis the calibration disagrees with by a near-constant offset.`}
+      subtitle={`Dry (Oct–Feb), Belg (Mar–May), Kiremt (Jun–Sep): the explorer's Ethiopian calendar, February in Dry${narrowed ? `, over the ${view.n} dated filters these Samples leave (the bins stay the explorer's whatever calendar Samples uses)` : ''}. ${narrowed ? 'On all its filters the provisional series keeps a Kiremt ≈ 2 × Dry ordering at about half the deployed level, with the raw-spectra model the upper envelope.' : 'The provisional series keeps the Kiremt ≈ 2 × Dry ordering at about half the deployed level; the raw-spectra model is the upper envelope (the unresolved MAC-6 branch).'} HIPS Fabs / ${mac} (the MAC set under Plot → units) is the optical axis${narrowed ? '.' : ' the calibration disagrees with by a near-constant offset.'}`}
       provenance={<>Stands in for ftir_29 §3 and Figure 3. Per filter: <code>calibration_runs.json</code> (explorer eval of the two locked Lowest-OC/EC 800 presets at Addis).</>}
-      aside={<ExcludedNote count={view.marked} />} />
+      empty={NONE} aside={<ExcludedNote count={view.marked} />} />
 
     <Figure kind="crossplot" id="provisional-vs" data={view.pairs} x="x" y="y" color="season" colors={colors} idColumn="id" choose={[{ column: 'against', label: 'Against' }]}
       xLabel="Other series, same filter (µg/m³)" yLabel="Provisional EC (µg/m³)" maxSide={440}
-      title="A rescaling, not a reshuffle — the provisional series against deployed EC and the raw model"
-      subtitle="Same filters. ftir_29 quotes OLS: provisional = 0.45 × deployed + 0.29 (R² 0.85) and slope 0.55 against the raw model; the fit drawn here is the gallery's estimator. The ordering of days survives; the absolute scale is the conditional part."
-      provenance={<>Stands in for ftir_29 Figure 2. Per filter: <code>calibration_runs.json</code>.</>} />
+      title={narrowed ? `The provisional series against deployed EC and the raw model — the ${view.placed} filters in these Samples` : 'A rescaling, not a reshuffle — the provisional series against deployed EC and the raw model'}
+      subtitle={`Same filters. ftir_29 quotes OLS${narrowed ? ' on all its filters' : ''}: provisional = 0.45 × deployed + 0.29 (R² 0.85) and slope 0.55 against the raw model; the fit drawn here is the gallery's estimator${narrowed ? ' on the filters in view.' : '. The ordering of days survives; the absolute scale is the conditional part.'}`}
+      provenance={<>Stands in for ftir_29 Figure 2. Per filter: <code>calibration_runs.json</code>.</>} empty={NONE} />
 
     <Figure kind="intervals" id="provisional-offset" data={offsets} row="model"
       panels={[{ value: 'c_median', lo: 'c_lo', hi: 'c_hi', label: `HIPS-axis offset c = −intercept/slope (µg/m³ at MAC ${mac}; median and 95 % interval)`, reference: 0 }]} labelWidth={170}
@@ -121,9 +132,11 @@ export function ProvisionalSeries(props: SectionPageProps) {
 
     <Figure kind="intervals" id="provisional-kiremt" data={ratios} row="row" block="block"
       panels={[{ value: 'ratio', label: 'Kiremt / Dry ratio of median predicted EC, Addis', reference: 1 }]} aggregate={{ stat: 'median', interval: 'none' }} labelWidth={390}
-      title="Kiremt / Dry under every calibration — rainy-season EC stays about twice the dry season"
-      subtitle="The gallery's nine explorer presets (season medians from the explorer's plausibility card) and ftir_51's seven variants as committed in ftir_53. The ratio does not depend on the calibration chosen; the level does."
-      provenance={provenance(data, ['kiremt_dry_ftir51'], 'Presets: the season medians of calibration_runs.json runs[].eval, recomputed on the filters that count (on all of them, runs[].plausibility.group_medians).')}
+      title={narrowed ? 'Kiremt / Dry under every calibration — the presets on the filters in these Samples, ftir_51 as saved' : 'Kiremt / Dry under every calibration — rainy-season EC stays about twice the dry season'}
+      subtitle={narrowed
+        ? `The gallery's nine explorer presets (season medians over the filters in these Samples${view.ratios.length ? '' : ': they need Kiremt and Dry filters in view, so pick both seasons or widen the dates to draw them'}) and ftir_51's seven variants as committed in ftir_53, on all its filters.`
+        : "The gallery's nine explorer presets (season medians from the explorer's plausibility card) and ftir_51's seven variants as committed in ftir_53. The ratio does not depend on the calibration chosen; the level does."}
+      provenance={provenance(data, ['kiremt_dry_ftir51'], 'Presets: the season medians of calibration_runs.json runs[].eval, recomputed on the filters in view that count (on all of them, runs[].plausibility.group_medians).')}
       aside={<><ExcludedNote count={view.marked} /><FixedSetNote subject="the ftir_51 rows" what="ftir_53's saved ratios" /></>} />
 
     <Figure kind="table" id="provisional-readout" data={view.readout}
@@ -132,7 +145,7 @@ export function ProvisionalSeries(props: SectionPageProps) {
         { key: 'median', label: 'Median Addis EC', format: 'f2' }, { key: 'negative', label: 'Negative (%)', format: 'f2' }, { key: 'above8', label: '> 8 µg/m³ (%)', format: 'f2' }]}
       title="Which calibration the series comes from — validated on IMPROVE, in-domain at Addis, plausible as a record"
       subtitle="ftir_30's argument as a table: the corrected Lowest-OC/EC 800 model holds TOR at slope ≈ 1 on unseen IMPROVE sites and treats almost no Addis filter as exotic, where the raw model puts about a quarter outside its envelope. In-domain is necessary, not sufficient (see Applicability domain)."
-      provenance={<>Stands in for ftir_30 Figures 2–4. <code>calibration_runs.json</code> runs[] (heldout, extrap_pct, q_residual_pct; median, negative and above 8 µg/m³ recomputed from runs[].eval on the filters that count).</>}
+      provenance={<>Stands in for ftir_30 Figures 2–4. <code>calibration_runs.json</code> runs[] (heldout, extrap_pct, q_residual_pct; median, negative and above 8 µg/m³ recomputed from runs[].eval on the filters in view that count).</>}
       aside={<><ExcludedNote count={view.marked} /><FixedSetNote subject="each held-out TOR and OOD column" what="the explorer's saved readout (IMPROVE held-out sites; the share of all its Addis filters)" /></>} />
   </>
 }

@@ -5,6 +5,7 @@ import { coef, f2 } from '@/lib/format'
 import { FixedSetNote } from '@/lib/markedRows'
 import { num, type Row } from '@/lib/table'
 import type { SectionPageProps } from '../../types'
+import { PICK_SAVED_SITE, samplesCodes, savedSiteCode, savedSites } from '../common/savedSites'
 import { PageIntro, provenance, rows, useCalibRuns, useSpectral, Waiting } from './spectralCommon'
 
 const PARTNER: Record<string, string> = {
@@ -25,11 +26,14 @@ const WINDOWS = [
 /**
  * ftir_12 and ftir_38: what the ~1600/1617 cm⁻¹ band in the Addis spectra is. The notebooks'
  * per-filter band features need the Drive spectra; the gallery has the site and cohort median
- * spectra (calibration_runs.json), on which the same band-centre rule is recomputed here.
+ * spectra (calibration_runs.json), on which the same band-centre rule is recomputed here. The per-site spectra, centres
+ * and table keep the sites picked under Samples; the Addis-only and IMPROVE cohort figures stay as saved.
  */
-export function Band1617(_props: SectionPageProps) {
+export function Band1617({ picked, rows: viewRows }: SectionPageProps) {
   const { data, error } = useSpectral('band_1617')
   const { runs } = useCalibRuns()
+  const codes = useMemo(() => samplesCodes(picked, viewRows), [picked, viewRows])
+  const inView = (s: { name: string; label: string }) => ['addis', 'etbi', 'indh', 'chts', 'uspa'].includes(s.name) && codes.has(savedSiteCode(s.label) ?? '')
 
   // median ± IQR spectra the gallery already exports: SPARTAN sites, and the calibration cohorts against Addis
   const spectra = useMemo(() => {
@@ -37,31 +41,31 @@ export function Band1617(_props: SectionPageProps) {
     const out: Row[] = []
     const push = (population: string, series: string, s: { wn: number[]; median: number[]; q25: number[]; q75: number[] }) =>
       s.wn.forEach((wn, i) => out.push({ population, series, wn, median: s.median[i], q25: s.q25[i], q75: s.q75[i] }))
-    for (const s of runs.site_spectra.airspec?.series ?? []) if (['addis', 'etbi', 'indh', 'chts', 'uspa'].includes(s.name)) push('SPARTAN sites', s.label, s)
+    for (const s of runs.site_spectra.airspec?.series ?? []) if (inView(s)) push('SPARTAN sites', s.label, s)
     const coh = runs.cohort_spectra.airspec
     if (coh) {
       push('Calibration cohorts', coh.reference_label, { wn: coh.wn, ...coh.reference })
       for (const s of coh.series) push('Calibration cohorts', s.label, { wn: coh.wn, ...s })
     }
     return out
-  }, [runs])
+  }, [runs, codes]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const centers = useMemo(() => {
     if (!data) return []
     const out: Row[] = rows(data, 'centers').map((r) => ({
       block: 'ftir_12 · per filter, offset-corrected raw spectra (median and IQR)', row: `${r.group} (n = ${r.n_used})`,
       mid: num(r.center_median), lo: num(r.center_p25), hi: num(r.center_p75) }))
-    for (const r of rows(data, 'site_bands')) out.push({
+    for (const r of savedSites(rows(data, 'site_bands'), codes, (b) => b.site)) out.push({
       block: 'ftir_38 · site median spectrum, neutral baseline', row: `${r.site} (n = ${r.n})${r.median_has_interior_peak ? '' : ' · edge, no interior peak'}`,
       mid: num(r.median_peak_cm1), lo: null, hi: null })
     for (const s of runs?.site_spectra.airspec?.series ?? []) {
-      if (!['addis', 'etbi', 'indh', 'chts', 'uspa'].includes(s.name)) continue
+      if (!inView(s)) continue
       const c = bandCenter(s.wn, s.median)
       if (c) out.push({ block: 'Recomputed here · site median spectrum, spline baseline (calibration_runs.json)',
         row: `${s.label.split(':')[0]} (n = ${s.n})${c.edge ? ' · edge, no interior peak' : ''}`, mid: c.center, lo: null, hi: null })
     }
     return out
-  }, [data, runs])
+  }, [data, runs, codes]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!data) return <Waiting error={error} />
   const covariation = rows(data, 'covariation').map((r): Row => ({ ...r, partner: PARTNER[String(r.partner_band)] ?? r.partner_band }))
@@ -75,6 +79,7 @@ export function Band1617(_props: SectionPageProps) {
   const nh = covariation.find((r) => r.group === 'Addis' && r.partner_band === 'NH_OH_3100_3400')
   const trackR = (target: string) => rows(data, 'tracking').find((r) => r.target === target && r.band === 'band1600_height')
   const ec = trackR('EC_deployed_ugm3'), tau = trackR('HIPS_tau')
+  const siteBands = savedSites(rows(data, 'site_bands'), codes, (r) => r.site)
 
   return <>
     <PageIntro id="band-1617-intro" title="The 1600/1617 cm⁻¹ band — what it is, and what it is not" data={data}
@@ -114,11 +119,11 @@ export function Band1617(_props: SectionPageProps) {
       subtitle={`Pearson r across the ${tau?.n ?? '—'} HIPS-paired Addis filters (${ec?.n ?? '—'} with deployed EC). The band shares the oxygenated-organic covariates the FTIR EC calibration leans on.`}
       provenance={provenance(data, ['tracking'])} />
 
-    <Figure kind="table" id="band-1617-sites" data={rows(data, 'site_bands')}
+    <Figure kind="table" id="band-1617-sites" data={siteBands} empty={PICK_SAVED_SITE}
       columns={[{ key: 'site', label: 'Site' }, { key: 'n', label: 'n', format: 'int' }, { key: 'median_peak_cm1', label: 'Median-spectrum peak (cm⁻¹)', format: 'f2' },
         { key: 'median_band_height', label: 'Band height', format: 'f3' }, { key: 'median_band_to_CH', label: 'A(1617) / A(2920)', format: 'f2' },
         { key: 'median_has_interior_peak', label: 'Interior peak?', format: 'text' }, { key: 'per_filter_interior_peak_pct', label: 'Filters with an interior peak (%)', format: 'f2' }]}
-      title="Neutral baseline, five SPARTAN sites — the feature is Ethiopian, not general"
+      title={`Neutral baseline, ${siteBands.length === 5 ? 'five SPARTAN sites' : 'the SPARTAN sites in view'} — the feature is Ethiopian, not general`}
       subtitle="ftir_38 on the calibration explorer's neutral (pspline_arpls) target spectra."
       provenance={provenance(data, ['site_bands'])} />
 

@@ -49,7 +49,7 @@ function NotebookPreset({ c }: { c: Charcoal }) {
  */
 export function CharcoalScores({ rows, meta }: SectionPageProps) {
   const { data, error } = useCharcoalExport()
-  const c = useCharcoal(rows, meta, data?.tables.per_filter)
+  const c = useCharcoal(rows, meta, data?.tables.per_filter, data?.tables.per_filter_network)
   if (!data) return <Waiting error={error} what="the charcoal scores" exporter={EXPORTER} />
   const perFilter = c.total > 0
   return <>

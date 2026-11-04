@@ -15,6 +15,9 @@ export interface CharcoalScore {
   library_r?: number | null; implied_T?: number | null; p_burned?: number | null
 }
 
+/** one row of the export's per_filter_network table: char_05's scores for a filter at any SPARTAN site (scripts/network_char_scores.py) */
+export interface NetworkScore { id: string; code: string; r_char: number; r_raw: number }
+
 /** the gallery row fields the join reads (a FilterRow has them all) */
 export interface JoinRow { id: string; date: string; month: number | null; season: string; excluded?: boolean; [field: string]: unknown }
 
@@ -87,6 +90,20 @@ export function markedScores<R extends JoinRow>(scores: readonly CharcoalScore[]
   if (!rows.length) return []
   const have = new Set(counted.map((s) => s.id))
   return joinScores(scores, rows, 'view', () => null, fields).scored.filter((s) => !have.has(s.id))
+}
+
+/**
+ * The network scores of the rows in view, shaped as `joinScores` shapes Addis so a chart reads both alike. Only char_05's
+ * two scores exist here: no mixture component, library match or lot. Rows with no score (no FTIR spectrum) stay out.
+ */
+export function joinNetworkScores<R extends JoinRow>(scores: readonly NetworkScore[], rows: readonly R[], fields = { fabs: 'HIPS Fabs', ec: 'EC (FTIR)' }): Scored<R>[] {
+  const byId = new Map(scores.map((s) => [s.id, s]))
+  return rows.flatMap((r) => {
+    const s = byId.get(r.id)
+    if (!s) return []
+    return [{ id: r.id, filterId: r.id, date: r.date, month: r.month ?? Number(r.date.slice(5, 7)), season: r.season, lot: null, rChar: s.r_char, rRaw: s.r_raw, delta: s.r_raw - s.r_char,
+      low: false, fabs: finite(r[fields.fabs]), ec: finite(r[fields.ec]), libraryR: null, impliedT: null, pBurned: null, row: r }]
+  })
 }
 
 /**

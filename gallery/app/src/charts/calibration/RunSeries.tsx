@@ -36,7 +36,9 @@ const DEPLOYED_LABEL = 'deployed SPARTAN EC (hollow)'
  * export's list or by hand) leaves the series, the rolling line and the summary, and is drawn as × under Mark. The
  * run's saved metrics are not drawn here.
  */
-export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: CalibRunsFile; meta: MetaFile; knownIds: Set<string> }) {
+export function RunSeries({ run, runs, meta, knownIds, empty }: { run: CalibRun; runs: CalibRunsFile; meta: MetaFile; knownIds: Set<string>
+  /** what the chart says with fewer than two dated filters to draw (a page that narrows `run` by Samples names what to pick) */
+  empty?: string }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
@@ -133,7 +135,7 @@ export function RunSeries({ run, runs, meta, knownIds }: { run: CalibRun; runs: 
     >
       <div ref={wrapRef} className="chart-wrap">
         {shown.length < 2 ? (
-          <Empty>No dated filters for this target.</Empty>
+          <Empty>{empty ?? 'No dated filters for this target.'}</Empty>
         ) : (
           <svg width={width} height={height}>
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>

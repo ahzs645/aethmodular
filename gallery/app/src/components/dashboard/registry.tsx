@@ -172,9 +172,9 @@ const CHARTS: DashboardChart[] = [
     dependencies: ['calibration_runs.json'], details: false, render: (d) => d.calibration && <CVCurveTile cal={d.calibration} /> },
 
   { kind: 'sourcestack', details: false, label: 'PMF sources over time', group: 'PMF sources', blurb: 'factor contributions, Addis 2023', fields: 'none', size: [8, 5],
-    available: (d) => !!d.pmf, render: (d) => d.pmf && <SourceStack pmf={d.pmf} rows={d.pmfRows} meta={d.meta} /> },
+    available: (d) => !!d.pmf, render: (d) => d.pmf && <SourceStack pmf={d.pmf} rows={d.pmfRows} fieldRows={d.rows} meta={d.meta} /> },
   { kind: 'sourceseason', details: false, label: 'PMF sources by season', group: 'PMF sources', blurb: 'factor shares per season', fields: 'none', size: [4, 5],
-    available: (d) => !!d.pmf, render: (d) => d.pmf && <SourceStack pmf={d.pmf} rows={d.pmfRows} meta={d.meta} id="sourceseason" initialGrouping="by season" title="Source apportionment by season" /> },
+    available: (d) => !!d.pmf, render: (d) => d.pmf && <SourceStack pmf={d.pmf} rows={d.pmfRows} fieldRows={d.rows} meta={d.meta} id="sourceseason" initialGrouping="by season" title="Source apportionment by season" /> },
 ]
 
 /**

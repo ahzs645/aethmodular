@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { domainSummaryFrom, holdoutFilterId, holdoutMoments, perFilterAtMac } from './holdout.ts'
+import { domainSummaryFrom, holdoutDate, holdoutFilterId, holdoutMoments, perFilterAtMac } from './holdout.ts'
 import { rmseAtMac, solveHipsMoments } from '../../../lib/macMath.ts'
 
 const data = (f) => JSON.parse(fs.readFileSync(new URL(`../../../../public/data/research/spectral/${f}`, import.meta.url), 'utf8'))
@@ -72,4 +72,20 @@ test('a filter without Fabs leaves the panel at the notebook\'s MAC rather than 
   assert.equal(perFilterAtMac(perFilter, missing, 6), null)
   assert.equal(perFilterAtMac(perFilter, null, 6), null)
   assert.equal(perFilterAtMac(perFilter, null, 10).length, perFilter.length)
+})
+
+test('domainSummaryFrom: a pair with no filter left has no row, and the others are the summary of those left', () => {
+  const addis = perFilter.filter((r) => r.target === 'addis_holdout')
+  const left = domainSummaryFrom(addis, saved)
+  assert.ok(left.length > 0 && left.every((r) => r.target === 'addis_holdout' && r.n === 14))
+  assert.deepEqual(domainSummaryFrom([], saved), [])
+})
+
+test('holdoutDate: every holdout filter gets a sampling date, the Delhi ones read as US dates', () => {
+  assert.equal(holdoutDate('2026-01-14'), '2026-01-14')
+  assert.equal(holdoutDate('2/22/2026 '), '2026-02-22')
+  assert.equal(holdoutDate('3/2/2026 1'), '2026-03-02')
+  assert.equal(holdoutDate(''), null)
+  assert.equal(holdoutDate('not a date'), null)
+  for (const r of Object.values(fabs.rows)) assert.match(holdoutDate(r.date), /^\d{4}-\d{2}-\d{2}$/)
 })

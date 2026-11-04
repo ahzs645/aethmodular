@@ -10,7 +10,7 @@ import { ExcludedNote, FixedSetNote } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 import type { SectionPageProps } from '../../types'
 import { medianSorted, ols, quantile } from '@/lib/stats'
-import { DataTable, Grid, SERIES, num, pText, useConcRows } from '../common/ui'
+import { ADDIS, DataTable, Grid, SERIES, SitesNote, num, pText, sitesOf, useConcRows } from '../common/ui'
 import type { QuantileReference } from '@/lib/referencePopulation'
 import type { FilterRow } from '@/lib/types'
 
@@ -97,7 +97,7 @@ export function ImproveOrigin({ rows: viewRows, meta }: SectionPageProps) {
       </ChartFrame>
 
       <ChartFrame id="io-blank" title="SPARTAN samples outside their blanks' R1 range — the whole shipped HIPS batch, by Fabs quintile"
-        subtitle={`For every SPARTAN PM2.5 sample in SPARTAN_HIPS_Batch1-51, the field blanks read on the same lot and calibration coefficients give an R1 range. ${n(q.sample_filters)?.toLocaleString() ?? '—'} samples, ${n(q.blank_rows) ?? '—'} blank rows, ${n(q.calibration_sets_with_blanks) ?? '—'} calibration sets with blanks; ${fmt(q.sample_blank_domain_coverage_pct, 1)} % of samples have one. The HIPS operating envelope page repeats this for the focus sites.`}
+        subtitle={`For every SPARTAN PM2.5 sample in SPARTAN_HIPS_Batch1-51, the field blanks read on the same lot and calibration coefficients give an R1 range. ${n(q.sample_filters)?.toLocaleString() ?? '—'} samples, ${n(q.blank_rows) ?? '—'} blank rows, ${n(q.calibration_sets_with_blanks) ?? '—'} calibration sets with blanks; ${fmt(q.sample_blank_domain_coverage_pct, 1)} % of samples have one. The HIPS operating envelope page repeats this on the filters in view.`}
         provenance={`${FTIR37} (hips_blank_domain)`}>
         <SweepPlot series={[{ id: 'b', label: 'below the blank R1 range', color: INK.negative, points: data.blank_domain.bins.map((b) => ({ x: n(b.Fabs_median) ?? 0, y: n(b.below_blank_pct), tip: [`Fabs ${fmt(b.Fabs_min, 1)}–${fmt(b.Fabs_max, 1)} Mm⁻¹`, `${fmt(b.below_blank_pct, 1)} % below, ${fmt(b.outside_blank_pct, 1)} % outside`, `median R1 position ${fmt(b.r1_position_median, 2)}`, `n ${b.n}`] })) },
           { id: 'o', label: 'outside it', color: INK.muted, dash: '5 4', points: data.blank_domain.bins.map((b) => ({ x: n(b.Fabs_median) ?? 0, y: n(b.outside_blank_pct) })) }]}
@@ -130,17 +130,22 @@ const shareText = (v: number | null) => (v === null ? '< 0.1 %' : `${fmt(v, v < 
  * ftir_26 [29B]: how rare a total Fabs of the Addis intercept's size is in IMPROVE. The notebook's curve is the
  * survival of Fabs over its 160,023 HIPS × TOR bridge filters; the gallery ships the whole IMPROVE network's Fabs as
  * 1,001 quantiles (improve_reference.json, 388,159 filters), so the curve here is that population down to its 0.1 %
- * step, with the bridge's own counts (origin.json) as points. The Addis curve, its median and its OLS intercept are
- * computed from the gallery rows in view.
+ * step, with the bridge's own counts (origin.json) as points. One curve per site in view, Addis in its colour, each
+ * with its median and OLS intercept, is computed from the gallery rows in view; the IMPROVE quantiles and the bridge
+ * counts stay as saved. The Addis C the chart measures against is the notebook's constant, so it stays with no Addis in view.
  */
 function FabsSurvival({ origin, rows }: { origin: Origin; rows: FilterRow[] }) {
   const { data: ref, error } = useExport<QuantileReference>('improve_reference.json')
-  const addis = useMemo(() => rows.filter((r) => r.code === 'ETAD' && num(r, 'HIPS Fabs') !== null), [rows])
-  const fabs = useMemo(() => addis.map((r) => num(r, 'HIPS Fabs')!).sort((a, b) => a - b), [addis])
-  const fit = useMemo(() => {
-    const pairs = addis.flatMap((r) => { const ec = num(r, 'EC (FTIR)'), f = num(r, 'HIPS Fabs'); return ec !== null && f !== null ? [[ec, f] as const] : [] })
-    return ols(pairs.map((p) => p[0]), pairs.map((p) => p[1]))
-  }, [addis])
+  // a curve per site in view with HIPS Fabs, Addis first
+  const curves = useMemo(() => sitesOf(rows).flatMap((name) => {
+    const own = rows.filter((r) => r.site === name && num(r, 'HIPS Fabs') !== null)
+    if (!own.length) return []
+    const pairs = own.flatMap((r) => { const ec = num(r, 'EC (FTIR)'), f = num(r, 'HIPS Fabs'); return ec !== null && f !== null ? [[ec, f] as const] : [] })
+    const addis = own[0].code === 'ETAD'
+    return [{ name, addis, label: name === ADDIS ? 'Addis' : name, color: addis ? ADDIS_COLOR : own[0].color, fabs: own.map((r) => num(r, 'HIPS Fabs')!).sort((a, b) => a - b),
+      fit: ols(pairs.map((p) => p[0]), pairs.map((p) => p[1])) }]
+  }), [rows])
+  const noFabs = useMemo(() => sitesOf(rows).filter((s) => !curves.some((c) => c.name === s)), [rows, curves])
   const q = ref?.quantiles['HIPS Fabs']?.q
   if (!q) return (
     <ChartFrame id="io-survival" title="How rare is the Addis intercept's Fabs in IMPROVE?" provenance={`${FTIR26} (Figure 2B)`}>
@@ -151,8 +156,11 @@ function FabsSurvival({ origin, rows }: { origin: Origin; rows: FilterRow[] }) {
   const steps = q.length - 1
   // at or above each quantile; the top entry (the maximum) has nothing above it on a log axis
   const network = q.slice(0, steps).flatMap((x, i) => (x >= X_MIN ? [{ x, y: 100 * (1 - i / steps), tip: [`Fabs ${fmt(x, 2)} Mm⁻¹`, `${fmt(100 * (1 - i / steps), 1)} % of IMPROVE filters at or above`] }] : []))
-  const site = fabs.flatMap((x, i) => (x > 0 ? [{ x, y: (100 * (fabs.length - i)) / fabs.length, tip: [`Addis Fabs ${fmt(x, 1)} Mm⁻¹`, `${fmt((100 * (fabs.length - i)) / fabs.length, 1)} % of the Addis filters in view at or above`] }] : []))
-  const median = fabs.length ? medianSorted(fabs) : null
+  const siteCurve = ({ fabs, label }: (typeof curves)[number]) => fabs.flatMap((x, i) => (x > 0 ? [{ x, y: (100 * (fabs.length - i)) / fabs.length, tip: [`${label} Fabs ${fmt(x, 1)} Mm⁻¹`, `${fmt((100 * (fabs.length - i)) / fabs.length, 1)} % of the ${label} filters in view at or above`] }] : []))
+  const medianOf = (fabs: number[]) => (fabs.length ? medianSorted(fabs) : null)
+  const addis = curves.find((s) => s.addis)
+  const median = addis ? medianOf(addis.fabs) : null
+  const fit = addis?.fit
   const bridge = [
     { x: sc.median_fabs, y: 50, tip: ['ftir_26 bridge median', `Fabs ${fmt(sc.median_fabs, 2)} Mm⁻¹`] },
     { x: c, y: (100 * sc.n_at_or_above_c) / sc.n, tip: [`ftir_26 bridge: ${sc.n_at_or_above_c} of ${sc.n.toLocaleString()} at or above ${c}`] },
@@ -163,17 +171,19 @@ function FabsSurvival({ origin, rows }: { origin: Origin; rows: FilterRow[] }) {
     ...(median !== null ? [{ at: median, label: `Addis median ${fmt(median, 1)}`, color: ADDIS_COLOR }] : []),
     ...(fit && fit.intercept > 0 ? [{ at: fit.intercept, label: `Addis OLS intercept ${fmt(fit.intercept, 1)}`, color: INK.negative }] : [])]
   return (
-    <ChartFrame id="io-survival" title={`${c} Mm⁻¹ of total absorption is rare in IMPROVE — the Fabs survival curve against Addis`}
-      subtitle={`Share of filters whose total HIPS Fabs is at or above each value, log–log (x from ${X_MIN} Mm⁻¹; ${fmt(100 * (1 - (q.findIndex((x) => x >= X_MIN)) / steps), 0)} % of IMPROVE filters read more). Grey: every IMPROVE filter in the gallery (${ref!.quantiles['HIPS Fabs'].n.toLocaleString()} at ${ref!.n_sites} sites, ${steps + 1} quantiles, so the curve stops at its 0.1 % step; the maximum is ${fmt(q[steps], 1)} Mm⁻¹). The notebook drew the ${sc.n.toLocaleString()} filters of its HIPS × TOR bridge instead: its counts are the black points (median ${fmt(sc.median_fabs, 2)}; ${sc.n_at_or_above_c} at or above C = ${c}, ${fmt((100 * sc.n_at_or_above_c) / sc.n, 3)} %, 1 in ${Math.round(sc.n / sc.n_at_or_above_c).toLocaleString()}). On the whole network ${shareText(shareAtOrAbove(q, c))} reach C (median ${fmt(q[Math.round(steps / 2)], 2)}): the bridge filters are a little cleaner, the tail the same order. Orange: the ${fabs.length} Addis filters in view, median ${fmt(median, 1)} Mm⁻¹ (ftir_26: 47.11 on every ETAD HIPS row)${fit ? `; their OLS of Fabs on FTIR EC has intercept ${fmt(fit.intercept, 1)} Mm⁻¹ (n = ${fit.n}), which ${shareText(shareAtOrAbove(q, fit.intercept))} of IMPROVE filters reach in total` : ''}. Fabs carries no MAC.`}
-      provenance={<>{FTIR26} (Figure 2B, cell 29). IMPROVE quantiles: <code>improve_reference.json</code>; bridge counts: <code>research/improve_origin/origin.json</code> scale; Addis: the gallery rows in view.</>}>
+    <ChartFrame id="io-survival" title={`${c} Mm⁻¹ of total absorption is rare in IMPROVE — the Fabs survival curve against ${curves.length === 1 ? curves[0].label : 'the sites in view'}`}
+      subtitle={`Share of filters whose total HIPS Fabs is at or above each value, log–log (x from ${X_MIN} Mm⁻¹; ${fmt(100 * (1 - (q.findIndex((x) => x >= X_MIN)) / steps), 0)} % of IMPROVE filters read more). Grey: every IMPROVE filter in the gallery (${ref!.quantiles['HIPS Fabs'].n.toLocaleString()} at ${ref!.n_sites} sites, ${steps + 1} quantiles, so the curve stops at its 0.1 % step; the maximum is ${fmt(q[steps], 1)} Mm⁻¹). The notebook drew the ${sc.n.toLocaleString()} filters of its HIPS × TOR bridge instead: its counts are the black points (median ${fmt(sc.median_fabs, 2)}; ${sc.n_at_or_above_c} at or above C = ${c}, ${fmt((100 * sc.n_at_or_above_c) / sc.n, 3)} %, 1 in ${Math.round(sc.n / sc.n_at_or_above_c).toLocaleString()}). On the whole network ${shareText(shareAtOrAbove(q, c))} reach C (median ${fmt(q[Math.round(steps / 2)], 2)}): the bridge filters are a little cleaner, the tail the same order. ${curves.map((s) => `${s.addis ? 'Orange: the' : `${s.label}: the`} ${s.fabs.length} ${s.addis ? 'Addis ' : ''}filters in view, median ${fmt(medianOf(s.fabs), 1)} Mm⁻¹${s.addis ? ' (ftir_26: 47.11 on every ETAD HIPS row)' : ''}${s.fit ? `; their OLS of Fabs on FTIR EC has intercept ${fmt(s.fit.intercept, 1)} Mm⁻¹ (n = ${s.fit.n}), which ${shareText(shareAtOrAbove(q, s.fit.intercept))} of IMPROVE filters reach in total` : ''}. `).join('')}Fabs carries no MAC.`}
+      provenance={<>{FTIR26} (Figure 2B, cell 29). IMPROVE quantiles: <code>improve_reference.json</code>; bridge counts: <code>research/improve_origin/origin.json</code> scale; the site curves: the gallery rows in view.</>}>
       <SweepPlot series={[
         { id: 'improve', label: 'IMPROVE (all filters, quantiles)', color: INK.muted, points: network, marks: false, width: 2 },
-        { id: 'addis', label: 'Addis filters in view', color: ADDIS_COLOR, points: site, marks: false, curve: 'step' },
+        ...curves.map((s) => ({ id: s.addis ? 'addis' : s.name, label: `${s.label} filters in view`, color: s.color, points: siteCurve(s), marks: false, curve: 'step' as const })),
         { id: 'bridge', label: 'ftir_26 bridge counts', color: INK.text, points: bridge, marks: true, width: 0 },
-      ]} xScale="log" yScale="log" xDomain={[X_MIN, Math.max(q[steps - 1], fabs[fabs.length - 1] ?? 0) * 1.15]} yDomain={[0.01, 100]} yFormat={decade}
+      ]} xScale="log" yScale="log" xDomain={[X_MIN, Math.max(q[steps - 1], ...curves.map((s) => s.fabs[s.fabs.length - 1])) * 1.15]} yDomain={[0.01, 100]} yFormat={decade}
         xLabel="Total HIPS Fabs on the filter (Mm⁻¹, log)" yLabel="% of filters at or above (log)" height={320} xMarkers={markers} />
-      <Key items={[{ label: 'IMPROVE, every filter (quantiles)', color: INK.muted, kind: 'line' }, { label: 'Addis filters in view', color: ADDIS_COLOR, kind: 'line' }, { label: 'ftir_26 bridge (160,023 filters): counts', color: INK.text, kind: 'dot' }]} />
-      <ExcludedNote fields={['HIPS Fabs']} of={(r) => r.code === 'ETAD'} />
+      <Key items={[{ label: 'IMPROVE, every filter (quantiles)', color: INK.muted, kind: 'line' }, ...curves.map((s) => ({ label: `${s.label} filters in view`, color: s.color, kind: 'line' as const })), { label: 'ftir_26 bridge (160,023 filters): counts', color: INK.text, kind: 'dot' }]} />
+      {!curves.length && <Note>No filter in view has HIPS Fabs, so only the saved IMPROVE curve is drawn: pick a site with HIPS Fabs under Samples.</Note>}
+      <SitesNote sites={curves.length ? noFabs : []} why="no filter in view has HIPS Fabs, so it has no curve here" />
+      <ExcludedNote fields={['HIPS Fabs']} />
     </ChartFrame>
   )
 }

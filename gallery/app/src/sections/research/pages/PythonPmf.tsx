@@ -10,7 +10,8 @@ import { Archived, HeldOut, Inventory, Measurements, Sensitivity } from './pytho
  * delivered as a package of code, inputs and saved results (gallery/data/export_python_pmf.py reads its CSV/JSON/NPZ,
  * never its code). The fits are the package's; the checks against held-out OM, the archived KF solution and the
  * gallery's measurements are recomputed here on the filters that count (common/pythonPmf.ts, node-tested against the
- * package's saved values). Factors are "Factor 1…5" only: the report forbids source names.
+ * package's saved values) and follow Samples, each filter placed by its site and date (the fits do not: they were made
+ * on every modelled filter). Factors are "Factor 1…5" only: the report forbids source names.
  */
 export function PythonPmf({ rows, meta }: SectionPageProps) {
   const { data, error } = usePythonPmf()
@@ -37,19 +38,19 @@ export function PythonPmf({ rows, meta }: SectionPageProps) {
         over time; <strong>3</strong> whether any factor count stands out; <strong>4</strong> why the misfit has a floor and where in the spectrum it sits; <strong>5</strong> how well
         the factors predict held-out total OM; <strong>6</strong> how each new factor tracks the archived KF factor it resembles; <strong>7</strong> how the factors correlate with
         the gallery's HIPS BC, FTIR EC/OC/OM and PM2.5 of the same filters; <strong>8</strong> whether the factors survive changes of loss, blank treatment, baseline and cohort;
-        <strong> 9</strong> which filters the PMF holds, and where that disagrees with the gallery's exclusions. Charts 2, 5, 6 and 7 follow Filters → excluded and your hand
-        exclusions (their statistics are recomputed on the filters that count, and equal the package's when every filter counts); charts 1, 3, 4 and 8 are the package's saved fits.
-        One case picker (cohort × loss/preparation) drives charts 1, 2, 4, 6 and 7.</p>
+        <strong> 9</strong> which filters the PMF holds, and where that disagrees with the gallery's exclusions. Charts 2, 5, 6 and 7 follow Samples (sites, dates, seasons), Filters → excluded and your hand
+        exclusions (their statistics are recomputed on the filters in view that count, and equal the package's when every filter counts), and chart 9 lists the filters in view; charts 1, 3, 4 and 8 are the package's saved fits.
+        One case picker (cohort × loss/preparation) drives charts 1, 2, 4, 6 and 7; chart 6 is Addis only, since the archived solution is.</p>
     </PageIntro>
     <Profiles data={data} c={c} setCase={setCase} />
-    <Contributions data={data} c={c} setCase={setCase} meta={meta} />
+    <Contributions data={data} c={c} setCase={setCase} rows={rows} meta={meta} />
     <RankScreen data={data} />
     <Floor data={data} />
     <Residuals data={data} c={c} setCase={setCase} />
     <HeldOut data={data} />
     <Archived data={data} c={ce} setCase={setCase} archived={archived} />
-    <Measurements data={data} c={ce} setCase={setCase} rows={rows} meta={meta} />
+    <Measurements data={data} c={c} setCase={setCase} rows={rows} meta={meta} />
     <Sensitivity data={data} />
-    <Inventory data={data} />
+    <Inventory data={data} rows={rows} meta={meta} />
   </>
 }

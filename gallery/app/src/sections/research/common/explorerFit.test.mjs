@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { explorerFit, plausibilityOf } from './explorerFit.ts'
+import { evalDates, explorerFit, plausibilityOf } from './explorerFit.ts'
 
 const runs = JSON.parse(fs.readFileSync(new URL('../../../../public/data/calibration_runs.json', import.meta.url), 'utf8'))
 const LAMBDA_10 = 2.96
@@ -59,4 +59,16 @@ test('the plausibility card over every dated Addis filter is the explorer\'s sav
   assert.ok(checked >= 5)
   const run = runs.runs.find((r) => r.preset === 'ocec800_airspec' && r.target === 'addis')
   assert.equal(plausibilityOf(run.eval, (i) => i !== 0).n, plausibilityOf(run.eval).n - 1)
+})
+
+const read = (rel) => JSON.parse(fs.readFileSync(new URL(`../../../../public/data/${rel}`, import.meta.url), 'utf8'))
+const rowsOf = (t) => t[Object.keys(t)[0]].map((_, i) => Object.fromEntries(Object.keys(t).map((k) => [k, t[k][i]])))
+const mac = read('research/spectral/mac_choice.json').tables
+
+test('evalDates: every ftir_19 per-filter row finds its date in the explorer\'s Addis eval, scan suffix or not', () => {
+  const dates = evalDates(runs.runs.find((r) => r.target === 'addis').eval)
+  const filters = rowsOf(mac.setup_filters)
+  assert.equal(filters.length, 239)
+  for (const r of filters) assert.ok(dates.get(r.ExternalFilterId.replace(/-\d+$/, '')), r.ExternalFilterId)
+  assert.equal(evalDates({ id: ['ETAD-0017-1', null, 'ETAD-0018'], date: ['2022-12-07', '2022-12-08', null] }).size, 1)
 })

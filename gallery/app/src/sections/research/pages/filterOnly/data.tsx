@@ -7,9 +7,9 @@ import * as d3 from 'd3'
 import { Segmented, Select } from '@/components/ChartFrame'
 import { useExport } from '@/lib/data'
 import { useMac } from '@/lib/mac'
-import { ExcludedNote, useExclMode, useExclusionSplit } from '@/lib/markedRows'
+import { ExcludedNote, useExclMode, useExclusionSplit, useMarkedRows } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
-import type { MetaFile } from '@/lib/types'
+import type { FilterRow, MetaFile } from '@/lib/types'
 import { rowsOf as tableRows } from '@/lib/table'
 import { useSearchParam } from '@/lib/url'
 import { PlotControls, SidebarControls } from '@/lib/pageSidebar'
@@ -23,6 +23,8 @@ export const NB_PROP = 'research/ftir_hips_chem/filter_proportionality.ipynb'
 export const NB_STAB = 'research/ftir_hips_chem/filter_relationship_stability.ipynb'
 export const SOURCE = 'gallery/app/src/sections/research/pages/filterOnly'
 export const SITES = ['Addis Ababa', 'Beijing', 'Delhi', 'JPL']
+/** what a chart says when Samples leaves it no release filter */
+export const NO_FILTERS = `No filter of the release is in these Samples: pick ${SITES.slice(0, -1).join(', ')} or ${SITES[SITES.length - 1]}, or widen the dates and seasons.`
 const FALLBACK: Record<string, string> = { 'Addis Ababa': '#F39C12', Beijing: '#E74C3C', Delhi: '#3498DB', JPL: '#2ECC71' }
 
 interface PointsFile { generated: string; points: FPoint[]; omitted_default: string }
@@ -46,21 +48,29 @@ export interface FoData {
 const NO_POINTS: FPoint[] = []
 
 /**
- * The release's 545 diagnostic filters under Filters → excluded, as every chart's filters: the data export's own
- * exclusions (ETAD-0248, the PM10 filter the export excludes, is one of the 545) and the reader's hand exclusions
- * leave every refit, Include puts the export's back (as the release ran), and Mark draws them as × (joined by
- * filter id, lib/markedRows useExclusionSplit, which also applies "keep only"). Only the check against the release's
- * own tables (Agreement) keeps all 545.
+ * The release's 545 diagnostic filters under Samples and Filters → excluded, as every chart's filters: every one has
+ * a gallery row (filters.json), so the rows the page is given (and the excluded ones Mark draws) say which are in view:
+ * the sites, dates, calendar, season chips and PMF pick narrow the refits, as the Baseline lab's useLabFilters does.
+ * The data export's own exclusions (ETAD-0248, the PM10 filter the export excludes, is one of the 545) and the reader's
+ * hand exclusions leave every refit, Include puts the export's back (as the release ran), and Mark draws them as ×
+ * (joined by filter id, lib/markedRows useExclusionSplit, which also applies "keep only"). Only the check against the
+ * release's own tables (Agreement) keeps all 545, whatever Samples says.
  */
-export function useFilterOnly(): { data: FoData | null; error: string } {
+export function useFilterOnly(rows: FilterRow[]): { data: FoData | null; error: string } {
   const { data, error } = useExport<PointsFile>('research/filter_only/points.json', (d) => (Array.isArray(d.points) ? null : 'no points'))
   const mode = useExclMode()
-  const split = useExclusionSplit(data?.points ?? NO_POINTS, (p) => p.id)
+  const marked = useMarkedRows()
+  const inView = useMemo(() => {
+    if (!data) return NO_POINTS
+    const ids = new Set([...rows, ...marked].map((r) => r.id))
+    return data.points.filter((p) => ids.has(p.id))
+  }, [data, rows, marked])
+  const split = useExclusionSplit(inView, (p) => p.id)
   const out = useMemo(() => {
     if (!data) return null
-    const points = split.counted, n = split.nOut
+    const points = split.counted, n = data.points.length - points.length
     // under Mark the charts say it themselves (FoExcludedNote), with the × drawn
-    const note = mode === 'mark' || n <= 0 ? null : `${n} of the ${data.points.length} ${n === 1 ? 'is' : 'are'} excluded (Filters → excluded) and left out of every refit.`
+    const note = mode === 'mark' || n <= 0 ? null : `${n} of the ${data.points.length} ${n === 1 ? 'is' : 'are'} out of these Samples or excluded (Filters → excluded) and left out of every refit.`
     return { points, marked: split.marked, all: data.points, dropped: n, omitDefault: data.omitted_default, note }
   }, [data, split, mode])
   return { data: out, error }

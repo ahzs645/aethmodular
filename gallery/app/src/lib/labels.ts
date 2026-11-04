@@ -56,8 +56,8 @@ export function baselineName(method: string, { short = false, backgroundRank }: 
 }
 
 /** Axis titles for the EC crossplots, in either concentration or per-filter mass. */
-export const ecAxis = (what: 'hips' | 'tor' | 'ftir', unit = 'µg/m³') =>
-  `${{ hips: 'HIPS Fabs / MAC 10', tor: 'TOR EC', ftir: 'FTIR EC' }[what]} (${unit})`
+export const ecAxis = (what: 'hips' | 'tor' | 'ftir', unit = 'µg/m³', mac = 'MAC 10') =>
+  `${{ hips: `HIPS Fabs / ${mac}`, tor: 'TOR EC', ftir: 'FTIR EC' }[what]} (${unit})`
 
 /** One-line definitions, for tooltips and the explain text. */
 export const PREPROCESSING_NOTE: Record<string, string> = {

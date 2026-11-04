@@ -182,6 +182,37 @@ export function lotContrast(members: readonly Pick<Member, 'lot' | 'escape'>[], 
   return { na: ea.length, nb: eb.length, medianA: quantile(ea, 0.5), medianB: quantile(eb, 0.5), test: mannWhitney(ea, eb) }
 }
 
+/** one filter of char_12's own set, for its two saved tables: its escape score, lot, month and char_06 group */
+export interface EscapeFilter { escape: number; lot: number | null; month: number; low: boolean | null }
+
+/** char_12's null: a calibration filter escapes its own envelope 10 % of the time, so 2 × null is 0.2 */
+const TWO_NULL = 0.2
+const round4 = (v: number) => Math.round(v * 1e4) / 1e4
+
+/**
+ * char_12's escape_by_group rows (its table's column names and four decimals) over the filters given: all of them,
+ * each of its seasons, and char_06's two groups where the filters carry them (`low`: in the low-similarity component).
+ * On its 239 they are the saved table. A group with no filter has no row.
+ */
+export function escapeGroups(filters: readonly EscapeFilter[]) {
+  const row = (group: string, ms: readonly EscapeFilter[]) => {
+    const e = ms.map((m) => m.escape)
+    return ms.length ? [{ group, n: ms.length, 'median escape': round4(quantile(e, 0.5)), '90th pct': round4(quantile(e, 0.9)), 'share > 2× null': round4(e.filter((v) => v > TWO_NULL).length / e.length) }] : []
+  }
+  const inSeason = (name: string) => filters.filter((m) => notebookSeason(m.month) === name)
+  return [...row('ETAD — all', filters), ...row('ETAD — dry season', inSeason('Dry (Oct-Feb)')), ...row('ETAD — Belg', inSeason('Belg (Mar-May)')), ...row('ETAD — Kiremt', inSeason('Kiremt (Jun-Sep)')),
+    ...row('ETAD — char_06 anomalous', filters.filter((m) => m.low === true)), ...row('ETAD — char_06 normal', filters.filter((m) => m.low === false))]
+}
+
+/** char_12's lot_effect rows (its table's column names and four decimals) over the filters given: lots 248 and 251, all of them and within the dry season */
+export function lotEffect(filters: readonly EscapeFilter[]) {
+  const row = (subset: string, ms: readonly EscapeFilter[]) => {
+    const c = lotContrast(ms, 248, 251), p = c.test?.p
+    return c.na + c.nb ? [{ subset, 'n lot 248': c.na, 'n lot 251': c.nb, 'median escape 248': c.na ? round4(c.medianA) : null, 'median escape 251': c.nb ? round4(c.medianB) : null, 'Mann–Whitney p': p == null || !Number.isFinite(p) ? null : round4(p) }] : []
+  }
+  return [...row('all filters', filters), ...row('dry season only', filters.filter((m) => notebookSeason(m.month) === 'Dry (Oct-Feb)'))]
+}
+
 /** the lots in a set of members, most filters first (unknown lots left out) */
 export function lotsOf(members: readonly Pick<Member, 'lot'>[]): number[] {
   const n = new Map<number, number>()

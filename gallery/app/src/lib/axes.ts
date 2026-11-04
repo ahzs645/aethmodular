@@ -144,6 +144,18 @@ export const inDomain = (d: PairDomain, x: number, y: number) => x >= d.x[0] && 
 export interface RobustDomain { domain: [number, number]; below: number; above: number }
 
 /**
+ * The range of a second variable's own axis (a right-hand axis): from 0 where the values come down near it (rain,
+ * with its many dry days: at most half the largest), so a height reads as an amount; otherwise the values' own span
+ * (pressure near 770 hPa would be a flat line on an axis from 0). Null with nothing to draw.
+ */
+export function rightAxisDomain(values: readonly number[]): [number, number] | null {
+  if (!values.length) return null
+  const lo = d3.min(values)!, hi = d3.max(values)!
+  const from = lo >= 0 && lo <= hi / 2 ? 0 : lo
+  return from === hi ? [from, from + 1] : [from, hi]
+}
+
+/**
  * The one way charts clip wild tails (docs/gallery-chart-standards.md §1):
  * the [lo, hi] quantiles of the finite values (0 and 1 mean the min and max),
  * widened to `include` (values that must stay in frame, e.g. 0 or a target of 1),

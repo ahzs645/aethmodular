@@ -10,6 +10,9 @@ import { pearson } from '../../../lib/stats.ts'
 /** ETAD-0017-1 → ETAD-0017: the gallery's row id for a SPARTAN filter id (lib/filterId baseFilterId, kept local for node) */
 export const baseId = (id: string): string => id.replace(/^([A-Z]{4}-\d{4})-\d+$/, '$1')
 
+/** ETAD-0017-1 → ETAD: a filter id's site code */
+export const siteOfId = (id: string): string => id.slice(0, 4)
+
 export interface Scores { n: number; rmse: number; mae: number; r2: number; r: number; bias: number; sse: number }
 
 /** prediction scores of `pred` against `obs` (finite pairs only); null below 2 pairs */

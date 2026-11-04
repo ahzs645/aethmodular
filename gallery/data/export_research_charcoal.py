@@ -15,6 +15,9 @@ present after a local run) or from the table the executed notebook displayed (co
 export_research_spectral.Page does. Without output/ the per-filter table is listed under `missing` and the page
 shows the notebooks' tables only. Per-filter tables no script writes yet are listed with what they need.
 
+The notebooks stop at Addis. research/ftir_etad_char/scripts/network_char_scores.py runs char_05's scoring on every
+SPARTAN PM2.5 filter (per_filter_network), so the raw-vs-char chart can take any site in the Samples picker.
+
 Writes gallery/app/public/data/research/charcoal/scores.json (the Research section's data folder: private).
 """
 
@@ -93,9 +96,22 @@ def per_filter(p: Page) -> pd.DataFrame | None:
     return p.add("per_filter", frame, notebook=f"{NB06}, {NB03}, {NB02}", read="csv", path="; ".join(paths))
 
 
+def per_filter_network(p: Page) -> None:
+    """char_05's r_char and r_raw for every SPARTAN site, joined to the rows in view by filter id on the page."""
+    script = CHAR / "scripts/network_char_scores.py"
+    path = TABLES / "network/char_scores_per_filter.csv"
+    if not path.exists():
+        p.missing.append({"table": "per_filter_network", "what": "every SPARTAN filter's r_char and r_raw, which put other sites on the raw-vs-char chart",
+                          "needs": rel(path), "run": f"uv run --locked --no-sync python {rel(script)}",
+                          "after": "the network AIRSpec baselines (research/ftir_hips_chem/workflows/network_baselines_20261019.py) and the charcoal archive"})
+        return
+    p.add("per_filter_network", pd.read_csv(path)[["id", "code", "r_char", "r_raw"]], notebook=script.name, read="csv", path=rel(path))
+
+
 def build() -> Page:
     p = ScoresPage("scores", "Charcoal similarity per filter", out=OUT, exporter=Path(__file__))
     rows = per_filter(p)
+    per_filter_network(p)
 
     # ------------------------------------------------------------ char_05: raw feedstock vs char
     p.shown("by_season_05", CHAR, NB05, "display(season_tab)", csv="output/tables/char05/by_season.csv")

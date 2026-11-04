@@ -8,6 +8,7 @@ import { num, type Row, type Table } from '@/lib/table'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import type { SectionPageProps } from '../../types'
+import { PICK_SAVED_SITE, samplesCodes, savedSites } from '../common/savedSites'
 import { SiteSimilarityMatrix } from './SiteSimilarityMatrix'
 import { RawVsBaselined } from './network/RawVsBaselined'
 import { PageIntro, provenance, rows, useSpectral, Waiting } from './spectralCommon'
@@ -20,11 +21,13 @@ const tag = (list: string, rs: Row[]) => rs.map((r): Row => ({ list, ...r }))
  * the five SPARTAN targets, site similarity, a validated match threshold, and which IMPROVE spectra
  * each Ethiopian season draws. All tables are the executed notebook's; the site × site matrix is
  * clustered here (lib/cluster) for the dendrogram. The raw-space site matrix (§7), which the notebook
- * plots but never writes, is recomputed by the exporter from the Davis Data spectra (network/RawVsBaselined).
+ * plots but never writes, is recomputed by the exporter from the Davis Data spectra (network/RawVsBaselined). The class
+ * shares and the match-threshold coverage keep the SPARTAN sites picked under Samples; the rest is the network itself.
  */
-export function NetworkMap({ meta }: SectionPageProps) {
+export function NetworkMap({ meta, picked, rows: viewRows }: SectionPageProps) {
   const { data, error } = useSpectral('network_map')
   if (!data) return <Waiting error={error} />
+  const codes = samplesCodes(picked, viewRows)
   const k = rows(data, 'silhouette').reduce((best, r) => (Number(r.silhouette) > Number(best.silhouette) ? r : best), { k: null, silhouette: -1 } as Row)
 
   return <>
@@ -33,7 +36,7 @@ export function NetworkMap({ meta }: SectionPageProps) {
       <p>The Spectral similarity tab ranks sites by mean filter-pair r; this page adds the population view: Ward classes, the smoke-class test, and a match threshold validated on EC. The notebook's written tl;dr predates its final run (it names class 2 and 3.3×); every figure here is its executed tables.</p>
     </PageIntro>
 
-    <Figure kind="heatmap" id="network-share" data={rows(data, 'class_share')} row="target" column="Ward class" value="share" ramp="sequential" domain={[0, 1]} format="pct" valueLabel="share of the site's filters"
+    <Figure kind="heatmap" id="network-share" data={savedSites(rows(data, 'class_share'), codes, (r) => r.target)} empty={PICK_SAVED_SITE} row="target" column="Ward class" value="share" ramp="sequential" domain={[0, 1]} format="pct" valueLabel="share of the site's filters"
       title="Where the SPARTAN sites fall — Delhi and Beijing in the smoke-associated class, Addis and Bishoftu not"
       subtitle="Ward linkage on 30 PCA scores (PCA fitted on the library only) of standardised spline-baseline spectra, library and targets in one tree, cut at the silhouette-best k. Classes 3 and 4 are low-deposit spectra; read class 1 vs 2 as the chemistry."
       provenance={provenance(data, ['class_share'])} />
@@ -75,7 +78,7 @@ export function NetworkMap({ meta }: SectionPageProps) {
       subtitle="For every library spectrum, its nearest neighbour by r. Sharing the Ward class is near-certain at any r (one class holds most of the library) and so calibrates nothing; carrying the same EC loading within 25 % never reaches 75 % precision at any cutoff (the best, at r ≥ 0.9999, keeps 0.5 % of the library)."
       provenance={provenance(data, ['threshold_precision'])} />
 
-    <Figure kind="table" id="network-coverage" data={rows(data, 'threshold')}
+    <Figure kind="table" id="network-coverage" data={savedSites(rows(data, 'threshold'), codes, (r) => r.target)} empty={PICK_SAVED_SITE}
       columns={[{ key: 'target', label: 'Target' }, { key: 'median_best_r', label: 'Median best library r', format: 'f3' }, { key: 'pct_above_threshold', label: 'Above the r ≥ 0.9999 operating point (%)', format: 'f2' }, { key: 'pct_below_0.99', label: 'Best r below 0.99 (%)', format: 'f2' }]}
       title="No SPARTAN filter reaches that operating point; Addis and JPL have the most filters below r 0.99"
       provenance={provenance(data, ['threshold'])} />

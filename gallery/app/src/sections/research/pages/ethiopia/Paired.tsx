@@ -3,6 +3,7 @@ import { Figure } from '@/components/Figure'
 import { f2, signed } from '@/lib/format'
 import { ExcludedNote, useExclusionSplit } from '@/lib/markedRows'
 import type { Row } from '@/lib/table'
+import { useInSamples } from '../../common/ui'
 import { provenance, rows as tableRows, type SpectralExport } from '../spectralCommon'
 import { galleryId } from './data'
 import { ecByCalibration, kSummary, medianRatio, ratioOfMedians, scansOf, type Scan } from './variants'
@@ -11,18 +12,35 @@ import { ecByCalibration, kSummary, medianRatio, ratioOfMedians, scansOf, type S
  * Three June 2026 figures read straight off the per-spectrum ETAD EC the page already loads (variants.ts holds
  * the maths, node-tested against the notebooks' saved numbers): 07 [11] each variant against CAL-0, 09 [12]
  * panel C the median against the component count, and 10 [12] panel B lot-251-only against both lots.
- * FTIR EC against FTIR EC, so none of them depends on the MAC. Filters → excluded acts on the spectra by filter id:
- * every median, ratio and share is over the spectra that count; the crossplots get every spectrum, and Crossplot
- * leaves out (or under Mark crosses) the rest.
+ * FTIR EC against FTIR EC, so none of them depends on the MAC. Samples acts on the spectra by their dates
+ * (etad_spectra_meta, by ExternalFilterId) and Filters → excluded by filter id: every median, ratio and share is over
+ * the spectra in view that count; the crossplots get every spectrum in view, and Crossplot leaves out (or under Mark
+ * crosses) the rest. The 45 spectra with no sampling date stay while Samples narrows nothing (ETAD's share negative
+ * and band medians count them, as the notebooks did) and leave as soon as it does.
  */
 const CAL0 = 'CAL-0 all-nofilter'
 const LOT251 = '906 lot 251 only, k30', BOTH = '935 both lots, k30 (first major min)'
 
-/** the export's per-spectrum rows, split by Filters → excluded (lib/markedRows useExclusionSplit); `marked` counts filters, not scans */
+/** a chart of the ETAD spectra's sentence when Samples leaves it none */
+export const NO_SPECTRA = 'No ETAD spectrum is in these Samples: pick Addis Ababa (ETAD) in the Samples panel, or widen its dates and seasons.'
+
+/** a table of the export's spectra (keyed by ExternalFilterId) and those Samples leaves in view (common/ui useInSamples, dated by etad_spectra_meta) */
+export function useEtadInSamples(data: SpectralExport | null, table: string) {
+  const all = useMemo(() => tableRows(data, table), [data, table])
+  const dates = useMemo(() => new Map(tableRows(data, 'etad_spectra_meta').map((r) => [String(r.ExternalFilterId), r.date == null ? null : String(r.date)])), [data])
+  const at = useMemo(() => (f: Row) => ({ code: 'ETAD', date: dates.get(String(f.ExternalFilterId)) }), [dates])
+  return { all, inView: useInSamples(all, at) }
+}
+
+/**
+ * The export's per-spectrum rows in Samples (`all`, for the crossplots), split by Filters → excluded
+ * (lib/markedRows useExclusionSplit); `marked` counts filters, not scans. `narrowed`: Samples leaves out some of them,
+ * so what the notebooks say of all 319 is not said of these.
+ */
 export function useEtadSpectra(data: SpectralExport | null) {
-  const all = useMemo(() => tableRows(data, 'per_filter'), [data])
-  const split = useExclusionSplit(all, (f) => String(f.ExternalFilterId ?? '') || null)
-  return useMemo(() => ({ all, counted: split.counted, marked: new Set(split.marked.map((f) => galleryId(String(f.ExternalFilterId)))).size }), [all, split])
+  const { all, inView } = useEtadInSamples(data, 'per_filter')
+  const split = useExclusionSplit(inView, (f) => String(f.ExternalFilterId ?? '') || null)
+  return useMemo(() => ({ all: inView, counted: split.counted, marked: new Set(split.marked.map((f) => galleryId(String(f.ExternalFilterId)))).size, narrowed: inView.length < all.length }), [all, inView, split])
 }
 
 /**
@@ -33,13 +51,13 @@ export function useEtadSpectra(data: SpectralExport | null) {
 export const scanTip = (s: Scan | null, x: readonly number[], y: readonly number[]): { scan?: string } =>
   s ? { scan: `${s.k} of ${s.n}; other ${s.others.length > 1 ? 'scans' : 'scan'} at ${s.others.map((j) => `(${f2(x[j])}, ${f2(y[j])})`).join(', ')}` } : {}
 
-/** each calibration's per-spectrum EC over every spectrum (`all`, for the crossplots) and over those that count */
+/** each calibration's per-spectrum EC over every spectrum in view (`all`, for the crossplots) and over those that count */
 export function useEtadEc(data: SpectralExport) {
   const spectra = useEtadSpectra(data)
   return useMemo(() => {
     const index = tableRows(data, 'calibrations')
     const ids = spectra.all.map((f) => String(f.ExternalFilterId))
-    return { all: ecByCalibration(spectra.all, index), counted: ecByCalibration(spectra.counted, index), ids, scans: scansOf(ids), marked: spectra.marked }
+    return { all: ecByCalibration(spectra.all, index), counted: ecByCalibration(spectra.counted, index), ids, scans: scansOf(ids), marked: spectra.marked, narrowed: spectra.narrowed, n: spectra.all.length, nCounted: spectra.counted.length }
   }, [data, spectra])
 }
 
@@ -56,9 +74,9 @@ export function VariantsVsCal0({ data }: { data: SpectralExport }) {
   return <Figure kind="crossplot" id="ethiopia-variant-vs-cal0" data={points} x="CAL0" y="EC" idColumn="id" tipColumns={['ratio', 'scan']} fit={false} maxSide={440}
     choose={[{ column: 'variant', label: 'Variant', default: 'CAL-1 cleaned' }]}
     xLabel="CAL-0 (keep everything) ETAD EC (µg/m³)" yLabel="Variant ETAD EC (µg/m³)"
-    title={`Paired with CAL-0, the 3σ trim reads every spectrum lower (median ×${r('CAL-1')}) and the below-1:1 set higher (×${r('CAL-3')}); the inverse sets go negative`}
+    title={ec.narrowed ? `Paired with CAL-0, on the ${ec.n} spectra in these Samples: the 3σ trim's median ×${r('CAL-1')}, the below-1:1 set's ×${r('CAL-3')}` : `Paired with CAL-0, the 3σ trim reads every spectrum lower (median ×${r('CAL-1')}) and the below-1:1 set higher (×${r('CAL-3')}); the inverse sets go negative`}
     subtitle={`June 07 [11]: each variant's EC for an ETAD spectrum against CAL-0's for the same spectrum (k = 20, the 906-filter IMPROVE set), with the 1:1. Median variant / CAL-0, per spectrum that counts: ${ratios.map((x) => `${x.v.split(' ')[0]} ${f2(x.r)}`).join(', ')} (on all 319, Filters → excluded: Include, 07's tracked etad_variant_ratio_vs_cal0.csv to 3 decimals). CAL-2 (the 46 removed filters) and CAL-4 (EC ≥ 70 µg, 22 filters) are diagnostics: too few, too extreme filters to calibrate on, and they predict negative EC. Spectra without a sampling volume have no µg/m³ and are left out. 22 filters were scanned two or three times: a filter's scans ring together on hover or pin, and the tooltip gives the others. They agree closely except ETAD-0139, whose first scan is flat (a failed acquisition, like ETAD-0037's only scan) and reads about 4× low.`}
-    provenance={provenance(data, ['per_filter', 'calibrations'], 'research/ftir_ec_calibration_2026_06_25/07_ethiopia_variant_ec.ipynb fig07_etad_variant_vs_cal0.')} />
+    provenance={provenance(data, ['per_filter', 'calibrations'], 'research/ftir_ec_calibration_2026_06_25/07_ethiopia_variant_ec.ipynb fig07_etad_variant_vs_cal0.')} empty={NO_SPECTRA} />
 }
 
 /** 09 [12] panel C (with [11]'s mean and share negative): the 906-filter set at six component counts */
@@ -66,16 +84,16 @@ export function ComponentSweep({ data }: { data: SpectralExport }) {
   const ec = useEtadEc(data)
   const labels = tableRows(data, 'calibrations').filter((c) => String(c.family).startsWith('09')).map((c) => String(c.calibration))
   const sweep = kSummary(ec.counted, labels)
-  const rows = sweep.map((s): Row => ({ k: s.k, 'median EC': s.median, 'mean EC': s.mean, '% negative': s.pctNegative, set: '906 filters, lot 251 (09)' }))
+  const rows = !ec.nCounted ? [] : sweep.map((s): Row => ({ k: s.k, 'median EC': s.median, 'mean EC': s.mean, '% negative': s.pctNegative, set: '906 filters, lot 251 (09)' }))
   const lo = sweep.reduce((a, s) => (s.median < a.median ? s : a), sweep[0]), hi = sweep.reduce((a, s) => (s.median > a.median ? s : a), sweep[0])
   return <Figure kind="sweep" id="ethiopia-component-sweep" data={rows} x="k" y="median EC" series="set" xLabel="PLS components (k)" yLabel="Median ETAD EC (µg/m³)" height={250}
     chosen={[{ series: '906 filters, lot 251 (09)', x: 21 }]} reference={0}
     variants={[{ key: 'stat', label: 'Show', choices: [{ value: 'median', label: 'Median' }, { value: 'mean', label: 'Mean', patch: { y: 'mean EC', yLabel: 'Mean ETAD EC (µg/m³)' } },
       { value: 'neg', label: '% negative', patch: { y: '% negative', yLabel: 'ETAD spectra predicted negative (%)' } }] }]}
-    title={`The component count alone moves the median ETAD EC ${f2(hi && lo ? hi.median / lo.median : NaN)}×, from ${f2(lo?.median)} µg/m³ at k = ${lo?.k} to ${f2(hi?.median)} at k = ${hi?.k}`}
-    subtitle="June 09 [12] panel C: the 906-filter IMPROVE set (no removal) at k = 3, 10, 18, 21, 25 and 40, applied to the ETAD spectra; ringed is k = 21, the first major minimum of its 5-fold RMSECV curve (that curve, 09's panel A, is the one on Machine learning → June 2026 variants). Too few components under-read; past the minimum the median falls back as the model starts fitting noise. Over the spectra that count under Filters → excluded; on all 319 (Include) the medians, means and shares negative equal 09's saved summary (tables/etad_ec_component_summary.csv). The share negative counts undated spectra as not negative, as 09 did."
+    title={ec.nCounted ? `The component count alone moves the median ETAD EC ${f2(hi && lo ? hi.median / lo.median : NaN)}×, from ${f2(lo?.median)} µg/m³ at k = ${lo?.k} to ${f2(hi?.median)} at k = ${hi?.k}` : 'The component count and the median ETAD EC'}
+    subtitle={`June 09 [12] panel C: the 906-filter IMPROVE set (no removal) at k = 3, 10, 18, 21, 25 and 40, applied to the ETAD spectra; ringed is k = 21, the first major minimum of its 5-fold RMSECV curve (that curve, 09's panel A, is the one on Machine learning → June 2026 variants). Too few components under-read; past the minimum the median falls back as the model starts fitting noise. Over the ${ec.narrowed ? `${ec.nCounted} spectra in these Samples` : 'spectra'} that count under Filters → excluded; on all 319 (Include) the medians, means and shares negative equal 09's saved summary (tables/etad_ec_component_summary.csv). The share negative counts undated spectra as not negative, as 09 did${ec.narrowed ? '; narrowed Samples leave them out, since a date range or season cannot place them' : ''}.`}
     provenance={provenance(data, ['per_filter', 'component_summary'], 'research/ftir_ec_calibration_2026_06_25/09_ethiopia_component_ec.ipynb fig09_ethiopia_ec_by_component (panel C).')}
-    aside={<ExcludedNote count={ec.marked} />} />
+    empty={NO_SPECTRA} aside={<ExcludedNote count={ec.marked} />} />
 }
 
 /** 10 [12] panel B: per spectrum, lot-251-only against both lots, at k = 30 */
@@ -87,7 +105,7 @@ export function LotsPaired({ data }: { data: SpectralExport }) {
   const points = a.map((x, i): Row => ({ lot251: x, both: b[i], id: ec.ids[i], ratio: b[i] / x, ...scanTip(ec.scans[i], a, b) }))
   return <Figure kind="crossplot" id="ethiopia-lots-paired" data={points} x="lot251" y="both" idColumn="id" tipColumns={['ratio', 'scan']} fit={false} maxSide={400}
     xLabel="Lot 251 only, 906 filters, k = 30 (µg/m³)" yLabel="Both lots, 935 filters, k = 30 (µg/m³)"
-    title={`Per spectrum, adding the 29 lot-248 filters barely moves the ETAD EC: the median goes ×${f2(effect)} (${signed(100 * (effect - 1), 1)} %)`}
+    title={ec.narrowed ? `Per spectrum, on the ${ec.n} in these Samples, adding the 29 lot-248 filters moves the median ×${f2(effect)} (${signed(100 * (effect - 1), 1)} %)` : `Per spectrum, adding the 29 lot-248 filters barely moves the ETAD EC: the median goes ×${f2(effect)} (${signed(100 * (effect - 1), 1)} %)`}
     subtitle="June 10 [12] panel B: each ETAD spectrum's EC from the 2026-07-07 export's lot-251 filters alone (which reproduce the old 906 set exactly) against the same export with the 29 lot-248 filters added, both at k = 30 (the both-lots curve's first major minimum), with the 1:1. Ratio of the medians over the spectra that count (10 printed 1.030 on all 319: Filters → excluded: Include). ETAD spans filter lots 248 and 251; the lot-248+251 mirror of notebooks 12–15 is the bigger step (see the progression above)."
-    provenance={provenance(data, ['per_filter'], 'research/ftir_ec_calibration_2026_06_25/10_ethiopia_ec_both_lots.ipynb fig10_ethiopia_both_lots (panel B).')} />
+    provenance={provenance(data, ['per_filter'], 'research/ftir_ec_calibration_2026_06_25/10_ethiopia_ec_both_lots.ipynb fig10_ethiopia_both_lots (panel B).')} empty={NO_SPECTRA} />
 }

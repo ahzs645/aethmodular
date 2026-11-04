@@ -102,7 +102,7 @@ gallery/
         │   │                   Composition tab's FTIR functional groups, stacked)
         │   ├── map/            SiteBubbleMap
         │   ├── flow/           MethodSankey (site → EC method → HIPS / season)
-        │   ├── pmf/            SourceStack (the composition chart on the PMF sources; by season replaces SourceSeasonality)
+        │   ├── pmf/            SourceStack (the composition chart on the PMF sources; by season replaces SourceSeasonality; over time takes a Right axis variable, joined from the filter rows)
         │   └── calibration/    the grid: SpecCurve, CutoffSweep, KSweep, SlopeInterceptTrap,
         │                                 SpectraDumbbell, CrossSiteHeatmap
         │                       one run: CVCurve, RunCrossplot, RunSeries, SplitCheck
@@ -695,8 +695,9 @@ keep the browser's own undo. A note at the bottom says what came back.
 ## Linked views: hover, click, and the sample drawer
 
 Hovering a filter in any point-based chart (scatterplot, crossplots, scatter
-matrix, beeswarm, timelines) enlarges the same filter in every other chart on
-the tab and dims the rest; a pinned filter keeps a dashed ring. Every one of
+matrix, beeswarm, timelines) enlarges the same filter in the other charts of
+its card (`ChartFrame`) and dims the rest; other cards stay as they are. A click
+pins the filter on every chart on the tab, with a dashed ring. Every one of
 them draws its points through `components/ScatterLayer`, which finds the point
 nearest the pointer (`components/HitLayer`: one `d3.Delaunay` over the drawn
 points, one hit rectangle) rather than a mouse handler per circle, so a 2 px

@@ -11,7 +11,7 @@ import { useSearchParam } from '@/lib/url'
 
 import { envelopeOf, type Envelope } from '../../common/optics'
 import { ols } from '@/lib/stats'
-import { line, point, shortSeason } from '../../common/ui'
+import { SitesNote, line, point, shortSeason } from '../../common/ui'
 import { useMarkedPairs } from './marked'
 import { namedColor } from '@/lib/siteColours'
 
@@ -53,11 +53,13 @@ export function ResidualCrossplots({ env, site, relative, mac, seasons, controls
     const pts = xy(env, p)
     return { ...p, pts, marked: xy(markedEnv, p), fit: pts.length >= 5 ? ols(pts.map((q) => q.x), pts.map((q) => q.y)) : null }
   })
+  // a site the optics export does not hold has no raw t, and a filter may lack OC or PM2.5: such a panel is named, not drawn empty
+  const drawn = panels.filter((p) => p.pts.length > 0), blank = panels.filter((p) => !p.pts.length).map((p) => p.label)
   return (
-    <ChartFrame id="he-resid-cross" title={`The residual against loading, composition and optical depth — ${site}`}
+    <ChartFrame id="he-resid-cross" title={`The residual against loading, composition and optical depth — ${site || 'no site in view'}`}
       subtitle={`Each filter's ${relative ? 'relative' : 'absolute'} residual, HIPS BC (Fabs / ${mac}) − FTIR EC, against six candidate drivers, coloured by season, with the OLS line (scipy linregress) and its r. Optical loading should structure the residual through tau, t or EC loading; a composition artefact (Pandey, Lack, Cappa) through OC / EC or OC loading. The ρ² screen above ranks the same pairs.`}
       provenance={`${ENVELOPE_NB} (c14, Addis residual cross-plots)`} controls={controls}>
-      {env.length < 5 ? <Empty>Too few filters at {site} with both HIPS and FTIR EC.</Empty> : <FacetGrid items={panels} minCell={260} itemKey={(p) => p.key} render={(p, w) => (
+      {env.length < 5 ? <Empty>Too few {site} filters in view with both HIPS and FTIR EC: pick a site with both.</Empty> : <FacetGrid items={drawn} minCell={260} itemKey={(p) => p.key} render={(p, w) => (
         <div style={{ width: w }}>
           <Crossplot sameScale={false} fit={false} maxSide={w - 72} xLabel={p.label} yLabel={relative ? 'Relative residual' : 'Residual (µg/m³)'}
             title={p.fit ? `n ${p.fit.n} · r ${fmt(p.fit.r, 2)}` : `n ${p.pts.length}`}
@@ -68,6 +70,7 @@ export function ResidualCrossplots({ env, site, relative, mac, seasons, controls
       )} />}
       <Key items={[...seasons.map((s) => ({ label: shortSeason(s.name), color: s.color })), { label: 'OLS', color: INK.text, kind: 'line' }]} />
       <ExcludedNote count={markedEnv.length} drawn />
+      {env.length >= 5 && <SitesNote sites={blank} why={`no value at ${site}, so no panel`} />}
     </ChartFrame>
   )
 }
@@ -84,7 +87,7 @@ export function ResidualSsa({ env, site, relative, mac, seasons, controls }: Com
   // SSA sits near 1: the x range from just below the lowest value to 1, not from 0
   const lo = pts.length ? Math.floor((Math.min(...pts.map((q) => q.x)) - 0.01) * 20) / 20 : 0
   return (
-    <ChartFrame id="he-resid-ssa" title={`The residual against AERONET single-scattering albedo — ${site}`}
+    <ChartFrame id="he-resid-ssa" title={`The residual against AERONET single-scattering albedo — ${site || 'no site in view'}`}
       subtitle={`${residLabel(relative)} at MAC ${mac} against the AERONET inversion's SSA at ${wl} nm matched to the filter (Level 1.5 unless the AERONET tab says otherwise), coloured by season, with the OLS line. Pandey et al. (2019) motivate the test: a filter artefact that depends on the aerosol's scattering would make the residual track SSA. The inversion is uncertain below AOD 440 = 0.4, so few days qualify.`}
       provenance={`${ENVELOPE_NB} (c22, AERONET SSA hook) · AERONET fields as on the AERONET tab`}
       controls={<>{controls}<Select label="SSA wavelength (nm)" value={wl} options={SSA_BY_WAVELENGTH.map(([w]) => String(w))} onChange={setWl} /></>}>

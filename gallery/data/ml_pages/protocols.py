@@ -20,7 +20,7 @@ from html.parser import HTMLParser
 
 import pandas as pd
 
-from ml_pages._common import PHASE3, ROOT, page, rel
+from ml_pages._common import HIPS_CHEM, PHASE3, ROOT, page, rel
 
 KEY = "protocols"
 
@@ -33,6 +33,10 @@ NB21 = "ftir_21_both_protocols_end_to_end"
 NB22 = "ftir_22_figures_under_both_protocols"
 AIRSPEC_TRACKED = ROOT / "docs/openresearch-execution/airspec/expected/addis_predictions_corrected.csv"
 OUT = "output/tables/"
+SPECTRA_RUN = "research/ftir_hips_chem/workflows/run_ftir13_spectra_20261104.py"
+SPECTRA_OUT = OUT + "ftir13_spectra_20261104/"
+SPECTRA_COLUMNS = {"lowest-OCEC 800, raw [cohort]": "lowest-OCEC 800, raw", "Smoke 906, raw [cohort]": "Smoke 906, raw",
+                   "lowest-OCEC 800, VIBES [VIBES-covered]": "lowest-OCEC 800, VIBES", "Smoke 906, VIBES [VIBES-covered]": "Smoke 906, VIBES"}
 
 
 class _Spans(HTMLParser):
@@ -159,6 +163,13 @@ def build():
     # ftir_13 [17]: the tracked per-filter AIRSpec predictions (239 Addis filters, HIPS Fabs alongside)
     airspec = pd.read_csv(AIRSPEC_TRACKED).drop(columns=["MediaId"])
     p.add("airspec_filters", airspec, notebook=NB13, read="tracked csv", path=rel(AIRSPEC_TRACKED))
+    # the same two calibrations refitted on raw and VIBES spectra, for the crossplot's other panels
+    spectra = {"spectra_filters": ("addis_predictions.csv", "ftir_13's calibrations refitted on raw and VIBES spectra, per Addis filter",
+                                   lambda f: f.rename(columns=SPECTRA_COLUMNS)[["ExternalFilterId", *SPECTRA_COLUMNS.values(), "vibes_source"]]),
+               "spectra_fits": ("fits.csv", "the k, cohort size and Addis fit of each of those refits", None)}
+    for name, (csv, what, transform) in spectra.items():
+        if p.optional(name, HIPS_CHEM, NB13, SPECTRA_OUT + csv, what, transform) is None:
+            p.missing[-1]["run"] = f"uv run --no-sync python {SPECTRA_RUN}"
 
     # ---- per-filter tables only a re-run writes
     p.optional("predictions_by_mode", PHASE3, NB21, OUT + "ftir21/addis_predictions_by_mode.csv",

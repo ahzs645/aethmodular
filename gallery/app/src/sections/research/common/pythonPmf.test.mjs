@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { archivedMatch, baseId, disagrees, gapAfter, negativeRmseBound, qcCell, scores } from './pythonPmf.ts'
+import { archivedMatch, baseId, disagrees, gapAfter, negativeRmseBound, qcCell, scores, siteOfId } from './pythonPmf.ts'
 import { pearson } from '../../../lib/stats.ts'
 
 const read = (rel) => JSON.parse(fs.readFileSync(new URL(`../../../../public/data/${rel}`, import.meta.url), 'utf8'))
@@ -94,4 +94,12 @@ test('gaps, ids and the QC disagreement rule', () => {
   assert.equal(disagrees(qcCell(false, true, false)), false) // ETAD-0248: out of both
   assert.equal(disagrees(qcCell(true, false, true)), false) // a modelled filter after the gallery's series ends
   assert.equal(disagrees(qcCell(true, true, false)), true) // a modelled filter the reader excluded
+})
+
+test('siteOfId: every contribution and inventory id names its site', () => {
+  assert.equal(siteOfId('ETBI-0002-2'), 'ETBI')
+  for (const [key, c] of Object.entries(data.contributions)) {
+    assert.ok(c.date.every(Boolean), key)
+    assert.ok(c.id.every((id) => siteOfId(id) === (key.startsWith('etbi') ? 'ETBI' : 'ETAD')), key)
+  }
 })

@@ -3,9 +3,10 @@ import { INK, dotOpacity, type DotLevel } from '@/lib/theme'
 
 /**
  * Cross-chart linking. Hovering a filter in one chart lights the same filter
- * up in every other chart on the page; clicking opens its detail drawer and
- * pins it, which also puts its record in the subset bar. This is the
- * "cross-graph interaction" the gallery's interactivity page describes, and
+ * up in the other charts of its card (ChartFrame), and leaves other cards alone,
+ * so reading one plot does not flicker the page. Clicking opens its detail drawer
+ * and pins it on every chart, which also puts its record in the subset bar. This
+ * is the "cross-graph interaction" the gallery's interactivity page describes, and
  * the thing a static notebook figure can never do: "which point in the
  * crossplot is that spike in the timeseries?"
  *
@@ -38,20 +39,35 @@ export interface FilterRecord {
  */
 interface HoverStore {
   get: () => string | null; set: (id: string | null) => void; subscribe: (f: () => void) => () => void
+  /** the card the hover came from; null: from outside any card, such as a table row in a drawer */
+  card: () => string | null
   /** the element now under the pointer (HighlightProvider's listeners) */
   track: (el: Element | null) => void
   /** a hover whose element is gone, or no longer under the pointer at `el` */
   stale: (el: Element | null) => boolean
 }
+/** marks a card's root element (ChartFrame), so the store can tell which card the pointer is in */
+export const HOVER_CARD_ATTR = 'data-hover-card'
+/** the card a chart sits in; ChartFrame provides it, and it is null outside any card */
+export const HoverCardContext = createContext<string | null>(null)
+
 function createHoverStore(): HoverStore {
   let value: string | null = null
+  let card: string | null = null
   // the element that set the hover: the one under the pointer when it was set
   let under: Element | null = null
   let owner: Element | null = null
   const subs = new Set<() => void>()
   return {
     get: () => value,
-    set: (id) => { owner = id === null ? null : under; if (id === value) return; value = id; subs.forEach((f) => f()) },
+    // the card comes from the element under the pointer, not from React: charts call setHover from a hook above their own ChartFrame
+    set: (id) => {
+      owner = id === null ? null : under
+      const from = owner?.closest(`[${HOVER_CARD_ATTR}]`)?.getAttribute(HOVER_CARD_ATTR) ?? null
+      if (id === value && from === card) return
+      value = id; card = from; subs.forEach((f) => f())
+    },
+    card: () => card,
     subscribe: (f) => { subs.add(f); return () => { subs.delete(f) } },
     track: (el) => { under = el },
     stale: (el) => value !== null && owner !== null && (!owner.isConnected || el === null || !owner.contains(el)),
@@ -184,6 +200,11 @@ export function HighlightProvider({ children, pinnedId, setPinned, openSample, o
  * The page's highlight state. With `keys` (the ids a chart draws, in the form it passes to setHover), `hoverId`
  * is the hovered filter only when it is one of them, and the chart re-renders only then: hovering elsewhere
  * leaves it alone. Without `keys` every hover re-renders the caller, as before.
+ *
+ * Either way a hover from another card reads as no hover (the pin is not scoped: it holds on every chart). The card
+ * comes from context, so a chart reading the hover from a hook above its own ChartFrame passes `card` and gives the
+ * frame the same id (`hoverCard`). A hover from outside any card reaches every card; a chart outside any card sees
+ * every hover.
  */
 const NO_HOVER: ReadonlySet<string> = new Set()
 /**
@@ -205,9 +226,15 @@ export function useEscapeUnpin() {
   }, [setPinned])
 }
 
-export function useHighlight(keys?: ReadonlySet<string> | null): HighlightState {
+export function useHighlight(keys?: ReadonlySet<string> | null, card?: string): HighlightState {
   const c = useContext(Ctx)
-  const read = () => { const h = c.store.get(); return !keys || (h !== null && keys.has(h)) ? h : null }
+  const inCard = useContext(HoverCardContext)
+  const mine = card ?? inCard
+  const read = () => {
+    const h = c.store.get(), from = c.store.card()
+    if (h === null || (mine !== null && from !== null && from !== mine)) return null
+    return !keys || keys.has(h) ? h : null
+  }
   const hoverId = useSyncExternalStore(c.store.subscribe, read, read)
   return useMemo(() => ({ ...c, hoverId, focusId: hoverId ?? c.pinnedId }), [c, hoverId])
 }
@@ -249,7 +276,7 @@ export const dotFill = (level: DotLevel, scale = 1) => ({ fillOpacity: dotOpacit
 export { baseFilterId } from './filterId'
 
 /**
- * The focused filter's marks (hovered here or on another chart, or pinned) drawn over a chart's dots, which it dims with
+ * The focused filter's marks (hovered in this card, or pinned on any chart) drawn over a chart's dots, which it dims with
  * one class on their group (styles.css .has-focus). The only part of the chart that follows the hover: a hover
  * then re-renders this one mark, not every dot, the axes or the fits. `keys` are the ids the chart draws.
  */

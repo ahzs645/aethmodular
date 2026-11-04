@@ -18,7 +18,7 @@ import type { FilterRow } from '@/lib/types'
 import { num } from '@/lib/table'
 import type { Scored } from '../../common/charcoal'
 import { byGroup, monthlyRate } from '../../common/charcoal'
-import { Bars, DataTable, Grid, line, shortSeason } from '../../common/ui'
+import { ADDIS, Bars, DataTable, Grid, line, shortSeason } from '../../common/ui'
 import { provenance, rows as rowsOfTable, type SpectralExport } from '../spectralCommon'
 import { NB, type Charcoal } from './data'
 
@@ -51,22 +51,38 @@ function useSweepMarks(marked: Scored<FilterRow>[], y: (s: Scored<FilterRow>) =>
 /** the notebook's value beside the page's, when the page shows the notebooks' 239 (Charcoal `notebook`) */
 const vs = (mine: number, theirs: number | null | undefined, digits = 3) => theirs == null ? fmt(mine, digits) : `${fmt(mine, digits)} (nb ${fmt(theirs, digits)})`
 
+/** the sites with enough filters to quote in a title: a dozen filters is not a site's share */
+const QUOTED_SITE_MIN = 20
+
 export function RawVsChar({ c, data }: { c: Charcoal; data: SpectralExport }) {
-  const groups = useMemo(() => [...byGroup(c.scored, () => 'All filters', ['All filters']), ...byGroup(c.scored, (s) => s.season, c.seasons.map((s) => s.name))].filter((g) => g.n), [c])
+  // any site other than Addis in view: the chart reads per site, Addis alone it reads per season as char_05 does
+  const multi = c.others.length > 0
+  const shown = multi ? [...c.scored, ...c.others] : c.scored
+  const siteOf = (s: Scored<FilterRow>) => s.row?.site ?? ADDIS
+  const sites = multi ? [...(c.scored.length ? [{ name: ADDIS, color: c.siteColorOf(ADDIS) }] : []), ...c.otherSites] : []
+  const groups = useMemo(() => [...byGroup(shown, () => 'All filters', ['All filters']),
+    ...(multi ? byGroup(shown, siteOf, sites.map((s) => s.name)) : byGroup(shown, (s) => s.season, c.seasons.map((s) => s.name)))].filter((g) => g.n), [c]) // eslint-disable-line react-hooks/exhaustive-deps
   const saved = rowsOfTable(data, 'by_season_05')
-  const nbOf = (season: string) => (c.notebook ? saved.find((r) => r.season === c.nbSeason(season)) : undefined)
-  const pts = c.scored.map((s) => scorePoint(s, s.rChar, s.rRaw, c.colorOf(s.season), 'r_char', 'r_raw', false, [`${DELTA}: ${fmt(s.delta, 3)}`]))
-  const marked = c.marked.map((s) => scorePoint(s, s.rChar, s.rRaw, c.colorOf(s.season), 'r_char', 'r_raw', false, [`${DELTA}: ${fmt(s.delta, 3)}`]))
+  const nbOf = (season: string) => (c.notebook && !multi ? saved.find((r) => r.season === c.nbSeason(season)) : undefined)
+  const colorOf = (s: Scored<FilterRow>) => (multi ? c.siteColorOf(siteOf(s)) : c.colorOf(s.season))
+  const point = (s: Scored<FilterRow>) => scorePoint(s, s.rChar, s.rRaw, colorOf(s), 'r_char', 'r_raw', false, [...(multi ? [siteOf(s)] : []), `${DELTA}: ${fmt(s.delta, 3)}`])
+  const pts = shown.map(point)
+  const marked = (multi ? [...c.marked, ...c.othersMarked] : c.marked).map(point)
   const all = groups[0], dry = groups.find((g) => g.group !== 'All filters' && c.isDry({ season: g.group, month: 0 }))
+  const siteGroups = groups.slice(1), quoted = siteGroups.filter((g) => g.n >= QUOTED_SITE_MIN).sort((a, b) => b.rawWins - a.rawWins)
+  const ends = quoted.length > 1 ? `: ${pct(quoted[0].rawWins)} at ${quoted[0].group}, ${pct(quoted[quoted.length - 1].rawWins)} at ${quoted[quoted.length - 1].group}` : ''
+  const headlineOf = all ? `Within McCall, raw feedstock matches ${pct(all.rawWins)} of these ${all.n} filters better than char` : 'Raw feedstock against char, per filter'
   return (
     <ChartFrame id="ch-raw-vs-char"
-      title={all ? `Within McCall, raw feedstock matches ${pct(all.rawWins)} of these ${all.n} filters better than char${dry ? `; ${pct(dry.rawWins)} in the ${shortSeason(dry.group)} season` : ''}` : 'Raw feedstock against char, per filter'}
-      subtitle={`Each Addis filter's best Pearson r against McCall's charred feedstock (x) and against its raw feedstock (y), on AIRSpec-baselined, detrended, SNV spectra over 1430–3500 cm⁻¹ (char_05). Above the 1:1 line raw biomass is the closer analogue. Coloured by season; the table recomputes char_05's by-season summary for the filters shown${c.notebook ? ', with the notebook\'s own numbers in brackets' : ''}.`}
-      provenance={<>{NB.c05} [14] left, [18]. {provenance(data, ['per_filter', 'by_season_05'])}</>}>
-      {pts.length < 3 ? <Empty>No scored Addis filters in view: bring Addis into view in Samples, or use its char notebooks' 239 preset.</Empty> : <Grid>
+      title={!all ? headlineOf : multi ? `${headlineOf}${ends}` : `${headlineOf}${dry ? `; ${pct(dry.rawWins)} in the ${shortSeason(dry.group)} season` : ''}`}
+      subtitle={multi
+        ? `Each filter's best Pearson r against McCall's charred feedstock (x) and against its raw feedstock (y), on AIRSpec-baselined, detrended, SNV spectra over 1430–3500 cm⁻¹. Above the 1:1 line raw biomass is the closer analogue, but where both r are low that only says which poor match is less poor. Coloured by site. Addis keeps the notebook's scores; the other sites are scored by the same recipe (repeat scans averaged), which reproduces the notebook on the Addis filters both cover (r 0.9999). The rest of this page stays Addis only: its seasons, lots and mixture are Addis fits.`
+        : `Each Addis filter's best Pearson r against McCall's charred feedstock (x) and against its raw feedstock (y), on AIRSpec-baselined, detrended, SNV spectra over 1430–3500 cm⁻¹ (char_05). Above the 1:1 line raw biomass is the closer analogue. Coloured by season; the table recomputes char_05's by-season summary for the filters shown${c.notebook ? ', with the notebook\'s own numbers in brackets' : ''}. Other sites in Samples join this chart.`}
+      provenance={<>{NB.c05} [14] left, [18]. {provenance(data, ['per_filter', 'by_season_05', 'per_filter_network'])}</>}>
+      {pts.length < 3 ? <Empty>No scored filters in view: bring a SPARTAN site into view in Samples, or use the char notebooks' 239 preset.</Empty> : <Grid>
         <Crossplot points={pts} marked={marked} title="r_raw vs r_char" xLabel={R_CHAR} yLabel={R_RAW} fit={false} extraLines={line({ slope: 1, intercept: 0 }, INK.identity, '1:1', '5 4')} maxSide={420} />
         <DataTable rows={groups} rowKey={(g) => g.group} columns={[
-          { key: 'g', label: 'Filters', value: (g) => g.group === 'All filters' ? g.group : <span style={{ color: c.colorOf(g.group) }}>{shortSeason(g.group)}</span> },
+          { key: 'g', label: multi ? 'Site' : 'Filters', value: (g) => g.group === 'All filters' ? g.group : multi ? <span style={{ color: c.siteColorOf(g.group) }}>{g.group}</span> : <span style={{ color: c.colorOf(g.group) }}>{shortSeason(g.group)}</span> },
           { key: 'n', label: 'n', num: true, value: (g) => vs(g.n, num(nbOf(g.group)?.filters ?? null), 0) },
           { key: 'raw', label: 'Median r_raw', num: true, value: (g) => vs(g.rawMedian, num(nbOf(g.group)?.['best r vs raw feedstock'] ?? null)) },
           { key: 'char', label: 'Median r_char', num: true, value: (g) => vs(g.charMedian, num(nbOf(g.group)?.['best r vs char'] ?? null)) },
@@ -74,8 +90,9 @@ export function RawVsChar({ c, data }: { c: Charcoal; data: SpectralExport }) {
           { key: 'd', label: 'Median delta', num: true, value: (g) => fmt(g.deltaMedian, 3) },
         ]} />
       </Grid>}
-      <Key items={[...c.seasons.map((s) => ({ label: shortSeason(s.name), color: s.color })), { label: '1:1', color: INK.identity, kind: 'dash' }]} />
-      <SetNote c={c} drawn />
+      <Key items={[...(multi ? sites.map((s) => ({ label: s.name, color: s.color })) : c.seasons.map((s) => ({ label: shortSeason(s.name), color: s.color }))), { label: '1:1', color: INK.identity, kind: 'dash' }]} />
+      {multi && c.unscored > 0 && <Note>{c.unscored} filters in view at the other sites have no FTIR spectrum to score.</Note>}
+      <ExcludedNote count={marked.length} drawn />
     </ChartFrame>
   )
 }

@@ -9,6 +9,8 @@ import { quantile } from '../../../lib/stats.ts'
 
 export const OPTICS_PATH = 'research/hips_optics/filters.json'
 export const OPTICS_COMMAND = 'uv run python gallery/data/export_research_hips_optics.py'
+/** the sites the export holds, as a chart tells the reader what to pick */
+export const OPTICS_SITES = 'Addis Ababa, Beijing, Delhi or JPL'
 
 interface OpticsFile { generated: string; source: string; note: string; columns: string[]; rows: (string | number | null)[][] }
 export interface Optics {

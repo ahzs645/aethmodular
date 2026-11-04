@@ -136,7 +136,9 @@ function useColors(spec: Base) {
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
 
 // research-spectra: `provenance` (which notebook a figure stands in for) passes through to its ChartFrame
-export function Figure(props: FigureSpec & { about?: ReactNode; provenance?: ReactNode; aside?: ReactNode }) {
+export function Figure(props: FigureSpec & { about?: ReactNode; provenance?: ReactNode; aside?: ReactNode
+  /** what a chart with no rows says, where the reader can do something about it (e.g. which Samples to pick) */
+  empty?: ReactNode }) {
   let spec: FigureSpec = props
   const bundle = useContext(BundleContext)
   const id = spec.id ?? slug(spec.title)
@@ -167,7 +169,7 @@ export function Figure(props: FigureSpec & { about?: ReactNode; provenance?: Rea
   const Custom = spec.kind === 'custom' ? CUSTOM.get(spec.component) : null
   const body = spec.kind === 'custom'
     ? (Custom ? <Custom bundle={bundle} props={spec.props} /> : <Empty>No figure registered as “{spec.component}”.</Empty>)
-    : !rows.length ? <Empty>{spec.table && bundle && !bundle.tables[spec.table] ? `No table “${spec.table}” in this meeting’s data.` : 'No rows to draw.'}</Empty>
+    : !rows.length ? <Empty>{props.empty ?? (spec.table && bundle && !bundle.tables[spec.table] ? `No table “${spec.table}” in this meeting’s data.` : 'No rows to draw.')}</Empty>
     : spec.kind === 'crossplot' ? <CrossplotFigure spec={spec} rows={rows} marked={marked} />
     : spec.kind === 'scatter' ? <ScatterFigure spec={spec} rows={rows} marked={marked} />
     : spec.kind === 'spectrum' ? <SpectrumFigure spec={spec} rows={rows} />

@@ -45,7 +45,7 @@ export interface CrossLine { slope: number; intercept: number; color: string; la
  * The research pages' 1:1 crossplot: a square plot area with identical x and y
  * ranges, so the dashed line is the true diagonal. Every point is shown (the
  * research pages keep the "Data" axes, docs/gallery-chart-standards.md §5).
- * Hover and click link the filter across every chart and open its record.
+ * A hover links the filter across its card; a click pins it on every chart and opens its record.
  * With `fit`, the browser refits the drawn points under the chosen estimators
  * (pooled, or one line per site); without it the plot only shows saved results.
  */
@@ -158,7 +158,7 @@ export function Crossplot({ points: inputPoints, marked: inputMarked, title, xLa
   const source = useMemo(() => sourceScales(x, y, swapped), [x, y, swapped])
   const sourceDomain = source.x.domain()
   const savedLine = (s: number, b: number) => ({ x1: source.x(sourceDomain[0]), y1: source.y(s * sourceDomain[0] + b), x2: source.x(sourceDomain[1]), y2: source.y(s * sourceDomain[1] + b) })
-  // a filter hovered or pinned on another chart dims this one only when this one draws it too (FocusLayer below:
+  // a filter hovered on another chart of this card, or pinned on any chart, dims this one only when this one draws it too (FocusLayer below:
   // the hover is read there, so it re-renders the one focused dot, not the plot and its fits)
   const keyOf = (p: CrossPoint) => (p.id ? baseFilterId(p.id) : null)
   // the dots, drawn once: a hover or pin is drawn over them (components/ScatterLayer)

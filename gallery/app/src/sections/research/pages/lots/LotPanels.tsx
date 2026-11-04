@@ -10,9 +10,9 @@ import { Key } from '@/components/Key'
 import { SpectrumPlot, type SpectrumBand, type SpectrumSeries } from '@/components/SpectrumPlot'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
-import { columnsIn, defaultSeason, lotsOf, profile, seasonAt, VIEW_KEYS, type LotExport, type Member, type ViewKey } from '../../common/lotSpectra'
-import { Grid, shortSeason } from '../../common/ui'
-import { EXPORTER, FOLDER, LotNote, lotColor, NB, useView, type Lots } from './data'
+import { columnsIn, lotsOf, profile, seasonAt, VIEW_KEYS, type LotExport, type Member, type ViewKey } from '../../common/lotSpectra'
+import { Grid } from '../../common/ui'
+import { EXPORTER, FOLDER, LotNote, lotColor, NB, useHeldSeason, useView, type Lots } from './data'
 
 type Region = 'ch' | 'co' | 'full'
 type BandKey = '5-95' | '10-90' | '25-75' | 'none'
@@ -50,9 +50,7 @@ export function LotPanels({ exp, lots, id, prefix, defaults, figure }: {
   const [band, setBand] = useSearchParam<BandKey>(`${prefix}.band`, defaults.band, ['5-95', '10-90', '25-75', 'none'])
   const [layout, setLayout] = useSearchParam<Layout>(`${prefix}.layout`, 'pooled', ['pooled', 'site'])
   const [improve, setImprove] = useSearchParam<'off' | 'on'>(`${prefix}.improve`, 'off', ['off', 'on'])
-  const seasonNames = lots.seasons.map((s) => s.name)
-  const [seasonPick, setSeason] = useSearchParam<string>(`${prefix}.season`, '', seasonNames)
-  const season = seasonNames.includes(seasonPick) ? seasonPick : defaultSeason(seasonNames)
+  const { seasonNames, season, setSeason } = useHeldSeason(lots, `${prefix}.season`)
   const instruments = useMemo(() => instrumentsOf(lots.members), [lots.members])
   const [instPick, setInst] = useSearchParam<string>(`${prefix}.inst`, 'all', ['all', ...instruments])
   const inst = instPick === 'all' || instruments.includes(instPick) ? instPick : 'all'
@@ -79,7 +77,7 @@ export function LotPanels({ exp, lots, id, prefix, defaults, figure }: {
       const held = layout === 'site' ? seasonAt(g.members, season) : season
       return { ...g, held, sub: [
       { key: 'all', title: 'All filters (lot and season confounded)', members: g.members },
-      { key: 'season', title: `${shortSeason(held)} only (season held fixed)`, members: g.members.filter((m) => m.season === held) },
+      { key: 'season', title: `${held} only (season held fixed)`, members: g.members.filter((m) => m.season === held) },
     ].map((s) => ({ ...s, lots: lotsOf(s.members).sort((a, b) => a - b).map((lot) => {
       const idx = s.members.filter((m) => m.lot === lot).map((m) => m.i)
       return { lot, n: idx.length, ...profile(values, v.points, idx, from, to, centre, idx.length >= 2 ? (q ?? [0.1, 0.9]) : null) }
@@ -99,7 +97,7 @@ export function LotPanels({ exp, lots, id, prefix, defaults, figure }: {
   const pctText = (x: number) => `${Math.round(100 * x)} %`
   const bandText = q ? BAND_LABEL[band] : '10–90 %'
   const title = pair.length === 2 && Number.isFinite(gAll) && Number.isFinite(gSeason)
-    ? `${v.label} by PTFE lot — lots ${pair[0]} and ${pair[1]} sit a median ${pctText(gAll)} of their ${bandText} spread apart over all filters, ${pctText(gSeason)} within ${shortSeason(head.held)}${panels.length > 1 ? ` (${head.label})` : ''}`
+    ? `${v.label} by PTFE lot — lots ${pair[0]} and ${pair[1]} sit a median ${pctText(gAll)} of their ${bandText} spread apart over all filters, ${pctText(gSeason)} within ${head.held}${panels.length > 1 ? ` (${head.label})` : ''}`
     : `${v.label} by PTFE lot`
 
   const improveBand = (s: [number, number]): { band: SpectrumBand; line: SpectrumSeries } => ({
@@ -112,7 +110,7 @@ export function LotPanels({ exp, lots, id, prefix, defaults, figure }: {
   const controls = <>
     <Segmented label="Spectra" value={view} options={VIEW_KEYS} onChange={setView} optionLabel={(o) => VIEW_LABEL[o]} title={v.binning} />
     <Segmented label="Region" value={region} options={regions} onChange={setRegion} optionLabel={(o) => REGION_LABEL[o]} />
-    {seasonNames.length > 1 && <Select label="Hold fixed" value={season} options={seasonNames} onChange={setSeason} optionLabel={shortSeason} title="The season the right-hand panel keeps (char_12: the dry season)" />}
+    {seasonNames.length > 1 && <Select label="Right panel" value={season} options={seasonNames} onChange={setSeason} title="The one season the right-hand panel shows, so its lots are compared within a season; the left panel keeps every season. char_12 used the dry season." />}
     <Segmented label="Centre" value={centre} options={['mean', 'median'] as const} onChange={setCentre} />
     <Segmented label="Band" value={band} options={['5-95', '10-90', '25-75', 'none'] as const} onChange={setBand} optionLabel={(o) => BAND_LABEL[o]} />
     <Segmented label="Layout" value={layout} options={['pooled', 'site'] as const} onChange={setLayout} optionLabel={(o) => (o === 'pooled' ? 'Sites pooled' : 'Per site')} />
@@ -122,8 +120,8 @@ export function LotPanels({ exp, lots, id, prefix, defaults, figure }: {
 
   return (
     <ChartFrame id={id} title={title} controls={controls}
-      subtitle={`${v.label} (${v.unit}), ${centre} of each PTFE lot (line) and ${q ? `the ${BAND_LABEL[band]} of its filters (shaded)` : 'no band'}, per wavenumber, over the filters shown. Left: all of them, where lot and season are confounded (at Addis lot 248 is mostly dry-season); right: ${shortSeason(season)} only, the controlled contrast. If the substrate mattered, the curves on the right would separate. char_12 draws the mean, with 5–95 % (04) or 10–90 % (04b).`}
-      tip={<>The headline gap is the median, over the wavenumbers shown, of |centre A − centre B| divided by the lots' mean band width (10–90 % when the band is off). {v.binning}. Lots with one filter draw a line and no band. Per site, a site whose calendar has no season of that name holds its own dry-named season (or its largest) instead; pooled, the season applies as named, so under per-site calendars it may cover one site only. Instruments: SPARTAN lot 248 was scanned on instruments 823 and 2837 only, never on 151, so a pooled lot contrast at Beijing or JPL is partly an instrument contrast; pick one instrument to remove that.</>}
+      subtitle={`${v.label} (${v.unit}), ${centre} of each PTFE lot (line) and ${q ? `the ${BAND_LABEL[band]} of its filters (shaded)` : 'no band'}, per wavenumber, over the filters shown. Left: all of them, where lot and season are confounded (at Addis lot 248 is mostly dry-season); right: ${season} only, the controlled contrast. If the substrate mattered, the curves on the right would separate. char_12 draws the mean, with 5–95 % (04) or 10–90 % (04b).`}
+      tip={<>The headline gap is the median, over the wavenumbers shown, of |centre A − centre B| divided by the lots' mean band width (10–90 % when the band is off). {v.binning}. Lots with one filter draw a line and no band. Seasons of one name at different sites count as one season, even where their months differ. Per site, a site whose calendar has no season of that name holds its own dry-named season (or its largest) instead; pooled, the season applies as named, so it covers only the sites that have it. Instruments: SPARTAN lot 248 was scanned on instruments 823 and 2837 only, never on 151, so a pooled lot contrast at Beijing or JPL is partly an instrument contrast; pick one instrument to remove that.</>}
       provenance={<>{NB} §4, {figure}. Spectra: <code>{EXPORTER}</code> → <code>{FOLDER}/{v.file}</code>; centres and bands recomputed here (common/lotSpectra.ts).</>}>
       {error || !values ? <LoadState what="the spectra" error={error} failed={<>Could not load the {v.label.toLowerCase()} spectra: {error}</>} />
         : !shown.length ? <Empty>No exported spectrum with a known lot among the filters shown.</Empty>

@@ -72,6 +72,19 @@ test('lstsq: a dummy column no resampled filter carries is skipped, not singular
 
 // the page joins the explorer's filters to the counted rows for every fit and to the excluded rows (Filters → excluded:
 // Mark) for the × only: the same join, so a filter lands on one side or the other and the counted side is unchanged
+test('evalFilters: a deposit read from the row is one the per-deposit framing can use', async () => {
+  const { evalFilters } = await import('./massLead.ts')
+  const { rowDeposit } = await import('./envelope.ts')
+  const row = { 'EC (FTIR)': 2, 'Sampled volume': 7.06 }
+  const ev = { id: ['ETBI-0002'], ref: [24], pred: [2], group: ['Dry (Oct-Feb)'], date: ['2025-10-20'] }
+  const noOptics = evalFilters(ev, () => ({ mass: 30 }), () => undefined).filters
+  assert.equal(framed(noOptics, 'deposit', 10).use.length, 0)
+  const fromRow = evalFilters(ev, () => ({ mass: 30 }), () => rowDeposit(row)).filters
+  assert.deepEqual([fromRow[0].volume, fromRow[0].area, fromRow[0].lot], [7.06, 3.53, null])
+  assert.equal(framed(fromRow, 'deposit', 10).use.length, 1)
+  assert.equal(massPerArea(fromRow[0]), 60)
+})
+
 test('evalFilters joins a run to the rows it is given, counted and marked apart', async () => {
   const { evalFilters } = await import('./massLead.ts')
   const ev = { id: ['a', 'b', 'c', null, 'd', 'e'], ref: [10, 20, NaN, 5, 30, 40], pred: [1, 2, 3, 4, 5, 6], group: ['Dry', 'Dry', 'Belg', 'Belg', 'Kiremt', 'Kiremt'],

@@ -3,9 +3,10 @@
 Run with:  uv run --with timezonefinder python gallery/data/export_weather.py
 
 Inputs (all local; see research/ftir_hips_chem/workflows/colab_spartan_weather.py and
-fetch_boundary_layer_era5.py for how they were made):
+fetch_boundary_layer_era5.py and fetch_column_water_era5.py for how they were made):
   research/ftir_hips_chem/output/tables/weather_era5/spartan_hourly.parquet   ERA5 hourly, 37 SPARTAN sites
   research/ftir_hips_chem/output/tables/boundary_layer_era5/spartan/<CODE>/   ERA5 boundary-layer height
+  research/ftir_hips_chem/output/tables/weather_era5/column_water/<CODE>/   ERA5 column water (fetch_column_water_era5.py)
   research/ftir_hips_chem/Weather Data/Meteostat/master_meteostat_AddisAbaba_...csv   Addis airport station (WMO 63450), hourly
   data/spartan/raw/FilterBased/ChemSpecPM25/*.csv   each filter's local start, end and hours sampled
 
@@ -47,6 +48,7 @@ from boundary_layer import load_site  # noqa: E402
 
 HOURLY = AREA / "output/tables/weather_era5/spartan_hourly.parquet"
 BLH_CACHE = AREA / "output/tables/boundary_layer_era5/spartan"
+TCWV_CACHE = AREA / "output/tables/weather_era5/column_water"
 STATION = AREA / "Weather Data/Meteostat/master_meteostat_AddisAbaba_63450_2022-12-01_2024-10-01.csv"
 OUT = ROOT / "gallery/app/public/data/weather"
 
@@ -60,10 +62,11 @@ ERA5_FIELDS = {
     "Wind speed (ERA5)": "m/s",
     "Surface pressure (ERA5)": "hPa",
     "Boundary-layer height (ERA5)": "m",
+    "Precipitable water (ERA5)": "cm",
 }
 # the station reports sea-level pressure (Meteostat "pres"), not surface pressure
 STATION_FIELDS = {("Sea-level pressure (station)" if k.startswith("Surface pressure") else k.replace("(ERA5)", "(station)")): u
-                  for k, u in ERA5_FIELDS.items() if "Boundary" not in k and "Dew" not in k}
+                  for k, u in ERA5_FIELDS.items() if not any(w in k for w in ("Boundary", "Dew", "Precipitable"))}
 SECTORS = 8
 SPEED_EDGES = (1.0, 3.0)   # m/s: light < 1, moderate 1-3, fresh >= 3 (ERA5 10 m winds run low in cities)
 CALM = 0.5                 # m/s
@@ -71,6 +74,15 @@ CALM = 0.5                 # m/s
 WIND_SECTORS = 16
 WIND_EDGES = (CALM, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0)
 WIND_NAMES = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+
+
+def load_column_water(code: str) -> pd.Series | None:
+    """A site's hourly ERA5 total column water vapour in cm (1 kg/m² = 0.1 cm), UTC; None without a cache."""
+    paths = sorted((TCWV_CACHE / code).glob("*.parquet"))
+    if not paths:
+        return None
+    frame = pd.concat(pd.read_parquet(p) for p in paths)
+    return frame.set_index("time").sort_index()["tcwv_kg_m2"] / 10
 
 
 def std_offset_hours(lat: float, lon: float) -> float:
@@ -188,7 +200,7 @@ def main():
         w.loc[f["id"]] = [f["code"], start, start + pd.Timedelta(hours=24), 24.0, True]
 
     offsets = {c: std_offset_hours(s["lat"], s["lon"]) for c, s in smap.items() if s.get("lat") is not None}
-    era5_keys = ["temp", "range", "prcp", "rh", "dew", "wspd", "pres", "blh"]
+    era5_keys = ["temp", "range", "prcp", "rh", "dew", "wspd", "pres", "blh", "pw"]
     rows, roses, winds, wins = {}, {}, {}, {}
     for code, part in w.groupby("code"):
         site_h = hourly[hourly.site == code].set_index("time_utc").sort_index()
@@ -198,6 +210,7 @@ def main():
             blh = load_site(code, BLH_CACHE)
         except FileNotFoundError:
             blh = None
+        tcwv = load_column_water(code)
         off = pd.Timedelta(hours=offsets[code])
         for fid, x in part.iterrows():
             a, b = x.start - off, x.end - off       # local standard time -> UTC
@@ -207,6 +220,8 @@ def main():
             bl = blh.loc[a:b - pd.Timedelta(minutes=1)].mean() if blh is not None else np.nan
             st = window_stats(h.reset_index(), "temperature_2m", "relative_humidity_2m", "precipitation", "wind_speed_10m",
                               "wind_direction_10m", "surface_pressure", dew="dew_point_2m", blh=bl)
+            if tcwv is not None:
+                st["pw"] = tcwv.loc[a:b - pd.Timedelta(minutes=1)].mean()
             rows[fid] = [r(st.get(k), 1 if k in ("blh", "pres") else 2) for k in era5_keys]
             roses[fid] = rose(h, "wind_speed_10m", "wind_direction_10m")
             winds[fid] = wind_cells(h, "wind_speed_10m", "wind_direction_10m")
@@ -232,7 +247,7 @@ def main():
     era5_names, station_names = list(ERA5_FIELDS), list(STATION_FIELDS)
     meta = dict(generated=datetime.now(timezone.utc).isoformat(),
                 source="ERA5 (Copernicus Climate Change Service) via the Open-Meteo archive API, CC BY 4.0; Addis station: Meteostat, WMO 63450 (Bole airport)",
-                note="Means over each filter's sampling window (local start to end). Precipitation is the window mean in mm/day; temperature range is the mean max-min over 24 h blocks.")
+                note="Means over each filter's sampling window (local start to end). Precipitation is the window mean in mm/day; temperature range is the mean max-min over 24 h blocks. Precipitable water is ERA5 total column water vapour; Open-Meteo has none for Jan-Jun 2024.")
     payload = dict(**meta, fields=era5_names + station_names, field_units={**ERA5_FIELDS, **STATION_FIELDS},
                    era5=era5_names, station=station_names,
                    rows={fid: v + srows.get(fid, [None] * len(station_names)) for fid, v in rows.items()},

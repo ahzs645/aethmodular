@@ -115,3 +115,17 @@ test('Mark: an excluded filter is drawn at the prediction it would get in the co
   assert.ok(checked > 3, `checked ${checked}`)
   assert.equal(heldOutPrediction([], { date: '2023-01-01', ec: 1 }), null)
 })
+
+test('every release filter has a gallery row, so the rows in view can say which filters a refit keeps', () => {
+  const rows = JSON.parse(fs.readFileSync(new URL('../../../../public/data/filters.json', import.meta.url), 'utf8')).rows
+  const ids = new Set(rows.map((r) => r.id))
+  assert.equal(points.length, 545)
+  assert.deepEqual(points.filter((p) => !ids.has(p.id)).map((p) => p.id), [])
+})
+
+test('a site or quarter Samples leaves out: no calendar for an empty site, and a sparse site falls below the minimum n', () => {
+  assert.deepEqual(evaluate([], [], 'leave_quarter_out'), [])
+  const few = points.filter((p) => p.site === 'Addis Ababa').slice(0, 6)
+  const blocks = evaluate(few, few, 'leave_quarter_out')
+  assert.ok(blocks.length > 0 && blocks.every((b) => b.status !== 'evaluated'))
+})

@@ -19,9 +19,10 @@ import {
   CONDITIONING, addedVariable, evalFilters, framed, lstsq, massPerArea, partialSlopes, seasonCols, seedOf, siteFit,
   type Estimate, type Framing, type MassFilter, type PartialRow, type SiteFit,
 } from '../common/massLead'
+import { rowDeposit } from '../common/envelope'
 import { OPTICS_COMMAND, useOptics } from '../common/optics'
 import { quantile } from '@/lib/stats'
-import { BASIS_NOTE, DataTable, SERIES, num, point, useConcRows } from '../common/ui'
+import { BASIS_NOTE, DataTable, SERIES, SitesNote, num, point, useConcRows } from '../common/ui'
 import { presetName, rows as tableRows, useCalibRuns, useSpectral, type SpectralExport } from './spectralCommon'
 import { siteCodeColor } from '@/lib/siteColours'
 
@@ -59,7 +60,9 @@ const inside = (e: Estimate | null | undefined, r: Row | undefined, key: string,
  * (calibration_runs.json) joined to the gallery rows' PM2.5 mass and the HIPS optics export's volume, deposit
  * area and lot. At fixed prediction, does the calibration residual f(X) − Fabs/MAC fall with mass, at Addis and
  * at the other explorer sites? OLS partial slopes with a per-filter bootstrap (common/massLead), so every number
- * follows the filters in view, the hand exclusions and the MAC.
+ * follows the filters in view, the hand exclusions and the MAC. Addis's points take the Samples season, so they follow the
+ * calendar in use. The optics export has no Bishoftu row, so its deposit is the gallery row's volume on SPARTAN's area. A
+ * site outside the explorer's five has no predictions and is named in a note.
  */
 export function MassLead({ rows: viewRows, meta }: SectionPageProps) {
   const rows = useConcRows(viewRows, meta)
@@ -79,13 +82,16 @@ export function MassLead({ rows: viewRows, meta }: SectionPageProps) {
   const sites = useMemo((): SiteData[] | null => {
     if (!runs || !optics) return null
     const opt = new Map(optics.filter((o) => o.type !== 'FB').map((o) => [o.id, o]))
+    const held = new Set(optics.map((o) => o.code))
     return TARGETS.map(([target, code]) => {
       const run = runs.runs.find((r) => r.preset === preset && r.target === target)
       const site = meta.sites.find((s) => s.code === code)?.name ?? runs.targets[target]?.site ?? code
       const color = siteCodeColor(meta, code, runs.targets[target]?.color ?? INK.muted)
       const rowOf = (m: Map<string, FilterRow>) => (id: string) => { const r = m.get(id); return r ? { mass: num(r, 'PM2.5 mass'), date: r.date } : undefined }
-      const { filters, nView, nMass } = evalFilters(run?.eval, rowOf(byId), (id) => opt.get(id))
-      const marked = markedById.size ? evalFilters(run?.eval, rowOf(markedById), (id) => opt.get(id)).filters : []
+      // a site the export covers keeps exactly what it holds; one it does not (Bishoftu) reads its deposit from the row
+      const depositOf = (m: Map<string, FilterRow>) => (id: string) => { const r = m.get(id); return opt.get(id) ?? (r && !held.has(code) ? rowDeposit(r) : undefined) }
+      const { filters, nView, nMass } = evalFilters(run?.eval, rowOf(byId), depositOf(byId))
+      const marked = markedById.size ? evalFilters(run?.eval, rowOf(markedById), depositOf(markedById)).filters : []
       return { target, code, site, color, nEval: run?.eval.id.length ?? 0, nView, nMass, filters, marked }
     })
   }, [runs, optics, preset, byId, markedById, meta.sites])
@@ -120,7 +126,7 @@ export function MassLead({ rows: viewRows, meta }: SectionPageProps) {
         optionLabel={(k) => { const x = presets.find((q) => q.key === k); return x ? presetName(x) : k }} />
     </SidebarControls>
     <AddisResidual addis={results[0]} byId={byId} markedById={markedById} meta={meta} mac={mac} nb={locked ? nb : null} presetLabel={p ? presetName(p) : preset} />
-    <SiteCoefficients results={results} mac={mac} nb={locked ? nb : null} range={range} presetLabel={p ? presetName(p) : preset} runs={runs} />
+    <SiteCoefficients results={results} mac={mac} nb={locked ? nb : null} range={range} presetLabel={p ? presetName(p) : preset} runs={runs} others={[...new Set(rows.filter((r) => !TARGETS.some(([, c]) => c === r.code)).map((r) => r.site))]} />
     <ResidualGrid results={results.slice(0, 5)} byId={byId} markedById={markedById} meta={meta} mac={mac} presetLabel={p ? presetName(p) : preset} />
   </>
 }
@@ -133,7 +139,8 @@ const groupsOf = (filters: MassFilter[]) => [...new Set(filters.map((f) => f.gro
 
 /**
  * ftir_46 §5 (cell 13): the Addis residual against mass, raw and added-variable, per volume or per deposit, and the
- * partial-slope table under the notebook's three conditionings.
+ * partial-slope table under the notebook's three conditionings. A point's colour is its row's season under the calendar in
+ * use, which on the page's calendar is the explorer's group (the group where a filter has no season).
  */
 function AddisResidual({ addis, byId, markedById, meta, mac, nb, presetLabel }: { addis: SiteResult; byId: Map<string, FilterRow>; markedById: Map<string, FilterRow>; meta: MetaFile; mac: number; nb: SpectralExport | null; presetLabel: string }) {
   const [framing, setFraming] = useSearchParam<Framing>('mass-addis.framing', 'volume', ['volume', 'deposit'])
@@ -146,7 +153,7 @@ function AddisResidual({ addis, byId, markedById, meta, mac, nb, presetLabel }: 
     const av = addedVariable([F.fx, ...seasonCols(F.use.map((f) => f.month!))], F.m, F.r)
     const pts = (xs: number[], ys: number[], xl: string, yl: string, use = F.use, rowOf = byId): CrossPoint[] => use.flatMap((f, i) => {
       const r = rowOf.get(f.id)
-      return r ? [point(r, xs[i], ys[i], groupColor(meta, f.group), xl, yl, 'Research · the mass lead', [`f(X) ${fmt(f.fx, 2)} µg/m³ · Fabs ${fmt(f.fabs, 1)} Mm⁻¹`, `PM2.5 ${fmt(f.mass, 1)} µg/m³`])] : []
+      return r ? [point(r, xs[i], ys[i], groupColor(meta, r.season || f.group), xl, yl, 'Research · the mass lead', [`f(X) ${fmt(f.fx, 2)} µg/m³ · Fabs ${fmt(f.fabs, 1)} Mm⁻¹`, `PM2.5 ${fmt(f.mass, 1)} µg/m³`])] : []
     })
     // the excluded filters on the raw panel only: the added-variable axes are residuals of the counted filters' fit
     const M = framed(addis.marked.filter((f) => f.month !== null), framing, mac)
@@ -167,7 +174,7 @@ function AddisResidual({ addis, byId, markedById, meta, mac, nb, presetLabel }: 
   const nbOf = (r: PartialRow) => nbRows.find((x) => String(x.framing) === FRAMING_LABEL[r.framing] && String(x.conditioning) === CONDITIONING[r.conditioning])
   // the conditioned slopes are −β/MAC (f(X) in the design), so the notebook's MAC 10 values × 10/MAC; the raw one is not a rescaling
   const kOf = (r: PartialRow) => (r.conditioning === 'none' ? (mac === 10 ? 1 : null) : 10 / mac)
-  const groups = groupsOf(addis.filters)
+  const groups = [...new Set(addis.filters.map((f) => byId.get(f.id)?.season || f.group))]
   const nbSeason = nbRows.find((x) => String(x.framing) === FRAMING_LABEL.volume && String(x.conditioning) === CONDITIONING.season)
   const liveSeason = table.find((t) => t.framing === 'volume' && t.conditioning === 'season')
   const rawRow = table.find((t) => t.framing === 'volume' && t.conditioning === 'none')
@@ -183,9 +190,9 @@ function AddisResidual({ addis, byId, markedById, meta, mac, nb, presetLabel }: 
       {view ? <>
         <FacetGrid items={view.panels} minCell={300} maxCols={2} title={(pn) => pn.title} render={(pn) =>
           <Crossplot title="" points={pn.points} marked={pn.marked} xLabel={pn.xLabel} yLabel={pn.yLabel} fit={false} grouping="none" extraLines={pn.lines} sameScale={false} maxSide={420} />} />
-        <Key items={[...groups.map((g) => ({ label: g, color: groupColor(meta, g) })), { label: 'raw OLS', color: INK.muted, kind: 'line' as const }, { label: 'partial slope | f(X), season', color: INK.negative, kind: 'line' as const }]} />
+        <Key items={[...groups.map((g) => ({ label: seasonOnly(g), color: groupColor(meta, g) })), { label: 'raw OLS', color: INK.muted, kind: 'line' as const }, { label: 'partial slope | f(X), season', color: INK.negative, kind: 'line' as const }]} />
         <ExcludedNote count={addis.marked.length} drawn />
-      </> : <Empty>Fewer than 10 Addis filters in view carry PM2.5 mass and a date.</Empty>}
+      </> : <Empty>Fewer than 10 Addis filters in view carry PM2.5 mass and a date: pick Addis Ababa under Samples.</Empty>}
       <DataTable rows={table} rowKey={(r) => `${r.framing}|${r.conditioning}`} columns={[
         { key: 'f', label: 'Framing', value: (r) => FRAMING_LABEL[r.framing] },
         { key: 'c', label: 'Conditioning', value: (r) => CONDITIONING[r.conditioning] },
@@ -204,7 +211,9 @@ function AddisResidual({ addis, byId, markedById, meta, mac, nb, presetLabel }: 
  * MAC-free) and per deposit (µg of HIPS-EC-equivalent per µg of mass, at the reader's MAC), full range or inside
  * the Addis deposit-loading range, against the notebook's.
  */
-function SiteCoefficients({ results, mac, nb, range, presetLabel, runs }: { results: SiteResult[]; mac: number; nb: SpectralExport | null; range: [number, number] | null; presetLabel: string; runs: CalibRunsFile }) {
+function SiteCoefficients({ results, mac, nb, range, presetLabel, runs, others }: { results: SiteResult[]; mac: number; nb: SpectralExport | null; range: [number, number] | null; presetLabel: string; runs: CalibRunsFile
+  /** the sites in view outside the explorer's five */
+  others: string[] }) {
   const [which, setWhich] = useSearchParam<'full' | 'addis'>('mass-sites.range', 'addis', ['full', 'addis'])
   const nbRows = tableRows(nb, 'cross_site_mass_slopes').filter((r) => String(r.config) === NB_CONFIG)
   const nbOf = (site: string, f: Framing) => nbRows.find((r) => String(r.site) === site && String(r.framing) === NB_FRAMING[f])
@@ -236,12 +245,13 @@ function SiteCoefficients({ results, mac, nb, range, presetLabel, runs }: { resu
   const noMass = results.slice(0, 5).filter((s) => s.filters.length < 6).map((s) => s.nView === 0 ? `${s.site} (no gallery rows in view)` : `${s.site} (${s.nMass} of ${s.nView} rows in view carry PM2.5)`)
   return (
     <ChartFrame id="mass-lead-sites" title="Does mass add absorption at fixed FTIR EC? — at every site, more in Ethiopia"
-      subtitle={`${presetLabel}: the coefficient on PM2.5 mass in Fabs ~ f(X) + mass at each explorer site, ${which === 'addis' && range ? `inside the Addis deposit-loading range (${fmt(range[0], 1)}–${fmt(range[1], 1)} µg/cm², the Addis filters in view)` : 'over each site\'s full range'}; dots computed here (per-filter bootstrap 95 %), grey diamonds the notebook's. Per volume it is Mm⁻¹ per µg/m³ and no MAC enters; per deposit it is µg of HIPS-EC-equivalent per µg of mass at MAC ${mac} (× 10/MAC of the notebook's). ${verdict.length ? `Per volume, live vs ftir_46: ${verdict.join('; ')}.` : nb ? '' : 'The notebook ran the locked 800 + AIRSpec calibration only, so its values are drawn for that preset.'} The live fits use only filters whose gallery row carries PM2.5 (counts below): Delhi's mass is mostly missing and Bishoftu has no gallery rows, so neither matches the notebook's n, which read mass from the SPARTAN catalogs.${gen.length ? ` Research → Does it generalise draws ftir_53's copy of the notebook's per-deposit Addis-range column (${gen.map((r) => `${r.site} ${fmt(r.mass_coef_addis_range, 3)}`).join(', ')}, MAC 10): the diamonds here at MAC 10, per deposit, Addis range.` : ''}`}
+      subtitle={`${presetLabel}: the coefficient on PM2.5 mass in Fabs ~ f(X) + mass at each explorer site, ${which === 'addis' && range ? `inside the Addis deposit-loading range (${fmt(range[0], 1)}–${fmt(range[1], 1)} µg/cm², the Addis filters in view)` : 'over each site\'s full range'}; dots computed here (per-filter bootstrap 95 %), grey diamonds the notebook's. Per volume it is Mm⁻¹ per µg/m³ and no MAC enters; per deposit it is µg of HIPS-EC-equivalent per µg of mass at MAC ${mac} (× 10/MAC of the notebook's). ${verdict.length ? `Per volume, live vs ftir_46: ${verdict.join('; ')}.` : nb ? '' : 'The notebook ran the locked 800 + AIRSpec calibration only, so its values are drawn for that preset.'} The live fits use only filters whose gallery row carries PM2.5 (counts below): Delhi's mass is mostly missing, so it does not match the notebook's n, which read mass from the SPARTAN catalogs. The HIPS optics export has no Bishoftu row, so its deposit is the gallery row's sampled volume on a 3.53 cm² deposit.${gen.length ? ` Research → Does it generalise draws ftir_53's copy of the notebook's per-deposit Addis-range column (${gen.map((r) => `${r.site} ${fmt(r.mass_coef_addis_range, 3)}`).join(', ')}, MAC 10): the diamonds here at MAC 10, per deposit, Addis range.` : ''}`}
       provenance={<>Reproduces {FTIR46} §7–8 (cells 17 and 19, the per-site slopes). Notebook values: <code>public/data/ml/residual.json</code> (cross_site_mass_slopes, mass_term_ftir53). Explorer runs: <code>calibration_runs.json</code> ({runs.mode}).</>}
       controls={<Segmented label="Range" value={which} options={['addis', 'full'] as const} onChange={setWhich} optionLabel={(o) => (o === 'addis' ? 'Addis loading range' : 'Full range')} />}>
-      <IntervalStrip blocks={[{ key: 's', rows: rowsOut }]} labelWidth={190} noteWidth={nb ? 92 : 50}
+      {results.slice(0, 5).some((s) => s.filters.length) ? <IntervalStrip blocks={[{ key: 's', rows: rowsOut }]} labelWidth={190} noteWidth={nb ? 92 : 50}
         panels={[{ label: 'Per volume: Mm⁻¹ per µg/m³ of mass', reference: 0, heading: 'Per volume (MAC-free)' },
           { label: `Per deposit: µg EC-eq per µg mass (MAC ${mac})`, reference: 0, heading: 'Per deposit' }]} />
+        : <Empty>No explorer site in view carries PM2.5 mass: pick Addis Ababa, Bishoftu, Beijing, Delhi or JPL under Samples.</Empty>}
       <Key items={[{ label: 'computed here (site colour), bootstrap 95 %', color: INK.text }, ...(nb ? [{ label: 'ftir_46 (locked 800 + AIRSpec), its interval', color: INK.muted, kind: 'diamond' as const }] : [])]} />
       <DataTable rows={results} rowKey={(s) => s.site} columns={[
         { key: 's', label: 'Site', value: (s) => s.site },
@@ -256,6 +266,7 @@ function SiteCoefficients({ results, mac, nb, range, presetLabel, runs }: { resu
       ]} />
       {noMass.length > 0 && <Note>No fit (fewer than 6 filters with mass): {noMass.join('; ')}.</Note>}
       <ExcludedNote count={results.slice(0, 5).reduce((a, s) => a + s.marked.length, 0)} />
+      <SitesNote sites={others} why="no explorer predictions, so no fit here" />
     </ChartFrame>
   )
 }
@@ -284,7 +295,7 @@ function ResidualGrid({ results, byId, markedById, meta, mac, presetLabel }: { r
         title={(pn) => `${pn.s.site} (n=${pn.fit.n}${pn.beyond ? `, ${pn.beyond} beyond frame` : ''})`}
         note={(pn) => `β ${ci(pn.fit.massCoef, 2)}`}
         render={(pn) => <Crossplot title="" points={pn.points} marked={pn.marked} xLabel="PM2.5 (µg/m³)" yLabel={`f(X) − Fabs/${mac} (µg/m³)`} fit={false} grouping="none" extraLines={pn.lines} sameScale={false}
-          domain={[0, xHi * 1.02]} yDomain={[yLo, yHi]} maxSide={300} />} /> : <Empty>No explorer site in view has 6 or more filters with PM2.5 mass.</Empty>}
+          domain={[0, xHi * 1.02]} yDomain={[yLo, yHi]} maxSide={300} />} /> : <Empty>No explorer site in view has 6 or more filters with PM2.5 mass: pick Addis Ababa, Bishoftu, Beijing, Delhi or JPL under Samples.</Empty>}
       <Key items={[...new Set(panels.flatMap((pn) => pn.groups))].map((g) => ({ label: g, color: groupColor(meta, g) }))} />
       <ExcludedNote count={panels.reduce((a, pn) => a + pn.marked.length, 0)} drawn />
     </ChartFrame>

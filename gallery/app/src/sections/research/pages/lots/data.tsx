@@ -7,8 +7,9 @@ import { useMemo } from 'react'
 import { loadBinary, loadJson, useDerived, useExport } from '@/lib/data'
 import { ExcludedNote, useCountedFilter, useExclStatus, useMarkedRows, usePlaceFilter } from '@/lib/markedRows'
 import type { FilterRow, FiltersFile, MetaFile } from '@/lib/types'
-import { decodeView, membersOf, NOTEBOOK_SEASONS, notebookSeason, type LotExport, type Member, type ViewKey } from '../../common/lotSpectra'
-import { SERIES } from '../../common/ui'
+import { useSearchParam } from '@/lib/url'
+import { decodeView, defaultSeason, membersOf, notebookSeason, type LotExport, type Member, type ViewKey } from '../../common/lotSpectra'
+import { SERIES, shortSeason } from '../../common/ui'
 import { LOT_COLOR } from '@/lib/theme'
 
 export const EXPORTER = 'gallery/data/export_research_lot_spectra.py'
@@ -54,7 +55,7 @@ export interface Lots {
   /** site code → display name */
   siteName: (code: string) => string
   siteColor: (code: string) => string
-  /** the seasons among the members, in calendar order from October */
+  /** the seasons among the members, by short name ("Bega": members' `season` is the same), in calendar order from October */
   seasons: { name: string; color: string }[]
 }
 
@@ -84,19 +85,33 @@ export function useLots(exp: LotExport | null, rows: FilterRow[], meta: MetaFile
     const c12 = f.date.filter((_, i) => f.char12[i]).sort()
     const cohort = { n: c12.length, from: c12[0] ?? '', to: c12[c12.length - 1] ?? '' }
     const notebook = cohort.n > 0 && members.length === cohort.n && members.every((m) => f.char12[m.i] && m.season === notebookSeason(m.month))
+    // a per-site calendar qualifies each season with its site ("Addis Ababa · Bega (Oct-Jan, dry)"), so two sites with
+    // the same season would be two seasons: the charts group by the short name, and a name the sites share is one season
+    const named = (ms: Member[]) => ms.map((m) => ({ ...m, season: shortSeason(m.season) }))
+    const shown = named(members)
     const first = new Map<string, number>()
-    for (const m of members) first.set(m.season, Math.min(first.get(m.season) ?? 99, (m.month + 2) % 12))
+    for (const m of shown) first.set(m.season, Math.min(first.get(m.season) ?? 99, (m.month + 2) % 12))
     const names = [...first.keys()].sort((a, b) => first.get(a)! - first.get(b)!)
     const palette = [...meta.seasons, ...Object.values(meta.season_conventions ?? {}).flat()]
-    const seasonColor = (name: string, i: number) => palette.find((s) => s.name === name)?.color
-      ?? (NOTEBOOK_SEASONS.some((s) => s.name === name) ? palette.find((s) => s.name.split(' ')[0] === name.split(' ')[0])?.color : undefined) ?? SERIES[i % SERIES.length]
+    const seasonColor = (name: string, i: number) => palette.find((s) => shortSeason(s.name) === name)?.color ?? SERIES[i % SERIES.length]
     return {
-      members, marked, unmatched, cohort, notebook,
+      members: shown, marked: named(marked), unmatched, cohort, notebook,
       siteName: (c: string) => nameOf.get(c) ?? c,
       siteColor: (c: string) => colorOf.get(c) ?? SERIES[0],
       seasons: names.map((name, i) => ({ name, color: seasonColor(name, i) })),
     }
   }, [exp, known, rows, markedRows, meta, counts, status, place])
+}
+
+/**
+ * The season a chart holds fixed: the link's pick, else the dry one. Read through shortSeason, so a link saved when
+ * the options still carried their site ("Addis Ababa · Belg …") keeps its season.
+ */
+export function useHeldSeason(lots: Lots, param: string) {
+  const seasonNames = lots.seasons.map((s) => s.name)
+  const [pick, setSeason] = useSearchParam<string>(param, '')
+  const short = shortSeason(pick)
+  return { seasonNames, season: seasonNames.includes(short) ? short : defaultSeason(seasonNames), setSeason }
 }
 
 /**

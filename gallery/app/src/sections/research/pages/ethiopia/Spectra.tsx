@@ -13,6 +13,7 @@ import { INK } from '@/lib/theme'
 import { Grid } from '../../common/ui'
 import { provenance, rows as tableRows, type SpectralExport } from '../spectralCommon'
 import { galleryId } from './data'
+import { NO_SPECTRA, useEtadInSamples } from './Paired'
 import { ALL, BAND_LABEL, BANDS, bandArea, flatten, groupOf, MONTH_SPLITS, OTHER, pool, profileStats, rankDesc, savgol, UNDATED } from './spectraMath'
 
 /**
@@ -166,10 +167,10 @@ export function EtadSpectra({ data }: { data: SpectralExport }) {
 // ---------------------------------------------------------------- 13 [9]: the organic-band profile
 
 export function BandProfile({ data }: { data: SpectralExport }) {
-  // Filters → excluded acts on the spectra by filter id: the medians and IQRs are over those that count
-  const allMeta = useMemo(() => tableRows(data, 'etad_spectra_meta'), [data]), printed = tableRows(data, 'band_profile_printed')
-  const split = useExclusionSplit(allMeta, (r) => String(r.ExternalFilterId ?? '') || null)
-  const meta = split.counted
+  // Samples acts on the spectra by date and Filters → excluded by filter id: the medians and IQRs are over those in view that count
+  const { all: allMeta, inView } = useEtadInSamples(data, 'etad_spectra_meta'), printed = tableRows(data, 'band_profile_printed')
+  const split = useExclusionSplit(inView, (r) => String(r.ExternalFilterId ?? '') || null)
+  const meta = split.counted, narrowed = inView.length < allMeta.length
   const improve = printed.find((r) => String(r.set).startsWith('IMPROVE'))
   const IMPROVE = "IMPROVE lot 248+251 (13's printed median)"
   const long = useMemo(() => {
@@ -184,12 +185,12 @@ export function BandProfile({ data }: { data: SpectralExport }) {
   }, [meta, improve])
   const all = profileStats(meta)
   const at = (b: string) => all.find((s) => s.band === b)
-  return <Figure kind="intervals" id="ethiopia-band-profile" data={long} row="band" series="group all" labelWidth={210}
+  return <Figure kind="intervals" id="ethiopia-band-profile" data={meta.length ? long : []} empty={NO_SPECTRA} row="band" series="group all" labelWidth={210}
     panels={[{ value: 'fraction', label: 'Share of the four organic bands\' area (median and IQR over spectra)' }]} aggregate={{ stat: 'median', interval: 'iqr' }}
     variants={[{ key: 'split', label: 'ETAD grouped by', choices: MONTH_SPLITS.map((s) => ({ value: s.key, label: s.label.replace(/ \((04 )?fig \d\)$/, ''), patch: { series: `group ${s.key}` } })) }]}
     colors={{ [IMPROVE]: INK.text, [ALL]: '#d62728' }}
-    title={`Addis's organic bands are OH-dominated (median ${pct(at('OH')?.median, 1)}) with almost no aromatic signal (${pct(at('aromatic')?.median, 1)}), and the lot-248+251 training set looks the same`}
-    subtitle={`June 13's peak-ratio "biomass classifier": offset each spectrum by its 3900–4000 cm⁻¹ mean, integrate CH, C=O, OH and the aromatic C=C band above each band's own minimum, and take each as a share of the four. Per ETAD spectrum that counts under Filters → excluded (recomputed from the Drive's spectra; on all 319, with Include, the medians equal 13's printed profile), grouped by any month split; IMPROVE is 13's printed median over the 13,012 training filters (median ${improve ? BANDS.map((b) => `${b} ${pct(num(improve[b]), 1)}`).join(', ') : '—'}), as its per-filter fractions were not saved. 13 read it as oxygenated smouldering-wood smoke rather than aromatic char, and since the training set already matches, selecting "biomass-like" IMPROVE filters by this profile did not move the HIPS fit (the ML page's frontier). Band areas, no model: no MAC.`}
+    title={narrowed ? `Addis's organic bands in these Samples: OH median ${pct(at('OH')?.median, 1)}, aromatic ${pct(at('aromatic')?.median, 1)}` : `Addis's organic bands are OH-dominated (median ${pct(at('OH')?.median, 1)}) with almost no aromatic signal (${pct(at('aromatic')?.median, 1)}), and the lot-248+251 training set looks the same`}
+    subtitle={`June 13's peak-ratio "biomass classifier": offset each spectrum by its 3900–4000 cm⁻¹ mean, integrate CH, C=O, OH and the aromatic C=C band above each band's own minimum, and take each as a share of the four. Per ETAD spectrum that counts under Filters → excluded (recomputed from the Drive's spectra; on all 319, with Include, the medians equal 13's printed profile), grouped by any month split; IMPROVE is 13's printed median over the 13,012 training filters (median ${improve ? BANDS.map((b) => `${b} ${pct(num(improve[b]), 1)}`).join(', ') : '—'}), as its per-filter fractions were not saved. ${narrowed ? '13 read all 319 as' : '13 read it as'} oxygenated smouldering-wood smoke rather than aromatic char, and since the training set already matches, selecting "biomass-like" IMPROVE filters by this profile did not move the HIPS fit (the ML page's frontier). Band areas, no model: no MAC.`}
     provenance={provenance(data, ['etad_spectra_meta', 'band_profile_printed'], 'research/ftir_ec_calibration_2026_06_25/13_chase_origin_and_biomass.ipynb fig13_organic_band_profile.')}
     aside={<ExcludedNote count={new Set(split.marked.map((r) => galleryId(String(r.ExternalFilterId)))).size} />} />
 }
