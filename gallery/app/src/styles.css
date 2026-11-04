@@ -512,7 +512,11 @@ input[type="search"]::-webkit-search-cancel-button:hover { background: var(--ink
   --chip: var(--chip-neutral);
 }
 .chip:hover { border-color: var(--chip); }
-.chip.active { background: var(--chip); border-color: var(--chip); color: #fff; }
+/* On = a wash of the chip's colour, its full colour as a 1.5 px edge (inset ring, so a toggle never
+   reflows the row) and normal ink. White on the solid colour failed contrast for the bright site and
+   season hues (JPL green, Addis orange), and the wash keeps those colours as defined. */
+.chip.active { background: color-mix(in srgb, var(--chip) 22%, var(--ink-panel)); border-color: var(--chip);
+  box-shadow: inset 0 0 0 0.5px var(--chip); color: var(--ink-text); }
 .chip.disabled { border-color: var(--ink-grid); background: var(--ink-zebra); color: var(--ink-faint); cursor: not-allowed; text-decoration: line-through; }
 
 .pinned {

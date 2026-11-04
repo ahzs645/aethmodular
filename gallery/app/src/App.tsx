@@ -279,8 +279,11 @@ const readSavedSiteRules = (): SiteRules => { try { return parseSiteRules(localS
 const bareSeasonName = (name: string) => name.replace(/\s*\([^)]*\)\s*$/, '') || name
 
 /** FTIR EC under each spectral baseline: none is the SPARTAN product in filters.json */
-type FtirBaseline = 'none' | 'spline' | 'vibes'
-const FTIR_VARIANT = { spline: 'EC (FTIR, spline)', vibes: 'EC (FTIR, VIBES)' } as const
+type FtirBaseline = 'none' | 'spline' | 'vibes' | 'anchored' | 'epo'
+const FTIR_VARIANT = { spline: 'EC (FTIR, spline)', vibes: 'EC (FTIR, VIBES)', anchored: 'EC (FTIR, VIBES anchored)', epo: 'EC (FTIR, EPO)' } as const
+const FTIR_BASELINES: readonly string[] = ['spline', 'vibes', 'anchored', 'epo']
+/** one filter's baseline fields, null where the export has no value */
+const ftirVariants = (b: Record<string, number | undefined>) => Object.fromEntries((Object.keys(FTIR_VARIANT) as (keyof typeof FTIR_VARIANT)[]).map((k) => [FTIR_VARIANT[k], b[k] ?? null]))
 
 /** a comma-separated id list from the URL (filters dropped or kept by hand) */
 const idSet = (v: string | null): Set<string> | null => (v ? new Set(v.split(',').filter(Boolean)) : null)
@@ -394,13 +397,13 @@ export default function App() {
     ['calibration', 'baseline'].includes(tab) ? true : tab === 'dashboard' && dashboardCalibration ? 'runs' : false)
   // spline / VIBES FTIR EC (gallery/data/export_baseline_ftir_ec.py): the Addis test set from the
   // frozen runs, every other SPARTAN PM2.5 filter with a spectrum from the network baselines; optional
-  const baselines = useExport<{ rows: Record<string, { spline?: number; vibes?: number }> }>('baseline_ftir_ec.json').data
+  const baselines = useExport<{ rows: Record<string, { spline?: number; vibes?: number; anchored?: number; epo?: number }> }>('baseline_ftir_ec.json').data
   const focusRows = useMemo(() => {
     const rows = data?.filters.rows ?? []
     if (!baselines) return rows
     return rows.map((r) => {
       const b = baselines.rows[r.id]
-      return b ? { ...r, [FTIR_VARIANT.spline]: b.spline ?? null, [FTIR_VARIANT.vibes]: b.vibes ?? null } : r
+      return b ? { ...r, ...ftirVariants(b) } : r
     })
   }, [data, baselines])
 
@@ -481,7 +484,7 @@ export default function App() {
   const dropWhyParam = useMemo(() => { const kept = Object.entries(dropWhy).filter(([id, r]) => dropIds.has(id) && r.trim()); return kept.length ? JSON.stringify(Object.fromEntries(kept)) : null }, [dropWhy, dropIds])
   const [keepIds, setKeepIds] = useState<Set<string> | null>(() => idSet(init.get('keep')))
   // which spectral baseline FTIR EC is shown with (spline and VIBES where a filter has a native spectrum)
-  const [ftirBaseline, setFtirBaseline] = useState<FtirBaseline>(() => (['spline', 'vibes'] as string[]).includes(init.get('fb') ?? '') ? init.get('fb') as FtirBaseline : 'none')
+  const [ftirBaseline, setFtirBaseline] = useState<FtirBaseline>(() => FTIR_BASELINES.includes(init.get('fb') ?? '') ? init.get('fb') as FtirBaseline : 'none')
   const [seasonsOn, setSeasonsOn] = useState(init.get('seas') !== '0')
   const [pmfOn, setPmfOn] = useState(init.get('pmfon') === '1')
   // with the PMF filter on: also hide the sites (and days) without PMF, so only PMF filters remain
@@ -664,7 +667,7 @@ export default function App() {
       setInclIds(idSet(p.get('incl')) ?? new Set())
       setDropIds(idSet(p.get('drop')) ?? new Set())
       setDropWhy(parseWhy(p.get('dropwhy')))
-      setFtirBaseline((['spline', 'vibes'] as string[]).includes(p.get('fb') ?? '') ? p.get('fb') as FtirBaseline : 'none')
+      setFtirBaseline(FTIR_BASELINES.includes(p.get('fb') ?? '') ? p.get('fb') as FtirBaseline : 'none')
       setKeepIds(idSet(p.get('keep')))
       setXField(p.get('x') ?? DEFAULT_X)
       setYField(p.get('y') ?? DEFAULT_Y)
@@ -895,7 +898,7 @@ export default function App() {
     // the network's rows get their spline / VIBES FTIR EC too (focus rows already carry theirs)
     const rows = !baselines ? base : base.map((r) => {
       const b = baselines.rows[r.id]
-      return b && r[FTIR_VARIANT.spline] === undefined ? { ...r, [FTIR_VARIANT.spline]: b.spline ?? null, [FTIR_VARIANT.vibes]: b.vibes ?? null } : r
+      return b && r[FTIR_VARIANT.spline] === undefined ? { ...r, ...ftirVariants(b) } : r
     })
     // the weather fields ride on every row, so every chart and picker can use them
     const withWeather = !weather ? rows : rows.map((r) => {
@@ -918,7 +921,7 @@ export default function App() {
   const exportMac = data?.meta.mac_value ?? 10
   const viewOpts = useMemo(() => ({
     mac: mac ?? exportMac, exportMac, basis, ratios: ratioView.all,
-    units: { ...(netBase ? netBase.field_units : data?.meta.field_units ?? {}), ...(weather?.field_units ?? {}), ...(aeronet?.field_units ?? {}), ...(instrumentFields?.field_units ?? {}), [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3' },
+    units: { ...(netBase ? netBase.field_units : data?.meta.field_units ?? {}), ...(weather?.field_units ?? {}), ...(aeronet?.field_units ?? {}), ...(instrumentFields?.field_units ?? {}), [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3', [FTIR_VARIANT.anchored]: 'ug/m3', [FTIR_VARIANT.epo]: 'ug/m3' },
   }), [mac, exportMac, basis, ratioView, netBase, data, weather, aeronet, instrumentFields])
   const plainSourceRows = useMemo(() => viewRows(rawSourceRows, viewOpts), [rawSourceRows, viewOpts])
   // the site colours go on last, so a site pick repaints the rows without rebuilding them; the
@@ -1183,7 +1186,7 @@ export default function App() {
     meta.pmf_sources = (pmf?.sources ?? []).map((x) => ({ name: x.label, color: x.color }))
   }
   // the baseline variants are drawn but never offered in the pickers
-  meta.field_units = { ...meta.field_units, [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3' }
+  meta.field_units = { ...meta.field_units, [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3', [FTIR_VARIANT.anchored]: 'ug/m3', [FTIR_VARIANT.epo]: 'ug/m3' }
   // the drawer compares a filter with exported reference populations, so it keeps the exported units
   const drawerMeta = stable('drawerMeta', { ...meta })
   // a linked filter is read against its own network: its sites, measurements and units

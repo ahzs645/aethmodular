@@ -28,6 +28,9 @@ import { DynamicSeasonEditor } from '@/components/DynamicSeasonEditor'
 import { defaultRuleFor, type DynRule } from '@/lib/dynamicSeasons'
 import { DEFAULT_RAIN_RULE, type RainRule } from '@/lib/rainSeasons'
 import { UndoIcon, XIcon } from '@/components/Icons'
+
+/** the FTIR EC variants the Plot tab offers, in order; anchored and EPO are the 3 Nov candidates (Experimental › Continuum) */
+const FTIR_BASELINE_LABEL = { none: 'None', spline: 'Spline', vibes: 'VIBES', anchored: 'Anchored', epo: 'EPO' } as const
 import { EXCL_MODES, type ExclMode } from '@/lib/exclusionMode'
 import { CiteRef } from '@/components/CiteRef'
 import { ScrubField } from '@/components/ScrubField'
@@ -116,7 +119,7 @@ export interface SubsetState {
   /** the repo's own exclusions (rows the export marked `excluded`), with their recorded reason */
   excludedList?: { id: string; label: string; reason: string }[]
   /** spectral baseline for FTIR EC, offered when an axis or the measurement is EC (FTIR) */
-  ftirBaseline?: 'none' | 'spline' | 'vibes'
+  ftirBaseline?: 'none' | 'spline' | 'vibes' | 'anchored' | 'epo'
   showFtirBaseline?: boolean
   kept?: number | null
   /** the "keep only" set's ids, for its review panel */
@@ -154,7 +157,7 @@ export interface SubsetActions {
   onClearSites?: () => void
   onFocusSites?: () => void
   onDropIds?: (ids: Set<string>) => void
-  onFtirBaseline?: (v: 'none' | 'spline' | 'vibes') => void
+  onFtirBaseline?: (v: 'none' | 'spline' | 'vibes' | 'anchored' | 'epo') => void
   onCustomSeasons?: (v: { name: string; months: number[] }[]) => void
   /** a site's own seasons (by site code); null puts back its published calendar */
   onSiteSeasons?: (code: string, seasons: { name: string; months: number[] }[] | null) => void
@@ -402,10 +405,10 @@ export function SubsetBar({
 
       {caps.fields !== 'none' && s.showFtirBaseline && a.onFtirBaseline && (
         <Row label="FTIR baseline">
-          <Segmented value={({ none: 'None', spline: 'Spline', vibes: 'VIBES' } as const)[s.ftirBaseline ?? 'none'] as any} options={['None', 'Spline', 'VIBES'] as any}
-            onChange={(v: string) => a.onFtirBaseline!(v === 'Spline' ? 'spline' : v === 'VIBES' ? 'vibes' : 'none')}
-            title="FTIR EC with no baseline correction (the SPARTAN product), the spline (AIRSpec) baseline, or the VIBES baseline. Spline and VIBES come from the same all-IMPROVE calibration pool: the Addis test set from the frozen calibration runs, every other SPARTAN PM2.5 filter with a native spectrum and a sampled volume from those models applied to the network baselines. Filters without one (and IMPROVE) drop out of EC (FTIR) charts while they are chosen." />
-          {s.ftirBaseline && s.ftirBaseline !== 'none' && <span className="method-note" style={{ display: 'block' }}>SPARTAN filters with a native spectrum (28 sites, about 3,250 filters); Addis test set from the frozen runs</span>}
+          <Segmented value={FTIR_BASELINE_LABEL[s.ftirBaseline ?? 'none'] as any} options={Object.values(FTIR_BASELINE_LABEL) as any}
+            onChange={(v: string) => a.onFtirBaseline!((Object.keys(FTIR_BASELINE_LABEL) as (keyof typeof FTIR_BASELINE_LABEL)[]).find((k) => FTIR_BASELINE_LABEL[k] === v) ?? 'none')}
+            title="FTIR EC with no baseline correction (the SPARTAN product), the spline (AIRSpec) baseline, the VIBES baseline, VIBES on PTFE-anchored spectra (keeps the broad black-carbon continuum) or EPO (anchored, with the IMPROVE OC, other-PM, Fe and K signatures projected out). Anchored and EPO are candidates, explained on the Continuum page of the Experimental tab. Spline and VIBES come from the same all-IMPROVE calibration pool: the Addis test set from the frozen calibration runs, every other SPARTAN PM2.5 filter with a native spectrum and a sampled volume from those models applied to the network baselines. Filters without one (and IMPROVE) drop out of EC (FTIR) charts while they are chosen." />
+          {s.ftirBaseline && s.ftirBaseline !== 'none' && <span className="method-note" style={{ display: 'block' }}>{s.ftirBaseline === 'anchored' || s.ftirBaseline === 'epo' ? 'Candidate baseline, k 18, about 3,200 SPARTAN filters; see Experimental › Continuum and the baseline' : 'SPARTAN filters with a native spectrum (28 sites, about 3,250 filters); Addis test set from the frozen runs'}</span>}
         </Row>
       )}
     </>

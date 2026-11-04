@@ -50,6 +50,8 @@ export const EQUIVALENTS: Record<string, Equivalent[]> = {
     chemspec('EC'),
     { field: 'EC (FTIR, VIBES)', basis: 'FTIR EC from the same spectra under the VIBES baseline', source: SOURCES.recreation },
     { field: 'EC (FTIR, spline)', basis: 'FTIR EC from the same spectra under the spline baseline', source: SOURCES.recreation },
+    { field: 'EC (FTIR, VIBES anchored)', basis: 'FTIR EC from the same spectra, VIBES on PTFE-anchored spectra (a candidate baseline)', source: SOURCES.recreation },
+    { field: 'EC (FTIR, EPO)', basis: 'FTIR EC from the same spectra, anchored with non-EC signatures projected out (a candidate baseline)', source: SOURCES.recreation },
     tor('EC'),
   ],
   'OC (FTIR)': [chemspec('OC'), tor('OC')],

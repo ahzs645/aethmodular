@@ -16,6 +16,8 @@ export const EXPERIMENTS: Experiment[] = [
   { key: 'forward', label: '6 · Earlier → later years', title: 'Train on 2020–22, test on 2023, against new-site and random splits' },
   { key: 'fixes', label: 'Quick fixes', title: 'ETAD-0241/0248 identity and the February season calendar' },
   { key: 'lots', label: 'Lot-aware VIBES blanks', title: 'Filter lots in the VIBES blank background: held-out blanks by lot, added peaks, and the lot 241/241a fix (26 Oct)' },
+  { key: 'season', label: 'Season or composition?', title: 'Addis FTIR EC by season against the TOR yardstick: how much the organic stand-in explains, and where in the spectrum the rest sits (3 Nov)' },
+  { key: 'continuum', label: 'Continuum and the baseline', title: 'Why FTIR EC under-reads at Addis: the black-carbon continuum every baseline deletes, a PTFE-anchored background that keeps it, and before/after crossplots (2–3 Nov)' },
   { key: 'tor', label: 'Adama TOR study', title: 'The Adama TOR pilot against IMPROVE and SPARTAN: where it sits, where it would need to sit, and what counts as a pass' },
 ]
 export const EXPERIMENT_KEYS = EXPERIMENTS.map((e) => e.key)

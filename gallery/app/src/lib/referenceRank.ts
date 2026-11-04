@@ -51,6 +51,8 @@ export const REFERENCE_OF: Record<string, Stand> = {
   'EC (ChemSpec FTIR)': FTIR('EC'),
   'EC (FTIR, VIBES)': FTIR('EC'),
   'EC (FTIR, spline)': FTIR('EC'),
+  'EC (FTIR, VIBES anchored)': FTIR('EC'),
+  'EC (FTIR, EPO)': FTIR('EC'),
   'OC (FTIR)': FTIR('OC'),
   'OC (ChemSpec FTIR)': FTIR('OC'),
   'HIPS Fabs': { ref: 'HIPS Fabs' },

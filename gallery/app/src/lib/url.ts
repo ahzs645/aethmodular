@@ -24,15 +24,22 @@ export function writeParams(values: Record<string, string | null | undefined>) {
 }
 
 /**
- * Change some hash keys (null removes one) and let App and the charts re-read the URL, as a shared view does
- * (lib/views applyView): a page's Samples preset. One replaceState, so it is one undo step.
+ * Change some hash keys (null removes one), and optionally some query keys (the charts' own controls, lib/url
+ * useSearchParam), then let App and the charts re-read the URL, as a shared view does (lib/views applyView): a
+ * page's Samples preset. One replaceState, so it is one undo step.
  */
-export function patchHash(patch: Record<string, string | null>) {
+export function patchHash(patch: Record<string, string | null>, query: Record<string, string | null> = {}) {
   const p = readParams()
   for (const [k, v] of Object.entries(patch)) { if (v === null) p.delete(k); else p.set(k, v) }
-  const next = p.toString()
-  window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${next ? `#${next}` : ''}`)
+  const q = new URLSearchParams(window.location.search)
+  for (const [k, v] of Object.entries(query)) { if (v === null) q.delete(k); else q.set(k, v) }
+  const next = p.toString(), search = q.toString()
+  window.history.replaceState(null, '', `${window.location.pathname}${search ? `?${search}` : ''}${next ? `#${next}` : ''}`)
   window.dispatchEvent(new HashChangeEvent('hashchange'))
+  if (Object.keys(query).length) {
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    window.dispatchEvent(new Event('gallery:querychange'))
+  }
 }
 
 export const listParam = (v: string | null): Set<string> | null =>

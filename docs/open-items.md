@@ -10,6 +10,21 @@ mass-per-filter view in [`mass-per-filter.md`](mass-per-filter.md).
 
 ## Decisions needed
 
+### Confirm the pass rule for the Addis city TOR filters
+
+The rule for reading the Addis city TOR filters is proposed, not agreed, and it
+should be settled before anyone reads a filter against FTIR. No Addis city
+filters have arrived yet. Proposed: freeze the primary baseline (anchored, with
+production VIBES and EPO beside it), k 18 and the spectrum map; count only
+filters with OC/EC below 2.5 and TOR EC of 15 µg per filter or more; require at
+least 10 eligible filters; then read median FTIR ÷ TOR with a 90 % bootstrap
+interval. Pass if the interval sits inside 0.8–1.25, fail if it sits entirely
+outside, inconclusive if it crosses an edge. The team needs to confirm the
+primary baseline, the band, the gates, the filter count and the fail-high
+branch. Steps, verdicts and simulation are in the gallery at Experimental →
+Continuum and the baseline (`#xc-proposal`), from
+`research/ftir_hips_chem/workflows/run_hips_response_20261103.py` stage `tor`.
+
 ### Choose the canonical IMPROVE deposit area
 
 Six notebooks use 3.5 cm² and three use 3.53 cm². The current default is 3.5
