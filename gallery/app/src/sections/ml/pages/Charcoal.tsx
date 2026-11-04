@@ -3,6 +3,7 @@ import { MlWaiting, PageIntro, useMl } from '../common'
 import { Matching } from './charcoal/Matching'
 import { Structure } from './charcoal/Structure'
 import { FixedSetNote } from '@/lib/markedRows'
+import { CharcoalDiagnostics } from './charcoal/Diagnostics'
 
 /**
  * The charcoal archive's model-fitting side (research/ftir_etad_char char_02, char_03, char_04, char_06, char_11):
@@ -21,6 +22,7 @@ export function Charcoal({ meta }: SectionPageProps) {
       <p>Six published charcoal and biochar collections (5,889 spectra; research/ftir_hips_chem/charcoal_ftir_sources) against the 239 Addis filter spectra, AIRSpec-baselined, cropped to 1430–3500 cm⁻¹, detrended and SNV-scaled on both sides. Everything here is a fitted model (PCA, KMeans, Gaussian mixture, logistic regression) or a nearest-neighbour search, so it is the notebooks' numbers with their seasons; nothing is refitted and nothing depends on the MAC. The per-filter scores and their season, lot and loading checks are live on <a href="#tab=research&aep=charcoal">Research → Charcoal similarity</a>.</p>
     </PageIntro>
     <Structure data={data} />
+    <CharcoalDiagnostics data={data} />
     <Matching data={data} meta={meta} />
   </>
 }

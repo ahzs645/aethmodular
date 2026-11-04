@@ -498,10 +498,19 @@ def script_to_cells(text: str) -> list:
 
 
 def build(number: str) -> None:
-    script_name, notebook_name = SCRIPTS[number]
+    if number in SCRIPTS:
+        script_name, notebook_name = SCRIPTS[number]
+    else:
+        # Later scripts carry finalized prose directly rather than using TLDR /
+        # TAKEAWAYS. Reuse the same builder for their existing notebook names.
+        matches = list(Path('.').glob(f'ftir_{number}_*.ipynb'))
+        script_name = f'run_ftir_{number}.py'
+        if len(matches) != 1 or not (Path('scripts') / script_name).exists():
+            raise ValueError(f'No unique notebook/script pair for ftir_{number}')
+        notebook_name = matches[0].name
     text = (Path("scripts") / script_name).read_text()
-    for replacement, marker_context in ((TLDR[number], "## tl;dr"),
-                                        (TAKEAWAYS[number], "## Takeaways")):
+    replacements = ((TLDR[number], "## tl;dr"), (TAKEAWAYS[number], "## Takeaways")) if PLACEHOLDER in text else ()
+    for replacement, marker_context in replacements:
         # Replace the first placeholder following each section marker.
         marker_at = text.index(marker_context)
         placeholder_at = text.index(PLACEHOLDER, marker_at)

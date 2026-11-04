@@ -179,7 +179,9 @@ for label, spec in MODELS.items():
     residual = spec['addis_ugm3'] - hips / 10
     # Diagnostics use all 239 HIPS pairs, not only the fixed 190-filter cohort.
     frame = pd.DataFrame({
-        'MediaId': etad_eval['MediaId'].to_numpy(), 'season': etad_eval['season'].to_numpy(),
+        'MediaId': etad_eval['MediaId'].to_numpy(),
+        'ExternalFilterId': etad_eval['ExternalFilterId'].to_numpy(),
+        'season': etad_eval['season'].to_numpy(),
         'Fabs': hips, 'residual_ugm3': residual, 'D2': d2, 'Q': q,
     })
     diagnostics[label] = frame
@@ -191,6 +193,8 @@ for label, spec in MODELS.items():
             'pearson_r_vs_abs_residual': pearsonr(frame[driver],
                                                   frame['residual_ugm3'].abs())[0],
         })
+pd.concat([frame.assign(model=label) for label, frame in diagnostics.items()], ignore_index=True
+          ).to_csv(TABLE_DIR / 'addis_domain_per_filter.csv', index=False)
 residual_drivers = pd.DataFrame(diag_rows)
 residual_drivers.to_csv(TABLE_DIR / 'addis_residual_drivers.csv', index=False)
 display(residual_drivers)

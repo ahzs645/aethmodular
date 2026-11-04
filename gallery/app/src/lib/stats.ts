@@ -76,6 +76,24 @@ export function quantile(values: readonly Num[], p: number): number {
   return quantileSorted(finite(values).sort((a, b) => a - b), p)
 }
 
+/** Right-continuous empirical CDF; tied observations contribute one combined jump. */
+export function ecdf(values: readonly Num[], counts?: readonly Num[]): { x: number; y: number; n: number }[] {
+  if (counts && counts.length !== values.length) throw new Error('ECDF values and counts must align')
+  const sorted = values.flatMap((x, i) => {
+    const count = counts ? counts[i] : 1
+    return x != null && Number.isFinite(x) && count != null && Number.isFinite(count) && count > 0
+      ? [{ x, count }] : []
+  }).sort((a, b) => a.x - b.x)
+  const n = sorted.reduce((sum, row) => sum + row.count, 0)
+  const out: { x: number; y: number; n: number }[] = []
+  let cumulative = 0
+  for (let i = 0; i < sorted.length; i++) {
+    cumulative += sorted[i].count
+    if (i + 1 === sorted.length || sorted[i + 1].x !== sorted[i].x) out.push({ x: sorted[i].x, y: cumulative / n, n })
+  }
+  return out
+}
+
 /** the median of values already in ascending order: the middle one, or the mean of the middle two (numpy.median); NaN when empty */
 export function medianSorted(sorted: ArrayLike<number>): number {
   const n = sorted.length, h = n >> 1

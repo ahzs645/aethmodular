@@ -7,6 +7,9 @@ import { chemText } from './format.ts'
  */
 export const MARGIN = { top: 28, right: 24, bottom: 52, left: 68 }
 
+/** Stable processing-method colours on every smoothing comparison. */
+export const PROCESSING_COLOR: Record<string, string> = { Raw: '#7b8794', ONA: '#2171b5', CMA: '#e67e22', DEMA: '#0f766e' }
+
 /** The light page: the default, and what every exported figure is drawn in. */
 export const INK_LIGHT = {
   axis: '#5b6470',

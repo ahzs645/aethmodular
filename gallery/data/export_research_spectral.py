@@ -73,14 +73,22 @@ PREREQUISITES = {
 
 
 def prerequisite(notebook: str) -> str | None:
-    return PREREQUISITES.get(re.match(r"(?:ftir|char)_(\d+)", notebook).group(1))
+    match = re.match(r"(?:ftir|char)_(\d+)", notebook)
+    return PREREQUISITES.get(match.group(1)) if match else None
 
 
 def rebuild_command(folder: Path, notebook: str) -> str:
     """How a phase-3 (or char) notebook is re-executed so its output/tables CSVs exist."""
-    number = re.match(r"(?:ftir|char)_(\d+)", notebook).group(1)
-    if folder == PHASE3:
-        return f"cd {rel(PHASE3)} && uv run python scripts/build_notebooks.py {number}"
+    match = re.match(r"(?:ftir|char)_(\d+)", notebook)
+    if not match:
+        builder = folder / f'_build_{notebook}.py'
+        prefix = f"cd {rel(folder)} && "
+        if builder.exists():
+            prefix += f"uv run python {builder.name} && "
+        return prefix + f"uv run jupyter nbconvert --to notebook --execute --inplace {notebook}.ipynb"
+    number = match.group(1)
+    if folder in (PHASE3, CHAR):
+        return f"cd {rel(folder)} && uv run python scripts/build_notebooks.py {number}"
     return f"cd {rel(folder)} && uv run jupyter nbconvert --to notebook --execute --inplace {notebook}.ipynb"
 
 
@@ -105,6 +113,7 @@ class Page:
         self.key, self.title, self.out = key, title, out
         self.exporter = exporter or Path(__file__)
         self.tables: dict[str, pd.DataFrame] = {}
+        self.digits: dict[str, int | None] = {}
         self.text: dict[str, str] = {}
         self.sources: list[dict] = []
         self.missing: list[dict] = []
@@ -116,9 +125,12 @@ class Page:
             self._notebooks[path] = ExecutedNotebook(path)
         return self._notebooks[path]
 
-    def add(self, name: str, frame: pd.DataFrame, **source) -> pd.DataFrame:
+    def add(self, name: str, frame: pd.DataFrame, *, digits: int | None = 4, **source) -> pd.DataFrame:
         frame = relabel(frame.reset_index(drop=True))
         self.tables[name] = frame
+        self.digits[name] = digits
+        if digits != 4:
+            source['digits'] = digits
         self.sources.append({"table": name, "rows": len(frame), **source})
         return frame
 
@@ -148,13 +160,36 @@ class Page:
         return self.notebook(folder, notebook).stream(marker)
 
     def optional(self, name: str, folder: Path, notebook: str, csv: str, what: str,
-                 transform=None) -> pd.DataFrame | None:
+                 transform=None, digits: int | None = 4) -> pd.DataFrame | None:
         """A per-filter table only a re-run writes: added when present, else listed as missing."""
         path = folder / csv
         if path.exists():
             frame = pd.read_csv(path)
-            return self.add(name, transform(frame) if transform else frame, notebook=notebook, read="csv", path=rel(path))
+            return self.add(name, transform(frame) if transform else frame, digits=digits, notebook=notebook, read="csv", path=rel(path))
+        retained = self.retained(name)
+        if retained is not None:
+            return retained
         self.missing.append({"table": name, "what": what, "needs": rel(path), "run": rebuild_command(folder, notebook), "after": prerequisite(notebook)})
+        return None
+
+    def retained(self, name: str) -> pd.DataFrame | None:
+        """Retain an existing authorized result, with its original source date."""
+        # A shared export may contain an authorized result whose source CSV is
+        # gitignored on this machine. Rebuilding another table must not erase it.
+        # It has already been transformed; preserve its original lineage and date.
+        saved = self.out / f"{self.key}.json"
+        if saved.exists():
+            bundle = json.loads(saved.read_text())
+            if bundle.get('schema_version') != 1:
+                raise ValueError(f'{saved.name}: cannot retain an unsupported export schema')
+            if name in bundle.get("tables", {}):
+                frame = pd.DataFrame(bundle["tables"][name])
+                sources = [s for s in bundle.get("sources", []) if s["table"] == name]
+                source = sources[0] if sources else {"notebook": 'unknown', "path": rel(saved)}
+                source = {k: v for k, v in source.items() if k not in ("table", "rows")}
+                source.update(read="retained export; source CSV unavailable",
+                              source_export_generated=source.get("source_export_generated", bundle.get("generated")))
+                return self.add(name, frame, **source)
         return None
 
     def write(self) -> Path:
@@ -169,7 +204,7 @@ class Page:
             "text": self.text,
             "sources": self.sources,
             "missing": self.missing,
-            "tables": {name: columns(frame) for name, frame in self.tables.items()},
+            "tables": {name: columns(frame, self.digits.get(name, 4)) for name, frame in self.tables.items()},
         }
         path = self.out / f"{self.key}.json"
         path.write_text(json.dumps(bundle, ensure_ascii=False, separators=(",", ":")))

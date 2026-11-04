@@ -50,6 +50,7 @@ export function Legend({
   onHover,
   highlighted,
   note,
+  noteAlways = false,
   children,
   relabelFits = true,
   group = true,
@@ -60,6 +61,8 @@ export function Legend({
   onHover?: (label: string | null) => void
   highlighted?: string | null
   note?: string
+  /** A measurement/interval definition needed to read the chart, even with Explain off. */
+  noteAlways?: boolean
   /** more legend content after the items, e.g. a ColorLegend ramp or a SizeLegend */
   children?: ReactNode
   /** labels say "Deming" for a fit the browser refits: name the active estimator instead. Off for a key
@@ -100,7 +103,7 @@ export function Legend({
   // a tile's legend setting: off draws nothing; bottom and right draw every item
   const long = inTile && (tile?.mode ?? 'auto') === 'auto' && displayItems.length > TILE_LIMIT + 1
   const shown = long && !all ? displayItems.slice(0, TILE_LIMIT) : displayItems
-  if (tile?.mode === 'off' || (!displayItems.length && !(note && explain) && children == null)) return null
+  if (tile?.mode === 'off' || (!displayItems.length && !(note && (explain || noteAlways)) && children == null)) return null
   const relabel = (text: string) => relabelFits ? estimatorText(text, method) : chemText(text)
   // "Site · Season" labels: grouped one line per site, the site named once; with a single site
   // its name is dropped altogether (the chart says which site). Other labels stay as they are.
@@ -174,7 +177,7 @@ export function Legend({
         title={all ? 'Show the first few only' : 'Show every item (the chart shrinks to make room, or the tile scrolls)'}>
         {all ? 'fewer' : `+${displayItems.length - TILE_LIMIT} more`}</button>}
       {children}
-      {note && explain && <span className="legend-note">{relabel(note)}</span>}
+      {note && (explain || noteAlways) && <span className={noteAlways ? 'legend-definition' : 'legend-note'}>{relabel(note)}</span>}
     </div>
   )
 }

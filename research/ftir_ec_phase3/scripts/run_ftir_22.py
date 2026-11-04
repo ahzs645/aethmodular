@@ -300,7 +300,10 @@ for (spectra_label, mode), fit in fits.items():
     d2 = mahalanobis_distance_squared(project_scores(model, X_addis), inverse_ss)
     q = spectral_q_residual(model, X_addis)
     residual = fit.addis_ugm3 - fabs / 10
-    frame = pd.DataFrame({'season': seasons, 'D2': d2, 'Q': q, 'Fabs': fabs,
+    frame = pd.DataFrame({'MediaId': etad_eval['MediaId'].to_numpy(),
+                          'ExternalFilterId': etad_eval['ExternalFilterId'].to_numpy(),
+                          'season': seasons, 'D2': d2, 'Q': q, 'Fabs': fabs,
+                          'prediction_ugm3': fit.addis_ugm3,
                           'residual_ugm3': residual, 'fixed': fixed_mask})
     residual_frames[(spectra_label, mode)] = frame
     keep = frame.dropna(subset=['D2', 'residual_ugm3'])

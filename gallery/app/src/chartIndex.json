@@ -561,6 +561,55 @@
    "file": "components/SimilaritySpectra.tsx"
   },
   {
+   "title": "VIBES signal-preservation check",
+   "id": "vibes-validation-scope",
+   "component": "ValidationFigures",
+   "tab": "baseline",
+   "file": "components/VibesValidation.tsx"
+  },
+  {
+   "title": "Does the known signal survive?",
+   "id": "vibes-validation-recovery",
+   "component": "ValidationFigures",
+   "tab": "baseline",
+   "file": "components/VibesValidation.tsx"
+  },
+  {
+   "title": "Signal recovery for each held-out blank",
+   "id": "vibes-validation-errors",
+   "component": "ValidationFigures",
+   "tab": "baseline",
+   "file": "components/VibesValidation.tsx"
+  },
+  {
+   "title": "Known addition versus recovered spectral shape",
+   "id": "vibes-validation-traces",
+   "component": "ValidationFigures",
+   "tab": "baseline",
+   "file": "components/VibesValidation.tsx"
+  },
+  {
+   "title": "Blank removal on the same independent filters",
+   "id": "vibes-validation-blanks",
+   "component": "ValidationFigures",
+   "tab": "baseline",
+   "file": "components/VibesValidation.tsx"
+  },
+  {
+   "title": "Measured execution of this local check",
+   "id": "vibes-validation-runtime",
+   "component": "ValidationFigures",
+   "tab": "baseline",
+   "file": "components/VibesValidation.tsx"
+  },
+  {
+   "title": "Original rank-70 fit log, before recovery",
+   "id": "vibes-validation-reference",
+   "component": "ValidationFigures",
+   "tab": "baseline",
+   "file": "components/VibesValidation.tsx"
+  },
+  {
    "title": "For every chart on this page",
    "component": "PageChoices",
    "tab": "baseline",

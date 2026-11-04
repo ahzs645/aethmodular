@@ -86,7 +86,7 @@ def test_every_page_builds_from_the_committed_notebooks(build):
     for name, frame in page.tables.items():
         assert len(frame), name
     for source in page.sources:
-        assert source["read"] in ("csv", "tracked csv", "executed notebook output", "executed notebook output (printed)",
+        assert source["read"] in ("csv", "tracked csv", "executed notebook output", "executed notebook output (printed)", "retained export; source CSV unavailable",
                                   "recomputed from the Drive (FTIR/apps, FTIR/notebook/extracted)")
 
 

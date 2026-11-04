@@ -9,4 +9,8 @@ test('the ⌘K chart index matches the source (run npm run index:charts after ad
   // every chart has a title and a place
   for (const c of saved.charts) assert.ok(c.title && c.tab, JSON.stringify(c))
   assert.ok(saved.charts.length > 140)
+  for (const id of ['vibes-validation-scope', 'vibes-validation-recovery', 'vibes-validation-errors',
+    'vibes-validation-traces', 'vibes-validation-blanks', 'vibes-validation-runtime', 'vibes-validation-reference']) {
+    assert.ok(saved.charts.some((c) => c.id === id && c.tab === 'baseline'), `Shared figure ${id} must be searchable on Baselines`)
+  }
 })

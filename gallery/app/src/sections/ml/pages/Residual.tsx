@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { ChartFrame } from '@/components/ChartFrame'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { Figure } from '@/components/Figure'
+import { SavedFigure } from '@/components/SavedFigure'
 import { Key } from '@/components/Key'
 import { coef, f2, f3 } from '@/lib/format'
 import { useMac } from '@/lib/mac'
@@ -137,6 +138,8 @@ export function Residual(_props: SectionPageProps) {
   const relation = rows(data, 'null_relation')[0]
 
   return <>
+    <SavedFigure bundle={data} table="null_draws_43" kind="ecdf" id="ml-residual-null-draws" value="R2" series="model"
+      xLabel="Residual R² (null refits at MAC 10)" title="Null-control distribution across refits" />
     <PageIntro id="ml-residual-intro" title="Residual learners and null controls — the spectra beat a no-chemistry null, not the metadata; the lead is mass" data={data} notebooks={NOTEBOOKS}>
       <FixedSetNote subject="this page" what="the notebooks' tables, on their own fixed Addis filters (the f(X) panel, rebuilt live, follows the switch)" />
       <p>A recurring proposal reads a model that predicts the FTIR − HIPS residual from the spectra as evidence of a missing absorber. The residual is r = f(X) − Fabs/MAC, and f(X) is itself a function of the spectra, so a learner can predict part of r by rebuilding f(X), with no chemistry at all. These notebooks run the controls on identical time-blocked folds (eight contiguous date blocks, so seasonal structure cannot leak). Nothing here is refitted: the learners were fitted on residuals at MAC 10 and their R² and RMSE are drawn as the notebooks printed them{m.changed ? <>, labelled MAC 10 while the reader's MAC is {m.mac}</> : ''}. Mass slopes of the residual at fixed f(X) follow the MAC exactly (× 10/MAC).</p>
