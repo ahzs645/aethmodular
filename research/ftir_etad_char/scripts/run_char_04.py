@@ -43,6 +43,7 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
 from scipy.cluster.hierarchy import dendrogram, linkage
+from diagnostic_exports import score_rows
 
 from charcoal_spectra import (
     load_all, snv, resample, detrend, prepare, prepare_shape, shape_norm,
@@ -272,6 +273,10 @@ print(f"association of cluster with species/feedstock        : "
 # %%
 kmB = KMeans(n_clusters=kB, n_init=20, random_state=RANDOM_SEED).fit(pcsB)
 metaB["cluster"] = kmB.labels_
+pd.concat([
+    score_rows(pcsA, metaA, 'Charcoal archive', 'Pass A'),
+    score_rows(pcsB, metaB, 'Charcoal + Addis', 'Pass B'),
+], ignore_index=True).to_csv(TABLE_DIR / 'pca_scores.csv', index=False)
 
 fig, axes = plt.subplots(1, 3, figsize=(16, 4.6), constrained_layout=True)
 
@@ -375,6 +380,9 @@ for src in metaB["source"].unique():
 
 G = np.vstack(group_rows)
 Z = linkage(G, method="ward")
+pd.DataFrame(Z, columns=['left', 'right', 'distance', 'n_members']).assign(
+    node=np.arange(len(group_labels), len(group_labels) + len(Z))
+).to_csv(TABLE_DIR / 'ward_linkage.csv', index=False)
 
 fig, ax = plt.subplots(figsize=(9, 12), constrained_layout=True)
 dn = dendrogram(Z, labels=group_labels, orientation="right", ax=ax,

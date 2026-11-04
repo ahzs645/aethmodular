@@ -101,8 +101,11 @@ function titleOf(s, before) {
 function chartsIn(r) {
   const src = read(r)
   const out = []
-  // <ChartFrame … title=… id=…>
-  for (const m of src.matchAll(/<ChartFrame\b/g)) {
+  // Shared declarative figures own a ChartFrame too. Index their call sites,
+  // so adding a saved-data view also makes its real title searchable.
+  for (const m of src.matchAll(/<(?:ChartFrame|Figure|SavedFigure)\b/g)) {
+    const linePrefix = src.slice(src.lastIndexOf('\n', m.index) + 1, m.index).trim()
+    if (linePrefix.startsWith('*') || linePrefix.startsWith('//')) continue
     const tail = src.slice(m.index, m.index + 3000)
     const end = tail.search(/\n\s*>\s*\n|\/?>\s*\n\s*</)
     const head = end > 0 ? tail.slice(0, end + 2) : tail

@@ -39,12 +39,10 @@ def printed(p, nb: str, marker: str) -> tuple[str, dict]:
 
 def per_reference(p, name: str, csv: str, nb: str, what: str, number_: str, keep: list[str], rename: dict | None = None):
     """A per-filter (or per-reference-spectrum) table only a run writes: added when present, else listed as missing."""
-    path = TABLES / csv
-    if not path.exists():
-        p.missing.append({"table": name, "what": what, "needs": rel(path), "run": run(number_), "after": INPUTS})
-        return None
-    frame = pd.read_csv(path).rename(columns=rename or {})
-    return p.add(name, frame[[c for c in keep if c in frame]], notebook=nb, read="csv", path=rel(path))
+    def transform(frame):
+        frame = frame.rename(columns=rename or {})
+        return frame[[c for c in keep if c in frame]]
+    return p.optional(name, CHAR, nb, 'output/tables/' + csv, what, transform=transform)
 
 
 def build():
@@ -64,7 +62,8 @@ def build():
     by_t, src = p.read(CHAR, NB04, "ct_src.to_csv", nth=1, csv="output/tables/char04/passA_type_by_temperature.csv", index="temp_c")
     by_t = by_t.rename(columns=lambda c: f"type {int(float(c))}" if re.fullmatch(r"[\d.]+", str(c)) else c)
     by_t["temperature"] = by_t["temp_c"].map(lambda t: f"{int(t)} °C" if t else "0 °C (unburned)")
-    p.add("passA_temperature", long(by_t.drop(columns="temp_c"), ["temperature"], "type", "share"), **src)
+    if src['read'] == 'csv' or p.retained('passA_temperature') is None:
+        p.add("passA_temperature", long(by_t.drop(columns="temp_c"), ["temperature"], "type", "share"), **src)
     s9, src9 = printed(p, NB04, "ct_src.to_csv")
     assoc = [{"against": a, "Cramér's V": number(rf"cluster with {re.escape(a)}[^:\n]*: ([\d.]+)", s9)}
              for a in ("temperature", "source collection", "species/feedstock")]
@@ -75,8 +74,8 @@ def build():
         b = pd.read_csv(path).rename(columns=lambda c: f"type {c}" if re.fullmatch(r"\d+", str(c)) else c)
         p.add("passB_source", long(b, ["source"], "type", "share"), notebook=NB04, read="csv", path=rel(path))
     else:
-        p.missing.append({"table": "passB_source", "what": "Pass B's type composition of every source (the executed notebook shows Addis's row only)",
-                          "needs": rel(path), "run": run("04"), "after": INPUTS})
+        p.optional('passB_source', CHAR, NB04, 'output/tables/char04/passB_type_by_source.csv',
+                   "Pass B's type composition of every source (the executed notebook shows Addis's row only)")
     addis, src = p.read(CHAR, NB04, "comp.round(3).to_csv")
     p.add("passB_addis", addis.assign(cluster=lambda d: d["cluster"].map(lambda c: f"type {int(c)}")), **src)
     purity, src = p.read(CHAR, NB04, "comp.round(3).to_csv", nth=1)
@@ -86,7 +85,7 @@ def build():
     s20, src20 = printed(p, NB02, "04b_mahalanobis_distance.png")
     s03, src03 = printed(p, NB03, "pca_tr = PCA(n_components=8")
     dist = [
-        {"comparison": "char_02 · Addis in the charcoal PCA (6 PCs of 5,889 archive spectra)",
+        {"comparison": "char_02 · Addis in the charcoal PCA (6 PCs; temperature-labelled archive)",
          "reference median": number(r"charcoal: ([\d.]+)", s20), "reference 99th pct": number(r"99th percentile \(([\d.]+)\)", s20),
          "Addis median": number(r"Addis: ([\d.]+)", s20), "Addis beyond the 99th pct (%)": number(r"99th percentile \([\d.]+\): (\d+)%", s20)},
         {"comparison": "char_03 · Addis in the McCall burned/unburned training cloud (8 PCs)",
@@ -151,12 +150,19 @@ def build():
     per_reference(p, "mixture", "char06/per_filter_classification.csv", NB06, "each Addis filter's r_char, season and mixture component", "06",
                   ["season", "r_char", "delta", "component"])
 
-    # ------------------------------------------------------------ what no script saves
+    for table, nb, csv, what in [
+        ('pca_scores', NB02, 'char02/pca_scores.csv', 'Charcoal-library PCA scores with Addis projected into the same fitted axes'),
+        ('typology_scores', NB04, 'char04/pca_scores.csv', 'Pass A/B PCA scores with source and cluster labels'),
+        ('mahalanobis_per_filter', NB02, 'char02/mahalanobis_per_filter.csv', 'Per-spectrum Mahalanobis distances, including the charcoal reference'),
+        ('ward_linkage', NB04, 'char04/ward_linkage.csv', 'Ward linkage of group-mean spectra'),
+        ('envelope_spectra', 'char_12_weakley_transferability', 'char12/envelope_spectra.csv', 'Mean and 5–95 % envelopes in raw and derivative space'),
+        ('per_filter_escape', 'char_12_weakley_transferability', 'char12/per_filter_escape.csv', 'Per-filter escape from the IMPROVE spectral envelope'),
+    ]:
+        p.optional(table, CHAR, nb, 'output/tables/' + csv, what,
+                   digits=None if table == 'envelope_spectra' else 4)
+
+    # ------------------------------------------------------------ still not saved by the source scripts
     for table, what, nb in [
-        ("pca_scores", "PC1–PC2 scores of every archive spectrum and Addis filter, with collection, temperature and the pass A/B type "
-         "(char_02 [18], char_04 [7][9][11][13] score panels)", "02 04"),
-        ("mahalanobis_per_filter", "each Addis filter's Mahalanobis distance from the charcoal cloud (char_02 [20] histogram)", "02"),
-        ("ward_linkage", "the Ward linkage matrix of the group means (char_04 [15] dendrogram; only the group labels are saved)", "04"),
         ("airspec_fit", "the AIRSpec baseline fitted to one charcoal and one Addis spectrum (char_11 [17])", "11"),
         ("recovery_per_spectrum", "the held-out charcoal spectra's true and recovered temperatures (char_02 [15] middle panel)", "02"),
     ]:

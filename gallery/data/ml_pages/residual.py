@@ -107,9 +107,8 @@ def build():
     a, c, sigma = (number(r"b = ([\d.]+)·f\(X\)", rel43), number(r"f\(X\) \+ ([\d.]+) \+ ε", rel43), number(r"σ_ε = ([\d.]+)", rel43))
     p.add("null_relation", pd.DataFrame([{"a": a, "c": c, "sigma": sigma, "n": number(r"time-blockable\): (\d+)", rel43, int)}]),
           notebook=NB43, read="executed notebook output (printed)", path=rel(PHASE3 / f"{NB43}.ipynb"), cell="load_addis_evaluation()")
-    p.missing.append({"table": "null_draws_43", "what": "ftir_43's 200 null refits per pipeline (its violin; the notebook keeps them in memory and writes only the median and q95)",
-                      "needs": rel(PHASE3 / out43 / "null_distribution_draws.csv") + " (add null_r2_m1/null_r2_m3 .to_csv to cell [7] first)",
-                      "run": f"cd {rel(PHASE3)} && uv run python scripts/build_notebooks.py 43", "after": None})
+    p.optional('null_draws_43', PHASE3, NB43, out43 + 'null_distribution_draws.csv',
+               "ftir_43's 200 null refits per pipeline, behind the null summary and distribution plots")
 
     # ftir_45: stepwise metadata models, residual by char_06 class, the learner's coefficient spectrum
     p.shown("stepwise_attribution", PHASE3, NB45, "results.to_csv(OUT / 'stepwise_attribution.csv'", csv=out45 + "stepwise_attribution.csv")

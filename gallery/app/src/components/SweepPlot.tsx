@@ -9,6 +9,7 @@ import { robustDomain } from '@/lib/axes'
 import { useGroupDomain } from '@/components/PanelGroup'
 import { extentOf, type Extent } from '@/lib/facets'
 import { FONT, INK } from '@/lib/theme'
+import { timeTickFormat } from '@/lib/timeTicks'
 
 /**
  * The gallery's one "value against a setting" chart: a metric against PLS k,
@@ -236,7 +237,7 @@ export function SweepPlot({
         <g transform={`translate(${m.left},${m.top})`}>
           <YAxis scale={y as d3.ScaleLinear<number, number>} x={0} label={yLabel} tickCount={5} gridWidth={iw} labelX={-50} format={(v) => fmtY(+v)} pick={pick === 'y' || pick === 'both' ? 'y' : undefined} />
           <XAxis scale={x as d3.ScaleLinear<number, number>} y={ih} label={xLabel} tickCount={Math.max(3, Math.min(8, Math.floor(iw / 70)))} labelDy={38} pick={pick === 'x' || pick === 'both' ? 'x' : undefined}
-            format={xFormat ?? (k === 'time' ? (v) => d3.timeFormat('%b %Y')(v as Date) : k === 'log' ? logLabel(x as d3.ScaleLogarithmic<number, number>) : undefined)} />
+            format={xFormat ?? (k === 'time' ? timeTickFormat(x.domain().map(Number) as [number, number]) : k === 'log' ? logLabel(x as d3.ScaleLogarithmic<number, number>) : undefined)} />
           {reference != null && !clamped(reference) && <RefLine orient="h" at={y(reference)} from={0} to={iw} />}
           {dividers.map((after) => {
             const dom = (x as d3.ScalePoint<string>).domain(), i = dom.indexOf(after)

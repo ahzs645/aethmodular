@@ -27,10 +27,10 @@ OUT = ROOT / "gallery/app/public/data/meetings"
 
 def _num(v, digits):
     f = float(v)
-    return round(f, digits) if np.isfinite(f) else None
+    return (f if digits is None else round(f, digits)) if np.isfinite(f) else None
 
 
-def columns(frame: pd.DataFrame, digits: int = 4) -> dict[str, list]:
+def columns(frame: pd.DataFrame, digits: int | None = 4) -> dict[str, list]:
     out = {}
     for c in frame.columns:
         s = frame[c]

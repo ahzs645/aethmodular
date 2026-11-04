@@ -11,6 +11,7 @@ import { FlowSummary, FlowTimeline } from '../quality/FlowCharts'
 import { FlowFixCompare } from '../quality/FlowFixCompare'
 import { AgreementOverTime } from '../quality/AgreementOverTime'
 import { SmoothRaw, SmoothTimeline } from '../quality/SmoothRaw'
+import { ProcessingComparison } from '../quality/ProcessingComparison'
 import { AtnCorrelation } from '../quality/AtnCorrelation'
 import { DualSpotTimeline, JacrosChain, WindowEffect } from '../quality/DualSpot'
 import { INSTRUMENTS, instrumentName, JACROS, useAllDays, useQualityIndex, type Day } from '../quality/data'
@@ -100,6 +101,7 @@ export function Quality({ rows, meta, picked }: SectionPageProps) {
           <AgreementOverTime code={code} rows={rows} meta={meta} index={q} />
         </>}
         {topic === 'smoothing' && <>
+          <ProcessingComparison />
           <SmoothRaw rows={rows} meta={meta} index={q} />
           <SmoothTimeline code={code} all={all} meta={meta} index={q} />
           <MinuteSmoothing site={mSite} name={mName} />

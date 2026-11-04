@@ -274,6 +274,20 @@ def build():
          "after": "a line in _build_08_removal_explainer.py that saves pred_clean; the full-fit predictions of all 906 are on Research → Ethiopia calibrations where the Drive resolves"},
     ]
 
+    # These source builders now save the actual curves/points, not just PNGs.
+    supported = {
+        'variant_cv_curves': (JUNE, NB09, 'tables/component_selection_curves.csv'),
+        'rmsep_by_k': (SPARTAN_EC, SP07, 'tables/rmsep_by_k.csv'),
+        'cleaned_refit': (SPARTAN_EC, SP08, 'tables/ec_cleaned_refit.csv'),
+    }
+    pending = [m for m in p.missing if m['table'] in supported]
+    p.missing = [m for m in p.missing if m['table'] not in supported]
+    for item in pending:
+        folder, notebook, csv = supported[item['table']]
+        result = p.optional(item['table'], folder, notebook, csv, item['what'])
+        if result is None:
+            p.missing[-1]['after'] = training
+
     # ------------------------------------------------------------ findings, read off the tables above
     v = variants.set_index("variant")
     eff = v.dropna(subset=["median predicted EC on the 906 (10, µg)"])

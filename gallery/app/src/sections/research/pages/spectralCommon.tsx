@@ -14,7 +14,7 @@ import { Markdown } from '@/lib/markdown'
 import { usePrefs } from '@/lib/prefs'
 import { rowsOf, type Row, type Table } from '@/lib/table'
 
-export interface SpectralSource { table: string; rows: number; notebook: string; read: string; path: string; cell?: string }
+export interface SpectralSource { table: string; rows: number; notebook: string; read: string; path: string; cell?: string; source_export_generated?: string }
 export interface SpectralMissing { table: string; what: string; needs: string; run: string; after?: string | null }
 export interface SpectralExport {
   schema_version: number
@@ -48,7 +48,7 @@ export function useCalibRuns() {
 /** The provenance line: the notebooks a chart stands in for, and where its numbers were read. */
 export function provenance(data: SpectralExport | null, tables: string[], extra?: string): ReactNode {
   const used = (data?.sources ?? []).filter((s) => tables.includes(s.table))
-  const reads = [...new Set(used.map((s) => `${s.path}${s.read === 'csv' || s.read === 'tracked csv' ? '' : ` (${s.read})`}`))]
+  const reads = [...new Set(used.map((s) => `${s.path}${s.read === 'csv' || s.read === 'tracked csv' ? '' : ` (${s.read}${s.source_export_generated ? `; saved ${s.source_export_generated.slice(0, 10)}` : ''})`}`))]
   return <>
     {reads.length > 0 && <>Read from {reads.join('; ')}. </>}
     {extra && <>{extra} </>}

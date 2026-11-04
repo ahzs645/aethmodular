@@ -1,0 +1,27 @@
+<!doctype html><meta charset="utf-8"><title>VIBES on WebGPU</title><pre id="log">starting</pre>
+<script type="module">
+import { Model, khatriRao, JsGemm, WebGpuGemm, newton, mapSolve } from "./vibes.js";
+const q = new URLSearchParams(location.search), mode = q.get("mode") || "webgpu", n = +(q.get("n") || 32);
+const log = m => { document.getElementById("log").textContent = m; };
+const f64 = async u => new Float64Array(await (await fetch(u)).arrayBuffer());
+async function main() {
+  const meta = await (await fetch("meta.json")).json(), { p, c } = meta, W = await f64("W.f64"), mu = await f64("mu.f64"), Vall = await f64("V.f64");
+  const rows = Math.min(n, meta.rows), V = Vall.subarray(0, rows * p), model = new Model(W, mu, p, c);
+  const t0 = performance.now(), K = khatriRao(W, p, c);
+  const g = mode === "webgpu" ? await WebGpuGemm.create(K, p) : new JsGemm(K, p);
+  const tSetup = (performance.now() - t0) / 1e3, t1 = performance.now();
+  const yield_ = async m => { log(m); await new Promise(r => setTimeout(r)); };
+  const e = await newton(model, V, rows, g, { progress: yield_ });
+  const tE = (performance.now() - t1) / 1e3, gE = g.seconds, t2 = performance.now();
+  const m = await mapSolve(model, V, rows, e.sigma, g, { progress: yield_ });
+  const tM = (performance.now() - t2) / 1e3, ref = meta.ref;
+  let sr = 0, dE = 0, bd = 0, bdm = []; const rs = []; for (let r = 0; r < rows; r++) { sr = Math.max(sr, Math.abs(e.sigma[r] / ref.sigma[r] - 1)); dE = Math.max(dE, Math.abs(e.elbo[r] - ref.elbo[r])); }
+  const Bref = await f64("B.f64"); for (let r = 0; r < rows; r++) { let s = 0; for (let j = 0; j < p; j++) { const d = m.baseline[r * p + j] - Bref[r * p + j]; s += d * d; } s = Math.sqrt(s / p) / ref.crms[r]; bd = Math.max(bd, s); bdm.push(s); }
+  bdm.sort((a, b) => a - b);
+  window.__result = { mode, rows, adapter: g.adapter, limits: g.limits, setup_s: tSetup, elbo_s: tE, map_s: tM, elbo_gemm_s: gE, total_gemm_s: g.seconds, s_per_spectrum: (tE + tM) / rows,
+    ok: e.status.filter(s => s === "ok").length, certified: m.converged.filter(Boolean).length, iters_max: Math.max(...e.iterations), map_iters_max: Math.max(...m.iterations), cg: m.cgIters,
+    sigma_rel_max: sr, elbo_abs_max: dE, baseline_rel_rms_max: bd, baseline_rel_rms_median: bdm[bdm.length >> 1], statuses: [...new Set(e.status)], ua: navigator.userAgent };
+  log(JSON.stringify(window.__result, null, 1));
+}
+main().catch(e => { window.__result = { error: String(e), stack: e.stack }; log(String(e)); });
+</script>

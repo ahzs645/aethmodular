@@ -244,6 +244,10 @@ for _ in range(N_NULL):
         r_null, linear_predictor(f_x.reshape(-1, 1)))))
     null_r2_m3.append(r2(r_null, blocked_predictions(r_null, pls_predictor)))
 null_r2_m1, null_r2_m3 = np.array(null_r2_m1), np.array(null_r2_m3)
+pd.DataFrame({'draw': np.arange(len(null_r2_m1)),
+              'M1 f(X) only': null_r2_m1, 'M3 spectra': null_r2_m3}
+             ).melt(id_vars='draw', var_name='model', value_name='R2'
+                    ).to_csv(OUT / 'null_distribution_draws.csv', index=False)
 
 observed_m1 = results.set_index('model').loc['M1 f(X) only', 'residual_R2']
 observed_m3 = results.set_index('model').loc['M3 spectra (residual learner)', 'residual_R2']

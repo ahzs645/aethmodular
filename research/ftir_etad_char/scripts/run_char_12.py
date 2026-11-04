@@ -61,6 +61,7 @@ from scipy.signal import savgol_filter
 from charcoal_spectra import load_all, resample, band_area, BANDS
 from data_paths import etad_dir, ftir_spectra_dir
 from etad_spectra import load_etad
+from diagnostic_exports import metadata_rows
 
 PLOT_DIR = Path("output/plots/char12")
 TABLE_DIR = Path("output/tables/char12")
@@ -219,6 +220,13 @@ scatter_proxy.to_csv(TABLE_DIR / "raw_scale_comparison.csv")
 # %%
 D_imp = second_derivative(X_imp)
 D_etad = second_derivative(X_etad)
+from diagnostic_exports import envelope_rows
+pd.concat([
+    envelope_rows(GRID_FULL, X_imp, 'IMPROVE', 'Raw'),
+    envelope_rows(GRID_FULL, X_etad, 'Addis', 'Raw'),
+    envelope_rows(GRID_FULL, D_imp, 'IMPROVE', 'Second derivative'),
+    envelope_rows(GRID_FULL, D_etad, 'Addis', 'Second derivative'),
+], ignore_index=True).to_csv(TABLE_DIR / 'envelope_spectra.csv', index=False)
 
 fig, axes = plt.subplots(1, 2, figsize=(14.5, 5), constrained_layout=True)
 for ax, (rlo, rhi), marks in [(axes[0], REGION_CH, [2960]),
@@ -268,6 +276,7 @@ def escape(D):
 esc_imp = escape(D_imp)
 esc_etad = escape(D_etad)
 etad_meta["escape"] = esc_etad
+metadata_rows(etad_meta).to_csv(TABLE_DIR / 'per_filter_escape.csv', index=False)
 
 groups = {
     "IMPROVE (null ≈ 0.10)": esc_imp,
