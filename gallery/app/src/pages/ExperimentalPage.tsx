@@ -14,6 +14,7 @@ import { FixesStudy } from '@/pages/experimental/FixesStudy'
 import { LotStudy } from '@/pages/experimental/LotStudy'
 import { ContinuumStudy } from '@/pages/experimental/ContinuumStudy'
 import { SeasonStudy } from '@/pages/experimental/SeasonStudy'
+import { VibesNewtonStudy } from '@/pages/experimental/VibesNewtonStudy'
 // the TOR study draws its network on a MapLibre map, so it (and MapLibre) loads when it is opened
 const TorStudy = lazy(() => import('@/pages/experimental/TorStudy').then((m) => ({ default: m.TorStudy })))
 
@@ -38,6 +39,7 @@ export function ExperimentalPage({ experiment, onPick }: { experiment: string; o
       {experiment === 'lots' && <LotStudy />}
       {experiment === 'season' && <SeasonStudy />}
       {experiment === 'continuum' && <ContinuumStudy />}
+      {experiment === 'vibes-newton' && <VibesNewtonStudy />}
       {experiment === 'tor' && <Suspense fallback={<Empty>Loading the TOR study…</Empty>}><TorStudy /></Suspense>}
     </PageToc>
   )
