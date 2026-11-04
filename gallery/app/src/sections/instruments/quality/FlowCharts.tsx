@@ -8,13 +8,13 @@ import { DailyPanels, qLine, type PanelSpec } from './DailyPanels'
 import { BROWN, finite, instrumentColor, instrumentName, PERIOD_COLOR, PERIOD_LABEL, PURPLE, quantile, ratio, type Day, type Period, type QualityIndex } from './data'
 
 /** Flow1/Flow2 lines drawn by research/ftir_hips_chem/scripts/plotting/timeseries.flow_ratio */
-const FLOW_RATIO_LINES = [{ at: 1, label: 'ideal 1.0' }, { at: 2, label: 'degraded 2.0' }]
+const FLOW_RATIO_LINES = [{ at: 3, label: 'target 3.0' }, { at: 1.2, label: 'unfixed 1.2' }]
 const flowRatio = (d: Day) => ratio(d.q('flow1'), d.q('flow2'))
 const setpointRatio = (d: Day) => ratio(d.q('flowTotal'), d.q('flowSetpoint'))
 
 /**
  * One instrument's day by day: IR BCc coloured by flow period (FlowFix_BeforeAfter_Analysis §5), the spot-flow
- * ratio Flow1/Flow2 with the plotting module's ideal and degraded lines (flow_qc_analysis's R, at daily
+ * ratio Flow1/Flow2 with the plotting module's target and unfixed lines (flow_qc_analysis's R, at daily
  * resolution), the two spot flows, total flow over its setpoint with the minute cleaning's ±10 % band, and the
  * sample humidity and internal temperature the dual-spot diagnostics bin by (ftir_49 A3).
  */
@@ -33,9 +33,9 @@ export function FlowTimeline({ code, days, meta, index }: { code: string; days: 
   const shown = days.filter((d) => finite(flowRatio(d)))
   return (
     <ChartFrame id="aq-flow-timeline" title={`${instrumentName(code, meta)} · flow and instrument timeline — the flow fix, day by day`}
-      subtitle={`Daily means of the minute record: IR BCc (coloured by flow period where config.FLOW_FIX_PERIODS sets one), the spot-flow ratio Flow1/Flow2 with the lines plotting/timeseries.flow_ratio draws (1.0 ideal, 2.0 degraded), the two spot flows, total flow over its setpoint with the ±${Math.round(band * 100)} % band the minute cleaning keeps (src/data/qc/pkl_cleaning.py), sample RH and the instrument temperatures. ${periods ? `Flow-fix periods: ${periods.description.toLowerCase()} (${periods.notes.toLowerCase()}).` : 'No flow-fix period is defined for this instrument.'} A line breaks wherever a day is missing.`}
+      subtitle={`Daily means of the minute record: IR BCc (coloured by flow period where config.FLOW_FIX_PERIODS sets one), the spot-flow ratio Flow1/Flow2 against the 1:3 target (3.0, or 75:25) and the unfixed 55:45 (1.2), the two spot flows, total flow over its setpoint with the ±${Math.round(band * 100)} % band the minute cleaning keeps (src/data/qc/pkl_cleaning.py), sample RH and the instrument temperatures. ${periods ? `Flow-fix periods: ${periods.description.toLowerCase()} (${periods.notes.toLowerCase()}).` : 'No flow-fix period is defined for this instrument.'} A line breaks wherever a day is missing.`}
       provenance="FlowFix_BeforeAfter_Analysis §5, flow_fix_explorer, notebooks/qc/flow_qc_analysis (R, S, T at daily resolution), plotting_gaps_scenarios scenarios 2–3 · processed_sites/*.pkl"
-      tip={<>The nominal flow split is not agreed in the sources: flow_qc_analysis targets Flow1/Flow2 = 3.0 (a 75/25 split) and finds medians of 1.2–2.5; plotting/timeseries.flow_ratio draws 1.0 as ideal and 2.0 as degraded; the minute cleaning keeps ratios between {index.cleaning_bounds.flow_ratio.lower} and {index.cleaning_bounds.flow_ratio.upper}. The chart shows the lines and leaves the verdict open. Ratios are of daily mean flows.</>}>
+      tip={<>The MA350 target is Flow2:Flow1 = 1:3, so Flow1/Flow2 = 3.0 (a 75/25 split). Instruments run near 1.2 until the split is fixed, so a higher ratio is closer to target. flow_qc_analysis finds medians of 1.2–2.5. The minute cleaning keeps ratios between {index.cleaning_bounds.flow_ratio.lower} and {index.cleaning_bounds.flow_ratio.upper}. Ratios are of daily mean flows.</>}>
       {shown.length ? <DailyPanels days={days} panels={panels} periods={periods} panelHeight={84} /> : <Empty>No flow record in this instrument's daily bins.</Empty>}
     </ChartFrame>
   )
@@ -81,11 +81,11 @@ export function FlowSummary({ all, meta }: { all: Record<string, Day[]>; meta: M
   }), [all, meta])
   return (
     <ChartFrame id="aq-flow-summary" title="Flow by site and period — spot-flow ratio, total flow and UV/IR before and after the fix"
-      subtitle="Median and 10–90 % of the daily values per instrument and flow period (config.FLOW_FIX_PERIODS; Addis has none defined). The flow ratio is Flow1/Flow2 of daily mean flows; the reference line is the plotting module's 1.0 and the dashed marker its 2.0 'degraded'. UV/IR is the BCc ratio the flow-fix notebook compared before and after (above 1: stronger UV absorption)."
+      subtitle="Median and 10–90 % of the daily values per instrument and flow period (config.FLOW_FIX_PERIODS; Addis has none defined). The flow ratio is Flow1/Flow2 of daily mean flows; the reference line is the 1:3 target (3.0) and the dashed marker the unfixed 55:45 (1.2). UV/IR is the BCc ratio the flow-fix notebook compared before and after (above 1: stronger UV absorption)."
       provenance="FlowFix_BeforeAfter_Analysis §11 (UV/IR before vs after) and its flow-ratio notes · flow_qc_analysis (R, T) · processed_sites/*.pkl">
       <IntervalStrip blocks={blocks} labelWidth={150} noteWidth={48} minPanelWidth={200}
         panels={[
-          { label: 'Flow1 / Flow2', reference: 1, marker: { value: 2, label: 'degraded 2.0' }, format: (v) => fmt(v, 1) },
+          { label: 'Flow1 / Flow2', reference: 3, marker: { value: 1.2, label: 'unfixed 1.2' }, format: (v) => fmt(v, 1) },
           { label: 'Total flow / setpoint', reference: 1, format: (v) => fmt(v, 3) },
           { label: 'UV / IR BCc', reference: 1, format: (v) => fmt(v, 2) },
         ]} />

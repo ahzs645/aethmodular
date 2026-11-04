@@ -299,7 +299,7 @@ Current inline patterns used across notebooks:
    `research_2026_04` (default, legacy outputs) and `local_2026_10` (the gallery's bins). Pass the id.
 
 2. **Reference / threshold lines** — `ax.axhline`, `ax.axvline` for flow ratio
-   ideals (1.0, 2.0), smooth/raw thresholds (1, 2.5, 4, 5 %), AAE source-region
+   (target 3.0, the 1:3 split; unfixed 1.2, 55:45), smooth/raw thresholds (1, 2.5, 4, 5 %), AAE source-region
    boundaries (fossil fuel / mixed / biomass). Some are hardcoded inside
    `timeseries.flow_ratio` and `distributions.smooth_raw_histogram` — don't
    duplicate those calls on top.

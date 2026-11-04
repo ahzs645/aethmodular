@@ -397,10 +397,10 @@ def flow_ratio(data, sites=None, layout=None):
                            color=color, alpha=0.5, s=20)
 
                 # Reference lines
-                ax.axhline(y=1.0, color='green', linestyle='--', alpha=0.7,
-                           label='Ideal (1.0)')
-                ax.axhline(y=2.0, color='orange', linestyle='--', alpha=0.7,
-                           label='Degraded (2.0)')
+                ax.axhline(y=3.0, color='green', linestyle='--', alpha=0.7,
+                           label='Target 1:3 (3.0)')
+                ax.axhline(y=1.2, color='orange', linestyle='--', alpha=0.7,
+                           label='Unfixed 55:45 (1.2)')
 
             style_axes(ax, 'Date', 'Flow Ratio (Flow1/Flow2)',
                        f'Flow Ratio - {site_name}')
@@ -425,8 +425,8 @@ def flow_ratio(data, sites=None, layout=None):
             if len(valid_data) > 0:
                 ax.scatter(valid_data['day_9am'], valid_data['ratio_flow'],
                            color=color, alpha=0.5, s=15)
-                ax.axhline(y=1.0, color='green', linestyle='--', alpha=0.7)
-                ax.axhline(y=2.0, color='orange', linestyle='--', alpha=0.7)
+                ax.axhline(y=3.0, color='green', linestyle='--', alpha=0.7)
+                ax.axhline(y=1.2, color='orange', linestyle='--', alpha=0.7)
 
             style_axes(ax, 'Date', 'Flow Ratio', site_name, show_legend=False)
             ax.tick_params(axis='x', rotation=45)

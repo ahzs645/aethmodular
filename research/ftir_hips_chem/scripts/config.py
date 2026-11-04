@@ -61,36 +61,38 @@ SITES = {
 MAC_VALUE = 10
 
 # Flow fix periods (when aethalometer flow was corrected)
-# Updated based on FlowFix_BeforeAfter_Analysis.ipynb findings
+# The MA350 target split is Flow2:Flow1 = 1:3, so Flow1/Flow2 = 3.0 (75:25). Instruments run
+# near 1.2 (55:45) until the split is fixed, so a higher ratio here is closer to target, not worse.
+# Dates from FlowFix_BeforeAfter_Analysis.ipynb; ratios are quarterly medians of the 9am daily bins.
 # NOTE: Use flow_periods.py for the comprehensive version with has_before_data flags
 FLOW_FIX_PERIODS = {
     'Beijing': {
-        'description': 'NO BEFORE DATA - Filter sampling started Sep 2023 (degraded period only)',
+        'description': 'NO BEFORE DATA - Filter sampling started Sep 2023, after the flow fix',
         'before_end': '2022-07-31',
         'after_start': '2023-09-01',
         'has_before_data': False,
-        'notes': 'Flow ratio ~1.8-2.2 in available data period'
+        'notes': 'Flow ratio ~1.2 before the fix, ~1.8-2.1 in available data period (target 3.0)'
     },
     'Delhi': {
-        'description': 'NO BEFORE DATA - Filter sampling started Feb 2024 (degraded period only)',
+        'description': 'NO BEFORE DATA - Filter sampling started Feb 2024',
         'before_end': '2023-12-31',
         'after_start': '2024-02-01',
         'has_before_data': False,
-        'notes': 'Flow ratio ~2.5-3.2 in available data period'
+        'notes': 'Flow ratio climbs ~1.9 to ~2.9 with no step, approaching target 3.0; fix or drift is unconfirmed'
     },
     'JPL': {
         'description': 'Has data in both periods - suitable for before/after analysis',
         'before_end': '2022-09-30',
         'after_start': '2023-05-01',
         'has_before_data': True,
-        'notes': 'Good flow ratio throughout'
+        'notes': 'Flow ratio ~1.3 before the fix, ~2.4-2.6 after (target 3.0)'
     },
     'Addis_Ababa': {
-        'description': 'No flow fix periods defined',
+        'description': 'No flow fix: the split stayed near 55:45 through the record',
         'before_end': None,
         'after_start': None,
         'has_before_data': False,
-        'notes': 'Consistently low flow ratio (~1.2 throughout)'
+        'notes': 'Flow ratio ~1.2 throughout (target 3.0); use dual-spot compensated BCc'
     }
 }
 
