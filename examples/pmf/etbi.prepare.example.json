@@ -1,0 +1,7 @@
+{
+  "site": "ETBI",
+  "filters": "${AETHMODULAR_PMF_RAW}/etbi_filters.csv",
+  "analyses": "${AETHMODULAR_PMF_RAW}/etbi_analysis.csv",
+  "scans": "${AETHMODULAR_PMF_RAW}/etbi_scans.csv",
+  "output": "runs/ETBI-preparation-v1"
+}

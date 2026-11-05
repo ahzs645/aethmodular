@@ -101,6 +101,11 @@ select = ["E", "F"]
 ignore = ["E402", "E501", "E722", "F401", "F541", "F841"]
 
 [tool.ruff.lint.per-file-ignores]
+# Recovered numerical sources retain their original formatting and hashes.
+"src/pmf/vendor/**" = ["ALL"]
+"src/pmf/solver.py" = ["E701", "E702"]
+"src/pmf/uncertainty.py" = ["E701", "E702"]
+"scripts/pmf/validate_*.py" = ["E701", "E702"]
 # Vendored third-party code retains its upstream formatting and lint violations.
 "src/external/calibration.py" = ["E401", "E701", "E711", "E712", "F811"]
 "src/data/qc/pkl_cleaning.py" = ["E712", "F821"]
