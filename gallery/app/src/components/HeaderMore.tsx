@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { BookIcon, ViewsIcon } from '@/components/Icons'
+import { BookIcon, SectionsIcon, ViewsIcon } from '@/components/Icons'
 import { GlossaryDialog } from '@/components/Glossary'
 import { ViewsPanel } from '@/components/ViewsMenu'
+import { SectionsPanel } from '@/components/SectionsMenu'
+import { useHeaderNav } from '@/lib/headerNav'
 
 /**
  * On a phone the header keeps the page menu and Search; the display toggles (`display`), Glossary
@@ -10,9 +12,10 @@ import { ViewsPanel } from '@/components/ViewsMenu'
  * header, the chart display settings in theirs (the menu stays open behind them).
  */
 export function HeaderMore({ display }: { display?: ReactNode }) {
-  const [open, setOpen] = useState<null | 'menu' | 'views'>(null)
+  const [open, setOpen] = useState<null | 'menu' | 'views' | 'sections'>(null)
   const [glossary, setGlossary] = useState(false)
   const box = useRef<HTMLDivElement>(null)
+  const sections = !!useHeaderNav()?.tabs.some((t) => t.key === 'custom')
   useEffect(() => {
     if (!open) return
     // the display toggles' settings popover floats outside the menu: working in it keeps the menu open
@@ -39,8 +42,12 @@ export function HeaderMore({ display }: { display?: ReactNode }) {
           <button type="button" role="menuitem" className="views-item header-more-item" onClick={() => setOpen('views')}>
             <span className="header-more-name"><ViewsIcon /> Views</span><span className="views-note">presets, saved views, copy link, embed</span>
           </button>
+          {sections && <button type="button" role="menuitem" className="views-item header-more-item" onClick={() => setOpen('sections')}>
+            <span className="header-more-name"><SectionsIcon /> Custom sections</span><span className="views-note">the charts you have picked</span>
+          </button>}
         </div>
       )}
+      {open === 'sections' && <div className="views-pop" role="dialog" aria-label="Custom sections"><SectionsPanel onClose={() => setOpen(null)} /></div>}
       {open === 'views' && <div className="views-pop" role="dialog" aria-label="Views"><ViewsPanel onClose={() => setOpen(null)} /></div>}
       {glossary && <GlossaryDialog onClose={() => setGlossary(false)} />}
     </div>

@@ -12,11 +12,14 @@ import { AsideSlotCtx, TILE_CORNER_WIDTH, TILE_FIT_MODES, TileStatsCtx, type Til
 import type { ControlsSide, StatsPlace } from '@/lib/chartDisplay'
 import { useExportRender } from '@/lib/exportRender'
 import { FrameSlotProvider, useFrameSlot } from '@/lib/frameControls'
+import { EmbedDrawnContext, useEmbedDraw } from '@/lib/embedChart'
+import { copyText, currentView, viewUrl } from '@/lib/views'
 import { HOVER_CARD_ATTR, HoverCardContext } from '@/lib/highlight'
 
 // the option controls live in Controls.tsx; re-exported so the many imports from ChartFrame keep working
 export { Select, Segmented, Toggle, sentence } from '@/components/Controls'
 import { Segmented } from '@/components/Controls'
+import { SectionAddButton, useSectionPick } from '@/components/SectionsMenu'
 
 /**
  * What a frame's host adds to it. A Dashboard tile draws the frame compact: no header
@@ -148,6 +151,9 @@ export function ChartFrame({
   // reopens it exactly as it is (every other setting already lives in the URL)
   const focusKey = anchor ?? slug(short)
   const [focused, setFocused] = useFocus(focusKey)
+  // a section's embed draws the chart it is for, not the rest of that chart's page (lib/embedChart)
+  const draw = useEmbedDraw(focusKey, inView)
+  if (!draw) controls = null
   const [exportAsk, setExportAsk] = useState(0)
   // a tile's corner (TileCorner): its notes (ChartAside, Note) fold behind a ⚠; its fit statistics (RegressionOverlay)
   // go behind the ⓘ with its tip, in a column beside the plot, or above the plot (the tile's ⋯ menu: extras.fitStats).
@@ -201,11 +207,12 @@ export function ChartFrame({
               ?
             </button>
           )}
+          {!pageOnly && <SectionAddButton chart={focusKey} title={short} />}
           <RefMenu onCopyRef={copyRef} refCopied={refCopied} link={() => focusLink(focusKey)} />
           {/* the whole figure (every facet and the legend), not just the first <svg> */}
           {exportable && <ExportButton panelRef={ref} title={short} ask={exportAsk} />}
         </span>
-        <FrameMoreMenu link={() => focusLink(focusKey)} onCopyRef={copyRef}
+        <FrameMoreMenu link={() => focusLink(focusKey)} onCopyRef={copyRef} chart={pageOnly ? null : focusKey} title={short}
           explain={hasInfo && EXPLAIN_AVAILABLE ? { on: info, toggle: () => setSingleChartDisplay(chartKey, { explain: !info }) } : null}
           onExport={exportable ? () => setExportAsk((n) => n + 1) : null} />
         {focused
@@ -224,7 +231,7 @@ export function ChartFrame({
           own wrapper under a chart that is not remounted, and its size observer would keep the old width */}
       <div className={`frame-body controls-${controls ? side : 'top'}`}>
         {controls && <div className="frame-controls">{headInColumn && head}{inView && side !== 'top' && <SingleViewStats />}{controls}</div>}
-        <div className="frame-chart"><AsideSlotCtx.Provider value={asideSlot}><StatsInPlotCtx.Provider value={stats === 'plot'}>{children}</StatsInPlotCtx.Provider></AsideSlotCtx.Provider></div>
+        <div className="frame-chart"><AsideSlotCtx.Provider value={asideSlot}><StatsInPlotCtx.Provider value={stats === 'plot'}><EmbedDrawnContext.Provider value={draw}>{draw && children}</EmbedDrawnContext.Provider></StatsInPlotCtx.Provider></AsideSlotCtx.Provider></div>
       </div>
     </section>
   </FrameSlotProvider></HoverCardContext.Provider>)
@@ -233,11 +240,16 @@ export function ChartFrame({
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48)
 const FOCUS_EVENT = 'gallery-focus'
 
-/** a link that opens the gallery on one chart in focus mode, with every setting as it is now */
-export function focusLink(key: string) {
-  const url = new URL(window.location.href)
-  url.searchParams.set('focus', key)
-  return url.toString()
+/** A link that opens the gallery on one chart in focus mode, with every setting as it is now: one json-url token
+ * (lib/views), so a long list of filters stays short, or the plain address if it is too long even for that. */
+export function focusLink(key: string): Promise<string> {
+  const view = currentView()
+  view.q.focus = key
+  return viewUrl(view).catch(() => {
+    const url = new URL(window.location.href)
+    url.searchParams.set('focus', key)
+    return url.toString()
+  })
 }
 
 /** whether this chart is the focused one (`focus` in the query); one at a time, kept in sync across frames */
@@ -274,9 +286,12 @@ function useFocus(key: string): [boolean, (on: boolean) => void] {
  * A phone's ⋯ beside Focus: the explanation, the chart's link and reference, and export, which the header lays out
  * as separate buttons on a wider screen (styles.css shows one or the other). The same menu style as Ref's.
  */
-function FrameMoreMenu({ link, onCopyRef, explain, onExport }: {
-  link: () => string; onCopyRef: () => void; explain: { on: boolean; toggle: () => void } | null; onExport: (() => void) | null
+function FrameMoreMenu({ link, onCopyRef, explain, onExport, chart, title }: {
+  link: () => Promise<string>; onCopyRef: () => void; explain: { on: boolean; toggle: () => void } | null; onExport: (() => void) | null
+  /** this chart's key and name for the section being built (null: a page summary, which is not offered) */
+  chart: string | null; title: string
 }) {
+  const pick = useSectionPick(chart ?? '', title)
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState<'link' | 'ref' | null>(null)
   const root = useRef<HTMLDivElement>(null)
@@ -312,7 +327,10 @@ function FrameMoreMenu({ link, onCopyRef, explain, onExport }: {
         {explain && <button type="button" role="menuitem" onClick={() => { explain.toggle(); setOpen(false) }}>
           <strong>{explain.on ? 'Hide the explanation' : 'Explain this chart'}</strong><span>What it shows and where it comes from</span>
         </button>}
-        <button type="button" role="menuitem" onClick={() => navigator.clipboard?.writeText(link()).then(() => done('link'))}>
+        {chart && pick.offered && <button type="button" role="menuitem" onClick={() => { pick.toggle(); setOpen(false) }}>
+          <strong>{pick.on ? `Take out of ${pick.name}` : 'Add to section'}</strong><span>{pick.on ? 'It is in this section with these settings' : `Keeps its sites, filters and options, in ${pick.name}`}</span>
+        </button>}
+        <button type="button" role="menuitem" onClick={() => { copyText(link()).then(() => done('link'), () => {}) }}>
           <strong>{copied === 'link' ? 'Link copied' : 'Copy link to this chart'}</strong><span>Opens the gallery on this chart, with every setting as it is now</span>
         </button>
         {onExport && <button type="button" role="menuitem" onClick={() => { setOpen(false); onExport() }}>
@@ -327,7 +345,7 @@ function FrameMoreMenu({ link, onCopyRef, explain, onExport }: {
 }
 
 /** "Ref ▾": share this chart as it is now, or copy the development reference (focus is its own button beside) */
-function RefMenu({ onCopyRef, refCopied, link }: { onCopyRef: () => void; refCopied: boolean; link: () => string }) {
+function RefMenu({ onCopyRef, refCopied, link }: { onCopyRef: () => void; refCopied: boolean; link: () => Promise<string> }) {
   const [open, setOpen] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const root = useRef<HTMLDivElement>(null)
@@ -348,10 +366,10 @@ function RefMenu({ onCopyRef, refCopied, link }: { onCopyRef: () => void; refCop
     window.addEventListener('keydown', esc)
     return () => { window.removeEventListener('pointerdown', off); window.removeEventListener('keydown', esc) }
   }, [open])
-  const copyLink = () => navigator.clipboard?.writeText(link()).then(() => {
+  const copyLink = () => { copyText(link()).then(() => {
     setLinkCopied(true)
     setTimeout(() => { setLinkCopied(false); setOpen(false) }, 1200)
-  })
+  }, () => setOpen(false)) }
   return (
     <div className="frame-menu-root" ref={root}>
       <button ref={trigger} type="button" className="btn quiet" aria-haspopup="menu" aria-controls={menuId} aria-expanded={open} onClick={() => setOpen((v) => !v)}

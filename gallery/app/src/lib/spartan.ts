@@ -144,4 +144,4 @@ export const loadSpartanReference = () => loadDerived<SpartanReference>('spartan
   const rows = files.flatMap(f => f.rows)
   return { schema_version: 1, source: 'SPARTAN public, lab and native filter metadata', note: index.note,
     n: rows.length, n_sites: index.sites.length, fields: index.fields, field_units: index.field_units, field_sources: {}, rows }
-})
+}, { plain: true })

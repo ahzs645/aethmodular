@@ -4,6 +4,11 @@ const Svg = ({ children }: { children: React.ReactNode }) => (
 )
 export const SearchIcon = () => <Svg><circle cx="7" cy="7" r="4.5" /><path d="m10.4 10.4 3.6 3.6" /></Svg>
 export const BookIcon = () => <Svg><path d="M2.5 3.2C4.3 2.4 6.2 2.5 8 3.6c1.8-1.1 3.7-1.2 5.5-.4v9.6c-1.8-.8-3.7-.7-5.5.4-1.8-1.1-3.7-1.2-5.5-.4z" /><path d="M8 3.6v9.6" /></Svg>
+/** a chart's add-to-section button, and the same once it is in */
+export const PlusIcon = () => <Svg><path d="M8 3v10M3 8h10" /></Svg>
+export const CheckIcon = () => <Svg><path d="M3 8.5l3.2 3.2L13 4.8" /></Svg>
+/** custom sections: cards stacked on a page */
+export const SectionsIcon = () => <Svg><path d="M2.5 3h11v4.5h-11zM2.5 10h4.5v3.5h-4.5zM9 10h4.5v3.5H9z" /></Svg>
 export const ViewsIcon = () => <Svg><path d="M4.5 2.5h7v11l-3.5-2.6-3.5 2.6z" /></Svg>
 /** close and remove: a drawn ×, centred in its square button (styles.css .x-btn) where a typed one sits on the text baseline */
 export const XIcon = () => <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" /></svg>

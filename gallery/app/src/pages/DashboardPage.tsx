@@ -12,6 +12,8 @@ import { ChartSite, ChartFit, LEGEND_MODES, TileLegend, type LegendMode } from '
 import { TILE_FIT_MODES, type TileFitMode } from '@/lib/singleView'
 import { addTile, arrange, COLS, nextId, nextTileId, placeTile, removeTile, stepTile, ROWS, rowsUsed, tileKeyPrefix, updateTile, type DashState, type Scope, type Sheet, type Tile } from '@/lib/dashboard'
 import { clearScopedParams, copyScopedParams, ParamScope, useSearchParam } from '@/lib/url'
+import { useSectionPick } from '@/components/SectionsMenu'
+import { tileKey } from '@/lib/sections'
 import { CohortControls, DashboardDialog, DetailsDialog, TileData, TileErrorBoundary, TileInformation, tileDataRequest, useTileCohort } from '@/components/dashboard/DashboardTools'
 import { DashboardDetails, type DetailRequest } from '@/lib/dashboardDetails'
 import type { DashboardSnapshot } from '@/lib/dashboardSnapshot'
@@ -409,6 +411,7 @@ function ScopedTileView({ tile, chart, data, width, height, style, scopePrefix, 
   const { filter, setFilter, rows: cohortRows } = useTileCohort(data)
   const tileData = useMemo(() => ({ ...data, rows: cohortRows }), [data, cohortRows])
   const effectiveFields = useMemo(() => fields.map(data.eff), [fields, data.eff])
+  const pick = useSectionPick(tileKey(tile.id), chart.label)
   const [details, setDetails] = useState<DetailRequest | null>(null)
   const [filterOpen, setFilterOpen] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
@@ -496,6 +499,8 @@ function ScopedTileView({ tile, chart, data, width, height, style, scopePrefix, 
     {chart.kind !== 'note' && chart.details !== false && <button type="button" className="btn quiet" onClick={() => { close(); setDetails(tileDataRequest(tileData.rows, chart, effectiveFields)) }}>View data</button>}
     {onFocus && <button type="button" className="btn quiet" onClick={() => { close(); onFocus() }}>◱ Show large</button>}
     <button type="button" className="btn quiet" onClick={() => { close(); onMaximize() }}>{role === 'max' ? '⤡ Back' : '⤢ Full window'}</button>
+    {pick.offered && chart.kind !== 'note' && <button type="button" className="btn quiet" aria-pressed={pick.on} onClick={() => { close(); pick.toggle() }}
+      title={pick.on ? `In “${pick.name}” with these settings. Click to take it out` : `Add to “${pick.name}” with its settings, sites and filters as they are now`}>{pick.on ? '✓ In section' : '+ Add to section'}</button>}
     <button type="button" className="btn quiet" onClick={() => { close(); onDuplicate() }}>⧉ Duplicate</button>
     <button type="button" className="btn quiet" onClick={() => { close(); onRemove() }}>✕ Remove</button>
     {chart.kind !== 'stat' && chart.kind !== 'sitecards' && <span className="tile-legend-mode">
@@ -544,7 +549,7 @@ function ScopedTileView({ tile, chart, data, width, height, style, scopePrefix, 
   useLayoutEffect(() => { const has = !!ref.current?.querySelector(':scope > .panel:not(.dash-fallback)'); if (has !== framed) setFramed(has) })
 
   return (
-    <div ref={ref} className={`dash-tile legend-${legend}${dragging ? ' dragging' : ''}${edit ? ' editing' : ''}${chart.kind === 'stat' ? ' stat' : ''}`}
+    <div ref={ref} data-tile-id={tile.id} className={`dash-tile legend-${legend}${dragging ? ' dragging' : ''}${edit ? ' editing' : ''}${chart.kind === 'stat' ? ' stat' : ''}`}
       style={{ ...style, ['--legend-w' as string]: `${legendReserve}px` }}>
       <SnapshotFiles.Provider value={data.snapshotFiles ?? null}><TileData.Provider value={tileData}><DashboardDetails.Provider value={showDetails}>
         <FrameExtrasContext.Provider value={extras}>
