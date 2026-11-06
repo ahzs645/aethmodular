@@ -27,6 +27,8 @@ import { useCountedFilter } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 import { usePrefs } from '@/lib/prefs'
 import { useSearchParam } from '@/lib/url'
+import { SidebarControls } from '@/lib/pageSidebar'
+import { useSidePanelOpen, useSidePanelView } from '@/hooks/useSidePanel'
 import { trim } from '@/lib/format'
 import type { FilterRow, CalibFile, CalibRunsFile, MetaFile } from '@/lib/types'
 
@@ -86,8 +88,11 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
   const atMac = useMemo(() => (calib ? calibAtMac(calib, gallery.mac) : null), [calib, gallery.mac])
   const calibrationViews = useMemo(() => Object.fromEntries(ESTIMATORS.map(method => [method, atMac ? { ...atMac, grid: atMac.grid.map(r => projectGrid(r, method)), sweeps: atMac.sweeps.map(r => projectGrid(r, method)) } : null])) as Record<typeof ESTIMATORS[number], CalibFile | null>, [atMac])
   const [selected, setSelected] = useState<Config>({ co: 'ocec', cut: 800, sel: 'raw', sp: 'airspec' })
-  const [presetKey, setPresetKey] = useState<string>('ocec800_airspec')
-  const [targetId, setTargetId] = useState<string>('addis')
+  const [presetKey, setPresetKey] = useSearchParam<string>('calibration.preset', 'ocec800_airspec')
+  const [targetId, setTargetId] = useSearchParam<string>('calibration.target', 'addis')
+  const [, setSidebarOpen] = useSidePanelOpen()
+  const [, setSidebarView] = useSidePanelView()
+  const openSelections = () => { setSidebarView('page'); setSidebarOpen(true) }
   // the specification curve's baselines: one menu, named by the spectra compared. Spline and VIBES
   // come from the spline-vs-VIBES search (completed rank-70 VIBES), raw and 2nd derivative from the
   // original search; the value is '<search>:<baselines>' for SpecCurve's `baselines`
@@ -170,6 +175,13 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
   }
 
   return (
+    <>
+    {runs && <SidebarControls title="Shared selections" tab="Calibration" tabNote={target ? runs.targets[target]?.code : undefined}>
+      <Select label="Configuration" value={preset?.key ?? ''} options={presets.map(p => p.key)} onChange={setPresetKey}
+        optionLabel={key => { const p = presets.find(p => p.key === key); return p ? presetName(p) : key }} />
+      <Select label="Test set" value={target ?? ''} options={targetIds} onChange={setTargetId} optionLabel={id => runs.targets[id]?.label ?? id} />
+      <p className="chart-note">Configuration drives the cross-validation curve, crossplot, dated series, blind-half check and cohort composition.</p>
+    </SidebarControls>}
     <PageToc>
       {calib && (
         <>
@@ -204,9 +216,8 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
         <>
           <section className="configuration-section" aria-label="Selected configuration and its diagnostics"><SectionBar>
             <span className="pill">Configuration for the charts below</span>
-            <Select label="Configuration" value={preset?.key ?? ''} options={presets.map((p) => p.key)} onChange={setPresetKey} optionLabel={(k) => { const p = presets.find((q) => q.key === k); return p ? presetName(p) : k }} title={presets.map((p) => `${p.key}: ${presetName(p)}`).join('\n')} />
-            <Select label="Test set" value={target ?? ''} options={targetIds} onChange={setTargetId} optionLabel={(t) => runs.targets[t]?.label ?? t} />
-            <span style={{ color: 'var(--ink-muted)' }}>{preset ? presetName(preset) : null}</span>
+            <button type="button" className="btn quiet" onClick={openSelections}>Shared selections</button>
+            <span style={{ color: 'var(--ink-muted)' }}>{preset ? presetName(preset) : null}{target && <> · {runs.targets[target]?.label ?? target}</>}</span>
             <span className="season-row" style={{ color: 'var(--ink-muted)' }}>
               {runKeep || runPmf
                 ? <>{runKeep && <>seasons: <strong style={{ color: 'var(--ink-text)' }}>{[...runKeep].join(', ')}</strong> · </>}{runPmf && <>PMF: <strong style={{ color: 'var(--ink-text)' }}>{runPmf.keep.size === 5 || (runPmf.keep.size === 2 && runPmf.keep.has('Marine') && runPmf.keep.has('Combustion')) ? 'PMF days only (every source)' : [...runPmf.keep].join(', ')}</strong> · </>}crossplot and dated series refitted on these {nRunCounted} filters (change in Filters)</>
@@ -266,6 +277,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
         </>
       )}
     </PageToc>
+    </>
   )
 }
 

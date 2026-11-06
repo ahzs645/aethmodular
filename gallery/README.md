@@ -1030,6 +1030,12 @@ One configuration is selected across the page (click a point or a heatmap
 row); when it matches an exported preset, the per-filter section below
 follows.
 
+The left dock's **Calibration** tab holds **Shared selections**: the exported
+**Configuration** and **Test set** used by the per-filter diagnostics. The
+configuration summary opens the same sidebar. Choices are saved in
+`calibration.preset` and `calibration.target`, so shared links and reloads keep
+them, including in the single-chart view.
+
 The **Specification curve** has dropdowns for cohort selection method,
 selection spectra, cohort cutoff, model spectra, cross-validation protocol,
 PLS factor count, and calibration lot where available. These filters intersect

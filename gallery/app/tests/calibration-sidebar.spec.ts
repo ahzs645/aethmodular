@@ -1,0 +1,85 @@
+import { test, expect, type Page } from '@playwright/test'
+
+const group = 'W1siZ212cmgzMmRzazYiLCJJcm9uIMK3IG1lZGlhbiBzcGxpdCIsIklyb24iLCJtZWRpYW4iLFtdLFtdLCJhYm92ZSIsWyIjMTI3ZWYzIiwiIl1dXQ'
+const view = `/?weather-humidity.thr=60&weather-site-wind-speed.bin=0.25&aerlev=20&view=single&chart=run-crossplot#tab=calibration&ssites=ETAD&grp=${group}`
+const tab = (page: Page) => page.getByRole('tab', { name: /^Calibration/ })
+const panel = (page: Page) => page.getByRole('complementary', { name: 'Calibration options', exact: true })
+async function ready(page: Page, url = view) {
+  await page.goto(url)
+  await expect(tab(page)).toBeVisible({ timeout: 30000 })
+  if (await tab(page).getAttribute('aria-expanded') !== 'true') await tab(page).click()
+  await expect(panel(page)).toBeVisible()
+}
+
+test('the left Calibration tab hosts one pair of shared selectors and updates the related charts', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await ready(page)
+  await expect(panel(page)).toContainText('Shared selections')
+  await page.evaluate(() => document.fonts.ready)
+  await page.screenshot({ path: '../../tmp/calibration-sidebar-desktop.png' })
+  await expect(page.getByRole('combobox', { name: 'Configuration', exact: true })).toHaveCount(1)
+  const configuration = panel(page).getByRole('combobox', { name: 'Configuration', exact: true })
+  await configuration.click()
+  await page.getByRole('option', { name: /^Lowest-OC\/EC \(440\) × Spline baseline/ }).click()
+  await expect(page.locator('#cv-curve')).toContainText('440 calibration filters')
+  await expect(page.locator('#cohort-composition')).toContainText('440 filters')
+  const n = await page.locator('#run-crossplot [data-fid]').count()
+  expect(n).toBeGreaterThan(0)
+  await panel(page).getByRole('combobox', { name: 'Test set', exact: true }).click()
+  await page.getByRole('option', { name: /^Beijing \(CHTS\)/ }).click()
+  await expect(panel(page).getByRole('combobox', { name: 'Test set', exact: true })).toContainText('Beijing')
+  await expect.poll(() => page.locator('#run-crossplot [data-fid]').count()).not.toBe(n)
+  const url = new URL(page.url())
+  expect(url.searchParams.get('calibration.preset')).toBe('ocec440_airspec')
+  expect(url.searchParams.get('calibration.target')).toBe('chts')
+  expect(url.searchParams.get('weather-humidity.thr')).toBe('60')
+  expect(url.searchParams.get('weather-site-wind-speed.bin')).toBe('0.25')
+  expect(new URLSearchParams(url.hash.slice(1)).get('grp')).toBe(group)
+  expect(errors).toEqual([])
+})
+
+test('shared links and reloads retain the configuration and test set', async ({ page }) => {
+  const url = new URL(view, 'http://127.0.0.1:4173')
+  url.searchParams.set('calibration.preset', 'eth300_airspec')
+  url.searchParams.set('calibration.target', 'indh')
+  await ready(page, url.pathname + url.search + url.hash)
+  const config = () => panel(page).getByRole('combobox', { name: 'Configuration', exact: true })
+  const target = () => panel(page).getByRole('combobox', { name: 'Test set', exact: true })
+  await expect(config()).toContainText('Ethiopia-shaped (300)')
+  await expect(target()).toContainText('Delhi')
+  await page.reload()
+  await expect(panel(page)).toBeVisible()
+  await expect(config()).toContainText('Ethiopia-shaped (300)')
+  await expect(target()).toContainText('Delhi')
+  await expect(page.locator('#cv-curve')).toContainText('300 calibration filters')
+})
+
+test('shared selections remain usable on phones and can be opened with the keyboard', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await ready(page)
+  const box = await panel(page).boundingBox()
+  expect(box!.x).toBeGreaterThanOrEqual(0)
+  expect(box!.x + box!.width).toBeLessThanOrEqual(390)
+  await expect(panel(page).getByRole('combobox', { name: 'Configuration', exact: true })).toBeInViewport()
+  await expect(panel(page).getByRole('combobox', { name: 'Test set', exact: true })).toBeInViewport()
+  await page.screenshot({ path: '../../tmp/calibration-sidebar-mobile.png' })
+  await panel(page).getByRole('button', { name: 'Close calibration options', exact: true }).click()
+  await tab(page).focus()
+  await page.keyboard.press('Enter')
+  await expect(panel(page)).toBeVisible()
+})
+
+test('the configuration summary opens the same sidebar and the page tab cleans up on navigation', async ({ page }) => {
+  await page.goto(view.replace('&view=single&chart=run-crossplot', ''))
+  await page.getByRole('button', { name: 'Shared selections', exact: true }).click()
+  await expect(panel(page)).toBeVisible()
+  await expect(panel(page).getByRole('combobox', { name: 'Configuration', exact: true })).toHaveCount(1)
+  await page.evaluate(() => {
+    const hash = new URLSearchParams(location.hash.slice(1))
+    hash.set('tab', 'distribution')
+    location.hash = hash.toString()
+  })
+  await expect(tab(page)).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: 'Plot', exact: true })).toBeVisible()
+})
