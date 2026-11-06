@@ -25,14 +25,14 @@ const VIEWS = ['metric vs rank', 'distribution'] as const
  * be selected on AIRSpec-corrected spectra too, both rankings are overlaid
  * (the July next-step: do the two selections actually differ?).
  */
-export function SelectionRanking({ runs, calib }: { runs: CalibRunsFile; calib: CalibFile | null }) {
+export function SelectionRanking({ runs, calib, cohort: sharedCohort }: { runs: CalibRunsFile; calib: CalibFile | null; cohort?: string }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const { width } = useDimensions(wrapRef)
   const tip = useTooltip(wrapRef)
   const lg = useLegend()
   const height = useFitHeight() ?? 340
 
-  const cohorts = useMemo(() => [...new Set(runs.rankings.map((r) => r.cohort))], [runs.rankings])
+  const cohorts = useMemo(() => sharedCohort ? [sharedCohort] : [...new Set(runs.rankings.map((r) => r.cohort))], [runs.rankings, sharedCohort])
   const o = useChartOptions('selection-ranking', [
     cohortOption({ cohorts }),
     { key: 'view', choices: VIEWS, default: 'metric vs rank' },

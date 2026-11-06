@@ -1030,11 +1030,17 @@ One configuration is selected across the page (click a point or a heatmap
 row); when it matches an exported preset, the per-filter section below
 follows.
 
-The left dock's **Calibration** tab holds **Shared selections**: the exported
-**Configuration** and **Test set** used by the per-filter diagnostics. The
-configuration summary opens the same sidebar. Choices are saved in
-`calibration.preset` and `calibration.target`, so shared links and reloads keep
-them, including in the single-chart view.
+The left dock's **Calibration** tab holds **Shared selections**. **Cohort**
+narrows the specification search, sweeps, slope/intercept plot, heatmap,
+dumbbell, transfer, selection ranking and exported **Configuration** choices.
+**Cross-validation protocol** filters the specification curve, cutoff sweep
+and slope/intercept plot. PLS-factor sweeps and per-filter run diagnostics
+retain their exported site-grouped CV; unavailable search results stay empty.
+**Per-chart choices** retains the charts' individual settings. Configuration
+and **Test set** drive the per-filter diagnostics; the configuration summary
+opens the same sidebar. `calibration.cohort`, `calibration.cv`,
+`calibration.preset` and `calibration.target` preserve these choices in shared
+links and reloads, including the single-chart view.
 
 The **Specification curve** has dropdowns for cohort selection method,
 selection spectra, cohort cutoff, model spectra, cross-validation protocol,

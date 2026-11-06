@@ -23,6 +23,7 @@ import { useSearchParam } from '@/lib/url'
 import { SpecCurvePlots, type SpecLayout } from './SpecCurvePlots'
 import { ChartAside } from '@/lib/singleView'
 import { FixedSetNote } from '@/lib/markedRows'
+import { calibrationCohort } from '@/lib/calibrationChoices'
 
 /** spec_curve.json, written by gallery/data/export_spec_curve.py */
 export interface SpecCurveFile {
@@ -83,7 +84,7 @@ type Comparison = 'full' | 'standard' | 'all'
  * rather than whichever single column a raster happens to sample.
  */
 export function SpecCurve({
-  selected, onSelect, src = 'spec_curve.json', id = 'spec-curve', title, subtitle, provenance, controls, defaultLayout = 'combined', selectHint = 'click to load into the k-sweep below', excludePreprocessing = [], defaultComparison = 'full', baselines: baselinesProp,
+  selected, onSelect, src = 'spec_curve.json', id = 'spec-curve', title, subtitle, provenance, controls, defaultLayout = 'combined', selectHint = 'click to load into the k-sweep below', excludePreprocessing = [], defaultComparison = 'full', baselines: baselinesProp, cohort, protocol,
 }: {
   selected?: Config
   onSelect?: (c: Config) => void
@@ -105,6 +106,9 @@ export function SpecCurve({
    * model are not paired). The chart then hides its own Baselines control and Model spectra filter.
    */
   baselines?: string
+  /** Page-wide filters, kept when chart-local filters are reset. */
+  cohort?: string
+  protocol?: string
 }) {
   const method = useEstimator()
   // strip colour: the share of the specifications at a position that use a choice, white (none) to
@@ -162,7 +166,7 @@ export function SpecCurve({
       aria-label="Edit the custom guardrails" title="Edit the custom guardrails: conditions on any readout, AND / OR groups, calculated fields"><PencilIcon /></button> },
     { key: 'only', label: 'Red dots only', toggle: true, default: false, hidden: false, when: (c) => c.dots !== 'none',
       title: 'Keep only the configurations drawn as red dots' },
-  ], { interleavedOnly: filters.mo.startsWith('app'), hasVibes, paired, hasRule: !!userRule })
+  ], { interleavedOnly: (protocol ?? filters.mo).startsWith('app'), hasVibes, paired, hasRule: !!userRule })
   const metric = o.values.metric as SpecMetric
   const layout = o.values.view as SpecLayout
   const comparison = (baselinesProp ?? o.values.baselines) as Comparison | `only:${string}`
@@ -258,6 +262,8 @@ export function SpecCurve({
     if (!file) return [] as number[]
     const out: number[] = []
     for (let i = 0; i < file.n; i++) {
+      if (cohort && calibrationCohort(file.categories.co[file.co[i]]) !== calibrationCohort(cohort)) continue
+      if (protocol && file.categories.mo[file.mo[i]] !== protocol) continue
       if (excludePreprocessing.includes(file.categories.sp[file.sp[i]]) || excludePreprocessing.includes(file.categories.sel[file.sel[i]])) continue
       if (comparison.startsWith('only:')) {
         // one baseline: the paired searches' shared baseline, otherwise the model spectra
@@ -267,13 +273,13 @@ export function SpecCurve({
         const sel = file.categories.sel[file.sel[i]]
         if (!['airspec', comparison === 'full' ? fullVibes : 'vibes'].includes(sel)) continue
       }
-      if ((['co', 'sp', 'sel', 'mo', 'lot'] as const).some(key => filters[key] !== ALL && file.categories[key][file[key][i]] !== filters[key])) continue
+      if ((['co', 'sp', 'sel', 'mo', 'lot'] as const).some(key => !(key === 'co' && cohort || key === 'mo' && protocol) && filters[key] !== ALL && file.categories[key][file[key][i]] !== filters[key])) continue
       if (filters.cut !== ALL && (file.cut[i] === null ? NO_CUTOFF : String(file.cut[i])) !== filters.cut) continue
       if (filters.k !== ALL && String(file.k[i]) !== filters.k) continue
       if (matchesChoiceFilters(file.masks, i, choiceGroups)) out.push(i)
     }
     return out
-  }, [file, choiceGroups, filters, comparison, excludePreprocessing, hasVibes, fullVibes, paired])
+  }, [file, choiceGroups, filters, comparison, excludePreprocessing, hasVibes, fullVibes, paired, cohort, protocol])
   const shown = useMemo(() => passOnly ? inView.filter(i => highlighted[i]) : inView, [inView, passOnly, highlighted])
 
   const setFilter = (key: FilterKey, value: string) => {
@@ -333,7 +339,7 @@ export function SpecCurve({
   })
 
   // anything narrowing the curve beyond the chart's defaults
-  const filtered = required.size > 0 || Object.values(filters).some(value => value !== ALL) || passOnly || (hasVibes && !baselinesProp && comparison !== defaultComparison)
+  const filtered = required.size > 0 || Object.entries(filters).some(([key, value]) => !(key === 'co' && cohort || key === 'mo' && protocol) && value !== ALL) || passOnly || (hasVibes && !baselinesProp && comparison !== defaultComparison)
   const resetFilters = () => { setRequired(new Set()); setFilters(initialFilters()); o.set('only', false); if (hasVibes && !baselinesProp) o.set('baselines', defaultComparison); tip.hide() }
 
   return (
@@ -348,19 +354,22 @@ export function SpecCurve({
           {o.controls()}
           {file && <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
             <strong className="control">Filters</strong>
-            {categorySelect('co', 'Cohort', COHORT)}
+            {!cohort && categorySelect('co', 'Cohort', COHORT)}
             <Select label="Cohort size" value={filters.cut} options={[ALL, ...(file.cut.includes(null) ? [NO_CUTOFF] : []), ...numericOptions('cut')]}
               onChange={value => setFilter('cut', value)} optionLabel={value => value === ALL ? 'All' : value === NO_CUTOFF ? 'Complete cohort (no cutoff)' : `${value} filters`}
               title="Requested number of filters in the selected calibration cohort; complete cohorts have no cutoff." />
             {!paired && categorySelect('sel', 'Selection spectra', SELECTION_SPACE)}
             {!paired && !baselinesProp && categorySelect('sp', 'Model spectra', PREPROCESSING)}
-            {categorySelect('mo', 'Cross-validation', CV_PROTOCOL)}
+            {!protocol && categorySelect('mo', 'Cross-validation', CV_PROTOCOL)}
             <Select label="PLS factors" value={filters.k} options={[ALL, ...numericOptions('k')]} onChange={value => setFilter('k', value)} optionLabel={value => value === ALL ? 'All' : value} />
             {file.categories.lot.length > 1 && categorySelect('lot', 'Calibration lot', LOT_LABELS, 'Any')}
             {filtered && <button type="button" className="btn quiet" onClick={resetFilters}>Reset filters</button>}
           </div>}
           {evaluated.error && <span className="control" style={{ color: 'var(--danger)' }}>Red-dot rule: {evaluated.error}</span>}
           {file && <span className="control">{m.toLocaleString()} of {availableCount.toLocaleString()} shown · {passCount.toLocaleString()} saved guardrail passers{showDots && (dots !== 'guardrails' || previewing) && ` · ${matchCount.toLocaleString()} red dots${previewing ? ' (preview)' : ''}`}{availableCount < f.n && ` · ${(f.n - availableCount).toLocaleString()} archived configurations hidden`}</span>}
+          {(cohort || protocol) && <span className="control" data-shared-calibration-filter="">
+            {[cohort && `Cohort: ${label(COHORT, cohort)}`, protocol && `Cross-validation: ${label(CV_PROTOCOL, protocol)}`].filter(Boolean).join(' · ')}
+          </span>}
           {file && required.size > 0 && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', width: '100%' }} aria-label="Selected choice filters">
             {[...required].map(c => <button key={c} type="button" className="btn quiet" aria-label={`Remove choice filter: ${file.choices[c]}`} onClick={() => toggleChoice(c)}>{file.choices[c]} ×</button>)}
           </div>}

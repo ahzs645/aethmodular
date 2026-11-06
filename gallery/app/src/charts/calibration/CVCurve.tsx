@@ -5,7 +5,7 @@ import { SweepPlot } from '@/components/SweepPlot'
 import { fmt } from '@/lib/stats'
 import { INK } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile } from '@/lib/types'
-import { CV_PROTOCOL, METRIC, label } from '@/lib/labels'
+import { CV_PROTOCOL, CV_PROTOCOL_SHORT, METRIC, label } from '@/lib/labels'
 import { presetName } from './common'
 import { useFitHeight } from '@/lib/chartFit'
 
@@ -38,7 +38,7 @@ export function CVCurve({ run, runs }: { run: CalibRun; runs: CalibRunsFile }) {
       provenance={`calibration_explorer /api/run curve · cohort ${run.n_cohort} filters, ${run.n_train_sites} sites`}
       controls={
         <span className="control">
-          rule: {run.auto_k} PLS factors · RMSECV floor {fmt(run.rmsecv_floor, 3)} µg ({run.pct_rmsecv_floor} % of mean loading)
+          {label(CV_PROTOCOL_SHORT, runs.mode)} · rule: {run.auto_k} PLS factors · RMSECV floor {fmt(run.rmsecv_floor, 3)} µg ({run.pct_rmsecv_floor} % of mean loading)
           {/* the exported held-out slope is a y-on-x fit, so only R² and RMSE are shown */}
           {run.heldout ? ` · ${METRIC.cvR2}: ${fmt(run.heldout.R2, 3)}, RMSE ${fmt(run.heldout.RMSE, 3)} µg` : ' · no whole-site cross-validation score under this protocol'}
         </span>
