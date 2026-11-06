@@ -137,7 +137,7 @@ const TABS = [
   { key: 'ranking', label: 'Ranking' },
   { key: 'partOfWhole', label: 'Composition', title: 'What the PM2.5 is made of, and the FTIR organic functional groups, per site and season' },
   { key: 'map', label: 'Map' },
-  { key: 'investigations', label: 'Investigations', title: 'Cards for the work beyond the chart tabs: Meetings, Experimental, Research diagnostics, Aethalometer and Data availability' },
+  { key: 'investigations', label: 'Investigations', title: 'Research timeline, experiment connections and evidence graphs, plus the investigation areas' },
   { key: 'availability', label: 'Data availability', title: 'Notebook coverage analyses, product inventory, sample-day overlap and filter history' },
   { key: 'weather', label: 'Weather', title: 'Weather over each filter’s sampling window: ERA5 at every SPARTAN site, the airport station at Addis' },
   { key: 'aethalometer', label: 'Aethalometer', title: 'MA350 aethalometers at the focus sites (Instruments section; unlisted in public builds)' },
@@ -1610,7 +1610,7 @@ export default function App() {
           <button className="btn" type="button" onClick={() => setNetwork('focus')}>Open bundled focus sites</button></div>}
         <LinkProblem />
         {tab === 'custom' && <SectionPage sec={sec} setSec={setSec} isTab={isOpenable} />}
-        {tab === HUB_TAB && <InvestigationsPage areas={HUB_AREAS} onOpen={(t, p) => openTab(t, undefined, p ?? AREAS.find((a) => a.tab === t)?.pages[0]?.key)} />}
+        {tab === HUB_TAB && <InvestigationsPage areas={HUB_AREAS} history={research.history} canOpen={isOpenable} onOpen={(t, p) => openTab(t, undefined, p ?? AREAS.find((a) => a.tab === t)?.pages[0]?.key)} />}
         {tab === 'availability' && <DataAvailabilityPage />}
         {tab === 'builder' && <ChartBuilderPage rows={rows} meta={meta} enabled={builderEnabled} />}
         {tab === 'census' && <><AreaHeader area="Census" pages={CENSUS_PAGES} value="census" onPage={() => {}} /><CensusPage census={census} /></>}

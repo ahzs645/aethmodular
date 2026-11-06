@@ -425,6 +425,23 @@ back to the cards, "Area · Page", and one Page dropdown, shown only with Explai
 already names the page). The old links still work (`#tab=research&aep=…`,
 `#tab=aethalometer&aep=…`, `#tab=experimental&xp=…`, `?availability.view=…#tab=availability`).
 
+Full builds also offer **Timeline** and **Connections** on Investigations. The private Research section
+contributes a source-backed catalog of the top-level FTIR/HIPS and phase-3 notebooks, retrospective
+release/audit records and experiment contracts. Search by question or finding, filter by family or
+evidence, select a record to inspect saved execution evidence and qualifications, and open its existing
+graph pages. Connections shows all documented direct neighbours of a selected record, including
+neighbours outside the filters; each edge retains its type and source. Its Mermaid download exports
+that neighbourhood; **Export full Mermaid** exports the entire catalog. Dates are explicitly **last source changes**, not inferred historical run dates.
+Saved outputs, verified reproductions, completed diagnostics and blocked work have separate labels.
+The original cards remain under **Areas**. View, selection and filters live in `investigations.*` query
+keys so a copied URL reopens them. Public builds omit the Research section and its catalog together.
+
+Refresh this index after changing sources or retrospective curation with `npm run index:investigations`
+in `gallery/app` (`scripts/build-investigation-history.mjs`; `--check` checks freshness). The checked-in
+`src/sections/research/history.generated.json` is built from source records without running analyses.
+Archived notebooks and other research folders are outside its stated coverage. Later notebooks with
+no curated edges stay visible without invented dependencies.
+
 In a public build (`VITE_PUBLIC_BUILD=1`) the **Census** is link-only: it is left out of the menu, the ⌘K
 search and the Investigations cards, and `#tab=census` still opens it (`PUBLIC_UNLISTED` in `app/src/App.tsx`).
 
