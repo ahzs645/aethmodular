@@ -1,0 +1,12 @@
+{
+  "site": "ETAD",
+  "filters": "${AETHMODULAR_PMF_RAW}/etad_filters.csv",
+  "analyses": "${AETHMODULAR_PMF_RAW}/etad_analysis.csv",
+  "scans": "${AETHMODULAR_PMF_RAW}/etad_scans.csv",
+  "historical_ids_file": "${AETHMODULAR_PMF_RAW}/etad_historical_ids.csv",
+  "grid_file": "${AETHMODULAR_PMF_RAW}/etad_native_overlap_grid.txt",
+  "output": "runs/ETAD-preparation-v1",
+  "exclusions": {
+    "ETAD-0158-6": "Large hole documented in laboratory integrity record; retained as an explicit exclusion"
+  }
+}

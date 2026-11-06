@@ -1,0 +1,21 @@
+{
+  "output": "runs/pmf-pipeline-v1",
+  "datasets": [
+    {
+      "dataset_id": "ETAD",
+      "preparation_config": "etad.prepare.example.json",
+      "runs": [
+        {"name": "huber-k5", "engine": "python-independent", "loss": "huber", "factors": [5], "seeds": [1,10,100], "max_iter": 3000},
+        {"name": "quadratic-k5", "engine": "python-independent", "loss": "quadratic", "factors": [5], "seeds": [1,10,100], "max_iter": 3000},
+        {"name": "epa-handoff", "operation": "epa-export", "engine": "epa-pmf5", "factors": [5], "seeds": [1,10,100]}
+      ]
+    },
+    {
+      "dataset_id": "ETBI",
+      "preparation_config": "etbi.prepare.example.json",
+      "runs": [
+        {"name": "huber-k5", "engine": "python-independent", "loss": "huber", "factors": [5], "seeds": [1,10,100], "max_iter": 3000}
+      ]
+    }
+  ]
+}

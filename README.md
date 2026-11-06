@@ -135,3 +135,8 @@ and routine usage should use `aeth` so paths and workflow names remain stable.
   historical presentation/summary artifacts remains tracked pending content review.
 - Core import paths have been normalized to `src.*` for reproducibility.
 - See `docs/migration-paths.md` for old-to-new paths.
+
+
+## Reproducible FTIR PMF workflow
+
+Use `aeth pmf --help` or `python -m aethmodular_cli.pmf --help`. See [PMF workflow](docs/pmf-implemented-workflow.md), [data contracts](docs/pmf-data-contract.md), and [execution gates](docs/pmf-future-batch-engine-readiness.md). Independent Huber, pinned ESAT and native EPA ME-2 are identified separately; numerical execution is not calibrated source-mass validation.
