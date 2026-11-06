@@ -1,3 +1,4 @@
+import { copyText } from '@/lib/views'
 import { fitUncertainty } from '@/lib/fitUncertainty'
 import { PAPER_COLORS, PAPER_ORDER, paperSeasonOf } from '@/lib/pmfPaper'
 import { fieldHelp } from '@/lib/glossary'
@@ -216,7 +217,7 @@ export function SampleDrawer({
     const p = new URLSearchParams(url.hash.replace(/^#/, ''))
     p.set('pin', row.id)
     url.hash = p.toString()
-    navigator.clipboard?.writeText(url.toString()).then(() => {
+    copyText(url.toString()).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     })

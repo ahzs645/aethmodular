@@ -1,3 +1,4 @@
+import { copyText } from '@/lib/views'
 import { PageTabSlot, PlotTabSlot, SamplesTabSlot, usePageSidebarNote, usePageTab } from '@/lib/pageSidebar'
 import { RegressionControls } from '@/lib/regressionPrefs'
 import { chemText, trim } from '@/lib/format'
@@ -1006,7 +1007,7 @@ function CopyExclusions({ rows }: { rows: { id: string; label: string; reason: s
   const [done, setDone] = useState(false)
   const copy = () => {
     const json = JSON.stringify(rows.map((r) => ({ id: r.id, where: r.label, reason: r.reason || null, excluded: r.source })), null, 2)
-    navigator.clipboard?.writeText(json).then(() => { setDone(true); setTimeout(() => setDone(false), 1500) }).catch(() => {})
+    copyText(json).then(() => { setDone(true); setTimeout(() => setDone(false), 1500) }).catch(() => {})
   }
   return <button type="button" className="btn quiet excluded-copy" onClick={copy} title="Copy these exclusions and their reasons as JSON">{done ? 'Copied ✓' : 'Copy as JSON'}</button>
 }

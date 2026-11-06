@@ -120,7 +120,7 @@ export function ChartFrame({
     const text = [`Gallery chart: "${short}"${id ? ` (#${id})` : ''}`,
       `Source: ${source ?? 'search the title in gallery/app/src'}`,
       `View: ${window.location.href}`].join('\n')
-    navigator.clipboard?.writeText(text).then(() => { setRefCopied(true); setTimeout(() => setRefCopied(false), 1400) })
+    copyText(text).then(() => { setRefCopied(true); setTimeout(() => setRefCopied(false), 1400) }, () => {})
   }
 
   const anchor = id && method !== 'deming' ? `${id}-${method}` : id

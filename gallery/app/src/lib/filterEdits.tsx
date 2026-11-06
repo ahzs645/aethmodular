@@ -1,3 +1,4 @@
+import { copyText } from '@/lib/views'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { baseFilterId, useHighlightActions } from '@/lib/highlight'
 import { usePresentation } from '@/lib/presentation'
@@ -231,7 +232,7 @@ function FilterMenu({ x, y, target, scope, action, onClose }: { x: number; y: nu
       {target && alreadyOut.length < n && <button type="button" role="menuitem" onClick={act(() => ed.drop(target.ids))}>Exclude {single ? 'this filter' : `these ${n}`}</button>}
       {target && alreadyOut.length > 0 && <button type="button" role="menuitem" onClick={act(() => ed.restore(alreadyOut))}>Put {single ? 'it' : `${alreadyOut.length}`} back</button>}
       {target && <button type="button" role="menuitem" onClick={act(() => ed.keep(target.ids))}>Keep only {single ? 'this filter' : `these ${n}`}</button>}
-      {single && <button type="button" role="menuitem" onClick={act(() => { navigator.clipboard?.writeText(single) })}>Copy ID</button>}
+      {single && <button type="button" role="menuitem" onClick={act(() => { copyText(single).catch(() => {}) })}>Copy ID</button>}
       {brushed && <>
         {(target || action) && <div className="ctx-sep" />}
         <div className="ctx-head">Brushed · {plural(brushed.size)}</div>

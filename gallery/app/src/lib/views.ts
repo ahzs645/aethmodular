@@ -137,12 +137,29 @@ export function viewHref(view: ViewState) {
   return `${window.location.pathname}${q ? `?${q}` : ''}${h ? `#${h}` : ''}`
 }
 
+/** The older way to copy, from a hidden field: the only one a page on plain http has, where browsers leave out navigator.clipboard. */
+function copyFromField(text: string) {
+  const field = document.createElement('textarea')
+  field.value = text
+  field.readOnly = true
+  field.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0'
+  document.body.appendChild(field)
+  const back = document.activeElement as HTMLElement | null
+  field.select()
+  try { return document.execCommand('copy') } finally { field.remove(); back?.focus({ preventScroll: true }) }
+}
+
 /**
  * Put text on the clipboard from a click, including text still being made. A browser may refuse a copy that
  * starts after an await (Safari does), so a promise of the text goes in as a ClipboardItem, inside the click.
  * Rejects when the copy is refused or the text could not be made.
  */
 export async function copyText(text: string | Promise<string>) {
+  if (!navigator.clipboard) {
+    // no awaiting ahead of a ready text: the copy has to run inside the click
+    if (!copyFromField(typeof text === 'string' ? text : await text)) throw new Error('the browser refused the copy')
+    return
+  }
   if (typeof text !== 'string' && typeof ClipboardItem !== 'undefined') {
     const blob = text.then((t) => new Blob([t], { type: 'text/plain' }))
     await navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })])

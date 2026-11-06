@@ -87,7 +87,7 @@ function SectionView({ section, isTab, choose, onSave, onDeleted }: {
       () => { if (live) setLink({ error: tooLongText }) })
     return () => { live = false }
   }, [section])
-  const [note, setNote] = useState<{ text: string; undo?: () => void } | null>(null)
+  const [note, setNote] = useState<{ text: string; undo?: () => void; link?: string } | null>(null)
   const [exporting, setExporting] = useState<ExportProgress | null>(null)
   const cancelled = useRef(false)
   const save = async (format: SectionFormat) => {
@@ -101,7 +101,7 @@ function SectionView({ section, isTab, choose, onSave, onDeleted }: {
       if (result) setNote({ text: result.missing.length ? `Saved, without ${result.missing.length} chart${result.missing.length === 1 ? '' : 's'} that could not be drawn: ${result.missing.join('; ')}` : 'Saved' })
     } catch (e) { setNote({ text: `Could not export: ${e instanceof Error ? e.message : e}` }) } finally { setExporting(null) }
   }
-  const copy = () => { if (link.url) copyText(link.url).then(() => setNote({ text: `Link copied · ${link.size} characters. It holds the whole section, so later changes need a new link.` }), () => setNote({ text: 'Could not copy; your browser refused it' })) }
+  const copy = () => { if (link.url) copyText(link.url).then(() => setNote({ text: `Link copied · ${link.size} characters. It holds the whole section, so later changes need a new link.` }), () => setNote({ text: 'Your browser refused the copy. Select this link and copy it:', link: link.url })) }
   // each change with a way back: a chart taken out loses its note and settings
   const undoable = (text: string, act: () => void) => { const before = sectionsNow(); act(); setNote({ text, undo: () => { restoreSections(before); setNote(null) } }) }
 
@@ -132,7 +132,7 @@ function SectionView({ section, isTab, choose, onSave, onDeleted }: {
     </header>
     {!editable && <p className="sec-banner">A shared section: it shows what was sent, and nothing here changes it. Open a chart to explore it, or save a copy to change it or add to it.</p>}
     {link.error && <p className="sec-banner warn" role="alert">{link.error}</p>}
-    {note && <p className="sec-banner" role="status">{note.text}{note.undo && <button type="button" className="btn quiet" onClick={note.undo}>Undo</button>}</p>}
+    {note && <p className="sec-banner" role="status">{note.text}{note.link && <input className="select sec-link" aria-label="Section link" readOnly value={note.link} onFocus={(e) => e.currentTarget.select()} />}{note.undo && <button type="button" className="btn quiet" onClick={note.undo}>Undo</button>}</p>}
     {exporting && <p className="sec-banner" role="status">{exporting.done < exporting.total ? `Drawing chart ${exporting.done + 1} of ${exporting.total}${exporting.title ? `: ${exporting.title}` : ''}` : 'Writing the file…'}
       <button type="button" className="btn quiet" onClick={() => { cancelled.current = true }}>Cancel</button></p>}
     {section.items.length === 0

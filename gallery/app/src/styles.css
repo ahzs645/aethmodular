@@ -958,6 +958,7 @@ html:not([data-explain="1"]) .reference-guide { display: none; }
 input.sec-name:hover, textarea.sec-about:hover, textarea.sec-note:hover, input.sec-card-title:hover { border-color: var(--ink-border); }
 input.sec-name:focus, textarea.sec-about:focus, textarea.sec-note:focus, input.sec-card-title:focus { outline: none; border-color: var(--accent); background: var(--ink-panel); }
 .sec-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; padding: 7px 12px; border-radius: 8px; background: var(--accent-soft); font-size: calc(13px * var(--text-scale)); }
+.sec-link { flex: 1 1 260px; min-width: 0; }
 .sec-banner.warn { background: color-mix(in srgb, #d97706 16%, transparent); }
 .sec-empty { max-width: 560px; margin: 48px auto; text-align: center; color: var(--ink-muted); }
 .sec-empty h2 { color: var(--ink); font-size: calc(18px * var(--text-scale)); margin: 0 0 8px; }

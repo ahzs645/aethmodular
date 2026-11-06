@@ -1,3 +1,4 @@
+import { copyText } from '@/lib/views'
 import { useEffect, useState } from 'react'
 import type { FilterRecord } from '@/lib/highlight'
 import type { PilotRecord } from '@/lib/pilotFilters'
@@ -21,7 +22,7 @@ export function PilotDrawer({ record, context, onClose, enter = true }: { record
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
-  const copy = () => navigator.clipboard?.writeText(record.id).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) })
+  const copy = () => copyText(record.id).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) })
   return (
     <DrawerShell label={`Filter ${record.id}`} onClose={onClose} enter={enter}>
       <header className="drawer-head">

@@ -1,3 +1,4 @@
+import { copyText } from '@/lib/views'
 import { useEffect, useState } from 'react'
 import { fmt } from '@/lib/stats'
 import type { FilterRecord } from '@/lib/highlight'
@@ -62,7 +63,7 @@ export function RecordDrawer({ rec, onClose, lookup }: {
     }, () => {})
     return () => { live = false }
   }, [rec.site])
-  const copy = () => navigator.clipboard?.writeText(rec.id).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) })
+  const copy = () => copyText(rec.id).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) })
 
   return (
     <DrawerShell label={`Filter ${rec.id}`} onClose={onClose}>

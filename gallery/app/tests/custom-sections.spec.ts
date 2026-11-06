@@ -177,3 +177,33 @@ test('a long section keeps only the charts near the screen alive, and one let go
   await expect(page.locator('.sec-card').first().locator('iframe.shown')).toBeVisible({ timeout: 45000 })
   expect(await frames.count()).toBeLessThanOrEqual(9)
 })
+
+test('a section link copies on plain http, where browsers have no clipboard API', async ({ page }) => {
+  // the published site is on http: this is what a page there has. Locally it is a secure context, and the bug does not show
+  await page.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, 'clipboard', { get: () => undefined })
+    document.addEventListener('copy', () => { (window as unknown as { copied: string }).copied = (document.activeElement as HTMLTextAreaElement).value })
+  })
+  await picked(page, '/#tab=correlation')
+  await openSection(page)
+  await expect(page.getByRole('button', { name: 'Copy link', exact: true })).toBeEnabled()
+  await page.getByRole('button', { name: 'Copy link', exact: true }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Link copied' })).toBeVisible()
+  expect(await page.evaluate(() => (window as unknown as { copied: string }).copied)).toContain('#tab=custom&sec=1.')
+
+  await page.locator('.views-menu button[aria-label="Views"]').click()
+  await page.locator('.views-pop').getByRole('button', { name: 'Copy link' }).click()
+  await expect(page.locator('.views-pop [role=status]')).toContainText('Link copied')
+})
+
+test('a section link that cannot be copied is shown to copy by hand', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, 'clipboard', { get: () => undefined })
+    document.execCommand = () => false
+  })
+  await picked(page, '/#tab=correlation')
+  await openSection(page)
+  await expect(page.getByRole('button', { name: 'Copy link', exact: true })).toBeEnabled()
+  await page.getByRole('button', { name: 'Copy link', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: 'Section link' })).toHaveValue(/#tab=custom&sec=1\./)
+})
