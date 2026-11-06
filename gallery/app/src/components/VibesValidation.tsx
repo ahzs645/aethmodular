@@ -46,8 +46,9 @@ function ValidationFigures({ data }: { data: Evidence }) {
       provenance={`Frozen reference ${String(run.reference_signature)}; local check ${String(run.created_utc)}`}>
       <p>{String(run.independent_test_blanks)} independent held-out Addis blanks; background trained on {String(run.training_blanks)} other blanks,
         rank {String(run.background_rank)}. Each method is rerun after adding known spectral signals.</p>
-      <p>{passed}/{fits.length} VIBES optimizer and finite-output checks succeeded; {retried} fits needed a retry.</p>
-      {typeof run.map_replayed === 'number' && <p>Convex-solver replay: {String(run.map_optimal)}/{String(run.map_replayed)} reported optimal.
+      <p>{passed}/{fits.length} VIBES optimizer and finite-output checks succeeded; {retried} fits needed a retry.
+        {passed < fits.length && ' A blank whose own unspiked fit failed has no VIBES recovery here, since recovery is measured against that fit; the spline still has it.'}</p>
+      {typeof run.map_replayed === 'number' && <p>Convex-solver replay: {String(run.map_optimal)}/{String(run.map_replayed)} reported optimal{Number(run.map_not_replayed) > 0 && ` (${String(run.map_not_replayed)} failed fit has nothing to replay)`}.
         Recovery metrics reproduce within 10⁻⁸.</p>}
       <p>{data.text.definition}</p>
       <p>These artificial additions probe signal preservation; they do not identify real EC absorption.</p>

@@ -127,7 +127,9 @@ def second_derivative(X):
 # decides whether a prediction interpolates or extrapolates.
 
 # %%
-IMPROVE_CSV = ftir_spectra_dir() / "ftir-spectra-2026-06-24.csv"
+IMPROVE_NAME = "ftir-spectra-2026-06-24.csv"
+# directly in the spectra folder, or under its dated run folder (as gallery/data/export_research_lot_spectra.py looks)
+IMPROVE_CSV = next(p for p in (ftir_spectra_dir() / IMPROVE_NAME, ftir_spectra_dir() / "runs/2026-06-24" / IMPROVE_NAME) if p.exists())
 
 imp = pd.read_csv(IMPROVE_CSV)
 wn_cols = [c for c in imp.columns if c not in ("AnalysisId", "FilterId",

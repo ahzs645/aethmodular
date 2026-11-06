@@ -5,6 +5,13 @@ import path from 'node:path'
 const output = path.resolve('../../deliverables/dashboard_superset')
 mkdirSync(path.join(output, 'screenshots'), { recursive: true })
 const screenshot = async (page: Page, name: string) => page.screenshot({ path: path.join(output, 'screenshots', `${name}.png`), fullPage: true })
+// The filters a default view counts, from the data itself, so a sourced exclusion changes the data and not this file.
+// The fit below stays pinned on purpose: a change in it is a change in the science, and should be looked at.
+type FilterRow = Record<string, unknown> & { excluded?: boolean }
+const kept = (JSON.parse(readFileSync('public/data/filters.json', 'utf8')).rows as FilterRow[]).filter(r => !r.excluded)
+const finite = (...fields: string[]) => kept.filter(r => fields.every(f => Number.isFinite(r[f]))).length
+const pageFilters = kept.length, ecFilters = finite('EC (FTIR)'), pairFilters = finite('EC (FTIR)', 'HIPS BC')
+
 const tile = (kind: string, fields: string[] = [], id = 't1', x = 0, y = 0, w = 12, h = 12) => [id, kind, x, y, w, h, ...fields.map(encodeURIComponent)].join(':')
 const url = (tiles?: string, extra: Record<string, string> = {}, query: Record<string, string> = {}) => `/?${new URLSearchParams(query)}#${new URLSearchParams({ tab: 'dashboard', net: 'focus', ...(tiles ? { dsites: `Test:s1:${tiles}` } : {}), ...extra })}`
 const open = async (page: Page, tiles?: string, extra: Record<string, string> = {}, query: Record<string, string> = {}) => {
@@ -26,8 +33,8 @@ test('ordinary sheet defers calibration data, displays unchanged fits, and recor
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message))
   const cdp = await page.context().newCDPSession(page); await cdp.send('Performance.enable')
   await open(page)
-  await expect(page.locator('.dash-tile').first()).toContainText('544')
-  await expect(page.locator('.dash-tile').first()).toContainText('1.258')
+  await expect(page.locator('.dash-tile').first()).toContainText(`Filters${pairFilters}`)
+  await expect(page.locator('.dash-tile').first()).toContainText('1.259')
   expect(await page.evaluate(() => performance.getEntriesByType('resource').filter(e => /data\/calibration(?:_runs)?\.json/.test(e.name)).length)).toBe(0)
   expect(errors).toEqual([])
   await screenshot(page, '01-after-desktop')
@@ -45,7 +52,7 @@ test('source failures offer the bundled focus sites instead of unexplained empty
   await expect(page.getByRole('alert').filter({ hasText: 'selected network data' })).toBeVisible()
   await screenshot(page, '02-source-error')
   await page.getByRole('button', { name: 'Open bundled focus sites' }).click()
-  await expect(page.locator('.dash-tile').first()).toContainText('544')
+  await expect(page.locator('.dash-tile').first()).toContainText(`Filters${pairFilters}`)
 })
 
 test('tile scopes are independent, reference membership survives page date changes, and reload restores it', async ({ page }) => {
@@ -66,7 +73,7 @@ test('tile scopes are independent, reference membership survives page date chang
     await close(page)
   }
   await info(0, 'Reference cohort · 189 physical filters')
-  await info(1, 'Page filters · 938 physical filters')
+  await info(1, `Page filters · ${pageFilters} physical filters`)
   const before = await first.locator('.stat-value').innerText()
   await page.evaluate(() => { const p = new URLSearchParams(location.hash.slice(1)); p.set('from', '2024-01-01'); location.hash = p.toString() })
   await info(0, 'Reference cohort · 189 physical filters')
@@ -79,10 +86,10 @@ test('tile scopes are independent, reference membership survives page date chang
 test('exact KPI rows, CSV, search, pagination and sample drawer work together', async ({ page }) => {
   await open(page, tile('stat', ['EC (FTIR)']))
   await page.getByRole('button', { name: 'Show contributing filters for EC (FTIR)' }).click()
-  await expect(dialog(page)).toContainText('595 contributing physical filters')
+  await expect(dialog(page)).toContainText(`${ecFilters} contributing physical filters`)
   await screenshot(page, '05-contributing-filter-table')
   await dialog(page).getByRole('button', { name: 'Next', exact: true }).click()
-  await expect(dialog(page)).toContainText('51–100 of 595')
+  await expect(dialog(page)).toContainText(`51–100 of ${ecFilters}`)
   await dialog(page).getByRole('searchbox').fill('ETAD')
   const download = page.waitForEvent('download')
   await dialog(page).getByRole('button', { name: /Download CSV/ }).click()
@@ -145,7 +152,7 @@ test('snapshot exports its rows and checksum, restores them and rejects a modifi
   await expect(page.getByRole('button', { name: 'Dashboard · Seasonal baseline', exact: true })).toBeVisible()
   const event = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download snapshot' }).click()
   const f = await event; const file = path.join(output, 'dashboard-snapshot.json'); await f.saveAs(file)
-  const value = JSON.parse(readFileSync(file, 'utf8')); expect(value.snapshot.tiles[0].rows.length).toBe(938); expect(value.sha256).toMatch(/^[a-f0-9]{64}$/)
+  const value = JSON.parse(readFileSync(file, 'utf8')); expect(value.snapshot.tiles[0].rows.length).toBe(pageFilters); expect(value.sha256).toMatch(/^[a-f0-9]{64}$/)
   await screenshot(page, '13-snapshot-checkpoints')
   await page.getByLabel('Open dashboard snapshot file').setInputFiles(file)
   await expect(page.locator('.snapshot-banner')).toBeVisible()

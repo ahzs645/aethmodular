@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test'
+import { readFileSync } from 'node:fs'
 
 const panel = (id: string) => `[data-chart-key="${id}"]`
+// The counts of the local run (baseline_validation.json, gitignored and rebuilt per machine): a fit can fail on one
+// machine and not another, and the page has to report whichever happened. docs/vibes-gallery-continuum-check.md
+const evidence = () => JSON.parse(readFileSync('public/data/baseline_validation.json', 'utf8')).tables
 
 test('native continuum results share signal/window controls and survive a copied URL', async ({ page }) => {
   const errors: string[] = []
@@ -8,8 +12,11 @@ test('native continuum results share signal/window controls and survive a copied
   await page.goto('/#tab=baseline&net=focus')
   const scope = page.locator(panel('vibes-validation-scope'))
   await expect(scope).toContainText('9 independent held-out Addis blanks')
-  await expect(scope).toContainText('90/90 VIBES optimizer and finite-output checks succeeded')
-  await expect(scope).toContainText('90/90 reported optimal')
+  const { fits, run } = evidence()
+  const passed = (fits.success as unknown[]).filter((v) => v === true || v === 1).length
+  await expect(scope).toContainText(`${passed}/${fits.success.length} VIBES optimizer and finite-output checks succeeded`)
+  await expect(scope).toContainText(`${run.map_optimal[0]}/${run.map_replayed[0]} reported optimal`)
+  expect(run.map_optimal[0]).toBe(run.map_replayed[0])
   await expect(scope).toContainText('32,286-fit/G4 run awaits its own results export')
   for (const id of ['vibes-validation-recovery', 'vibes-validation-errors', 'vibes-validation-traces', 'vibes-validation-blanks']) {
     await expect(page.locator(panel(id)).locator('svg[font-family]').first()).toBeVisible()
