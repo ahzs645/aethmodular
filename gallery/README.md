@@ -839,7 +839,12 @@ drew, each over the live subset:
   value), with a season strip and a continuous legend.
 - **Composition hierarchy** — the treemap and donut gained a family → species
   level, plus **circle pack** and **stacked bars** (the one encoding that
-  compares sites on one axis).
+  compares sites on one axis). Over time → Seasons side by side has two label
+  levels: **Group time by → Year, then season** shows each year's seasons;
+  **Season, then year** puts the available years of each season side by side.
+  Whole cross-year seasons belong to their ending year (Bega Oct 2022–Jan 2023
+  is in 2023), including partially sampled seasons. The choice is saved in
+  `composition.seasonOrder`; crowded panels scroll horizontally.
 - **Density layout** and **mirror statistics** on the histogram: the mirror
   reports median difference, Welch t and p, Cohen's d and the Mann–Whitney
   AUC, effect sizes first (`lib/stats.twoSample`, checked against hand

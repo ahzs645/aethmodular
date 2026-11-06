@@ -15,7 +15,7 @@ import { useChartOptions } from '@/lib/chartOptions'
 import { useFitHeight } from '@/lib/chartFit'
 import { useExport, useLoaded } from '@/lib/data'
 import { fmt } from '@/lib/format'
-import { textWidth } from '@/lib/fitLabel'
+import { placePointLabels } from '@/lib/fitLabel'
 import { siteCodeColor } from '@/lib/siteColours'
 import { useMac } from '@/lib/mac'
 import { ExcludedNote, useCountedFilter, useExclMode, useKnownFilter } from '@/lib/markedRows'
@@ -169,7 +169,10 @@ export function NetworkRankPlacement({ rows, meta, field: selectedField, improve
   const loading = (needsImprove && !ref && !error) || (needsSpartan && !spIndex && !indexError) || (allSpartan && !sp.data && !sp.error)
   const loadError = (needsImprove && error) || (needsSpartan && indexError) || (allSpartan && sp.error)
   const blocked = !quantity || massClash || loading || !!loadError
-  const selected = shown.filter(s => s.active)
+  const labels = useMemo(() => {
+    const selected = shown.filter(s => s.active)
+    return selected.length <= 8 ? placePointLabels(selected.map(s => ({ key: keyOf(s), text: s.name, x: x(s.rank), y: y(s.p50) })), innerW, innerH) : []
+  }, [shown, x, y, innerW, innerH])
   // "Sites / filters in view" with only active SPARTAN sites leaves no SPARTAN background to compare against
   const noSpartanBackground = needsSpartan && !allSpartan && spartan.length > 0 && spartan.every(s => active.some(a => a.network === 'SPARTAN' && a.code === s.code))
   const missingActive = [...activeInfo].filter(([code]) => !active.some(s => s.code === code)).map(([, s]) => s.name)
@@ -212,13 +215,10 @@ export function NetworkRankPlacement({ rows, meta, field: selectedField, improve
                 onHover={(e, s) => tip.show(e, [`${s.name} (${s.code}) · ${s.network}${s.active ? ' · active Samples site' : ''}`, `median ${val(s.p50)} · IQR ${val(s.p25)}–${val(s.p75)}`, `n = ${s.n} · ${rankText(s)}`, 'click for site details in the sidebar'])}
                 onLeave={tip.hide} onPick={s => { tip.hide(); setOpen(keyOf(s)) }} />
               <g data-active-site-labels="" pointerEvents="none">
-                {selected.length <= 8 && selected.map(s => {
-                  // the name turns to the star's left when it would run past the plot (measured at 10.5 px, lib/fitLabel)
-                  const end = x(s.rank) + 9 + textWidth(s.name, 10.5, 600) > innerW
-                  return <text key={keyOf(s)} x={x(s.rank) + (end ? -9 : 9)} y={y(s.p50) - 9}
-                    textAnchor={end ? 'end' : 'start'} fontSize={10.5} fontWeight={600}
-                    fill={INK.text} paintOrder="stroke" stroke={INK.panel} strokeWidth={3} strokeLinejoin="round">{s.name}</text>
-                })}
+                {labels.map(l => l.connector && <line key={l.key} {...l.connector} stroke={INK.muted} strokeWidth={0.8} />)}
+                {labels.map(l => <text key={l.key} data-site-label={l.key} x={l.x} y={l.y}
+                  textAnchor={l.anchor} fontSize={10.5} fontWeight={600}
+                  fill={INK.text} paintOrder="stroke" stroke={INK.panel} strokeWidth={3} strokeLinejoin="round">{l.text}</text>)}
               </g>
             </g>
           </svg>

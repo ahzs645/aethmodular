@@ -231,7 +231,7 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
     if (!on || frames.length < 2) return
     const key = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return
-      if ((e.target as Element)?.closest?.('input, textarea, select, [contenteditable], [role="listbox"], [role="combobox"], [role="slider"], [role="menu"], [role="dialog"], .drawer')) return
+      if ((e.target as Element)?.closest?.('input, textarea, select, [contenteditable], [role="listbox"], [role="combobox"], [role="slider"], [role="menu"], [role="dialog"], [role="region"][tabindex], .drawer')) return
       if (['ArrowRight', 'PageDown'].includes(e.key)) { e.preventDefault(); go(1) }
       else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); go(-1) }
     }
