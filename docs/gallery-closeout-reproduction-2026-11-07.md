@@ -8,6 +8,8 @@ The primary comparison is fixed at 18 PLS components and five site-grouped outer
 
 Execution results and the exact tested source revision belong in the release receipt. A prepared input bundle, a passing synthetic test or a browser success is not itself a completed scientific rerun.
 
+The [preservation manifest](gallery-closeout-preservation-2026-11-07.json) lists every required archive, its exact byte size and SHA-256, the Google Drive logical location and the separate upload-verification status. The original gallery base is retained alongside the corrected candidate because review CI requires the unchanged base plus its independently hashed overlay. The later completion-documentation CI receipt is a separate companion file; the accepted research ZIP remains unchanged.
+
 ## Recovered inputs
 
 | Input | Identity and scope |
@@ -42,7 +44,17 @@ Preparation writes immutable inputs, copied source code, installed package versi
 
 The prepared bundle contains **16,143 spectra × two variants = 32,286 fit jobs**, with content hash `3583bdb74db1ac2d111d9cdfb6365c1e2a692c545fb8459e507fe9af4633362d`. Its runner SHA-256 is `cb7e689475b31d567558782ad046e7cc1e18b1d117baa6f9277ad584fb1f7ec0`. This is a newly recorded numerical environment, not a claim of byte identity with the original Colab execution.
 
-Collection completed on 7 November: **32,286 expected and collected fits, zero recorded fit failures**, six corrected arrays and 270 verified checkpoints. The complete continuum archive has SHA-256 `cd44e62160e3717afcfc13f793eea294852e139983c25139ed31cf32ac4d4853` and size 980,487,622 bytes. Its three supplied binary parts reassemble to those exact bytes; the parts manifest records their ordered sizes and hashes. Reassemble before extracting the archive beneath `research/ftir_hips_chem/output/tables` into an empty run destination:
+Collection completed on 7 November: **32,286 expected and collected fits, zero recorded fit failures**, six corrected arrays and 270 verified checkpoints. The complete continuum archive has SHA-256 `cd44e62160e3717afcfc13f793eea294852e139983c25139ed31cf32ac4d4853` and size 980,487,622 bytes.
+
+The Drive archive delivers the inputs, continuum run, gallery candidate and original gallery base as ordered binary parts of at most 100,000,000 bytes. Download its `ARCHIVE_INDEX.json`, the listed part folders, and the portable [restore utility](../research/ftir_hips_chem/workflows/restore_closeout_archives.py). From that downloaded archive root, run:
+
+```bash
+python3 restore_closeout_archives.py --manifest ARCHIVE_INDEX.json --output-dir restored
+```
+
+The utility verifies each part and the complete reconstructed archive, preserves differing existing outputs, and does not extract files. Use `--check-only` to verify the downloaded parts without creating reconstructed archives. Reassemble before extracting scientific archives beneath `research/ftir_hips_chem/output/tables` into empty run destinations. Keep the original gallery base and corrected candidate separate.
+
+The immutable research ZIP also retains the first preservation transport's three-part continuum manifest and instructions. That separate part set reconstructs the same complete archive; do not mix its parts with the ten-part Drive set. When restoring that original three-part set, use:
 
 ```bash
 cat Aethmodular_Continuum_Run_20261107.tar.gz.part01 \

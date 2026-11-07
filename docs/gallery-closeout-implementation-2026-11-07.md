@@ -8,6 +8,8 @@ The [first software-batch receipt](gallery-closeout-software-batch-2026-11-07.md
 
 Source changes are in [aethmodular PR #20](https://github.com/ahzs645/aethmodular/pull/20). The companion strict publication workflow is in [aethmodular-gallery PR #1](https://github.com/ahzs645/aethmodular-gallery/pull/1). These review branches have not been merged or deployed by this work.
 
+The [preservation manifest](gallery-closeout-preservation-2026-11-07.json) records the five review payloads, the original gallery base needed by review CI, ordered transport parts, and the separately preserved completion-documentation CI receipt. Its preservation status tracks Google Drive upload verification separately from scientific acceptance. Provider file identities and share links remain in the private archive index. The scientific implementation, accepted PDF source and completion-documentation head retain their distinct identities; archival work does not change the published gallery.
+
 ## Frozen inputs and procedure
 
 | Item | Verified identity and scope |
