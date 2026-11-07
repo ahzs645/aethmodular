@@ -84,10 +84,13 @@ class EpoFit:
         return result
 
 
-def training_rows(spectra, y, rows):
+def training_rows(spectra, y, rows, *, qc_mask=None):
     """The source domain applies to the supplied training rows only."""
     X, y, rows = np.asarray(spectra, float), np.asarray(y, float), np.asarray(rows, int)
-    return rows[np.isfinite(y[rows]) & (y[rows] < 150) & np.isfinite(X[rows]).all(axis=1)]
+    qc = np.ones(len(y), dtype=bool) if qc_mask is None else np.asarray(qc_mask)
+    if qc.shape != y.shape or qc.dtype != np.dtype(bool):
+        raise ValueError("source QC mask must be an aligned Boolean vector")
+    return rows[qc[rows] & np.isfinite(y[rows]) & (y[rows] < 150) & np.isfinite(X[rows]).all(axis=1)]
 
 
 def fit_projection(spectra, chemistry, rows) -> Projection:
@@ -110,11 +113,11 @@ def fit_projection(spectra, chemistry, rows) -> Projection:
     return Projection(left[:, :rank], signatures, zmean, xmean, selected, int(design_rank), tolerance)
 
 
-def fit_training_epo(spectra, y, chemistry, rows, kmax) -> EpoFit:
+def fit_training_epo(spectra, y, chemistry, rows, kmax, *, qc_mask=None) -> EpoFit:
     X, y = np.asarray(spectra, float), np.asarray(y, float)
     if X.ndim != 2 or y.shape != (len(X),):
         raise ValueError("source spectra and TOR labels must have aligned rows")
-    selected = training_rows(X, y, rows)
+    selected = training_rows(X, y, rows, qc_mask=qc_mask)
     projection = fit_projection(X, chemistry, selected)
     if kmax < 1 or kmax > min(len(selected) - 1, X.shape[1] - projection.rank):
         raise ValueError("PLS component count exceeds the available EPO training dimension")
@@ -125,7 +128,7 @@ def fit_training_epo(spectra, y, chemistry, rows, kmax) -> EpoFit:
     return EpoFit(projection, model, selected)
 
 
-def fit_site_cv(spectra, y, chemistry, filter_ids, sites, kmax, *, splits=None):
+def fit_site_cv(spectra, y, chemistry, filter_ids, sites, kmax, *, splits=None, qc_mask=None):
     """Evaluate frozen site folds and then fit a separate all-source model."""
     X, y = np.asarray(spectra, float), np.asarray(y, float)
     ids = validate_physical_ids(filter_ids)
@@ -145,14 +148,14 @@ def fit_site_cv(spectra, y, chemistry, filter_ids, sites, kmax, *, splits=None):
             raise ValueError("each outer split must partition the physical filters without overlap")
         if set(sites[train]) & set(sites[test]) or np.any(fold_ids[test] != -1):
             raise ValueError("held-out sites or physical filters overlap outer folds")
-        fitted = fit_training_epo(X, y, chemistry, train, kmax)
+        fitted = fit_training_epo(X, y, chemistry, train, kmax, qc_mask=qc_mask)
         predictions[test] = fitted.predict(X[test])
         fold_ids[test] = fold_id
         fits.append(fitted)
         receipts.append(fit_receipt(fitted, X, y, chemistry, ids, sites, fold_id=fold_id, test_rows=test))
     if np.any(fold_ids < 0):
         raise ValueError("every source physical filter needs one outer held-out prediction")
-    full = fit_training_epo(X, y, chemistry, all_rows, kmax)
+    full = fit_training_epo(X, y, chemistry, all_rows, kmax, qc_mask=qc_mask)
     return predictions, fold_ids, fits, receipts, full
 
 

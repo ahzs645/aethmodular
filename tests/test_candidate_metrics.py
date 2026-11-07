@@ -162,10 +162,16 @@ def write_source_archive(directory, metadata, metadata_path, models, *, epo=Fals
     identities = metadata.filter_id.to_numpy().astype(str) if ids is None else np.asarray(ids).astype(str)
     arrays = {"improve_filter_ids": identities, "improve_site_ids": metadata.site.to_numpy().astype(str),
               "improve_fold_id": np.array([0, 1, 2, 3, 4, 0]) if fold_id is None else np.asarray(fold_id)}
+    from candidate_metrics import recorded_source_qc
+    qc_mask, qc_policy = recorded_source_qc(metadata)
+    arrays["improve_raw_qc_ok"] = qc_mask
     arrays.update({f"{model}|improve_oof": np.repeat(np.arange(1., len(metadata) + 1)[:, None], 18, axis=1) for model in models})
+    if epo:
+        arrays["base|improve_oof"] = np.repeat(np.arange(1., len(metadata) + 1)[:, None], 18, axis=1)
+        arrays["wn_bin2"] = np.linspace(4000, 500, 72).reshape(-1, 2).mean(axis=1)
     path = directory / "predictions.npz"
     np.savez(path, **arrays)
-    receipt = {"source_identity": {
+    receipt = {"source_qc_policy": qc_policy, "source_identity": {
         "protocol": "physical_filter_order_and_site_folds_v1", "filter_ids_sha256": ids_sha256(metadata.filter_id),
         "improve_metadata_sha256": sha256_file(metadata_path), "predictions_sha256": sha256_file(path),
     }}
@@ -195,6 +201,8 @@ def test_score_stage_verifies_common_fold_ids_without_target_spectra(tmp_path, m
     bundle = tmp_path / "bundle"
     bundle.mkdir()
     metadata.to_csv(bundle / "improve_meta.csv", index=False)
+    np.save(bundle / "wn_full.npy", np.linspace(4000, 500, 72))
+    (bundle / "MANIFEST.json").write_text(json.dumps({"files": {"wn_full.npy": {"sha256": sha256_file(bundle / "wn_full.npy")}}}))
     baseline, corrected, outputs = tmp_path / "baseline", tmp_path / "corrected", tmp_path / "outputs"
     write_source_archive(baseline, metadata, bundle / "improve_meta.csv", ["raw", "spline", "vibes", "vibes_deflate", "vibes_anchorhp"])
     write_source_archive(corrected, metadata, bundle / "improve_meta.csv", ["epo"], epo=True)
@@ -221,4 +229,4 @@ def test_score_stage_verifies_common_fold_ids_without_target_spectra(tmp_path, m
     receipt["source_identity"]["predictions_sha256"] = sha256_file(corrected / "predictions.npz")
     receipt_path.write_text(json.dumps(receipt))
     with pytest.raises(ValueError, match="outer folds differ"):
-        response.source_scores(bundle, corrected)
+        response.source_scores(bundle, corrected, scores_output=tmp_path / "different_fold_scores")

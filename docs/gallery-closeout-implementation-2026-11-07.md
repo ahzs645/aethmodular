@@ -1,5 +1,13 @@
 # Gallery closeout implementation receipt — 7 November 2026
 
+## Continuation after the first software batch
+
+The original October decision bundle and production background have now been recovered and hash-verified. A new versioned continuum regeneration and source-evaluation run are described in the [reproduction protocol](gallery-closeout-reproduction-2026-11-07.md). The input-blocker section below records the earlier batch's state; it is not the current recovery instruction. The existing all-candidate raw-QC rule is restored before fitting, and a matched-resolution control separates EPO from channel averaging.
+
+PR #19's availability fix is also verified at `316a53ec423c7344253aef409027b0f607fff23f`: 20 focused Node tests, the research TypeScript/Vite build, four browser journeys and canonical public exclusion passed in [run 42396251333](https://github.com/ahzs645/aethmodular/actions/runs/42396251333). Availability now comes from the active host; it remains distinct from scientific validation.
+
+The original software-batch receipt follows. Later source results and figure corrections must retain their own run and verification identities; the earlier PDF and CI result below are not relabelled as evidence for new calculations.
+
 ## Status and scope
 
 This is a **review candidate for the software and interpretation batch**. It is not a completed scientific release. Public software checks, the production build and browser acceptance passed in CI for the exact review revision recorded below. The corrected real-data EPO comparison and full research reconciliation remain unresolved. No method is selected by this implementation, and no new absolute Addis EC accuracy claim is made.
@@ -89,9 +97,9 @@ An earlier [successful run, 42358778130](https://github.com/ahzs645/aethmodular/
 
 This record applies to tested source revision `c366f5095c166acf0e11d72ba44dafeeaeefe6f4` and the pinned public snapshot. A later documentation-only commit recording this evidence does not change the artifact's tested source identity. Subsequent implementation or figure-wording changes require their own CI result. These successful public checks do not constitute a real-data EPO rerun, full research reconciliation, or independent validation of absolute Addis EC accuracy. The unresolved inputs below still block those claims.
 
-## Inputs still needed for the numerical rerun
+## Earlier input blocker and original restoration plan
 
-The published archive contains display products, not the complete spectral matrices and row provenance needed to refit EPO. The original checkout did not contain the November transfer, continuum or intercept-fix tables. The connected Drive inventory exposed the October decision workbook bundle and later network/Newton folders, but this work did not locate and restore the November anchored/deflated arrays and their provenance. It did not download unrelated large archives speculatively.
+At the end of the first software batch, the published archive contained display products but the checkout lacked the spectral matrices and row provenance needed to refit EPO. The original checkout did not contain the November transfer, continuum or intercept-fix tables. The following was that batch's restoration plan. It is superseded by the recovered inputs and explicit versioned commands in the [reproduction protocol](gallery-closeout-reproduction-2026-11-07.md).
 
 Restore:
 
@@ -139,7 +147,7 @@ The full Python research profile also requires all five saved daily-instrument p
 
 ## PR #19 review boundary and completion criteria
 
-PR #19's history indexer derives `missingData` from files in its local checkout. Those flags must be generated or checked against the restored research snapshot intended for review. Source history, execution evidence, data availability and scientific validation are separate facts. This batch does not merge PR #19 or certify its availability labels against absent inputs.
+The original PR #19 history indexer derived `missingData` from its local checkout. The continuation replaces those stale flags with declared primary-export checks on the active host and verifies failure/restoration/recheck behavior in exact-head CI. Source history, execution evidence, data availability and scientific validation remain separate facts. Neither that interface check nor this receipt merges PR #19 or certifies missing historical scientific inputs.
 
 Close the existing-data stage only after the corrected numerical artifacts are restored and scored, figure populations/calendars/versions are reconciled, the intended build passes its declared checks, a copied link opens in a fresh context, a complete figure package downloads, and the exact source/data pair plus scientific ledgers are preserved. An explicit conclusion that absolute Addis EC accuracy remains unresolved is compatible with that endpoint.
 

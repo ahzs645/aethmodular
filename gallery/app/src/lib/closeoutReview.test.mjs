@@ -24,10 +24,25 @@ test('closeout review shares six resolvable figures and preserves comparator set
   assert.equal(last.view.q['xc-addis.before'], 'vibes k18')
   assert.equal(last.view.q['xc-addis.after'], 'vibes_anchorhp k18')
   assert.match(last.note, /absolute Addis EC accuracy remains unresolved/)
+  assert.match(reopened.items.find(item => item.chart === 'xc-source').note, /EPO source scores remain withheld/)
   assert.match(reopened.about, /not a frozen data package/)
   assert.match(reopened.about, /2026-11-04T00:00:00Z/)
   globalThis.window ??= { location: { pathname: '/gallery/' } }
   const href = new URL(itemHref(last, true), 'http://localhost')
   assert.equal(href.searchParams.get('chart'), 'xc-addis')
   assert.equal(href.searchParams.get('xc-addis.x'), 'aeth_ir')
+})
+
+test('a verified source review includes corrected EPO scores without promoting target accuracy', async () => {
+  const section = closeoutReview('2026-11-07T12:00:00Z', 'corrected retrospective evaluation', true)
+  const reopened = await decodeSection(await encodeSection(section))
+  const note = reopened.items.find(item => item.chart === 'xc-source').note
+  assert.match(note, /Verified fold-safe EPO source scores are included/)
+  assert.match(note, /common physical-filter comparison/)
+  assert.match(note, /does not establish Addis EC accuracy/)
+  assert.doesNotMatch(note, /remain withheld/)
+  assert.match(reopened.items.at(-1).note, /absolute Addis EC accuracy remains unresolved/)
+  // A status label alone must not turn a legacy review into a verified one.
+  const unverified = closeoutReview('2026-11-07T12:00:00Z', 'corrected retrospective evaluation')
+  assert.match(unverified.items.find(item => item.chart === 'xc-source').note, /remain withheld/)
 })

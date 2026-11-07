@@ -13,7 +13,9 @@ Stages (default: all but ``inject``)
               87-blank rank-70 background, tau 0.1, PB) with the original and smooth-deflated component sets
               (~5 min on 12 cores).
 
-    ../../.venv/bin/python workflows/run_transfer_diagnosis_20261102.py [--bundle DIR] [--stages fit tables inject]
+    uv run python research/ftir_hips_chem/workflows/run_transfer_diagnosis_20261102.py \
+        --bundle DIR --continuum-output DIR --vibes-model FILE --output NEW_DIR \
+        --stages fit --models raw spline vibes vibes_deflate vibes_anchorhp --k-max 20
 
 The bundle defaults to ``<Drive>/Aethmodular VIBES/decision_workbook_20261022/bundle``; copy it to local disk
 first if Drive reads stall (see the decision-bundle builder). Nothing here is tuned on Addis or SPARTAN HIPS.
@@ -35,7 +37,7 @@ ROOT = AREA.parents[1]
 sys.path[:0] = [str(AREA / "scripts"), str(ROOT)]
 import continuum_anchor as ca  # noqa: E402
 import data_paths  # noqa: E402
-from candidate_metrics import ids_sha256, sha256_file, validate_physical_ids  # noqa: E402
+from candidate_metrics import ids_sha256, recorded_source_qc, sha256_file, validate_physical_ids  # noqa: E402
 from spectral_provenance import verify_corrected_spectra, verify_manifest_files  # noqa: E402
 from aethmodular_cli import env  # noqa: E402
 
@@ -44,11 +46,42 @@ VIBES_MODEL = AREA / "output/tables/network_baselines_20261019/vibes_bundle/back
 # continuum-protected VIBES reruns (workflows/vibes_continuum_20261102.py, Colab); used when present
 VC = AREA / "output/tables/vibes_continuum_20261102"
 VC_VARIANTS = {"vibes_deflate": "deflate", "vibes_anchorhp": "anchorhp"}
+BASE_MODELS = ("raw", "spline", "vibes", "anchored", "anchored_noCH", "anchored_balanced")
+MODEL_NAMES = (*BASE_MODELS, *VC_VARIANTS)
+GROUPS = ("improve", "addis", "network")
 
 
-def vc_spectra(variant):
-    files = {g: VC / f"corrected_{variant}_{g}.npy" for g in ("improve", "addis", "network")}
-    return {g: np.load(f, mmap_mode="r") for g, f in files.items()} if all(f.exists() for f in files.values()) else None
+def vc_spectra(variant, continuum_output=None, *, required=False):
+    directory = VC if continuum_output is None else Path(continuum_output)
+    files = {g: directory / f"corrected_{variant}_{g}.npy" for g in GROUPS}
+    missing = [env.display_path(path) for path in files.values() if not path.is_file()]
+    if missing:
+        if required:
+            raise FileNotFoundError(f"requested continuum variant {variant} is incomplete: {', '.join(missing)}")
+        return None
+    return {g: np.load(f, mmap_mode="r", allow_pickle=False) for g, f in files.items()}
+
+
+def require_new_fit_outputs(directory, names):
+    """Reject an existing or partial fit before loading inputs or fitting models."""
+    directory = Path(directory)
+    if directory.exists() and not directory.is_dir():
+        raise FileExistsError(f"fit destination is not a directory: {env.display_path(directory)}")
+    occupied = [directory / name for name in names if (directory / name).exists() or (directory / name).is_symlink()]
+    if occupied:
+        listed = ", ".join(env.display_path(path) for path in occupied)
+        raise FileExistsError(f"fit output already exists; select a new --output directory: {listed}")
+
+
+def prediction_models(archive):
+    """Model identities come from prediction keys, never archive metadata arrays."""
+    names = {key.removesuffix("|improve_oof") for key in archive.files if key.endswith("|improve_oof")}
+    unknown = names - set(MODEL_NAMES)
+    if unknown:
+        raise ValueError(f"unrecognized baseline prediction models: {sorted(unknown)}")
+    return [name for name in MODEL_NAMES if name in names]
+
+
 K = 25
 LOAD_BINS = [0, 2, 5, 10, 20, 30, 45, 90]
 ADDIS_BINS = [0, 30, 45, 90]
@@ -83,88 +116,141 @@ def spectra(bundle: Path, prep: str):
 
 
 # --------------------------------------------------------------------------- fit
-def fit(bundle: Path):
+def fit(bundle: Path, models=None, output=None, kmax=K, continuum_output=None, vibes_model=None):
     from sklearn.model_selection import GroupKFold
 
+    bundle = Path(bundle)
+    destination = OUT if output is None else Path(output)
+    continuum_directory = VC if continuum_output is None else Path(continuum_output)
+    background_path = VIBES_MODEL if vibes_model is None else Path(vibes_model)
+    fit_outputs = ("predictions.npz", "coefficients.npz", "fit_receipt.json", *[f"anchored_{g}.npy" for g in GROUPS])
+    require_new_fit_outputs(destination, fit_outputs)
+    if not isinstance(kmax, (int, np.integer)) or isinstance(kmax, bool) or kmax < 1:
+        raise ValueError("k-max must be a positive integer")
+    requested = tuple(BASE_MODELS) if models is None else tuple(models)
+    if not requested or len(set(requested)) != len(requested) or set(requested) - set(MODEL_NAMES):
+        raise ValueError(f"select unique models from {list(MODEL_NAMES)}")
+    continuum = {}
+    for name, variant in VC_VARIANTS.items():
+        if models is None or name in requested:
+            values = vc_spectra(variant, continuum_directory, required=models is not None)
+            if values is not None:
+                continuum[name] = values
+    selected = (*requested, *continuum) if models is None else requested
+
     im, ad, nw = load(bundle)
+    preps = {name for name in selected if name in ("raw", "spline", "vibes")}
+    if any(name.startswith("anchored") for name in selected):
+        preps.add("raw")
+    input_names = ["wn_full.npy", *[f"{g}_meta.csv" for g in GROUPS],
+                   *[f"{g}_{prep}.npy" for g in GROUPS for prep in sorted(preps)]]
+    if "spline" in preps:
+        input_names.append("wn_spline.npy")
     checked_inputs = {bundle / name: value for name, value in verify_manifest_files(
-        bundle, ["wn_full.npy", "improve_meta.csv", "addis_meta.csv", "network_meta.csv", *[f"{group}_{prep}.npy" for group in ("improve", "addis", "network")
-                                   for prep in ("raw", "spline", "vibes")]]).items()}
+        bundle, input_names).items()}
     checked_inputs[bundle / "MANIFEST.json"] = sha256_file(bundle / "MANIFEST.json")
-    checked_inputs[VIBES_MODEL] = sha256_file(VIBES_MODEL)
+    checked_inputs[background_path] = sha256_file(background_path)
     y, sites = im.tor_ug.to_numpy(), im.site.to_numpy()
     physical_ids = validate_physical_ids(im.filter_id.to_numpy())
     splits = list(GroupKFold(5).split(np.zeros((len(y), 1)), y, sites))
     fold_id = np.full(len(y), -1, dtype=int)
     for fold, (_, test) in enumerate(splits):
         fold_id[test] = fold
-    # five IMPROVE wildfire filters with TOR 250-390 µg (HIPS ~50) dominate squared error; fit without TOR > 150
-    ok = np.isfinite(y) & (y < 150)
+    # Preserve the decision workbook's recorded raw-QC exclusion for every
+    # candidate. It changes calibration eligibility, never physical-filter folds.
+    tor_domain = np.isfinite(y) & (y < 150)
+    qc_mask, qc_policy = recorded_source_qc(im)
+    ok = tor_domain & qc_mask
     wn = np.load(bundle / "wn_full.npy")
-    z = np.load(VIBES_MODEL)
-    if not np.allclose(z["wn"], wn):
+    z = np.load(background_path, allow_pickle=False)
+    background_grid = z["wn"]
+    if background_grid.shape != wn.shape or not np.array_equal(background_grid.astype(wn.dtype), wn):
         raise ValueError("VIBES background grid differs from the bundle grid")
-    bg = ca.AnchoredBackground(wn, z["mean"], z["components"])
-    raw = spectra(bundle, "raw")
-    anchored = {g: bg.correct(raw[g]) for g in raw}
-
-    ocec = np.clip(im.ocec.to_numpy(), 0.1, 50)
-    ocec[~np.isfinite(ocec)] = np.nanmedian(ocec)
-    b1 = pd.qcut(np.log(ocec), 10, labels=False, duplicates="drop")
-    b2 = pd.cut(np.log(np.clip(y, 0.05, None)), 6, labels=False)
-    cell = pd.Series(1, index=pd.MultiIndex.from_arrays([b1, b2])).groupby(level=[0, 1]).transform("size").to_numpy()
-    balanced = np.clip((1 / cell) / np.mean(1 / cell), 0, 20)
+    prepared = {prep: spectra(bundle, prep) for prep in preps}
+    anchored, balanced = {}, None
+    if any(name.startswith("anchored") for name in selected):
+        bg = ca.AnchoredBackground(wn, z["mean"], z["components"])
+        anchored = {g: bg.correct(prepared["raw"][g]) for g in GROUPS}
+    if "anchored_balanced" in selected:
+        # Historical full-source weights are preserved only for this optional
+        # candidate; they are not certified as a training-only transformation.
+        ocec = np.clip(im.ocec.to_numpy(), 0.1, 50)
+        ocec[~np.isfinite(ocec)] = np.nanmedian(ocec)
+        b1 = pd.qcut(np.log(ocec), 10, labels=False, duplicates="drop")
+        b2 = pd.cut(np.log(np.clip(y, 0.05, None)), 6, labels=False)
+        cell = pd.Series(1, index=pd.MultiIndex.from_arrays([b1, b2])).groupby(level=[0, 1]).transform("size").to_numpy()
+        balanced = np.clip((1 / cell) / np.mean(1 / cell), 0, 20)
     not_ch = ~((wn > CH[0]) & (wn < CH[1]))
 
-    models = {"raw": (raw, None, None), "spline": (spectra(bundle, "spline"), None, None),
-              "vibes": (spectra(bundle, "vibes"), None, None), "anchored": (anchored, None, None),
-              "anchored_noCH": (anchored, not_ch, None), "anchored_balanced": (anchored, None, balanced)}
-    for name, v in VC_VARIANTS.items():
-        X = vc_spectra(v)
-        if X is not None:
-            checked_inputs.update({VC / name: value for name, value in verify_corrected_spectra(
-                VC, {"improve": im, "addis": ad, "network": nw}, wn, (v,)).items()})
-            if any(np.isnan(np.asarray(a, float)).any() for a in X.values()):
-                raise ValueError(f"{v}: corrected spectra contain NaN (failed VIBES fits)")
-            models[name] = (X, None, None)
-    preds = {"improve_filter_ids": physical_ids, "improve_site_ids": sites.astype(str), "improve_fold_id": fold_id}
+    candidates = {name: (values, None, None) for name, values in prepared.items()}
+    candidates.update({"anchored": (anchored, None, None), "anchored_noCH": (anchored, not_ch, None),
+                       "anchored_balanced": (anchored, None, balanced)})
+    for name, values in continuum.items():
+        variant = VC_VARIANTS[name]
+        checked_inputs.update({continuum_directory / filename: value for filename, value in verify_corrected_spectra(
+            continuum_directory, {"improve": im, "addis": ad, "network": nw}, wn, (variant,)).items()})
+        checked_inputs[continuum_directory / "bundle/MANIFEST.json"] = sha256_file(continuum_directory / "bundle/MANIFEST.json")
+        if any(not np.isfinite(np.asarray(a)).all() for a in values.values()):
+            raise ValueError(f"{variant}: corrected spectra contain nonfinite values (failed VIBES fits)")
+        candidates[name] = (values, None, None)
+    preds = {"improve_filter_ids": physical_ids, "improve_site_ids": sites.astype(str), "improve_fold_id": fold_id,
+             "improve_raw_qc_ok": qc_mask}
     coefs = {}
-    for name, (X, cols, w) in models.items():
+    for name in selected:
+        X, cols, w = candidates[name]
         t = time.time()
         XI = np.asarray(X["improve"], np.float64)
         cols = np.ones(XI.shape[1], bool) if cols is None else cols
         XI = XI[:, cols]
-        oof = np.full((len(y), K), np.nan)
+        oof = np.full((len(y), kmax), np.nan)
         for tr, te in splits:
             tr = tr[ok[tr]]
-            oof[te] = ca.pls_predict(ca.pls_fit(XI[tr], y[tr], K, None if w is None else w[tr]), XI[te])
-        full = ca.pls_fit(XI[ok], y[ok], K, None if w is None else w[ok])
+            if kmax > min(len(tr) - 1, XI.shape[1]):
+                raise ValueError(f"{name}: too few training rows/channels for {kmax} PLS components")
+            oof[te] = ca.pls_predict(ca.pls_fit(XI[tr], y[tr], kmax, None if w is None else w[tr]), XI[te])
+        full = ca.pls_fit(XI[ok], y[ok], kmax, None if w is None else w[ok])
         preds[f"{name}|improve_oof"] = oof
         preds[f"{name}|addis"] = ca.pls_predict(full, np.asarray(X["addis"], float)[:, cols])
         preds[f"{name}|network"] = ca.pls_predict(full, np.asarray(X["network"], float)[:, cols])
-        coefs[f"{name}|xm"], coefs[f"{name}|B"], coefs[f"{name}|cols"] = full[0], full[2], cols
+        coefs[f"{name}|xm"], coefs[f"{name}|ym"] = full[0], np.asarray(full[1])
+        coefs[f"{name}|B"], coefs[f"{name}|cols"] = full[2], cols
         print(f"{name}: {time.time() - t:.0f}s", flush=True)
     if any(sha256_file(path) != value for path, value in checked_inputs.items()):
         raise RuntimeError("a spectral input changed during fitting; source predictions are not certified")
-    OUT.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(OUT / "predictions.npz", **preds)
-    np.savez_compressed(OUT / "coefficients.npz", **coefs)
+    destination.mkdir(parents=True, exist_ok=True)
+    require_new_fit_outputs(destination, fit_outputs)
+    with (destination / "predictions.npz").open("xb") as stream:
+        np.savez_compressed(stream, **preds)
+    with (destination / "coefficients.npz").open("xb") as stream:
+        np.savez_compressed(stream, **coefs)
     for g, A in anchored.items():
-        np.save(OUT / f"anchored_{g}.npy", A)
-    (OUT / "fit_receipt.json").write_text(json.dumps({
-        "bundle": env.display_path(bundle), "vibes_model": env.display_path(VIBES_MODEL), "k_max": K,
+        with (destination / f"anchored_{g}.npy").open("xb") as stream:
+            np.save(stream, A)
+    receipt = {
+        "bundle": env.display_path(bundle), "vibes_model": env.display_path(background_path), "k_max": kmax,
+        "models": list(selected), "continuum_output": env.display_path(continuum_directory),
+        "background_grid_identity": "exact equality after casting the recorded background grid to the decision-grid dtype; no resampling",
         "cv": "GroupKFold(5) by IMPROVE site", "fit_rows": int(ok.sum()), "excluded_tor_over_150": int((y >= 150).sum()),
+        "source_domain_rows_before_qc": int(tor_domain.sum()), "source_domain_qc_excluded": int((tor_domain & ~qc_mask).sum()),
+        "source_qc_policy": qc_policy, "source_qc_excluded_filter_ids": physical_ids[~qc_mask].tolist(),
+        "source_qc_excluded_filter_ids_sha256": ids_sha256(physical_ids[~qc_mask]),
         "spectral_inputs": {env.display_path(path): value for path, value in checked_inputs.items()},
+        "coefficients_sha256": sha256_file(destination / "coefficients.npz"),
+        "source_code": {path.name: sha256_file(path) for path in (Path(__file__), Path(ca.__file__),
+                        AREA / "scripts/candidate_metrics.py", AREA / "scripts/spectral_provenance.py")},
         "source_identity": {
             "protocol": "physical_filter_order_and_site_folds_v1",
             "improve_metadata_sha256": sha256_file(bundle / "improve_meta.csv"),
             "filter_ids_sha256": ids_sha256(physical_ids),
-            "predictions_sha256": sha256_file(OUT / "predictions.npz"),
-            "split_population": "all bundled IMPROVE physical filters; training requires finite TOR <150 micrograms per filter",
+            "predictions_sha256": sha256_file(destination / "predictions.npz"),
+            "split_population": "all bundled IMPROVE physical filters; training requires recorded raw_qc_ok and finite TOR <150 micrograms per filter",
         },
         "anchored": {"windows": ca.PTFE_WINDOWS, "highpass_window_channels": 41, "ridge": 1e-6},
-        "balanced_weights": "inverse cell count over 10 OC/EC deciles x 6 log-EC bins, clipped at 20",
-        "created": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}, indent=1))
+        "balanced_weights": "historical full-source inverse cell count over 10 OC/EC deciles x 6 log-EC bins, clipped at 20; not training-only" if balanced is not None else None,
+        "created": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    with (destination / "fit_receipt.json").open("x") as stream:
+        json.dump(receipt, stream, indent=1)
+    return destination
 
 
 # --------------------------------------------------------------------------- tables
@@ -185,8 +271,7 @@ def tables(bundle: Path):
     wn = np.load(bundle / "wn_full.npy")
     y = im.tor_ug.to_numpy()
     low = (im.ocec < 2.5).to_numpy()
-    names = sorted({k.split("|")[0] for k in P.files}, key=lambda n: ["raw", "spline", "vibes", "anchored", "anchored_noCH",
-                                                                       "anchored_balanced", "vibes_deflate", "vibes_anchorhp"].index(n))
+    names = prediction_models(P)
 
     # 1. per-site published EC vs HIPS (µg per filter)
     ok = nw.fabs_Mm1.notna() & nw.ec_ftir_ugm3.notna() & ~nw.excluded
@@ -413,17 +498,29 @@ def perfilter(bundle: Path):
 
 
 def main():
-    global OUT
+    global OUT, VC, VIBES_MODEL
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--bundle", type=Path, default=None)
     p.add_argument("--output", type=Path, default=None, help="versioned output directory; use for closeout reruns to preserve the historical archives")
+    p.add_argument("--continuum-output", type=Path, default=None, help="verified corrected spectra and their continuum bundle/receipt")
+    p.add_argument("--vibes-model", type=Path, default=None, help="recorded production background_model.npz")
+    p.add_argument("--models", nargs="+", default=None, choices=MODEL_NAMES,
+                   help="bounded fit candidates; omitted preserves the legacy candidates plus available continuum variants")
+    p.add_argument("--k-max", type=int, default=K, help="fixed maximum PLS component count; no outer-score selection")
     p.add_argument("--stages", nargs="+", default=["fit", "tables"], choices=["fit", "tables", "inject", "perfilter"])
     a = p.parse_args()
     if a.output is not None:
         OUT = a.output
+    if a.continuum_output is not None:
+        VC = a.continuum_output
+    if a.vibes_model is not None:
+        VIBES_MODEL = a.vibes_model
     bundle = a.bundle or default_bundle()
     for s in a.stages:
-        {"fit": fit, "tables": tables, "inject": inject, "perfilter": perfilter}[s](bundle)
+        if s == "fit":
+            fit(bundle, models=a.models, output=OUT, kmax=a.k_max, continuum_output=VC, vibes_model=VIBES_MODEL)
+        else:
+            {"tables": tables, "inject": inject, "perfilter": perfilter}[s](bundle)
 
 
 if __name__ == "__main__":

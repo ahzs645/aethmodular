@@ -16,6 +16,9 @@ import pandas as pd
 
 
 SCORE_PROTOCOL = "fixed_k_common_physical_filter_metrics_v1"
+EPO_RESOLUTION_CONTROL_PROTOCOL = "matched_resolution_anchorhp_epo_v1"
+EPO_RESOLUTION_CONTROL_FILES = ("epo_resolution_control.csv", "epo_resolution_control_filters.csv")
+SOURCE_QC_PROTOCOL = "recorded_decision_bundle_raw_qc_v1"
 METRIC_DEFINITIONS = {
     "improve_median_absolute_error": "median(abs(predicted - TOR)); micrograms per physical filter",
     "improve_mae": "mean(abs(predicted - TOR)); micrograms per physical filter",
@@ -25,7 +28,7 @@ METRIC_DEFINITIONS = {
     "improve_p90_absolute_error": "90th percentile of abs(predicted - TOR); micrograms per physical filter",
     "improve_p95_absolute_error": "95th percentile of abs(predicted - TOR); micrograms per physical filter",
     "improve_error": "compatibility alias of improve_median_absolute_error, never mean absolute error",
-    "coverage": "candidate finite predictions / eligible physical filters, before common-filter intersection",
+    "coverage": "candidate finite predictions / physical filters eligible after the recorded raw-spectrum QC and TOR domain, before common-filter intersection",
     "common_coverage": "physical filters with finite predictions for every compared candidate / eligible physical filters",
 }
 ERROR_COLUMNS = tuple(key for key in METRIC_DEFINITIONS if key.startswith("improve_"))
@@ -56,6 +59,42 @@ def validate_physical_ids(ids, *, label="source") -> np.ndarray:
     return values
 
 
+def recorded_source_qc(metadata: pd.DataFrame):
+    """Apply the decision workbook's existing all-candidate raw-spectrum QC.
+
+    Missing flags remain readable for legacy synthetic/artifact fixtures, and
+    their absence is recorded. A present flag may contain only explicit Boolean
+    values or canonical true/false strings; nulls and ambiguous values fail.
+    This mask never selects folds and never suppresses saved predictions.
+    """
+    present = "raw_qc_ok" in metadata
+    if not present:
+        mask = np.ones(len(metadata), dtype=bool)
+    else:
+        flags = metadata["raw_qc_ok"]
+        if flags.isna().any():
+            raise ValueError("raw_qc_ok contains null values; recorded source QC must be explicit")
+        values = []
+        for value in flags.to_numpy():
+            if isinstance(value, (bool, np.bool_)):
+                values.append(bool(value))
+            elif isinstance(value, str) and value.strip().lower() in ("true", "false"):
+                values.append(value.strip().lower() == "true")
+            else:
+                raise ValueError("raw_qc_ok contains malformed values; use explicit true/false flags")
+        mask = np.asarray(values, dtype=bool)
+    policy = dict(
+        protocol=SOURCE_QC_PROTOCOL, flag_column="raw_qc_ok", flag_present=present,
+        rule="retain only raw_qc_ok=true for every candidate's source training and scored reference domain",
+        scope="fixed recorded spectral QC; retain all physical-filter IDs, frozen site folds, and held-out predictions",
+        source="build_decision_workbook_20261022.py: the corrupt raw filter leaves every comparison",
+        missing_flag_policy="all true for legacy inputs lacking the column; absence is explicitly recorded",
+        n_total=len(mask), n_pass=int(mask.sum()), n_excluded=int((~mask).sum()),
+        mask_sha256=hashlib.sha256(np.ascontiguousarray(mask, dtype=np.uint8).tobytes()).hexdigest(),
+    )
+    return mask, policy
+
+
 def validate_archive_identity(archive, receipt, metadata, metadata_path, prediction_path, *, label="source"):
     """Reject legacy positional arrays and prove the current bundle's identity.
 
@@ -82,6 +121,13 @@ def validate_archive_identity(archive, receipt, metadata, metadata_path, predict
     folds = np.asarray(archive["improve_fold_id"])
     if not np.array_equal(ids, expected_ids) or not np.array_equal(sites, metadata.site.astype(str).to_numpy()):
         raise ValueError(f"{label}: prediction IDs/sites differ from bundle order")
+    qc_mask, qc_policy = recorded_source_qc(metadata)
+    if qc_policy["flag_present"] or "source_qc_policy" in receipt:
+        if receipt.get("source_qc_policy") != qc_policy:
+            raise ValueError(f"{label}: fit receipt does not certify the recorded source QC policy; rerun its fit stage")
+        if ("improve_raw_qc_ok" not in archive or np.asarray(archive["improve_raw_qc_ok"]).dtype != np.dtype(bool)
+                or not np.array_equal(archive["improve_raw_qc_ok"], qc_mask)):
+            raise ValueError(f"{label}: saved source QC mask differs from the bundle")
     if folds.shape != expected_ids.shape or not np.issubdtype(folds.dtype, np.integer) or np.any(folds < 0):
         raise ValueError(f"{label}: each physical filter must have one nonnegative held-out fold")
     if set(folds.tolist()) != set(range(5)):
@@ -96,8 +142,9 @@ def paired_candidate_metrics(metadata: pd.DataFrame, predictions: Mapping[str, n
 
     All error and composition-subset metrics use the same intersection.  The
     per-candidate availability columns retain the number lost at that step.
-    This reproduces the declared TOR <150 ug/filter source domain, including
-    finite zero/negative references for error scores. Ratios use positive TOR.
+    The declared source domain is the recorded all-candidate raw-spectrum QC
+    plus TOR <150 ug/filter, including finite zero/negative references for error
+    scores. Ratios use positive TOR. QC-excluded rows remain in the ledger.
     """
     ids = validate_physical_ids(metadata["filter_id"].to_numpy())
     if not predictions:
@@ -105,7 +152,9 @@ def paired_candidate_metrics(metadata: pd.DataFrame, predictions: Mapping[str, n
     y = metadata["tor_ug"].to_numpy(float)
     ocec = metadata["ocec"].to_numpy(float)
     sites = metadata["site"].astype(str).to_numpy()
-    eligible = np.isfinite(y) & (y < 150)
+    qc_mask, qc_policy = recorded_source_qc(metadata)
+    reference_domain = np.isfinite(y) & (y < 150)
+    eligible = reference_domain & qc_mask
     arrays = {}
     for model, prediction in predictions.items():
         value = np.asarray(prediction, float)
@@ -135,23 +184,31 @@ def paired_candidate_metrics(metadata: pd.DataFrame, predictions: Mapping[str, n
             improve_heavy_ratio=float(np.median(value[heavy] / y[heavy])) if heavy.any() else None,
             improve_light_ratio=float(np.median(value[light] / y[light])) if light.any() else None,
             n_eligible=n_eligible, n_available=int(available.sum()), n_failed=int((eligible & ~available).sum()),
+            n_reference_domain=int(reference_domain.sum()), n_excluded_raw_qc=int((reference_domain & ~qc_mask).sum()),
             n_common=n_common, n_heavy=int(heavy.sum()), n_light=int(light.sum()),
             coverage=float(available.sum() / n_eligible) if n_eligible else None,
             common_coverage=float(n_common / n_eligible) if n_eligible else None,
         )
         rows.append(row)
     ledger = metadata[["filter_id", "site", "tor_ug", "ocec"]].copy()
+    ledger["raw_qc_ok"] = qc_mask
+    ledger["raw_qc_flag_present"] = qc_policy["flag_present"]
+    ledger["reference_domain"] = reference_domain
     ledger["eligible"] = eligible
     ledger["eligibility_reason"] = np.select(
-        [~np.isfinite(y), y >= 150], ["missing_or_nonfinite_TOR", "TOR_at_or_above_150_ug"], default="eligible")
+        [~qc_mask, ~np.isfinite(y), y >= 150],
+        ["recorded_raw_spectrum_QC", "missing_or_nonfinite_TOR", "TOR_at_or_above_150_ug"], default="eligible")
     ledger["common"] = common
     for model, value in arrays.items():
         ledger[f"{model}_predicted_ug"] = value
         ledger[f"{model}_available"] = eligible & np.isfinite(value)
     population = dict(
         unit="physical_filter", reference="IMPROVE TOR EC", units="micrograms per filter", k=k,
-        domain="finite TOR EC <150 micrograms per filter", aggregation="pooled physical-filter out-of-fold predictions",
+        domain=("recorded raw-spectrum QC retained; " if qc_policy["flag_present"]
+                else "no recorded raw-spectrum QC flag supplied; ") + "finite TOR EC <150 micrograms per filter",
+        source_qc_policy=qc_policy, aggregation="pooled physical-filter out-of-fold predictions",
         filter_ids_sha256=ids_sha256(ids), n_total=len(ids), n_eligible=n_eligible,
+        n_reference_domain=int(reference_domain.sum()), n_excluded_raw_qc=int((reference_domain & ~qc_mask).sum()),
         n_missing_reference=int((~np.isfinite(y)).sum()), n_outside_domain=int((np.isfinite(y) & (y >= 150)).sum()),
         n_common=n_common, n_sites=int(len(set(sites[common]))),
         common_coverage=float(n_common / n_eligible) if n_eligible else None,
@@ -188,8 +245,27 @@ def verified_score_receipt(directory: Path) -> dict:
         receipt = json.loads(path.read_text())
         if receipt.get("protocol") != SCORE_PROTOCOL or receipt.get("status") != "corrected":
             raise ValueError("unrecognized source-score protocol or status")
-        for name in ("baseline_scoreboard.csv", "baseline_scoreboard_filters.csv"):
-            expected = receipt["outputs"][name]["sha256"]
+        outputs = receipt["outputs"]
+        if not isinstance(outputs, dict):
+            raise ValueError("source-score outputs must be a filename-to-hash mapping")
+        required = {"baseline_scoreboard.csv", "baseline_scoreboard_filters.csv"}
+        control = receipt.get("matched_resolution_control")
+        if control is not None:
+            if (not isinstance(control, dict) or control.get("protocol") != EPO_RESOLUTION_CONTROL_PROTOCOL
+                    or control.get("status") != "corrected"):
+                raise ValueError("unrecognized matched-resolution control protocol or status")
+            required.update(EPO_RESOLUTION_CONTROL_FILES)
+            control_outputs = control.get("outputs")
+            if not isinstance(control_outputs, dict) or any(control_outputs.get(name) != outputs.get(name) or name not in outputs
+                   for name in EPO_RESOLUTION_CONTROL_FILES):
+                raise ValueError("matched-resolution control output hashes are missing or inconsistent")
+        if required - set(outputs):
+            raise ValueError("source-score receipt lacks required output files")
+        for name, entry in outputs.items():
+            if (not isinstance(name, str) or Path(name).name != name or name in ("", ".", "..")
+                    or "/" in name or "\\" in name):
+                raise ValueError("source-score outputs must use safe local filenames")
+            expected = entry["sha256"]
             if not expected or sha256_file(Path(directory) / name) != expected:
                 raise ValueError(f"{name} does not match its source-score receipt")
         if not receipt.get("provenance", {}).get("epo_protocol") or not receipt.get("population", {}).get("common_filter_ids_sha256"):

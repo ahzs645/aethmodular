@@ -19,6 +19,9 @@ IMPROVE, the Adama TOR test with the pass-rule simulation, and the baseline scor
 """
 from __future__ import annotations
 
+import argparse
+import copy
+import hashlib
 import json
 import sys
 from datetime import datetime, timezone
@@ -140,6 +143,94 @@ def source_tables(directory):
     return scoreboard, sw, simulation, status
 
 
+def refresh_source_evaluation(saved_export, source_scores, output, *, expected_sha256):
+    """Refresh verified source scores without recreating absent historical tables.
+
+    The frozen export is an input artifact, not a substitute for fitting. Only
+    the new scoreboard comes from the corrected scientific run. Target figures
+    retain their original values/date, and stale EPO derivatives stay withheld.
+    """
+    saved_export, source_scores, output = map(Path, (saved_export, source_scores, output))
+    if saved_export.resolve() == output.resolve():
+        raise ValueError('the frozen input export must be preserved separately from the output')
+    original_bytes = saved_export.read_bytes()
+    base_hash = hashlib.sha256(original_bytes).hexdigest()
+    if base_hash != expected_sha256:
+        raise ValueError('saved export does not match its declared SHA-256')
+    payload = json.loads(original_bytes)
+    if payload.get('schema_version') not in (1, 2):
+        raise ValueError('unsupported saved continuum export schema')
+    receipt_path = source_scores / 'baseline_scoreboard_receipt.json'
+    receipt_hash = sha256_file(receipt_path)
+    status = verified_score_receipt(source_scores)
+    if status.get('status') != 'corrected':
+        raise ValueError(status.get('reason', 'corrected source-score receipt required'))
+    scoreboard = export_scoreboard(pd.read_csv(source_scores / 'baseline_scoreboard.csv'), status)
+    historical = pd.DataFrame(payload['scoreboard'])
+    if set(scoreboard.model) != set(historical.model) or scoreboard.model.duplicated().any():
+        raise ValueError('corrected candidate identities differ from the saved comparison')
+    if not scoreboard.k.eq(payload['settings']['k']).all():
+        raise ValueError('corrected component count differs from the saved comparison')
+    target_columns = [c for c in historical if c not in scoreboard
+                      and not c.startswith(('improve_', 'n_'))
+                      and c not in ('coverage', 'common_coverage', 'evaluation_status', 'identity_status')]
+    if target_columns:
+        scoreboard = scoreboard.merge(historical[['model', *target_columns]], on='model', how='left', validate='one_to_one')
+
+    sweep = pd.DataFrame(payload['sweep'])
+    if 'improve_median_absolute_error' not in sweep:
+        sweep['improve_median_absolute_error'] = sweep['improve_mae']
+        sweep['improve_mae'] = np.nan
+    sweep['evaluation_status'] = 'historical_source_cv'
+    epo = sweep.model.eq('epo')
+    sweep.loc[epo, [c for c in sweep if c.startswith('improve_')]] = np.nan
+    sweep.loc[epo, 'evaluation_status'] = 'legacy_withheld'
+    simulation = pd.DataFrame(payload['rule_sim'])
+    simulation = simulation.loc[~simulation.model.str.contains('EPO', case=False, na=False)].copy()
+    simulation['evaluation_status'] = 'historical_source_simulation'
+    mae = pd.DataFrame(payload['mae'])
+    if 'median_absolute_error' not in mae:
+        mae['median_absolute_error'] = mae['mae']
+
+    base_generated = payload['generated']
+    payload['schema_version'] = 2
+    payload['generated'] = datetime.now(timezone.utc).isoformat()
+    payload['scoreboard'] = cols(scoreboard)
+    payload['sweep'] = cols(sweep)
+    payload['rule_sim'] = cols(simulation)
+    payload['mae'] = cols(mae)
+    public_status = copy.deepcopy(status)
+    # The full physical-filter ledger is retained with the scientific run;
+    # counts and identity hashes are sufficient for this display export.
+    public_status.get('population', {}).pop('common_filter_ids', None)
+    public_status['sweep_status'] = 'legacy_unverified'
+    public_status['pass_rule_simulation_status'] = 'legacy_EPO_withheld'
+    settings = payload['settings']
+    settings['source_evaluation'] = public_status
+    settings['metric_definitions'] = METRIC_DEFINITIONS
+    settings['legacy_metric_aliases'] = {'mae.mae': 'median absolute error; use mae.median_absolute_error'}
+    settings['source_refresh'] = dict(
+        protocol='verified_source_scores_on_frozen_export_v1', base_export_sha256=base_hash,
+        base_generated=base_generated, base_source=payload['source'],
+        source_score_receipt_sha256=receipt_hash,
+        recomputed_sections=['scoreboard'],
+        scope='Corrected common-filter source evaluation; target and other historical diagnostics retain their saved values',
+    )
+    settings['target_predictions'] = dict(
+        status='saved_full_source_comparisons', generated=base_generated, base_export_sha256=base_hash,
+        fit_scope='all eligible IMPROVE source records', source_score_status_independent=True,
+        evidence='Historical Addis/network optical comparisons; not independent target EC accuracy validation',
+    )
+    if (sha256_file(saved_export) != base_hash or sha256_file(receipt_path) != receipt_hash
+            or any(sha256_file(source_scores / name) != item['sha256'] for name, item in status['outputs'].items())):
+        raise RuntimeError('a frozen export or source-score input changed during export')
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temporary = output.with_suffix(output.suffix + '.partial')
+    temporary.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':'), allow_nan=False))
+    temporary.replace(output)
+    return payload
+
+
 def main():
     a = pd.read_csv(RUN / 'addis_predictions.csv')
     a['season'] = pd.to_datetime(a.date).dt.month.map(SEASON)
@@ -246,4 +337,17 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--saved-export', type=Path, help='preserved published export used for unchanged historical figures')
+    parser.add_argument('--saved-sha256', help='required SHA-256 of --saved-export')
+    parser.add_argument('--source-scores', type=Path, help='verified corrected scoreboard directory')
+    parser.add_argument('--output', type=Path, default=OUT)
+    args = parser.parse_args()
+    if any((args.saved_export, args.saved_sha256, args.source_scores)):
+        if not all((args.saved_export, args.saved_sha256, args.source_scores)):
+            parser.error('--saved-export, --saved-sha256 and --source-scores must be supplied together')
+        refresh_source_evaluation(args.saved_export, args.source_scores, args.output, expected_sha256=args.saved_sha256)
+        print(f'  {args.output.name}: corrected source scores; historical target diagnostics preserved')
+    else:
+        OUT = args.output
+        main()

@@ -32,11 +32,11 @@ The current implementation adds a **Build six-figure review section** button at 
 
 ## Scientific rerun requirements
 
-Restore the October decision bundle with its manifest and metadata, `improve_mass.csv`, the November `corrected_anchorhp_*` spectra, and the recorded source baseline artifacts. New baseline/EPO archives must carry ordered physical-filter IDs, sites, fold assignments and metadata hashes. Equal array lengths alone do not prove alignment.
+The October decision bundle and original production background are restored and hash-verified. The old November corrected-array bundle was not located; both continuum variants are being regenerated under the [versioned reproduction protocol](gallery-closeout-reproduction-2026-11-07.md). New baseline/EPO archives carry ordered physical-filter IDs, sites, fold assignments, the recorded raw-spectrum QC mask and metadata hashes. Equal array lengths alone do not prove alignment.
 
-Use the corrected fixed-k scoring command recorded in the implementation receipt. Do not overwrite historical predictions or infer corrected values from the saved rounded chart summaries. Keep source evaluation separate from all-source target prediction. No tuning on the outer scoreboard is called independent confirmation.
+Use the fixed-k commands in that reproduction protocol. The primary cohort applies the existing all-candidate raw-QC exclusion before fitting and scoring; it contains 12,386 eligible filters before any prediction failures. Keep the full row ledger, the six complete-pipeline comparison and the separate matched-resolution EPO control. Do not overwrite historical predictions or infer corrected values from the saved rounded chart summaries. Source evaluation and all-source target prediction retain separate provenance. No tuning on the outer scoreboard is called independent confirmation.
 
-If those inputs are unavailable, the software and interpretation batch can be reviewed with EPO source claims withdrawn. The research release remains pending; unavailable numerical checks are not passed checks.
+The public review can refresh verified source scores on the frozen display export without recreating unavailable historical target tables. Its source overlay and base archive require separate hashes. Historical target comparisons retain their original values, populations and generation date. Missing legacy research-gate inputs remain unavailable; downstream display exports are not substituted for original source tables to make those checks pass.
 
 ## Verification profiles
 

@@ -28,6 +28,7 @@ import argparse
 import itertools
 import json
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -39,8 +40,10 @@ ROOT = AREA.parents[1]
 sys.path[:0] = [str(AREA / "scripts"), str(AREA / "workflows"), str(ROOT)]
 import continuum_anchor as ca  # noqa: E402
 from candidate_metrics import (  # noqa: E402
-    METRIC_DEFINITIONS, SCORE_PROTOCOL, paired_candidate_metrics, sha256_file, validate_archive_identity,
+    EPO_RESOLUTION_CONTROL_FILES, EPO_RESOLUTION_CONTROL_PROTOCOL, METRIC_DEFINITIONS, SCORE_PROTOCOL,
+    paired_candidate_metrics, sha256_file, validate_archive_identity,
 )
+from spectral_provenance import verify_manifest_files  # noqa: E402
 import run_intercept_fixes_20261103 as ix  # noqa: E402
 import run_transfer_diagnosis_20261102 as td  # noqa: E402
 
@@ -385,14 +388,41 @@ def tor(bundle, adama: Path):
 
 # --------------------------------------------------------------------------- options
 def source_scores(bundle, epo_output=None, k=18, baseline_output=None, scores_output=None):
-    """Score saved OOF predictions; never infer old positional archive identity."""
+    """Score saved OOF predictions and a separate matched-resolution EPO control.
+
+    The six-candidate primary comparison is unchanged. The supplementary control
+    uses only the saved, pair-averaged ``base`` and ``epo`` models, so a difference
+    between their source scores cannot be due to averaging spectral channels.
+    No models, component counts, or target comparisons are fitted here.
+    """
+    bundle = Path(bundle)
     epo_output = Path(epo_output) if epo_output is not None else OUT / "epo_site_cv_v2"
     baseline_output = Path(baseline_output) if baseline_output is not None else XD
     scores_output = Path(scores_output) if scores_output is not None else OUT / "source_scores_v2"
-    im, _, _ = td.load(bundle)
+    output_names = ("baseline_scoreboard.csv", "baseline_scoreboard_filters.csv", *EPO_RESOLUTION_CONTROL_FILES,
+                    "baseline_scoreboard_receipt.json")
+    td.require_new_fit_outputs(scores_output, output_names)
+    if not isinstance(k, (int, np.integer)) or isinstance(k, bool) or k < 1:
+        raise ValueError("the fixed component count must be a positive integer")
     baseline_path, epo_path = baseline_output / "predictions.npz", epo_output / "predictions.npz"
-    baseline_receipt = json.loads((baseline_output / "fit_receipt.json").read_text())
-    epo_receipt = json.loads((epo_output / "fit_receipt.json").read_text())
+    baseline_receipt_path, epo_receipt_path = baseline_output / "fit_receipt.json", epo_output / "fit_receipt.json"
+    input_paths = [baseline_path, epo_path, baseline_receipt_path, epo_receipt_path,
+                   bundle / "MANIFEST.json", bundle / "improve_meta.csv", bundle / "wn_full.npy"]
+    input_paths.extend(bundle / name for name in ("addis_meta.csv", "network_meta.csv") if (bundle / name).exists())
+    input_hashes = {path: sha256_file(path) for path in input_paths}
+
+    def require_unchanged_inputs():
+        if any(sha256_file(path) != digest for path, digest in input_hashes.items()):
+            raise RuntimeError("a source-score input changed during scoring; no corrected receipt will be published")
+
+    im, _, _ = td.load(bundle)
+    verify_manifest_files(bundle, ("wn_full.npy",))
+    full_grid = np.load(bundle / "wn_full.npy", allow_pickle=False)
+    if full_grid.ndim != 1 or len(full_grid) < 2 or not np.isfinite(full_grid).all():
+        raise ValueError("the source wavenumber grid must be a finite vector with at least two channels")
+    expected_control_grid = full_grid[:(len(full_grid) // 2) * 2].reshape(-1, 2).mean(axis=1)
+    baseline_receipt = json.loads(baseline_receipt_path.read_text())
+    epo_receipt = json.loads(epo_receipt_path.read_text())
     epo_protocol = epo_receipt.get("epo_protocol")
     if epo_protocol != "epo_train_only_site_cv_v2":
         raise ValueError("EPO source scores require the fold-local EPO evaluation receipt; historical EPO scores are not eligible")
@@ -401,42 +431,93 @@ def source_scores(bundle, epo_output=None, k=18, baseline_output=None, scores_ou
         epo_folds = validate_archive_identity(Pe, epo_receipt, im, bundle / "improve_meta.csv", epo_path, label="EPO")
         if not np.array_equal(baseline_folds, epo_folds):
             raise ValueError("baseline and EPO outer folds differ; rerun candidates on the same frozen site splits")
+
+        def fixed_prediction(archive, model):
+            key = f"{model}|improve_oof"
+            if key not in archive:
+                raise ValueError(f"{model}: missing saved out-of-fold predictions; rerun the declared fit candidates")
+            values = archive[key]
+            if values.ndim != 2 or values.shape[1] < k:
+                raise ValueError(f"{model}: saved predictions do not include k={k}")
+            return values[:, k - 1]
+
         predictions = {}
         for model in ("raw", "spline", "vibes", "vibes_deflate", "vibes_anchorhp", "epo"):
             archive = Pe if model == "epo" else Pd
-            values = archive[f"{model}|improve_oof"]
-            if values.ndim != 2 or values.shape[1] < k:
-                raise ValueError(f"{model}: saved predictions do not include k={k}")
-            predictions[model] = values[:, k - 1]
+            predictions[model] = fixed_prediction(archive, model)
         scoreboard, population, ledger = paired_candidate_metrics(im, predictions, k=k)
+        if "wn_bin2" not in Pe or not np.array_equal(Pe["wn_bin2"], expected_control_grid):
+            raise ValueError("matched-resolution control requires the recorded adjacent-pair-averaged source grid")
+        control_predictions = {"anchorhp_bin2_base": fixed_prediction(Pe, "base"),
+                               "epo_bin2": predictions["epo"]}
+        control_scores, control_population, control_ledger = paired_candidate_metrics(im, control_predictions, k=k)
     scoreboard.loc[scoreboard.model.eq("epo"), "evaluation_status"] = "corrected"
     scoreboard["identity_status"] = "verified_physical_filter_ids_and_site_folds"
     ledger["fold_id"] = baseline_folds
-    scores_output.mkdir(parents=True, exist_ok=True)
-    scoreboard.to_csv(scores_output / "baseline_scoreboard.csv", index=False)
-    ledger.to_csv(scores_output / "baseline_scoreboard_filters.csv", index=False)
+    control_scores["evaluation_status"] = "corrected_matched_resolution_control"
+    control_scores["comparison_scope"] = "supplementary_matched_resolution_control"
+    control_scores["source_archive_model"] = ["base", "epo"]
+    control_scores["spectral_channels"] = len(expected_control_grid)
+    control_scores["identity_status"] = "verified_physical_filter_ids_and_site_folds"
+    control_ledger["fold_id"] = epo_folds
+    control = dict(
+        protocol=EPO_RESOLUTION_CONTROL_PROTOCOL, status="corrected",
+        comparison_scope="supplementary_matched_resolution_control", primary_comparison_member=False,
+        description="Pair-averaged anchored PLS versus pair-averaged anchored EPO; separate from the native-grid anchored primary candidate",
+        resolution=dict(primary_anchorhp_model="vibes_anchorhp", primary_anchorhp_channels=len(full_grid),
+                        control_channels=len(expected_control_grid),
+                        transformation="fixed arithmetic mean of each adjacent spectral channel pair; any trailing unpaired channel is omitted"),
+        archive_models={"anchorhp_bin2_base": "base", "epo_bin2": "epo"},
+        k=int(k), summary=json.loads(control_scores.to_json(orient="records", double_precision=15)),
+        population={key: value for key, value in control_population.items() if key != "common_filter_ids"},
+        same_common_filters_as_primary=control_population["common_filter_ids_sha256"] == population["common_filter_ids_sha256"],
+        primary_common_filter_ids_sha256=population["common_filter_ids_sha256"],
+    )
     receipt = dict(
-        schema_version=1, status="corrected", protocol=SCORE_PROTOCOL,
-        reason="EPO projection fitted within each source-site training fold; candidates share verified physical-filter IDs and folds",
-        metrics=METRIC_DEFINITIONS, population=population,
+        schema_version=3, status="corrected", protocol=SCORE_PROTOCOL,
+        reason="EPO projection fitted within each source-site training fold; candidates share verified physical-filter IDs, folds, and the pre-existing all-candidate raw-spectrum QC rule",
+        metrics=METRIC_DEFINITIONS, population=population, source_qc_policy=population["source_qc_policy"],
+        matched_resolution_control=control,
         provenance=dict(
             epo_protocol=epo_protocol, epo_predictions_sha256=sha256_file(epo_path),
-            epo_fit_receipt_sha256=sha256_file(epo_output / "fit_receipt.json"),
+            epo_fit_receipt_sha256=sha256_file(epo_receipt_path),
             baseline_predictions_sha256=sha256_file(baseline_path),
-            baseline_fit_receipt_sha256=sha256_file(baseline_output / "fit_receipt.json"),
+            baseline_fit_receipt_sha256=sha256_file(baseline_receipt_path),
             improve_metadata_sha256=sha256_file(bundle / "improve_meta.csv"),
+            wavenumber_grid_sha256=sha256_file(bundle / "wn_full.npy"),
+            decision_manifest_sha256=sha256_file(bundle / "MANIFEST.json"),
+            scorer_source_sha256=sha256_file(Path(__file__)),
         ),
-        outputs={name: {"sha256": sha256_file(scores_output / name)} for name in
-                 ("baseline_scoreboard.csv", "baseline_scoreboard_filters.csv")},
         limitations=[
             "Fixed candidate settings include prior exploratory choices; this is not independent model-selection confirmation.",
             "Scores describe the stated IMPROVE TOR source domain, not absolute Addis EC accuracy.",
             "All paired scores use the common-filter intersection; candidate-specific coverage is reported separately.",
+            "The primary anchored candidate uses the native grid; the separate base/EPO control uses a common pair-averaged grid and its own reported common-filter intersection.",
         ],
         created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     )
-    (scores_output / "baseline_scoreboard_receipt.json").write_text(json.dumps(receipt, indent=2, allow_nan=False))
+    require_unchanged_inputs()
+    scores_output.mkdir(parents=True, exist_ok=True)
+    # Stage all bytes first. Exclusive hard links prevent a concurrent scorer
+    # from replacing any saved file, including between the second guard and
+    # publication. The receipt is always published last.
+    with tempfile.TemporaryDirectory(prefix="source-scores-stage-", dir=scores_output) as staging:
+        stage = Path(staging)
+        frames = {"baseline_scoreboard.csv": scoreboard, "baseline_scoreboard_filters.csv": ledger,
+                  EPO_RESOLUTION_CONTROL_FILES[0]: control_scores, EPO_RESOLUTION_CONTROL_FILES[1]: control_ledger}
+        for name, frame in frames.items():
+            frame.to_csv(stage / name, index=False)
+        receipt["outputs"] = {name: {"sha256": sha256_file(stage / name)} for name in frames}
+        control["outputs"] = {name: receipt["outputs"][name] for name in EPO_RESOLUTION_CONTROL_FILES}
+        (stage / "baseline_scoreboard_receipt.json").write_text(json.dumps(receipt, indent=2, allow_nan=False))
+        require_unchanged_inputs()
+        td.require_new_fit_outputs(scores_output, output_names)
+        for name in output_names:
+            (scores_output / name).hardlink_to(stage / name)
     print(scoreboard.to_string(index=False))
+    print("Separate matched-resolution control:")
+    print(control_scores.to_string(index=False))
+    return scores_output
 
 
 def options(bundle):
