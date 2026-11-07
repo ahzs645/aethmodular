@@ -1,6 +1,6 @@
 # Project next steps: existing-data closeout
 
-Updated **7 November 2026 after the completed real-data source evaluation**. Numerical acceptance, independent arithmetic review and the figure-population audit are complete. Final browser/publication acceptance of the actual corrected overlay and the release/UI receipt remain pending. This plan supersedes the [September plan](project-next-steps-2026-09-22.md). The [current synthesis](current-research-summary.md) gives the candidate results and scientific limits; the [implementation receipt](gallery-closeout-implementation-2026-11-07.md) records each verification scope.
+Updated **7 November 2026 after the completed existing-data research closeout**. Numerical acceptance, independent arithmetic review, figure-population audit, actual corrected-overlay public/browser acceptance, seven-page visual review and release receipt are complete. The result is a verified research-review candidate; merge/publication remains separate. This plan supersedes the [September plan](project-next-steps-2026-09-22.md). The [current synthesis](current-research-summary.md) gives the candidate results and scientific limits; the [implementation receipt](gallery-closeout-implementation-2026-11-07.md) records each verification scope.
 
 ## Endpoint
 
@@ -27,10 +27,10 @@ These are inputs to the synthesis, not tasks to restart. Preserve their distinct
 | Current synthesis | Updated with the new source results and saved target findings. | Keep the source/target version boundary and historical receipt scopes visible. |
 | EPO and source metrics | **Complete on real data.** Fold-specific training-only fitting, model reconstruction and the held-out-label integrity test passed. | Preserve accepted arrays, ledgers, code/input hashes and distinct metric definitions. No new fitting is required for release acceptance. |
 | Comparison population | **Complete.** Identical frozen folds, zero train/test site or filter overlap, one contribution per physical filter and zero eligible prediction loss. | Retain all 12,393 saved rows and the declared TOR/QC exclusions alongside the 12,386-filter score. |
-| Six-figure review | **Numerical/population audit complete; actual corrected-overlay UI acceptance pending.** | Review the corrected source panel, retained target dates, notes-off evidence, phone layout, fresh-context shared link and completed export. The old-snapshot EPO guard must still work. |
+| Six-figure review | **Complete.** Actual corrected-overlay metrics, retained target date, notes-off evidence, phone access, fresh-context shared link, saved-section reload and seven-page PDF passed. The legacy-EPO guard also passed. | Preserve the tested source and artifact identities; do not transfer this receipt to an unverified source/data change. |
 | PR #19 | Active-host availability repair and its bounded research-browser review are verified at the recorded checkpoint. | Review/merge remains separate from this public snapshot; retain Research visibility and distinguish availability from scientific validation. |
-| Release preservation | Inputs, completed continuum run and new scientific outputs have recorded identities. | Bind the exact tested source, pinned historical base, corrected overlay, acceptance/figure evidence and final PDF/section export. Record selected checks and unavailable scopes explicitly. |
-| Closeout declaration | **Pending the final release/UI receipt.** | State which existing-data scope is complete and keep new sampling, PMF and further numerical work separate. |
+| Release preservation | **Complete.** Inputs, completed continuum run, models/predictions, score ledgers, acceptance, figure audit, structured CI reports and final PDF have recorded identities and restoration materials. | Keep the original base and source overlay hashes distinct. The full continuum archive is restored by concatenating its three verified parts. |
+| Closeout declaration | **Complete for the declared existing-data research-review scope.** | Absolute Addis EC accuracy and the unavailable full legacy research profile remain explicit limits. Keep new sampling, PMF and further numerical work separate. |
 
 The current implementation adds a **Build six-figure review section** button at Experimental → Continuum. It uses existing section editing, Copy link, PDF and Deck. A section is a selection of live exports; the release must preserve the data separately.
 
@@ -44,7 +44,7 @@ The [current source table](current-research-summary.md#completed-7-november-sour
 
 The prepared source-only review refresh attaches the verified fixed-k scores to the frozen display export without recreating unavailable historical target tables. Its [manifest](../gallery/review/closeout_20261107/manifest.json) hashes the overlay and base separately. Historical target comparisons retain their values and **4 November generation date**. The new all-source target predictions remain separate; the corrected fixed-k receipt does not certify old EPO sweep/pass-rule derivatives.
 
-The [figure audit](gallery-closeout-figure-populations-2026-11-07.md) preserves **233** counted Addis filters, **172** target/aethalometer pairs, **170** historical seasonal complete cases and **232** historical response cases. These cohorts have different eligibility rules; the matched seasonal study, its 188-filter sensitivity subset and the independent-blank/ambient-parent synthetic studies also retain their own definitions. Reopening and exporting those figures on the actual corrected overlay is still part of final UI acceptance.
+The [figure audit](gallery-closeout-figure-populations-2026-11-07.md) preserves **233** counted Addis filters, **172** target/aethalometer pairs, **170** historical seasonal complete cases and **232** historical response cases. These cohorts have different eligibility rules; the matched seasonal study, its 188-filter sensitivity subset and the independent-blank/ambient-parent synthetic studies also retain their own definitions. Reopening and exporting the six-figure section on the actual corrected overlay passed final UI acceptance.
 
 ## Verification profiles
 
@@ -54,7 +54,7 @@ The [figure audit](gallery-closeout-figure-populations-2026-11-07.md) preserves 
 
 Unexpected failures are fatal. Missing declared inputs are unavailable and block their selected profile. Preserve the generated receipt, data hash, commands and tested source revision. A deployment success alone is not the whole acceptance record.
 
-The **full legacy research profile remains unavailable** because required original tables and daily-instrument pickles are missing. Downstream display exports are not substituted for those inputs to make the checks pass. The earlier exact-checkpoint public/browser receipt covered the historical base before the corrected source overlay existed; retain that narrower scope until the new acceptance run supplies the final receipt. See the [release status](gallery-closeout-implementation-2026-11-07.md#corrected-overlay-release-verification) and [legacy prerequisites](gallery-closeout-software-batch-2026-11-07.md#remaining-research-gate-prerequisites).
+The **full legacy research profile remains unavailable** because required original tables and daily-instrument pickles are missing. Downstream display exports are not substituted for those inputs to make the checks pass. The final actual-overlay [run 42407030717](https://github.com/ahzs645/aethmodular/actions/runs/42407030717) passed at `2341cbbbab41b9dfde143d36aac5ea84585aea31`: 114 Python regressions, 372 source Node tests, 91 public-data Node tests, three browser journeys and type/build checks. Earlier receipts retain their historical scopes. See the [release status](gallery-closeout-implementation-2026-11-07.md#corrected-overlay-release-verification) and [legacy prerequisites](gallery-closeout-software-batch-2026-11-07.md#remaining-research-gate-prerequisites).
 
 ## Follow-on work outside this closeout
 

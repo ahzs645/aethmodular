@@ -42,6 +42,18 @@ Preparation writes immutable inputs, copied source code, installed package versi
 
 The prepared bundle contains **16,143 spectra × two variants = 32,286 fit jobs**, with content hash `3583bdb74db1ac2d111d9cdfb6365c1e2a692c545fb8459e507fe9af4633362d`. Its runner SHA-256 is `cb7e689475b31d567558782ad046e7cc1e18b1d117baa6f9277ad584fb1f7ec0`. This is a newly recorded numerical environment, not a claim of byte identity with the original Colab execution.
 
+Collection completed on 7 November: **32,286 expected and collected fits, zero recorded fit failures**, six corrected arrays and 270 verified checkpoints. The complete continuum archive has SHA-256 `cd44e62160e3717afcfc13f793eea294852e139983c25139ed31cf32ac4d4853` and size 980,487,622 bytes. Its three supplied binary parts reassemble to those exact bytes; the parts manifest records their ordered sizes and hashes. Reassemble before extracting the archive beneath `research/ftir_hips_chem/output/tables` into an empty run destination:
+
+```bash
+cat Aethmodular_Continuum_Run_20261107.tar.gz.part01 \
+    Aethmodular_Continuum_Run_20261107.tar.gz.part02 \
+    Aethmodular_Continuum_Run_20261107.tar.gz.part03 \
+    > Aethmodular_Continuum_Run_20261107.tar.gz
+sha256sum Aethmodular_Continuum_Run_20261107.tar.gz
+```
+
+The archive's restoration prefix is `closeout_20261107/continuum_v1/`. Its earlier checkpoint package is superseded. The research-results ZIP includes the part manifest, portable Python reconstruction instructions and the separate worker-interruption history.
+
 ## Reproduction commands
 
 Restore the input archive beneath `research/ftir_hips_chem/output/tables`. It creates `closeout_20261107/decision_bundle`, the original `background_model.npz` and `frozen_public/continuum_baseline.json`. Verify its input manifest before use. From the matching source checkout:

@@ -2,7 +2,7 @@
 
 ## Current status
 
-The numerical closeout is complete. The recovered original decision bundle and production background produced **32,286/32,286 completed continuum fits with zero recorded fit failures**. All six source candidates have predictions for the same **12,386 eligible physical filters across 157 sites**. Saved-model acceptance, the real-data held-out-label check, independent score arithmetic and the figure-population audit passed. The corrected source overlay is attached to the review branch; its final hosted browser/PDF acceptance is the remaining release check. Absolute Addis EC accuracy remains unresolved.
+The existing-data research closeout is complete as a **verified review release**. The recovered original decision bundle and production background produced **32,286/32,286 completed continuum fits with zero recorded fit failures**. All six source candidates have predictions for the same **12,386 eligible physical filters across 157 sites**. Saved-model acceptance, the real-data held-out-label check, independent score arithmetic, the figure-population audit, exact-source public CI and all seven exported PDF pages passed their stated checks. Absolute Addis EC accuracy remains unresolved; this completion does not certify the unavailable full legacy research profile or publish a deployment.
 
 The [first software-batch receipt](gallery-closeout-software-batch-2026-11-07.md) is preserved separately. Its missing-spectrum blocker, earlier test counts and earlier PDF describe that batch; they are not verification of this numerical rerun.
 
@@ -98,7 +98,24 @@ The completed executable figure ledger has SHA-256 `d0efa3623570c07892d5a8410068
 
 ## Corrected-overlay release verification
 
-Pending hosted acceptance of the attached corrected overlay. The earlier checkpoint evidence below is retained with its narrower base-only scope. Final browser results, exact tested source revision and the completed corrected-source PDF identity will be recorded here after that run.
+[Run 42407030717](https://github.com/ahzs645/aethmodular/actions/runs/42407030717) passed on exact source **`2341cbbbab41b9dfde143d36aac5ea84585aea31`**, using the original base archive plus the separately verified corrected source overlay. The downloaded final receipt records `verified_base_and_overlay`, `fold_local_source_verified` and `public_review_status: success`. Its source/base/overlay/acceptance hashes match the exact checkout.
+
+| Check | Completed result |
+|---|---|
+| Python scientific/gate regressions | 114 passed; zero failures, errors or skips. |
+| Strict Node source suite | 372 passed across 69 test files; zero failures, skips, TODOs or cancellations. |
+| Public-data reconciliation | 91 passed across 19 test files and 283 declared inputs; zero failures, skips, TODOs or cancellations. Neither selected Node profile reported unavailable files or changed inputs. |
+| TypeScript and production build | Passed. |
+| Browser acceptance | Three passed; zero unexpected, skipped or flaky results, with no retries. Actual corrected source metrics/counts, the legacy-EPO guard, preserved target date, phone readability, fresh-context copied link, saved-section reload and completed PDF download. |
+| Visual review | All seven PDF pages inspected at 110 dpi; titles, axes, legends, counts and evidence text are readable with no observed clipping. Phone plots fit the viewport, and the Evidence column is reachable by normal vertical and horizontal scrolling. |
+
+The final public-review artifact is **617,156 bytes**, SHA-256 `025e05a686006c65c762b8a751b5723e23c685d0fa3cb8a932f01b3abefb5c5a`; the scientific-regression artifact is **3,308 bytes**, SHA-256 `ad58bbe40692b9e44d9969dc07e7b918453e1a788ebd55accfd8ebe60825d0df`. Both were checked against the GitHub API digests and safely extracted. The original seven-page CI PDF is **166,336 bytes**, SHA-256 `9c6cd156e6b45fc18ee243b01df1174defd077b7c56a5963083838edf7e9726c`; that exact export is included in the research-results ZIP. The compact final visual/CI receipt has SHA-256 `b228b3911acf990776eaa328cc5010919ac166cfaae43b3d41b3b20b0f931f66`.
+
+The preceding actual-overlay run at `22373ef5` correctly failed one phone assertion: three stacked metric panels placed the table below the initial viewport, but the test scrolled only horizontally before requiring its Evidence header on screen. The correction adds a vertical scroll to the table header and retains the viewport assertion. No scientific, application UI or data file changed. The failed receipt is preserved; it is not counted as a passing release run.
+
+This document records the artifact source above. Later receipt-only documentation updates do not relabel that PDF or imply a different numerical run. The earlier implementation-checkpoint evidence below retains its narrower base-only scope.
+
+The compact research release, `Aethmodular_Closeout_Research_Release_20261107.zip`, is **22,580,271 bytes**, SHA-256 `df6fcd117041ce5163ed75996c4db881ce9031662656972bbdb4ca944dc651a7`. All **42 members** were read back and verified. It contains new fitted models/predictions, full-precision metrics and filter ledgers, acceptance and figure-audit outputs, independent arithmetic review, execution history, structured raw CI reports, the original PDF, and restoration/member manifests. Companion inputs, continuum parts and the complete gallery-data candidate have their separate recorded identities. Repository-backed code and documentation stay at the source revision; browser screenshots are not release artifacts.
 
 ## Verification recorded for the implementation checkpoint
 
@@ -127,6 +144,6 @@ The strict source/public/research profiles no longer tolerate arbitrary Node fai
 
 A bounded recovery search did not restore those inputs. Complete inspection of the 90,894,200-byte October 19 GPU bundle verified its internal hashes and found no matching original gate files. Membership of the 289,297,763-byte resume ZIP remains unverified because it exceeds the connector's download limit. Downstream display exports and differing ChemSpec versions are not substituted for original inputs to make the tests pass.
 
-The existing-data endpoint requires the new numerical artifacts and acceptance receipt, reconciled figure populations, an exact tested base/overlay/source combination, a completed figure package and preserved restoration materials. Public CI verifies saved accepted inputs; it does not itself rerun the private scientific fits. Absolute Addis EC accuracy remains unresolved.
+The existing-data endpoint is met for the declared research-review scope: new numerical artifacts and acceptance receipt, reconciled figure populations, an exact tested base/overlay/source combination, a completed figure package and preserved restoration materials. Public CI verifies saved accepted inputs; it does not itself rerun the private scientific fits. The completed continuum archive is supplied in three byte-verified parts because its single-file save failed; ordered concatenation restores the exact archive identity above. Absolute Addis EC accuracy remains unresolved.
 
 New Ethiopian TOR/sampling, agreement on the proposed future TOR rule, full PMF qualification, numerical-v2 season-composition/fingerprint promotion checks, further GPU optimization and exhaustive historical notebook migration remain follow-on work.
