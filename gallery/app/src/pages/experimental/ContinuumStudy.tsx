@@ -2,6 +2,10 @@ import { useMemo } from 'react'
 import { ChartFrame, ExplainOnly, Note, Segmented, Select } from '@/components/ChartFrame'
 import { Legend, useLegend } from '@/components/Legend'
 import { FindingsList } from '@/components/Findings'
+import { BarRows } from '@/components/BarRows'
+import { closeoutReview } from '@/lib/closeoutReview'
+import { saveSection } from '@/lib/sections'
+import { epoSourceVerified, medianAbsoluteError, sourceScoreValue, sweepMedianAbsoluteError, type SourceScore } from '@/lib/sourceEvaluation'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { SpectrumPlot, type SpectrumSeries } from '@/components/SpectrumPlot'
 import { Crossplot, CrossplotBrushControls, useCrossplotBrush, type CrossPoint } from '@/components/Crossplot'
@@ -61,9 +65,12 @@ const runLine = (d: ContinuumData) => `transfer_diagnosis_20261102.ipynb · ${d.
 const FIXED = 'the 233 Addis filters of the 22 Oct decision bundle, fitted once (k 18) on 12,393 IMPROVE filters'
 
 export function ContinuumStudy() {
-  const { data, state } = useXp<ContinuumData>('continuum_baseline', 'Continuum and the baseline')
+  const { data, state } = useXp<ContinuumData>('continuum_baseline', 'Continuum and the baseline', [1, 2])
   if (!data) return <>{state}</>
   return <>
+    <CloseoutStart d={data} />
+    <Coverage d={data} />
+    <CandidatePerformance d={data} />
     <Findings d={data} />
     <WhereNext d={data} />
     <PassRuleProposal d={data} />
@@ -87,35 +94,75 @@ export function ContinuumStudy() {
   </>
 }
 
+function CloseoutStart({ d }: { d: ContinuumData }) {
+  const verified = epoSourceVerified(d.settings?.source_evaluation)
+  const openReview = () => {
+    const section = saveSection(closeoutReview(d.generated, verified ? 'corrected retrospective evaluation' : 'EPO rerun pending'))
+    window.location.hash = `tab=custom&sec=${section.id}`
+  }
+  return <ChartFrame id="xc-closeout" pageOnly exportable={false} title="Existing-data closeout review"
+    evidence={verified ? 'Corrected source evaluation attached. Target absolute EC accuracy remains unresolved.' : 'EPO source evaluation pending: historical scores are withheld because preprocessing used held-out chemical labels.'}>
+    <p data-export="text">The existing data support conclusions about baseline behavior, numerical convergence, seasonality and optical-response sensitivity. They do not yet select one independently validated Addis EC product.</p>
+    <button type="button" className="btn" onClick={openReview}>Build six-figure review section</button>
+    <Note>Uses the existing section editor, Copy link and PDF/Deck exports. The section records this export’s date; a scientific release also needs its frozen source/data receipt.</Note>
+  </ChartFrame>
+}
+
+function Coverage({ d }: { d: ContinuumData }) {
+  const all = useMemo(() => rowsOf(d.addis_filters), [d])
+  const { counted, nOut } = useCounted(all, (r) => String(r.filter_id))
+  const unique = (rows: typeof all) => new Set(rows.map((r) => baseFilterId(String(r.filter_id)))).size
+  const total = unique(all), included = unique(counted)
+  const rows = SEASONS.map((season) => ({ key: season, label: season, color: SEASON_COLOR[season], value: unique(counted.filter((r) => r.season === season)) }))
+  const hips = unique(counted.filter((r) => Number.isFinite(num(r.hips_bc))))
+  const aeth = unique(counted.filter((r) => Number.isFinite(num(r.aeth_ir))))
+  return <ChartFrame id="xc-coverage" title="Physical filters in this comparison" source={source('Coverage')}
+    evidence={`${included} counted physical Addis filters of ${total} in this export · ${all.length} rows · calendar belg_feb · generated ${d.generated}`}>
+    <BarRows rows={rows} axis={{ label: 'Independent physical filters' }} format={(n) => String(n)} />
+    <Note>{hips} counted filters have HIPS-derived optical BC (MAC 10); {aeth} have an aethalometer comparison. {nOut} exported rows are outside the current inclusion rules. Repeated scans do not add independent filters. The full scan/exclusion ledger belongs to the release bundle; this is the exported cohort, not the separate 232-filter seasonal study.</Note>
+  </ChartFrame>
+}
+
+function CandidatePerformance({ d }: { d: ContinuumData }) {
+  const evaluation = d.settings?.source_evaluation
+  const scores = rowsOf<SourceScore>(d.scoreboard)
+  const metrics = [
+    ['medae', 'Median absolute error'], ['improve_mae', 'Mean absolute error'],
+    ['improve_rmse', 'RMSE'], ['improve_mean_bias', 'Mean signed bias'], ['improve_p95_absolute_error', '95th-percentile absolute error'],
+  ] as const
+  const value = (r: SourceScore, key: string) => key === 'medae' ? medianAbsoluteError(r, evaluation) : sourceScoreValue(r, key, evaluation)
+  const present = metrics.filter(([key]) => scores.some((r) => value(r, key) != null))
+  const rows = scores.map((r) => ({ key: r.model, label: `${label(`${r.model} k18`)}${r.model === 'epo' && !epoSourceVerified(evaluation) ? ' · withheld' : ''}`,
+    color: MODEL_COLOR[`${r.model} k18`], values: Object.fromEntries(present.map(([key]) => [key, { v: value(r, key) ?? NaN }])) }))
+  return <ChartFrame id="xc-source" title="Source-reference performance on IMPROVE" source={source('CandidatePerformance')}
+    evidence={`TOR EC reference · µg/filter · site-grouped cross-validation · fixed 18 components · finite TOR below 150 µg/filter · ${epoSourceVerified(evaluation) ? 'corrected retrospective comparison' : 'saved exploratory comparison; EPO withheld'}`}>
+    <Forest rows={rows} panels={present.map(([key, title]) => ({ key, label: `${title} (µg/filter)`, fmt: f2 }))} labelWidth={210} />
+    <div className="closeout-table-scroll"><table className="census-table" data-export="text">
+      <thead><tr><th>Candidate</th><th>Eligible</th><th>Predicted</th><th>Common filters</th><th>Coverage</th><th>Evidence</th></tr></thead>
+      <tbody>{scores.map((r) => <tr key={r.model}><td>{label(`${r.model} k18`)}</td><td>{num2(r.n_eligible, 0)}</td><td>{num2(r.n_available, 0)}</td><td>{num2(r.n_common, 0)}</td><td>{r.coverage == null ? 'Not recorded' : `${num2(num(r.coverage) * 100, 1)} %`}</td><td>{r.evaluation_status ?? (r.model === 'epo' ? 'Withheld: fold-safe rerun required' : 'Historical saved result')}</td></tr>)}</tbody>
+    </table></div>
+    <Note>Median absolute error = median |prediction − TOR|. Signed bias uses prediction − TOR. Missing metrics and counts are unavailable, not zero. A common-filter score must be read with coverage; failed predictions remain in the availability ledger. This source-domain comparison does not measure Addis accuracy.</Note>
+  </ChartFrame>
+}
+
 function Findings({ d }: { d: ContinuumData }) {
-  const fits = rowsOf<Fit>(d.addis_fits)
-  const F = (m: string, x: 'hips_bc' | 'tor_equiv') => fits.find((r) => r.model === m && r.x === x)
-  const mae = rowsOf<{ model: string; k: number; mae: number }>(d.mae)
-  const M = (m: string) => mae.find((r) => r.model === m && r.k === 18)?.mae
   const inj = rowsOf<{ variant: string; shape: string; value: number }>(d.injection)
   const kept = inj.find((r) => r.variant === 'production (rank 70)' && r.shape === 'nu^1 (BC-like)')?.value
-  const A = (m: string) => fits.find((r) => r.model === m && r.x === 'aeth_ir')
-  return (
-    <ExplainOnly>
-      <ChartFrame id="xc-findings" title="Continuum and the baseline — short answers" exportable={false}>
-        <FindingsList note={<>{runLine(d)}. HIPS is a cross-check, not the truth; the fair comparison for a TOR-trained model is the TOR yardstick (what IMPROVE TOR reads at the same HIPS loading and OC/BC).</>}>
-          <li><strong>Most of the Addis slope and intercept against HIPS is shared with IMPROVE.</strong> TOR rises faster than HIPS above about 20 µg per filter, and IMPROVE's own heavy, low-OC/EC filters show the same FTIR/HIPS rise as Addis.</li>
-          <li><strong>Every baseline we used deletes the broad black-carbon continuum.</strong> The spline removes it by construction; production VIBES gives back {kept != null ? `${(kept * 100).toFixed(1)} %` : 'under 1 %'} of an injected BC-like continuum. IMPROVE filters are too light for it to rise above the blank noise, so the models learned organic C–H as a stand-in for EC, which under-reads at Addis.</li>
-          <li><strong>The PTFE-anchored background keeps the continuum</strong> (the blank components are scored only on the sharp PTFE bands). Rerun as real VIBES on Colab, Addis against HIPS goes from {coef(F(BEFORE, 'hips_bc')?.slope)}x {coefSigned(F(BEFORE, 'hips_bc')?.intercept)} (median ratio {f2(F(BEFORE, 'hips_bc')?.ratio)}) to {coef(F(AFTER, 'hips_bc')?.slope)}x {coefSigned(F(AFTER, 'hips_bc')?.intercept)} ({f2(F(AFTER, 'hips_bc')?.ratio)}), and against the TOR yardstick from a median {f2(F(BEFORE, 'tor_equiv')?.ratio)} to {f2(F(AFTER, 'tor_equiv')?.ratio)}.</li>
-          <li><strong>It doesn't cost IMPROVE accuracy:</strong> out-of-site error {f2(M(bare(AFTER)))} µg against {f2(M(bare(BEFORE)))} µg for production VIBES. Removing the smooth shapes from VIBES without anchoring is worse ({f2(M('vibes_deflate'))} µg): lot and thickness differences flood in.</li>
-          <li><strong>The intercept left against HIPS is mostly HIPS's own.</strong> Against the Addis aethalometer, a separate instrument, FTIR on the anchored background is proportional (Deming intercept {coefSigned(A(AFTER)?.intercept)} µg/m³), as is SPARTAN's published FTIR ({coefSigned(A('published')?.intercept)}). Production VIBES is not ({coefSigned(A(BEFORE)?.intercept)}). HIPS itself sits at {coefSigned(A('HIPS BC')?.intercept)} µg/m³ with slope {coef(A('HIPS BC')?.slope)}: across Addis days it rises only about as the aethalometer to the power 0.44. So the −5 µg/m³ against HIPS is mostly HIPS compressing Addis’s range, not an FTIR offset. Across IMPROVE and SPARTAN, within sites, HIPS holds up to an optical depth of about 0.3 and then falls behind TOR and FTIR. A correction fitted on IMPROVE TOR alone shrinks the Addis intercept from about −5 to −1 to −2 µg/m³. Why it falls is still open: the volume test can't separate loading from concentration.</li>
-          <li><strong>No label-free retraining flattens the raw-HIPS slope</strong> (EPO, di-PLS with unlabeled Addis or network spectra, importance weights, masked organic bands, continuum only). Each one either lowers the level along with the intercept or keeps both. EPO is the one that moves the level, and it does best on both direct TOR checks (IMPROVE's heavy Addis-like filters and the Adama pairs), at an IMPROVE error of 1.24 µg against 1.10. Anchored and EPO are both now options in the FTIR baseline switch.</li>
-          <li><strong>What it doesn't fix:</strong> the organic stand-in in C–H 3000–2800 cm⁻¹ and the under-read at Bishoftu, Jaipur, Bujumbura and Dhaka.</li>
-        </FindingsList>
-      </ChartFrame>
-    </ExplainOnly>
-  )
+  return <ExplainOnly><ChartFrame id="xc-findings" title="Continuum and the baseline — short answers" exportable={false}>
+    <FindingsList note={<>{runLine(d)}. Optical comparisons and transferred-response models do not provide independent Addis TOR.</>}>
+      <li><strong>Baseline choice changes broad spectral preservation.</strong> The saved production-VIBES experiment recovers {kept != null ? `${(kept * 100).toFixed(1)} %` : 'under 1 %'} of its injected power-law shape. This is a synthetic-shape response, not a chemical identification.</li>
+      <li><strong>PTFE anchoring remains a research candidate.</strong> It changes the Addis optical relationship and the saved source-reference results. The small Adama comparison and possible lot dependence prevent a general accuracy claim.</li>
+      <li><strong>EPO requires a verified fold-safe source evaluation.</strong> The historical projection used all eligible source chemical labels before the held-out site split. Its original score cannot select a preferred method. Full-source target predictions are a separate exploratory product.</li>
+      <li><strong>Seasonal structure remains important.</strong> Preserve Bega, Belg and Kiremt, the February convention and each comparator. Repetition against another optical instrument does not identify the mechanism or validate seasonal correction factors.</li>
+      <li><strong>Numerical convergence and absolute EC accuracy are separate decisions.</strong> Preserve both baseline versions and their downstream scope. The existing-data stage can close with absolute Addis EC accuracy explicitly unresolved.</li>
+    </FindingsList>
+  </ChartFrame></ExplainOnly>
 }
 
 type XKey = 'hips_bc' | 'hips_lin' | 'tor_equiv' | 'aeth_ir'
 const XKEYS = ['hips_bc', 'hips_lin', 'tor_equiv', 'aeth_ir'] as const
-const X_SHORT: Record<XKey, string> = { hips_bc: 'HIPS BC', hips_lin: 'HIPS, TOR response', tor_equiv: 'TOR yardstick', aeth_ir: 'aethalometer' }
-const X_TITLE: Record<XKey, string> = { hips_bc: 'HIPS BC', hips_lin: 'HIPS on the IMPROVE TOR response', tor_equiv: 'the TOR yardstick', aeth_ir: 'the aethalometer' }
+const X_SHORT: Record<XKey, string> = { hips_bc: 'HIPS BC', hips_lin: 'HIPS, transferred response', tor_equiv: 'inferred TOR comparator', aeth_ir: 'aethalometer' }
+const X_TITLE: Record<XKey, string> = { hips_bc: 'HIPS BC', hips_lin: 'HIPS under the transferred IMPROVE response', tor_equiv: 'the inferred TOR comparator', aeth_ir: 'the aethalometer' }
 /** HIPS on the MAC scale: the raw and the linearised (saturation-corrected, rescaled to the raw Addis mean) */
 const onMac = (xk: XKey) => xk === 'hips_bc' || xk === 'hips_lin'
 const AETH_LABEL = 'Aethalometer IR BCc (µg/m³, MA350, same 24 h)'
@@ -133,7 +180,7 @@ function AddisBeforeAfter({ d }: { d: ContinuumData }) {
   const lg = useLegend()
   const all = useMemo(() => rowsOf(d.addis_filters).map((r): Record<string, any> => ({ ...r, hips_bc: mac.bc(num(r.hips_bc)), hips_lin: mac.bc(num(r.hips_lin)) })), [d, mac])
   const { counted, marked, nOut } = useCounted(all, (r) => String(r.filter_id))
-  const xLabel = xk === 'hips_bc' ? `HIPS BC (µg/m³, ${mac.label})` : xk === 'hips_lin' ? `HIPS on the IMPROVE TOR response (µg/m³, ${mac.label})` : xk === 'aeth_ir' ? AETH_LABEL : 'TOR-equivalent EC (µg/m³): HIPS × IMPROVE TOR/HIPS'
+  const xLabel = xk === 'hips_bc' ? `HIPS BC (µg/m³, ${mac.label})` : xk === 'hips_lin' ? `HIPS on the IMPROVE TOR response (µg/m³, ${mac.label})` : xk === 'aeth_ir' ? AETH_LABEL : 'Inferred comparator (µg/m³): HIPS × IMPROVE TOR/HIPS'
   const lambda = xk === 'hips_bc' ? demingLambda(mac.mac, num(d.settings?.LAMBDA_ADDIS) || 2.96) : xk === 'hips_lin' ? demingLambda(mac.mac, num(d.settings?.LAMBDA_HIPS_LIN) || 0.1) : xk === 'aeth_ir' ? num(d.settings?.LAMBDA_AETH) || 1 : num(d.settings?.LAMBDA_ADDIS) || 2.96
   const pointsOf = (m: string, rows: Record<string, any>[]): CrossPoint[] => rows
     .filter((r) => Number.isFinite(num(r[xk])) && Number.isFinite(num(r[m])) && lg.show(String(r.season)))
@@ -150,6 +197,7 @@ function AddisBeforeAfter({ d }: { d: ContinuumData }) {
   return (
     <ChartFrame id="xc-addis" source={source('AddisBeforeAfter')} provenance={runLine(d)}
       title={`Addis before and after — FTIR EC against ${X_TITLE[xk]}`}
+      evidence={`Exploratory target comparison · ${new Set(counted.map((r) => baseFilterId(String(r.filter_id)))).size} counted physical filters; plotted pairs depend on available values · belg_feb · ${xk === 'hips_bc' ? mac.label : xk === 'aeth_ir' ? 'MA350 IR BCc' : 'transferred model, not measured Addis TOR'}`}
       subtitle={`Each dot is an Addis filter, coloured by season (belg_feb). Every panel is on the same range with the dashed 1:1 line and a Deming fit (λ ${f2(lambda)}). Before is the production VIBES background, after is VIBES rerun on Colab on the PTFE-anchored spectra; pick any two models (the pickers also hold the 3 Nov intercept fixes), or show every baseline. Switch the x axis to the TOR yardstick to see what a TOR-trained model can be expected to reach, or to the aethalometer, a separate instrument, to see which one follows Addis's day-to-day BC: there the slope carries the aethalometer's own calibration, so read the intercept and the straightness, not the slope. HIPS, TOR response corrects HIPS with a curve fitted on IMPROVE TOR alone, without Addis, the aethalometer or FTIR; read its intercept, because its level assumes MAC 10 holds at Addis.`}
       controls={<>
         <Segmented label="View" value={view} options={['pair', 'all'] as const} optionLabel={(o) => o === 'pair' ? 'Before / after' : 'Every baseline'} onChange={setView} />
@@ -277,7 +325,7 @@ function Continuum({ d }: { d: ContinuumData }) {
   const SHAPES: [string, string][] = [['nu^1 (BC-like)', 'BC-like ν¹ returned'], ['flat', 'flat returned'], ['nu^2 (scattering-like)', 'scattering-like ν² returned'], ['light-filter residual RMS', 'residual on light filters (RMS)']]
   const noise = rowsOf<{ window: string; lot: number; prep: string; noise_ug: number }>(d.noise)
   return (
-    <ChartFrame id="xc-continuum" source={source('Continuum')} provenance={runLine(d)}
+    <ChartFrame id="xc-continuum" evidence="Saved 2–3 November study · broad spectral behavior by loading · synthetic shape response does not identify ambient chemistry; numerical convergence is a separate question" source={source('Continuum')} provenance={runLine(d)}
       title="The broad continuum each baseline keeps"
       subtitle={`Median absorbance (×10⁻³) in a band-free window (${win} cm⁻¹) by HIPS loading. Black carbon absorbs across the IR, so raw spectra rise with loading. The spline removes it by construction and production VIBES removes almost all of it. The PTFE-anchored backgrounds keep it while removing the PTFE and the lot offset. Each panel has its own y range.`}
       controls={<Segmented label="Window (cm⁻¹)" value={win} options={windows} onChange={setWin} />}>
@@ -394,13 +442,13 @@ function AethCheck({ d }: { d: ContinuumData }) {
           return <tr key={c}><td>{c} ({f2(first?.hips_ug)} µg)</td><td>{first?.n}</td>{AETH_Y.map(([k]) => { const r = at(k)
             return <td key={k}>{r ? `${f2(r.loglog)} · ${pct(r.intercept_rel)}` : '–'}</td> })}</tr> })}</tbody>
       </table>
-      <Note>Each cell: log-log slope against the aethalometer (1 = proportional) · Deming intercept as a share of the mean. At Addis HIPS rises as the aethalometer to the power 0.44 and its ratio to the aethalometer falls with the aethalometer (ρ −0.92), while FTIR's ratio doesn't (ρ 0.0). A noisy aethalometer would pull both ratios down together, so the compression is in HIPS. The other sites show it too, but much more weakly (0.73–0.77). USPA filters are light and FTIR is noisy there (R² 0.2–0.3). Aethalometer days are legacy daily aggregates matched by overlap (unverified 9 AM bins); the timing was checked against HIPS on 27 Oct.</Note>
+      <Note>Each cell: log-log slope against the aethalometer (1 = proportional) · Deming intercept as a share of the mean. At Addis HIPS rises as the aethalometer to the power 0.44 and its ratio to the aethalometer falls with the aethalometer (ρ −0.92), while FTIR's ratio doesn't (ρ 0.0). This pattern is consistent with HIPS range compression in these comparisons; differing calibration, timing and errors still limit causal attribution. The other sites show it too, but much more weakly (0.73–0.77). USPA filters are light and FTIR is noisy there (R² 0.2–0.3). Aethalometer days are legacy daily aggregates matched by overlap (unverified 9 AM bins); the timing was checked against HIPS on 27 Oct.</Note>
       <ExcludedNote count={nOut} drawn />
     </ChartFrame>
   )
 }
 
-interface SweepRow { model: string; k: number; [m: string]: number | string }
+interface SweepRow extends SourceScore { model: string; k: number; [m: string]: number | string | null | undefined }
 const SWEEP_LABEL: Record<string, string> = {
   vibes: 'VIBES (before)', vibes_anchorhp: 'VIBES anchored (after)', epo: 'EPO', dipls_g10: 'di-PLS, Addis target (γ 10)', dipls_net: 'di-PLS, network target (γ 3)',
   mask_org: 'organic bands masked', cont_only: 'continuum windows only', iw: 'importance-weighted to Addis',
@@ -415,28 +463,32 @@ const METRIC: Record<string, { label: string; ref?: number; fmt: (v: number) => 
   loglog_aeth: { label: 'log-log slope vs aethalometer', ref: 1, fmt: f2 },
   slope_hips_bc: { label: 'Deming slope vs HIPS', ref: 1, fmt: coef },
   ratio_tor_equiv: { label: 'median ratio to TOR yardstick', ref: 1, fmt: f2 },
-  improve_mae: { label: 'IMPROVE out-of-site median error (µg)', fmt: f2 },
+  improve_median_absolute_error: { label: 'IMPROVE median absolute error (µg/filter)', fmt: f2 },
   improve_heavy_lowocec_ratio: { label: 'IMPROVE heavy low-OC/EC: FTIR ÷ TOR', ref: 1, fmt: f2 },
 }
 
 function InterceptSweep({ d }: { d: ContinuumData }) {
-  const rows = rowsOf<SweepRow>(d.sweep)
+  const rows: SweepRow[] = rowsOf<SweepRow>(d.sweep).map((r) => ({ ...r, improve_median_absolute_error: sweepMedianAbsoluteError(r, d.settings?.source_evaluation) }))
   const models = Object.keys(SWEEP_LABEL).filter((m) => rows.some((r) => r.model === m))
   const keys = Object.keys(METRIC)
-  const [left, setLeft] = useSearchParam<string>('xc-icpt.a', 'intercept_hips_bc', keys)
-  const [right, setRight] = useSearchParam<string>('xc-icpt.b', 'intercept_aeth_rel', keys)
+  const [leftStored, setLeft] = useSearchParam<string>('xc-icpt.a', 'intercept_hips_bc', [...keys, 'improve_mae'])
+  const [rightStored, setRight] = useSearchParam<string>('xc-icpt.b', 'intercept_aeth_rel', [...keys, 'improve_mae'])
+  // Historical URLs used improve_mae for MedAE; preserve their meaning across the schema correction.
+  const left = leftStored === 'improve_mae' ? 'improve_median_absolute_error' : leftStored
+  const right = rightStored === 'improve_mae' ? 'improve_median_absolute_error' : rightStored
   const lg = useLegend(['dipls_net', 'iw', 'cont_only'].map((m) => SWEEP_LABEL[m]))
-  const series = (metric: string): SweepSeries[] => models.filter((m) => lg.show(SWEEP_LABEL[m])).map((m) => ({
+  const series = (metric: string): SweepSeries[] => models.filter((m) => lg.show(SWEEP_LABEL[m]) && !(m === 'epo' && metric.startsWith('improve_') && (!epoSourceVerified(d.settings?.source_evaluation) || !rows.some((r) => r.model === m && r.evaluation_status === 'corrected')))).map((m) => ({
     id: `${metric}|${m}`, label: SWEEP_LABEL[m], color: SWEEP_COLOR[m], group: SWEEP_LABEL[m], width: m === 'vibes' || m === 'vibes_anchorhp' ? 2.5 : 1.5,
     dash: m === 'vibes' ? '5 3' : undefined,
     points: rows.filter((r) => r.model === m).map((r) => ({ x: num(r.k), y: num(r[metric]), tip: [`${SWEEP_LABEL[m]}, k ${r.k}`, `${METRIC[metric].label}: ${METRIC[metric].fmt(num(r[metric]))}`,
-      `vs HIPS ${coef(num(r.slope_hips_bc))}x ${coefSigned(num(r.intercept_hips_bc))}; vs aethalometer intercept ${pct(num(r.intercept_aeth_rel))}`, `IMPROVE error ${f2(num(r.improve_mae))} µg`] })),
+      `vs HIPS ${coef(num(r.slope_hips_bc))}x ${coefSigned(num(r.intercept_hips_bc))}; vs aethalometer intercept ${pct(num(r.intercept_aeth_rel))}`, `IMPROVE median absolute error ${f2(num(r.improve_median_absolute_error))} µg/filter`] })),
   }))
   const kMax = d.settings?.k ?? 18
   const panels = [left, right]
   return (
     <ChartFrame id="xc-icpt" source={source('InterceptSweep')} provenance={`run_intercept_fixes_20261103.py · IMPROVE TOR EC only, 5-fold by site · channel pairs averaged · Addis HIPS never used to fit or choose`}
-      title="Six label-free ways to fix the intercept, by PLS k"
+      title="Exploratory transfer candidates, by component count"
+      evidence="Source: IMPROVE TOR; sweep heavy subset: HIPS-derived loading >20 µg, OC/EC <2.5. Target: optical comparators. Unverified EPO source metrics are withheld. Curves are exploratory, not independent model selection."
       subtitle="Every candidate is trained on IMPROVE TOR EC only, on the PTFE-anchored VIBES spectra. EPO removes the IMPROVE spectral signatures of OC, other PM, Fe and K. di-PLS aligns IMPROVE's spectral covariance with the unlabeled Addis (or whole-network) spectra. Importance weights up-weight Addis-like IMPROVE filters. The masked models drop bands. Against HIPS the intercept only gets smaller by giving up level (low k, continuum only). Whenever the level is right, the HIPS slope is 1.9–2.2 and the intercept −5 to −6 µg/m³, whatever the method. Against the aethalometer every anchored model is already proportional from k 10 on (intercept within 5 % of the mean); production VIBES is not (−17 to −28 %)."
       controls={<>
         <Select label="Left" value={left} options={keys} optionLabel={(o: string) => METRIC[o].label} onChange={setLeft} />
@@ -446,7 +498,7 @@ function InterceptSweep({ d }: { d: ContinuumData }) {
         <SweepPlot series={series(m)} xDomain={[1, 25]} reference={METRIC[m].ref} xLabel="PLS components (k)" yLabel={METRIC[m].label} yFormat={METRIC[m].tick}
           height={280} width={w} dim={lg.dim} xMarkers={[{ at: kMax, label: `k ${kMax}` }]} />} />
       <Legend {...lg.props} items={models.map((m) => ({ label: SWEEP_LABEL[m], color: SWEEP_COLOR[m] }))} />
-      <Note>Click a legend entry to show or hide a model; di-PLS (network), importance weights and continuum-only start hidden. Importance weights rest on about 830 effective IMPROVE filters and overshoot. Continuum-only keeps too little signal on IMPROVE's light filters (out-of-site error 1.4–1.6 µg). EPO gets IMPROVE's heavy low-OC/EC filters and the Addis level right (0.93 and 1.05 of TOR at k 18) at a cost in IMPROVE error (1.24 µg against 1.10).</Note>
+      <Note>Click a legend entry to show or hide a model. The historical EPO source curve is withheld until its fold-safe rerun is attached. Target curves use saved full-source models and optical comparisons. A component count chosen after inspecting these curves requires separate evaluation.</Note>
     </ChartFrame>
   )
 }
@@ -577,58 +629,34 @@ function HipsCurve({ d }: { d: ContinuumData }) {
 const num2 = (v: unknown, d = 2) => (Number.isFinite(num(v)) ? num(v).toFixed(d) : '–')
 
 function WhereNext({ d }: { d: ContinuumData }) {
-  const fits = rowsOf<Fit>(d.addis_fits)
-  const A = (m: string) => fits.find((r) => r.model === m && r.x === 'aeth_ir')
-  const fit = rowsOf<{ fit: string; tau0: number; tau0_lo: number; tau0_hi: number }>(d.response_fit)
-  const ra = rowsOf<{ fit: string; model: string; intercept: number; raw_intercept: number; correction_median: number; hips_loglog_aeth: number; raw_loglog_aeth: number }>(d.response_addis)
-  const R = (f: string, m: string) => ra.find((r) => r.fit === f && r.model === m)
-  const anc = 'VIBES anchored k18 (after)'
-  const sb = rowsOf<{ model: string; improve_error: number; improve_heavy_ratio: number }>(d.scoreboard)
-  const S = (m: string) => sb.find((r) => r.model === m)
-  const ad = rowsOf<{ model: string; median_unflagged: number }>(d.adama_summary)
-  const T = (m: string) => ad.find((r) => r.model === m)?.median_unflagged
-  const sea = rowsOf<{ y: string; bega_vs_belg: number; kiremt_vs_belg: number }>(d.season_aeth)
-  const after = sea.find((r) => r.y === anc), hips = sea.find((r) => r.y === 'HIPS BC')
-  const Row = ({ what, why, next }: { what: string; why: React.ReactNode; next: React.ReactNode }) => <tr><td><strong>{what}</strong></td><td>{why}</td><td>{next}</td></tr>
-  return (
-    <ChartFrame id="xc-next" source={source('WhereNext')} exportable={false} provenance="Evidence for each row is in the sections below"
-      title="Where we go from here, with the data we have"
-      subtitle="What's settled enough to act on, what's still open, and what would close it. HIPS, the aethalometer, FTIR and TOR each fail somewhere, so each is used only where it has been checked.">
-      <table className="census-table">
-        <thead><tr><th>Do now</th><th>Why</th><th>Next step</th></tr></thead>
-        <tbody>
-          <Row what="Read HIPS as reliable only below optical depth 0.3" why={<>Within sites, IMPROVE and SPARTAN turn at the same place (τ {num2(fit[0]?.tau0)}, 80 % {num2(fit[0]?.tau0_lo)}–{num2(fit[0]?.tau0_hi)}, from IMPROVE TOR alone). All Addis filters are above it.</>} next="Above 0.3, compare against HIPS on the TOR response, not raw HIPS, and show the Addis result under both response fits." />
-          <Row what="Stop calling the raw-HIPS slope and intercept an FTIR failure" why={<>On the IMPROVE TOR response, the anchored intercept goes from {coefSigned(R('all filters', anc)?.raw_intercept)} to {coefSigned(R('all filters', anc)?.intercept)} µg/m³ ({coefSigned(R('OC/EC < 2.5', anc)?.intercept)} with the low-OC/EC fit).</>} next="Recheck the two results that used it: the k-sweep's “intercept grows with k”, and the poster's Addis fit." />
-          <Row what="Keep anchored and EPO as live options" why={<>Anchored fixes the shape: intercept against the Addis aethalometer {coefSigned(A(BEFORE)?.intercept)} → {coefSigned(A(AFTER)?.intercept)} µg/m³. EPO fixes the most level: IMPROVE heavy Addis-like filters {num2(S('epo')?.improve_heavy_ratio)} of TOR against {num2(S('vibes_anchorhp')?.improve_heavy_ratio)}. Neither wins everything (scoreboard below).</>} next="Both are in the Plot tab's FTIR baseline switch. Pick one for the Addis product after the TOR filters." />
-          <Row what="Use Addis BCc for shape, not for absolute level" why="BCc is the compensated record, and it holds up: Addis runs 55:45 rather than the 1:3 target, but HIPS ÷ BCc stays flat across the fixes at the other sites, and the compression shows on the uncompensated spots too. Level is out of reach for a calibration reason: the MA350 cross-section isn't a filter MAC, and its scale differs by site." next="Nothing here waits on a flow fix. Moving MA350-0238 to 1:3 would still give Addis its own before/after." />
-          <Row what="Check seasons against the aethalometer" why={<>The season effect stays in FTIR (Bega {pct(after?.bega_vs_belg ?? NaN)}, Kiremt {pct(after?.kiremt_vs_belg ?? NaN)} against Belg) and not in HIPS ({pct(hips?.bega_vs_belg ?? NaN)}, {pct(hips?.kiremt_vs_belg ?? NaN)}).</>} next="So the season effect isn't a side effect of HIPS compression. Keep it in the organic stand-in story." />
-        </tbody>
-      </table>
-      <table className="census-table">
-        <thead><tr><th>Still open</th><th>What we know</th><th>What would close it</th></tr></thead>
-        <tbody>
-          <Row what="The true Addis level" why={<>The response says HIPS reads ×{num2(R('OC/EC < 2.5', anc)?.correction_median)}–{num2(R('all filters', anc)?.correction_median)} low at Addis, but Adama's light filters give Fabs/TOR of about {num2(d.settings?.tor?.fabs_over_tor_median, 1)} m²/g, not 10. The two pull in opposite directions and may roughly cancel.</>} next="The Addis city TOR filters, which haven't arrived. Adama can't stand in: it fails both gates of the pass rule." />
-          <Row what="Why HIPS falls behind above τ 0.3" why="Loading and concentration move together almost everywhere. The volume test is weak where it's clean. Dust is far too small." next="Ask UC Davis for HIPS's optical-depth limit and flagging policy; paired Addis filters at half and full volume would separate the two." />
-          <Row what="Anchored on a new filter lot" why={<>On Adama (lot 245), anchored reads {num2(T(anc))} of TOR against {num2(T('VIBES k18 (before)'))} for production VIBES. On IMPROVE's matching filters they're equal, so this looks like a lot offset (raw reads {num2(T('raw k18'))}).</>} next="Run anchored on lot 245 blanks, if any exist, before using it on new lots." />
-        </tbody>
-      </table>
-      <Note>The rule for reading the Addis city TOR filters is written up as a proposal in the next section, for the team to confirm or change before anyone reads them.</Note>
-    </ChartFrame>
-  )
+  const verified = epoSourceVerified(d.settings?.source_evaluation)
+  return <ChartFrame id="xc-next" source={source('WhereNext')} exportable={false}
+    title="Close this stage with a reproducible account of the evidence"
+    evidence="Existing-data investigation · no independently validated Addis EC product selected">
+    <div className="closeout-table-scroll"><table className="census-table">
+      <thead><tr><th>Closeout task</th><th>Current evidence</th><th>Acceptance criterion</th></tr></thead>
+      <tbody>
+        <tr><td>Source evaluation</td><td>{verified ? 'Corrected retrospective source-score receipt attached.' : 'Historical EPO source scores withheld; fold-safe rerun pending.'}</td><td>Training-only EPO in each site fold; frozen membership; held-out-label perturbation leaves predictions unchanged; common physical filters and coverage reported.</td></tr>
+        <tr><td>Baseline and numerical choice</td><td>Anchoring is a candidate; Newton addresses convergence.</td><td>Preserve each version and its downstream scope. Complete season-composition and fingerprint checks before promoting numerical v2 into those conclusions.</td></tr>
+        <tr><td>Seasonal interpretation</td><td>Seasonal differences persist in several specified comparisons.</td><td>Name the cohort, reference and February convention. Keep Bega, Belg and Kiremt separate without deriving unvalidated seasonal correction factors.</td></tr>
+        <tr><td>Optical response</td><td>The IMPROVE-derived response changes the Addis comparison.</td><td>Show raw HIPS and transferred-response scenarios together. Treat the fitted bend as an empirical model feature, not a certified instrument cutoff.</td></tr>
+        <tr><td>Reproducible release</td><td>The six-figure section reuses the current saved exports.</td><td>Freeze source/data identities; pass the declared checks; restore a representative figure; verify a fresh-context link and completed export.</td></tr>
+      </tbody>
+    </table></div>
+    <Note>Absolute Addis EC accuracy remains unresolved. Independent Ethiopian TOR, full PMF qualification and further acceleration are separate follow-on work. The future TOR rule below is a proposal; its acceptance limits and assumptions still require agreement.</Note>
+  </ChartFrame>
 }
 
 function PassRuleProposal({ d }: { d: ContinuumData }) {
   const sim = rowsOf<{ model: string; n_filters: number; true_level: number; pass: number; fail: number; inconclusive: number }>(d.rule_sim).filter((r) => r.model === 'VIBES anchored k18 (after)')
   const q = (n: number, lvl: number) => sim.find((r) => r.n_filters === n && r.true_level === lvl)
   const share = (v?: number) => (v == null ? '–' : `${Math.round(v * 100)} %`)
-  const sb = rowsOf<{ model: string; improve_error: number; improve_heavy_ratio: number }>(d.scoreboard)
-  const S = (m: string) => sb.find((r) => r.model === m)
   const T = d.settings?.tor ?? {}
   const Step = ({ a, b, c }: { a: string; b: React.ReactNode; c: React.ReactNode }) => <tr><td><strong>{a}</strong></td><td>{b}</td><td>{c}</td></tr>
   return (
     <ChartFrame id="xc-proposal" source={source('PassRuleProposal')} exportable={false} provenance="Proposed 3 Nov 2026, not agreed · simulation in run_hips_response_20261103.py stage tor · docs/open-items.md"
       title="Proposal: the pass rule for the Addis city TOR filters"
-      subtitle="Status: proposed, not agreed. The team should confirm or change this before anyone reads a filter against FTIR. No Addis city filters have arrived, so nothing has been read and the rule can still change freely. Once the first ratio is read, any change has to be reported as a change.">
+      subtitle="Status: proposed, not agreed. The team should confirm or change this before anyone reads a filter against FTIR. The saved export contains no Addis city TOR pairs; the rule remains a proposal and must be agreed before evaluation. Once the first ratio is read, any change has to be reported as a change.">
       <table className="census-table">
         <thead><tr><th>Step</th><th>Proposed</th><th>Why</th></tr></thead>
         <tbody>
@@ -642,7 +670,7 @@ function PassRuleProposal({ d }: { d: ContinuumData }) {
       <table className="census-table">
         <thead><tr><th>Verdict</th><th>When</th><th>What we do</th></tr></thead>
         <tbody>
-          <Step a="Pass" b="The whole interval sits inside 0.8–1.25." c="The primary baseline's level is confirmed at Addis. It can go forward for the Addis product." />
+          <Step a="Pass" b="The whole interval sits inside 0.8–1.25." c="Would support the declared level criterion in this eligible paired sample; wider target accuracy, seasons and lots require their own evidence." />
           <Step a="Fail low" b="The whole interval sits below 0.8." c="FTIR really reads low on heavy Addis filters, and HIPS compression doesn't explain it away. Stop and rework the transfer." />
           <Step a="Fail high" b="The whole interval sits above 1.25." c="The baseline overshoots, as anchored did on Adama (lot 245). Check the lot's blanks before anything else." />
           <Step a="Inconclusive" b="The interval crosses 0.8 or 1.25." c="No level claim either way. Report the interval and get more filters." />
@@ -652,14 +680,14 @@ function PassRuleProposal({ d }: { d: ContinuumData }) {
       <table className="census-table">
         <thead><tr><th>For the team to decide</th><th>Proposed</th><th>What the choice changes</th></tr></thead>
         <tbody>
-          <Step a="Primary baseline" b="Anchored, with production VIBES and EPO beside it." c={`Anchored fixes the shape. EPO reaches closer to TOR on heavy Addis-like IMPROVE filters (${num2(S('epo')?.improve_heavy_ratio)} against ${num2(S('vibes_anchorhp')?.improve_heavy_ratio)}) but has a higher IMPROVE error (${num2(S('epo')?.improve_error)} against ${num2(S('vibes_anchorhp')?.improve_error)} µg).`} />
+          <Step a="Primary baseline" b="Anchored, with production VIBES and EPO as candidates for review." c="Choose and freeze the primary model before target outcomes are examined. EPO's historical source score cannot inform this choice until the fold-safe rerun is verified." />
           <Step a="Pass band" b="0.8–1.25, equal either side of 1 as a ratio." c="A tighter band means more inconclusive results. A wider one claims less." />
           <Step a="Gates" b={`${T.gate_ug ?? 15} µg per filter and OC/EC below ${T.ocec_limit ?? 2.5}.`} c="Loosening them gives more filters, but each one tests the heavy-filter question less well." />
           <Step a="Number of filters" b="10 at minimum, 20 if we can get them." c={`20 raises the pass rate at a true 1.0 from ${share(q(10, 1)?.pass)} to ${share(q(20, 1)?.pass)}. It doesn't help a level near a band edge, which stays inconclusive either way.`} />
           <Step a="Failing high" b="Added on 3 Nov. The first draft could only fail low." c="Without it, a baseline reading far above TOR would come back inconclusive rather than failed." />
         </tbody>
       </table>
-      <Note>This tests the level at one site and nothing else. Simulated on {T.improve_eligible ?? '?'} eligible IMPROVE filters with 10 filters per draw: a true level of 1.0 passes {share(q(10, 1)?.pass)}, 0.6 fails {share(q(10, 0.6)?.fail)}, and 0.8 is inconclusive {share(q(10, 0.8)?.inconclusive)}. So the rule gives 1.0 and 0.6 clear, different answers, and treats 0.8 as unsettled on purpose. The simulation uses IMPROVE's scatter, which may be smaller than a new site's. Every case is in the section on the filters we hold, further down.</Note>
+      <Note>This tests the level at one site and nothing else. Simulated on {T.improve_eligible ?? '?'} eligible IMPROVE filters with 10 filters per draw: a true level of 1.0 passes {share(q(10, 1)?.pass)}, 0.6 fails {share(q(10, 0.6)?.fail)}, and 0.8 is inconclusive {share(q(10, 0.8)?.inconclusive)}. Those simulated operating rates are conditional on this source scatter and proposal; they do not establish sufficient target precision or an agreed sample size. The simulation uses IMPROVE's scatter, which may be smaller than a new site's. Every case is in the section on the filters we hold, further down.</Note>
     </ChartFrame>
   )
 }
@@ -672,7 +700,7 @@ function WhyAnchored({ d }: { d: ContinuumData }) {
   const right = [trace(`vibes_${loading}`, 'production VIBES', '#d62728'), trace(`anchored_${loading}`, 'VIBES on PTFE-anchored', '#8c564b', undefined, 2)]
   const fits = rowsOf<Fit>(d.addis_fits)
   const F = (m: string, x: XKey) => fits.find((r) => r.model === m && r.x === x)
-  const sb = rowsOf<{ model: string; improve_error: number; improve_heavy_ratio: number; improve_light_ratio: number }>(d.scoreboard)
+  const sb = rowsOf<SourceScore>(d.scoreboard)
   const ad = rowsOf<{ model: string; median_unflagged: number }>(d.adama_summary)
   const inj = rowsOf<{ variant: string; shape: string; value: number }>(d.injection)
   const kept = inj.find((r) => r.variant === 'production (rank 70)' && r.shape === 'nu^1 (BC-like)')?.value
@@ -686,8 +714,9 @@ function WhyAnchored({ d }: { d: ContinuumData }) {
   ]
   return (
     <ChartFrame id="xc-why" source={source('WhyAnchored')} provenance="run_hips_response_20261103.py stage options · workflows/vibes_continuum_20261102.py · k 18"
-      title="The anchored background: how we got it, and why"
-      subtitle="Black carbon absorbs across the whole mid-IR, so a loaded filter sits on a broad rising continuum. That continuum is the most direct EC signal in the spectrum. Our baselines were deleting it."
+      title="The anchored background and candidate tradeoffs"
+      evidence="Fixed 18 components · heavy source subset: 15 ≤ TOR < 150 µg/filter, OC/EC < 2.5 · source reference: IMPROVE TOR; Addis references: optical or inferred; Adama: provisional paired TOR. EPO source metrics require verified rerun provenance."
+      subtitle="Loaded filters can carry broad spectral structure. A broad continuum is a candidate source of carbon-related information; the controls show how preprocessing changes broad shapes without establishing their chemical origin."
       controls={<Segmented label="Addis filters" value={loading} options={['heavy', 'light'] as const} optionLabel={(o) => (o === 'heavy' ? 'heaviest third' : 'lightest third')} onChange={setLoading} />}>
       <FindingsList>
         <li><strong>The problem.</strong> Production VIBES models each spectrum as blank mean + blank components + analyte. The blank components include smooth ramps, so the fit can absorb the BC continuum into the background.</li>
@@ -698,11 +727,11 @@ function WhyAnchored({ d }: { d: ContinuumData }) {
         <SpectrumPlot series={k === 'raw' ? left : right} window={[4000, 500]} width={w} height={260} yLabel="absorbance" zeroLine={k !== 'raw'} yIgnore={[[1050, 1300]]} regions={[]} />} />
       <Legend items={[{ label: 'production VIBES', color: '#d62728' }, { label: 'VIBES on PTFE-anchored', color: '#8c564b' }]} />
       <table className="census-table">
-        <thead><tr><th>Baseline (k 18)</th><th>BC continuum</th><th>IMPROVE error</th><th>IMPROVE heavy Addis-like, ÷ TOR</th><th>Addis intercept vs aethalometer</th><th>Addis ÷ TOR yardstick</th><th>Adama ÷ TOR (3 filters)</th></tr></thead>
+        <thead><tr><th>Baseline (k 18)</th><th>Broad continuum</th><th>IMPROVE median absolute error (µg/filter)</th><th>IMPROVE heavy low-OC/EC, FTIR ÷ TOR</th><th>Addis intercept vs aethalometer</th><th>Addis ÷ inferred TOR comparator</th><th>Adama ÷ TOR (3 provisional pairs)</th></tr></thead>
         <tbody>{board.map(([key, fitKey, adamaKey, cont, name]) => { const s = sb.find((r) => r.model === key)
-          return <tr key={key}><td>{name}</td><td>{cont}</td><td>{num2(s?.improve_error)} µg</td><td>{num2(s?.improve_heavy_ratio)}</td><td>{coefSigned(F(fitKey, 'aeth_ir')?.intercept)} µg/m³</td><td>{num2(F(fitKey, 'tor_equiv')?.ratio)}</td><td>{num2(ad.find((r) => r.model === adamaKey)?.median_unflagged)}</td></tr> })}</tbody>
+          return <tr key={key}><td>{name}</td><td>{cont}</td><td>{key === 'epo' && medianAbsoluteError(s, d.settings?.source_evaluation) == null ? 'Withheld: rerun required' : num2(medianAbsoluteError(s, d.settings?.source_evaluation))}</td><td>{num2(sourceScoreValue(s, 'improve_heavy_ratio', d.settings?.source_evaluation))}</td><td>{coefSigned(F(fitKey, 'aeth_ir')?.intercept)} µg/m³</td><td>{num2(F(fitKey, 'tor_equiv')?.ratio)}</td><td>{num2(ad.find((r) => r.model === adamaKey)?.median_unflagged)}</td></tr> })}</tbody>
       </table>
-      <Note>Why anchored over production VIBES: it keeps the continuum, removes a real −1 µg/m³ intercept at Addis, and doesn't cost IMPROVE accuracy. Why it isn't a clean win: on Adama (lot 245) it reads about 30 % high, and on heavy Addis-like IMPROVE filters it's only slightly better than production VIBES. EPO is closer to TOR on both, but has a larger overall IMPROVE error. Both are switchable in the Plot tab's FTIR baseline row.</Note>
+      <Note>Anchoring changes the saved optical comparison and preserves more broad structure. The small, provisional Adama comparison raises a transfer or lot question. The historical EPO source score is withheld; saved all-source target predictions remain exploratory. None of these comparisons establishes the absolute Addis EC level.</Note>
     </ChartFrame>
   )
 }
@@ -764,9 +793,9 @@ function HipsNetwork({ d }: { d: ContinuumData }) {
   const heavy = [...sites].sort((a, b) => num(b.tau_median) - num(a.tau_median)).slice(0, 12)
   const R = d.settings?.response ?? {}
   return (
-    <ChartFrame id="xc-network" source={source('HipsNetwork')} provenance={`run_hips_response_20261103.py stage network · within sites · bins on √(τ HIPS × τ reference), so neither side is selected on · shaded 90 %`}
+    <ChartFrame id="xc-network" evidence="IMPROVE-derived response sensitivity · x = geometric mean of HIPS and reference optical depth · transferred model, not Addis TOR or an instrument reliability cutoff" source={source('HipsNetwork')} provenance={`run_hips_response_20261103.py stage network · within sites · bins on √(τ HIPS × τ reference), so neither side is selected on · shaded 90 %`}
       title="How far can HIPS be trusted? Every SPARTAN and IMPROVE filter"
-      subtitle={`Each curve is HIPS ÷ a reference at one optical depth, relative to its value at τ 0.2–0.3, compared within each site. Below 0.3 HIPS is flat, which is the built-in control. Above it, HIPS falls behind in both networks, against thermal TOR as well as FTIR. The black IMPROVE TOR curve uses no FTIR and no aethalometer. Fitted to that alone: HIPS starts to fall at τ ${num2(p?.tau0)} (80 % ${num2(p?.tau0_lo)}–${num2(p?.tau0_hi)}).`}>
+      subtitle={`Each curve is HIPS ÷ a reference at one optical depth, relative to its value at τ 0.2–0.3, compared within each site. The fit assumes an approximately flat low-depth response as its control. Above it, HIPS falls behind in both networks, against thermal TOR as well as FTIR. The black IMPROVE TOR curve uses no FTIR and no aethalometer. Fitted to that alone: the empirical response bends at the geometric-mean optical-depth coordinate ${num2(p?.tau0)} (80 % ${num2(p?.tau0_lo)}–${num2(p?.tau0_hi)}).`}>
       <SweepPlot series={[...series, ...resp]} xScale="log" xDomain={[.06, 2.4]} yDomain={[.3, 1.25]} reference={1} xLabel="optical depth τ (geometric mean of HIPS and the reference)" yLabel="HIPS ÷ reference, relative to τ 0.2–0.3" height={340} xMarkers={[{ at: 0.3, label: 'τ 0.3' }, { at: 0.96, label: 'Addis median' }]} dim={lg.dim} />
       <Legend {...lg.props} items={names.map((c) => ({ label: c, color: CURVE_COLOR[c] }))} />
       <table className="census-table">
@@ -777,7 +806,7 @@ function HipsNetwork({ d }: { d: ContinuumData }) {
         <thead><tr><th>Site (heaviest 12)</th><th>Filters</th><th>Median optical depth</th><th>Above 0.3</th><th>Above 1</th><th>HIPS correction</th><th>FTIR intercept share, raw → corrected</th></tr></thead>
         <tbody>{heavy.map((r) => <tr key={r.code}><td>{r.code}</td><td>{r.n}</td><td>{num2(r.tau_median)}</td><td>{Math.round(num(r.share_over_0p3) * 100)} %</td><td>{Math.round(num(r.share_over_1) * 100)} %</td><td>×{num2(r.correction_median)}</td><td>{pct(num(r.raw_intercept_rel))} → {pct(num(r.intercept_rel))}</td></tr>)}</tbody>
       </table>
-      <Note>Working assumption: HIPS is proportional below τ 0.3. Above it, use the response or flag the value; above τ 1, treat HIPS as a lower bound. Across sites with median τ above 0.35, the typical intercept share falls from {pct(num(R.heavy_abs_intercept_raw)).replace('+', '')} to {pct(num(R.heavy_abs_intercept_corrected)).replace('+', '')}. Two limits: the level of corrected HIPS assumes MAC 10 holds, which Adama questions, and TOR itself may misbehave on very heavy filters, so the curve is firmest below τ 1 (IMPROVE has {R.improve_n_over_1 ?? '?'} filters above that). The low-OC/EC fit is closer to Addis's composition and corrects less. The correction also overshoots at Johannesburg, Pretoria and Mexico City (intercept share +27 to +34 %), and it takes the Addis FTIR slope below 1, so one curve doesn't fit every site and the shape isn't fully settled.</Note>
+      <Note>The response assumes proportionality below its fitted bend. This empirical feature is not an instrument-certified reliability boundary or an operational rule for flagging raw HIPS optical depth. Across sites with median τ above 0.35, the typical intercept share falls from {pct(num(R.heavy_abs_intercept_raw)).replace('+', '')} to {pct(num(R.heavy_abs_intercept_corrected)).replace('+', '')}. Two limits: the level of corrected HIPS assumes MAC 10 holds, which Adama questions, and TOR itself may misbehave on very heavy filters, so the fitted curve is less constrained above τ 1 (IMPROVE has {R.improve_n_over_1 ?? '?'} filters above that). The low-OC/EC fit is closer to Addis's composition and corrects less. The correction also overshoots at Johannesburg, Pretoria and Mexico City (intercept share +27 to +34 %), and it takes the Addis FTIR slope below 1, so one curve doesn't fit every site and the shape isn't fully settled.</Note>
     </ChartFrame>
   )
 }
@@ -792,7 +821,7 @@ function TorTest({ d }: { d: ContinuumData }) {
   return (
     <ChartFrame id="xc-tortest" source={source('TorTest')} exportable={false} provenance="run_hips_response_20261103.py stage tor · Adama batch 54 · spectrum map provisional · real VIBES on the anchored spectra"
       title="Testing the pass rule: the TOR filters we actually hold"
-      subtitle={`No Addis city filters have arrived. We hold ${T.adama_filters ?? 5} Adama pairs (a PTFE filter and a date-paired quartz TOR filter). Under the proposed rule they aren't a valid test: 0 of 5 reach ${T.gate_ug ?? 15} µg per filter (the heaviest is ${num2(T.adama_max_tor_ug, 1)} µg) and their OC/EC is about ${num2(T.adama_median_ocec, 1)}, not below 2.5. So the rule returns “not eligible”, which is the right answer. They're still worth reading as a low-loading check, and to show the rule works.`}>
+      subtitle={`This saved export contains no Addis city TOR pairs. We hold ${T.adama_filters ?? 5} Adama pairs (a PTFE filter and a date-paired quartz TOR filter). Under the proposed rule they aren't a valid test: 0 of 5 reach ${T.gate_ug ?? 15} µg per filter (the heaviest is ${num2(T.adama_max_tor_ug, 1)} µg) and their OC/EC is about ${num2(T.adama_median_ocec, 1)}, not below 2.5. So the rule returns “not eligible”, which is the right answer. They're still worth reading as a low-loading check, and to inspect the proposal's scope.`}>
       <table className="census-table">
         <thead><tr><th>Date</th><th>PTFE</th><th>Flag</th><th>Optical depth</th><th>TOR EC</th><th>HIPS BC</th><th>Fabs ÷ TOR</th>{models.map((m) => <th key={m}>{m}</th>)}</tr></thead>
         <tbody>{a.map((r) => <tr key={r.ptfe_id}><td>{r.date}</td><td>{r.ptfe_id}</td><td>{r.flag ?? '–'}</td><td>{num2(r.tau)}</td><td>{num2(r.ec_tr_ugm3)}</td><td>{num2(r.hips_bc)}</td><td>{num2(r.fabs_over_tor, 1)}</td>{models.map((m) => <td key={m}>{num2(r[m])}</td>)}</tr>)}</tbody>
@@ -818,8 +847,9 @@ function SeasonAeth({ d }: { d: ContinuumData }) {
       kiremt: { v: num(r.kiremt_vs_belg) * 100, lo: (num(r.kiremt_vs_belg) - 1.645 * num(r.kiremt_se)) * 100, hi: (num(r.kiremt_vs_belg) + 1.645 * num(r.kiremt_se)) * 100 } } }))
   return (
     <ChartFrame id="xc-season-aeth" source={source('SeasonAeth')} provenance="run_intercept_fixes_20261103.py stage stress · log y on log aethalometer + season · bars 90 %"
-      title="The season check, moved onto the aethalometer"
-      subtitle="The Season page measures the season effect against the TOR yardstick, which is built from HIPS. Since HIPS is compressed, that effect might have been a side effect of HIPS. So this repeats it with the aethalometer as the yardstick: after taking out each day's aethalometer BC, does a season still read high or low? FTIR does, and HIPS doesn't. The season effect is real and belongs to the FTIR.">
+      title="Seasonal contrasts against the aethalometer"
+      evidence={`Bega Oct–Jan; Belg Feb–May (reference); Kiremt Jun–Sep · saved per-model n: ${sea.map((r) => `${r.y} ${r.n}`).join("; ")} · optical comparison, 90% intervals`}
+      subtitle="The Season page measures the season effect against the TOR yardstick, which is built from HIPS. Since HIPS is compressed, that effect might have been a side effect of HIPS. So this repeats it with the aethalometer as the yardstick: after taking out each day's aethalometer BC, does a season still read high or low? FTIR does, and HIPS doesn't. This supports descriptive seasonal structure with a second optical comparator; it does not identify the cause or validate seasonal EC corrections.">
       <Forest rows={rows} labelWidth={240} panels={[{ key: 'bega', label: 'Bega vs Belg (%)', ref: 0, fmt: (v: number) => `${v.toFixed(0)} %`, domain: [-30, 30] }, { key: 'kiremt', label: 'Kiremt vs Belg (%)', ref: 0, fmt: (v: number) => `${v.toFixed(0)} %`, domain: [-30, 30] }]} />
       <Note>Lot check for anchored FTIR ÷ aethalometer: {lot.map((r) => `lot ${String(r.lot).replace('.0', '')} ${r.season} ${num2(r.ratio)} (n ${r.n})`).join(', ')}. Bega reads low in both lots, so it isn't only the lot 248 confound.</Note>
     </ChartFrame>

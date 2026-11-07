@@ -1,5 +1,6 @@
 """The gallery rebuild's step list stays runnable, ordered, complete and documented."""
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -70,3 +71,68 @@ def test_cli_routes_gallery_and_drive():
     assert args.func is cli.command_gallery and args.workflow == 'rebuild' and args.script_args == ['--only', 'aeronet']
     args = cli.build_parser().parse_args(['drive', 'mirror', '--list'])
     assert args.func is cli.command_drive and args.script_args == ['--list']
+
+
+def _isolated_runner(tmp_path, monkeypatch):
+    monkeypatch.setattr(rebuild, 'ROOT', tmp_path)
+    monkeypatch.setattr(rebuild, 'APP', tmp_path)
+    monkeypatch.setattr(rebuild, 'RUN_LOG', tmp_path / 'last_run.json')
+    monkeypatch.setattr(rebuild, 'roots', lambda: {})
+    monkeypatch.setattr(rebuild, 'git', lambda *args: '')
+
+
+def test_unexpected_node_failure_is_fatal_and_blocks_transitive_dependents(tmp_path, monkeypatch):
+    _isolated_runner(tmp_path, monkeypatch)
+    fail = rebuild.Step('node-tests', 'check', (sys.executable, '-c', 'raise SystemExit(7)'), 'unexpected test failure', '-', node=True)
+    child = rebuild.Step('dependent', 'check', (sys.executable, '-c', "from pathlib import Path; Path('child-ran').touch()"),
+                         'must not run', '-', after=('node-tests',), node=True)
+    grandchild = rebuild.Step('grandchild', 'check', (sys.executable, '-c', "from pathlib import Path; Path('grandchild-ran').touch()"),
+                              'must not run', '-', after=('dependent',), node=True)
+    assert rebuild.run([fail, child, grandchild], dry=False) == 1
+    log = json.loads(rebuild.RUN_LOG.read_text())
+    assert log['steps'][0]['status'] == 'failed (exit 7)'
+    assert log['steps'][1]['status'].startswith('skipped:')
+    assert log['steps'][2]['status'].startswith('skipped:')
+    assert not (tmp_path / 'child-ran').exists()
+    assert not (tmp_path / 'grandchild-ran').exists()
+    assert log['exit_code'] == 1
+
+
+def test_missing_check_input_is_unavailable_and_fails_without_running(tmp_path, monkeypatch):
+    _isolated_runner(tmp_path, monkeypatch)
+    step = rebuild.Step('scientific-check', 'check', (sys.executable, '-c', "from pathlib import Path; Path('ran').touch()"),
+                        'needs the frozen export', '-', (rebuild.Need('frozen/evidence.csv', lambda: False),), node=True)
+    assert rebuild.run([step], dry=False) == 1
+    assert not (tmp_path / 'ran').exists()
+    record = json.loads(rebuild.RUN_LOG.read_text())['steps'][0]
+    assert record['status'] == 'unavailable: missing frozen/evidence.csv'
+    assert record['missing_inputs'] == ['frozen/evidence.csv']
+
+
+def test_missing_export_input_keeps_the_existing_rebuild_skip_behavior(tmp_path, monkeypatch):
+    _isolated_runner(tmp_path, monkeypatch)
+    step = rebuild.Step('optional-export', 'export', (sys.executable, '-c', 'raise SystemExit(99)'),
+                        'keep existing output', '-', (rebuild.Need('upstream/raw.csv', lambda: False),), node=True)
+    assert rebuild.run([step], dry=False) == 0
+    assert json.loads(rebuild.RUN_LOG.read_text())['steps'][0]['status'].startswith('skipped: missing')
+
+
+def test_source_public_and_research_profiles_make_their_scope_explicit():
+    profiles = {name: rebuild.check_steps(name) for name in rebuild.CHECK_PROFILES}
+    keys = {name: {s.key for s in steps} for name, steps in profiles.items()}
+    assert keys['source'] < keys['public'] < keys['research']
+    assert 'node-tests' in keys['source']
+    assert 'node-data-public' in keys['public'] - keys['source']
+    assert {'node-data-research', 'python-data-tests'} <= keys['research'] - keys['public']
+    assert '--source-only' in next(s for s in profiles['source'] if s.key == 'public-build').run
+    assert '--source-only' not in next(s for s in profiles['public'] if s.key == 'public-build').run
+
+
+def test_check_defaults_to_full_research_and_passes_the_requested_scope(monkeypatch):
+    calls = []
+    monkeypatch.setattr(rebuild, 'run', lambda steps, dry, profile: calls.append((steps, dry, profile)) or 1)
+    monkeypatch.setattr(rebuild, 'sizes', lambda: 0)
+    assert rebuild.main(['check']) == 1
+    assert calls[-1][2] == 'research'
+    assert rebuild.main(['check', '--profile', 'source']) == 1
+    assert calls[-1][2] == 'source'

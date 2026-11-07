@@ -18,16 +18,52 @@ uv sync --python 3.13 && (cd gallery/app && npm ci)    # environments
 uv run aeth doctor                                      # data paths resolve?
 uv run aeth gallery plan                                # every step, and what it is missing
 uv run aeth gallery rebuild                             # run every step whose inputs are present
-uv run aeth gallery check                               # chart index, typecheck, tests, public-build check, sizes
+uv run aeth gallery check --profile source              # code checks; does not validate a data snapshot
+uv run aeth gallery check --profile public              # code and public-snapshot reconciliation
+uv run aeth gallery check                               # full research check, including private evidence
 git status gallery/app/public/data                      # review what changed, then commit
 ```
 
 - `rebuild --fetch` also runs the network steps: the AERONET pulls and the MAIA catalogue.
 - `--only STEP…`, `--from STEP` and `--skip STEP…` narrow a run. `--dry-run` shows what would run.
-- A step whose inputs are missing is **skipped**, and its committed output is left alone. A step
-  after a failed one is skipped.
+- An export whose inputs are missing is **skipped**, and its committed output is left alone.
+  A missing check prerequisite is **unavailable** and makes verification fail. A step after a
+  failed one is skipped, including transitive dependents. No test failure is exempted.
 - Every run writes `research/ftir_hips_chem/output/tables/gallery_rebuild/last_run.json`
   (gitignored): what ran, how long it took, which data roots resolved, and the commit.
+
+### Verification profiles
+
+| Profile | Required checks | Meaning of a pass |
+|---|---|---|
+| `source` | Chart index, TypeScript, data-independent Node tests, Python behavior/synthetic-input tests, compiled public visibility | The selected source checks passed. Scientific data and the packed archive were not evaluated. |
+| `public` | Source checks, public-data Node reconciliation, public archive visibility/availability | The selected public snapshot passed its declared checks. Private research evidence remains outside scope. |
+| `research` (default) | All public checks, private/exported research reconciliation and saved instrument-bin checks | Every currently declared release check ran successfully with its inputs. This is not independent validation of Addis EC accuracy. |
+
+`rebuild --checks` includes all check steps. For code-only work, use the explicit source profile;
+do not report it as a full release check. Public publication uses `--profile public` because
+private Research and ML exports are intentionally omitted from that archive.
+
+The Node input inventory is [scripts/test-inputs.json](../gallery/app/scripts/test-inputs.json).
+It classifies every direct data-reader test, names its required repository-relative inputs,
+and records why it belongs in public or research verification. Other test files run in the
+source suite. Files containing both synthetic cases and export reconciliation remain in their
+declared data suite, so those synthetic cases are not claimed as source-profile coverage.
+A new direct data reader must be added to the inventory; it cannot silently enter source checks.
+
+From `gallery/app`, use `npm run test:inputs` to list ready and unavailable test files,
+`npm run test:source`, `npm run test:data:public`, or `npm run test:data:research` to run one
+suite. `npm test` runs all suites. The runner executes available tests and lists each unavailable
+test with its missing inputs. Missing inputs, assertion failures, skipped assertions and TODOs
+all produce a nonzero exit. Restore the intended frozen inputs to satisfy a data check;
+do not fabricate empty files, change expected scientific values, or suppress a test.
+
+Each Node run writes `research/ftir_hips_chem/output/tables/gallery_rebuild/node-<suite>.json`.
+The receipt includes test-file and declared input hashes, process exit status, actual test
+counts, unavailable tests, and omitted scopes. Inputs that change during the check fail it.
+Keep these receipts with the source commit and the archive SHA-256 for the release under review.
+They complement the browser link/export checks; neither source tests nor deployment success
+substitutes for those journeys or for a recoverability check.
 
 ## 1. Inputs and where they live
 
@@ -142,8 +178,12 @@ The Drive files the exporters read, relative to the root:
 | 50 | `diurnal-coverage` | research | 24 h vs AERONET-hours Red BCc ratio (AERONET_SPARTAN_2026-08-22.md, corrected 2026-10-27)<br>`research/ftir_ec_phase3/scripts/ma350_diurnal_coverage.py` | `research/ftir_ec_phase3/output/tables/aeronet/diurnal_coverage_correction.csv` | Drive: Aethalometry Data/Raw/Jacros_MA350_1-min_2022-2024_Cleaned.csv | — |
 | 51 | `chart-index` | check | Regenerate the ⌘K chart index<br>`npm run index:charts` | `gallery/app/src/chartIndex.json` | gallery/app/node_modules | — |
 | 52 | `typecheck` | check | Typecheck the gallery<br>`npx tsc -b` | `-` | gallery/app/node_modules | chart-index |
-| 53 | `node-tests` | check | The gallery's node tests (7 fail without gitignored exports) (failures are reported, not fatal: the baseline, VIBES and similarity tests need exports absent from a fresh clone)<br>`npm test` | `-` | gallery/app/node_modules | chart-index |
-| 54 | `python-tests` | check | The pipeline's pytest files<br>`-m pytest -q tests/test_gallery_rebuild.py tests/test_gallery_sections.py tests/test_aeronet_gallery.py tests/test_aeronet_sites_export.py tests/test_availability_aeronet.py tests/test_aeth_quality_export.py tests/test_aeth_quality_minute.py tests/test_aeth_sources_export.py tests/test_aeth_diurnal_export.py tests/test_aeth_overview_export.py tests/test_gallery_research_hips_met.py tests/test_gallery_research_spectral.py tests/test_maia_catalog.py tests/test_gallery_publication.py tests/test_spartan_update_check.py` | `-` | — | — |
+| 53 | `node-tests` | check | Data-independent Node behavior and contract checks (all failures, skips and TODOs are fatal; data readers are declared in scripts/test-inputs.json)<br>`npm run test:source` | `gallery_rebuild/node-source.json` | gallery/app/node_modules | chart-index |
+| 54 | `node-data-public` | check | Scientific reconciliation on publishable gallery exports (minimum profile: public; missing declared inputs are unavailable, never passed)<br>`npm run test:data:public` | `gallery_rebuild/node-data-public.json` | gallery/app/node_modules | chart-index |
+| 55 | `node-data-research` | check | Scientific reconciliation requiring research exports or saved analysis tables (minimum profile: research; retains the legacy baseline, VIBES and similarity checks)<br>`npm run test:data:research` | `gallery_rebuild/node-data-research.json` | gallery/app/node_modules | chart-index |
+| 56 | `python-tests` | check | The pipeline's source and synthetic-data pytest checks<br>`-m pytest -q tests/test_gallery_rebuild.py tests/test_gallery_sections.py tests/test_aeronet_gallery.py tests/test_aeronet_sites_export.py tests/test_availability_aeronet.py tests/test_aeth_quality_export.py tests/test_aeth_quality_minute.py tests/test_aeth_sources_export.py tests/test_aeth_diurnal_export.py tests/test_aeth_overview_export.py tests/test_gallery_research_hips_met.py tests/test_gallery_research_spectral.py tests/test_maia_catalog.py tests/test_gallery_publication.py tests/test_spartan_update_check.py tests/test_candidate_metrics.py tests/test_epo_validation.py --deselect tests/test_aeth_quality_export.py::test_bins_line_up_with_the_daily_export` | `-` | — | — |
+| 57 | `python-data-tests` | check | Reconcile exported sampling bins with the saved daily instrument records (minimum profile: research; all five recorded instrument inputs are required)<br>`-m pytest -q tests/test_aeth_quality_export.py::test_bins_line_up_with_the_daily_export` | `-` | research/ftir_hips_chem/processed_sites/df_Beijing_9am_resampled.pkl<br>research/ftir_hips_chem/processed_sites/df_Delhi_9am_resampled.pkl<br>research/ftir_hips_chem/processed_sites/df_JPL_9am_resampled.pkl<br>research/ftir_hips_chem/processed_sites/df_Addis_Ababa_9am_resampled.pkl<br>research/ftir_hips_chem/processed_sites/df_Jacros_9am_resampled.pkl | — |
+| 58 | `public-build` | check | Compile public visibility and check the publication archive (source profile checks compiled visibility only; public/research also check packed data)<br>`gallery/data/rebuild.py check-public` | `-` | gallery/app/node_modules | typecheck |
 <!-- STEPS:END -->
 
 ## 3. What the data folders hold, and the public flag
@@ -188,8 +228,11 @@ similarity, baselines, IMPROVE samples), the total is about 126 MB more.
 
 ## 4. Publishing checklist
 
-1. `uv run aeth gallery rebuild`, then `uv run aeth gallery check`. The node tests fail 7 times
-   in a clone without the gitignored baseline/VIBES/similarity exports; any other failure is real.
+1. Restore the intended frozen data and run `uv run aeth gallery rebuild` only for exports
+   being deliberately regenerated. Run `uv run aeth gallery check --profile public` for the
+   public site, and `uv run aeth gallery check` for a full research release. Any unavailable
+   required input or failed test blocks its declared release scope; there is no blanket legacy
+   exception. Preserve the check receipts and archive hash together.
 2. Review `git diff --stat gallery/app/public/data`. A step that changed nothing should show no
    diff: the exporters are deterministic apart from `generated` timestamps.
 3. Commit and push the gallery source (`publish_pages.py` refuses uncommitted `gallery/app` changes).
