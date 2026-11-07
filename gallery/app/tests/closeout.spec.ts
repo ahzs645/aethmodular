@@ -70,6 +70,9 @@ async function readableSourceOnPhone(page: Page, testInfo: TestInfo, name: strin
   const tableRegion = source.getByRole('region', { name: 'Candidate errors, counts and evidence' })
   expect(await tableRegion.evaluate(region => region.scrollWidth > region.clientWidth)).toBe(true)
   await page.screenshot({ path: testInfo.outputPath(`${name}.png`), fullPage: true })
+  // With all three corrected metric panels, the table starts below the phone
+  // viewport. Reach its header vertically before checking sideways access.
+  await tableRegion.locator('thead').scrollIntoViewIfNeeded()
   await tableRegion.evaluate(region => { region.scrollLeft = region.scrollWidth })
   await expect(source.locator('th').filter({ hasText: 'Evidence' })).toBeInViewport()
   await page.screenshot({ path: testInfo.outputPath(`${name}-evidence.png`), fullPage: true })
