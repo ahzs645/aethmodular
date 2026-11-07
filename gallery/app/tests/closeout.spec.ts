@@ -13,7 +13,24 @@ test('legacy EPO evidence stays withheld and reference labels survive phone widt
   await expect(source.locator('tbody tr').filter({ hasText: 'EPO' })).toContainText('Withheld')
   const width = await page.evaluate(() => ({ viewport: innerWidth, body: document.documentElement.scrollWidth }))
   expect(width.body).toBeLessThanOrEqual(width.viewport + 1)
+  // A page can fit the viewport while its chart text is clipped or its table
+  // headings wrap one character per line. Verify readable content as well.
+  const clippedText = await source.locator('svg').evaluateAll(svgs => svgs.flatMap(svg => {
+    const box = svg.getBoundingClientRect()
+    return Array.from(svg.querySelectorAll('text')).filter(text => {
+      const label = text.getBoundingClientRect()
+      return label.left < box.left - 1 || label.right > box.right + 1
+    }).map(text => text.textContent)
+  }))
+  expect(clippedText).toEqual([])
+  const headerHeights = await source.locator('th').evaluateAll(headers => headers.map(header => header.getBoundingClientRect().height))
+  expect(Math.max(...headerHeights)).toBeLessThanOrEqual(48)
+  const tableRegion = source.getByRole('region', { name: 'Candidate counts and evidence' })
+  expect(await tableRegion.evaluate(region => region.scrollWidth > region.clientWidth)).toBe(true)
   await page.screenshot({ path: testInfo.outputPath('source-phone.png'), fullPage: true })
+  await tableRegion.evaluate(region => { region.scrollLeft = region.scrollWidth })
+  await expect(source.locator('th').filter({ hasText: 'Evidence' })).toBeInViewport()
+  await page.screenshot({ path: testInfo.outputPath('source-phone-evidence.png'), fullPage: true })
   await page.goto('/?view=single&chart=m1028-deficit#tab=meeting&meeting=meeting-20261028&net=focus')
   await expect(page.getByText(/FTIR residual from seasonal HIPS fit/).first()).toBeVisible({ timeout: 45000 })
 })

@@ -11,6 +11,7 @@ import { SpectrumPlot, type SpectrumSeries } from '@/components/SpectrumPlot'
 import { Crossplot, CrossplotBrushControls, useCrossplotBrush, type CrossPoint } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
 import { useSearchParam } from '@/lib/url'
+import { useNarrowScreen } from '@/hooks/useMediaQuery'
 import { INK } from '@/lib/theme'
 import { coef, coefSigned, f2 } from '@/lib/format'
 import { demingLambda, useMac } from '@/lib/mac'
@@ -128,6 +129,7 @@ function Coverage({ d }: { d: ContinuumData }) {
 }
 
 function CandidatePerformance({ d }: { d: ContinuumData }) {
+  const narrow = useNarrowScreen()
   const evaluation = d.settings?.source_evaluation
   const scores = rowsOf<SourceScore>(d.scoreboard)
   const metrics = [
@@ -136,12 +138,15 @@ function CandidatePerformance({ d }: { d: ContinuumData }) {
   ] as const
   const value = (r: SourceScore, key: string) => key === 'medae' ? medianAbsoluteError(r, evaluation) : sourceScoreValue(r, key, evaluation)
   const present = metrics.filter(([key]) => scores.some((r) => value(r, key) != null))
-  const rows = scores.map((r) => ({ key: r.model, label: `${label(`${r.model} k18`)}${r.model === 'epo' && !epoSourceVerified(evaluation) ? ' · withheld' : ''}`,
+  const compactLabels: Record<string, string> = { raw: 'raw', spline: 'spline', vibes: 'production VIBES', vibes_deflate: 'deflated VIBES', vibes_anchorhp: 'anchored VIBES', epo: 'EPO' }
+  const compactMetrics: Record<string, string> = { medae: 'Median abs. error', improve_mae: 'Mean abs. error', improve_rmse: 'RMSE', improve_mean_bias: 'Mean signed bias', improve_p95_absolute_error: 'P95 abs. error' }
+  const rows = scores.map((r) => ({ key: r.model, label: `${narrow ? compactLabels[r.model] ?? r.model : label(`${r.model} k18`)}${r.model === 'epo' && !epoSourceVerified(evaluation) ? ' · withheld' : ''}`,
     color: MODEL_COLOR[`${r.model} k18`], values: Object.fromEntries(present.map(([key]) => [key, { v: value(r, key) ?? NaN }])) }))
   return <ChartFrame id="xc-source" title="Source-reference performance on IMPROVE" source={source('CandidatePerformance')}
     evidence={`TOR EC reference · µg/filter · site-grouped cross-validation · fixed 18 components · finite TOR below 150 µg/filter · ${epoSourceVerified(evaluation) ? 'corrected retrospective comparison' : 'saved exploratory comparison; EPO withheld'}`}>
-    <Forest rows={rows} panels={present.map(([key, title]) => ({ key, label: `${title} (µg/filter)`, fmt: f2 }))} labelWidth={210} />
-    <div className="closeout-table-scroll"><table className="census-table" data-export="text">
+    <Forest rows={rows} panels={present.map(([key, title]) => ({ key, label: `${narrow ? compactMetrics[key] : title} (µg/filter)`, fmt: f2 }))} labelWidth={narrow ? 125 : 340} />
+    {narrow && <p className="closeout-scroll-hint">Scroll the table sideways for counts and evidence.</p>}
+    <div className="closeout-table-scroll" role="region" aria-label="Candidate counts and evidence" tabIndex={0}><table className="census-table" data-export="text">
       <thead><tr><th>Candidate</th><th>Eligible</th><th>Predicted</th><th>Common filters</th><th>Coverage</th><th>Evidence</th></tr></thead>
       <tbody>{scores.map((r) => <tr key={r.model}><td>{label(`${r.model} k18`)}</td><td>{num2(r.n_eligible, 0)}</td><td>{num2(r.n_available, 0)}</td><td>{num2(r.n_common, 0)}</td><td>{r.coverage == null ? 'Not recorded' : `${num2(num(r.coverage) * 100, 1)} %`}</td><td>{r.evaluation_status ?? (r.model === 'epo' ? 'Withheld: fold-safe rerun required' : 'Historical saved result')}</td></tr>)}</tbody>
     </table></div>
