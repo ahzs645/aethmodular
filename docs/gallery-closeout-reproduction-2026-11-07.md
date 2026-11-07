@@ -57,7 +57,7 @@ uv run --no-sync python research/ftir_hips_chem/workflows/vibes_continuum_202611
   --output "$AETHMODULAR_CLOSEOUT/continuum_v1"
 
 uv run --no-sync python research/ftir_hips_chem/workflows/vibes_continuum_20261102.py run \
-  --output "$AETHMODULAR_CLOSEOUT/continuum_v1" --workers 8
+  --output "$AETHMODULAR_CLOSEOUT/continuum_v1" --workers 4
 
 uv run --no-sync python research/ftir_hips_chem/workflows/vibes_continuum_20261102.py collect \
   --output "$AETHMODULAR_CLOSEOUT/continuum_v1"
@@ -93,6 +93,8 @@ uv run --no-sync aeth gallery rebuild --only continuum-closeout-review closeout-
 ```
 
 Each scientific output destination must be new. Do not rerun preparation or collection over a completed bundle. To resume fitting, use `run` on the existing bundle; it validates and reuses its checkpoints. Preserve earlier artifacts when changing the code, settings or population and use a new versioned destination.
+
+The recorded execution initially used eight workers. After 22,800 jobs had been checkpointed, the runtime killed one worker (`SIGKILL`); the process exited with `TerminatedWorkerError`. It was resumed with four workers to reduce memory pressure, using the same verified input, code, package and solver identities. The interrupted batch is recomputed, and completed batches are reused. Worker count controls parallel execution, not the individual fit. The attempt history is preserved separately from numerical fit-failure counts. Monitor the process exit as well as the progress file; only the complete collection receipt authorizes downstream fitting.
 
 The fit stages also save separate all-source Addis/network predictions. Those new predictions are not substituted into the historical optical-response tables by the source-only export. The acceptance step reconstructs every saved EPO fold and the separate all-source target models, then refits only EPO fold 0 after changing held-out TOR and nuisance chemistry. It holds spectra, splits, QC and training records fixed, records actual numerical differences under predeclared tolerances, and labels the altered-label scores as artificial integrity checks. The figure ledger separately reconciles historical populations; it does not refit their models.
 

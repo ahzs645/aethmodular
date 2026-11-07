@@ -1,0 +1,519 @@
+{
+  "schema_version": 1,
+  "protocol": "closeout_source_artifact_acceptance_v1",
+  "status": "passed",
+  "created": "2026-11-07T19:22:15Z",
+  "paths": {
+    "bundle": "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle",
+    "continuum_output": "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1",
+    "baseline_output": "research/ftir_hips_chem/output/tables/closeout_20261107/baseline_site_cv_v1",
+    "epo_output": "research/ftir_hips_chem/output/tables/closeout_20261107/epo_site_cv_v2",
+    "scores_output": "research/ftir_hips_chem/output/tables/closeout_20261107/source_scores_v2"
+  },
+  "source_code": {
+    "research/ftir_hips_chem/workflows/verify_closeout_source_20261107.py": "1491b4b8cd0405184c5a1dde78840cf05dff9616d811f98f2ec2da2f90ad14c8",
+    "research/ftir_hips_chem/workflows/run_transfer_diagnosis_20261102.py": "a0e9f5ea15b40255b849cca43021c88dc16502b158a4d22e52d1f2bdc45f90ea",
+    "research/ftir_hips_chem/workflows/run_intercept_fixes_20261103.py": "d469e574a0f6880ed07101c0a18032a862bb4151cec22f8c20ac3b46222d8120",
+    "research/ftir_hips_chem/scripts/epo_validation.py": "1ab0affe6e237df203da2617bea17cc2ec640380556af1c759a559c07854ebbf",
+    "research/ftir_hips_chem/scripts/continuum_anchor.py": "86a0a723a82389d14e5ea10103eac2a03404eab4a24c8de86b3a2b4313cd985e",
+    "research/ftir_hips_chem/scripts/candidate_metrics.py": "d8870be565f35a0e4377ef8865f0aa51e0c1ad7aebfc8b7714390f4ead69a68f",
+    "research/ftir_hips_chem/scripts/spectral_provenance.py": "b242d3574154296283b988d5b685005160a648fcdfbdb665ada65a6dec4e5124",
+    "research/ftir_hips_chem/workflows/run_hips_response_20261103.py": "86789d8eb69bfc985d9b3f0d9d9a5e35b8395d534529d118be73cc170d4fcf92"
+  },
+  "input_hashes": {
+    "pyproject.toml": "4f54f0434c1c8ed17145680f74953aa3fcc38d12c689975d8b825d35c9363e97",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/baseline_site_cv_v1/coefficients.npz": "2ec4daf78e7c8cd52fe858f6889edaa315a62e2586df47e372113f74c07a0517",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/baseline_site_cv_v1/fit_receipt.json": "30b7d9b8fba1774200858887c054308cae271c72218b5298dddca34a3faaa527",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/baseline_site_cv_v1/predictions.npz": "4dbfda47f29ea4b5284de5b3bdd112bb3bcb46804b9d759f30489da408297309",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/MANIFEST.json": "a3c30839a0c1d461e34937539e7f743d76fcf8c476aa7c0c5bddb7730d0ca216",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/anchored.npy": "3f319702ebdb0e1025a207e11ac69abf42c5714c34d473b1dc9b9771f4b79258",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/background_model.npz": "8b717b6b988465083e0e102f887da4f61c63aed86cce43be640e52dece2165e3",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/scripts/continuum_anchor.py": "86a0a723a82389d14e5ea10103eac2a03404eab4a24c8de86b3a2b4313cd985e",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/scripts/vibes_baseline.py": "9af33da26a776f0a9d529d8bc45b9517a1d44dab36dd211e79c83d28e9229f01",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/vendor/pyvibes/CITATION.cff": "769579fc764262eca9056185c4346204fbe6f4679581a2de4bb9de4065e74bab",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/vendor/pyvibes/LICENSE": "d44ba02a11fc57e0363dba54ce44c0318c67de80c09c6c5d2d40f98ef0955218",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/vendor/pyvibes/README.md": "c67d671c35e1420fbd66278986bb7089269fe67b7000720609bd55d623339f35",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/vendor/pyvibes/SOURCE.json": "ff845f7f3a2a0fbdc5171b5933b15cb4d7fd21e251d71bd5f3b125fe117cd84b",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/vendor/pyvibes/src/vibes/__init__.py": "91447944015cec709e8aa7655f7e9d64e1e4508e7023a57fe3746911c0fc6fed",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/vendor/pyvibes/src/vibes/absorbance_estimators/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/vendor/pyvibes/src/vibes/absorbance_estimators/cross_validation.py": "564320a02410f8ddea1923fe4519c945295e10ab94b132a0a409f4da239bbabe",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/vendor/pyvibes/src/vibes/absorbance_estimators/map.py": "16a995ebb05cd7483375d85be6e708d3736de0bde1a0834d9f5e83399290b281",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/vendor/pyvibes/src/vibes/absorbance_estimators/vibes.py": "7a6bfe14c1a298227f363a7a8a01d841cb7edadb8abad3298a2b1c5e317bb8b8",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/vendor/pyvibes/src/vibes/inference/bootstrap.py": "47f448fe3c35634f6970acd2959641b06c6faf5e3ea308faad25858896b8f754",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/vendor/pyvibes/src/vibes/interference_models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/vendor/pyvibes/src/vibes/interference_models/pca.py": "6c2656c1dda97dd3c6c5a6f3f4daba8a09ae236e2ea6e1734e0774e70c14979b",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/vendor/pyvibes/src/vibes/utils/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/vendor/pyvibes/src/vibes/utils/help_functions.py": "56fb25bc2b00b2cfdd32af6444476b61e5571173ae80b2fba76117bbe6b5c428",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/vendor/pyvibes/src/vibes/utils/loss_functions.py": "5d2b7bdefd6cfe4a77d677cbd4a122737f1fe2d4ed12d162d6f413082fbbf5cc",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/code/vibes_continuum.py": "cb7e689475b31d567558782ad046e7cc1e18b1d117baa6f9277ad584fb1f7ec0",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/environment.json": "ada378e545a5657660f0472a9a5d36840c09cb54a8cde133e49d7364fd4b0830",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/pyproject.toml": "4f54f0434c1c8ed17145680f74953aa3fcc38d12c689975d8b825d35c9363e97",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/raw.npy": "dbfb1eb07e57150816379b3587711f222c1e401b80713fffd6efd24f8d75d51c",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/requirements.txt": "60595a2362c57389a8b18edb29ba2602db0ff3645a7f16b89a6482cbaf4a88fb",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/rows.csv": "5c838f475e618ea36e6776686d07052143008988fc8acffae6aac8d6c8d28729",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/uv.lock": "78d94792062e781158f85d5008f132840ca864065f549cbd76b3ae1b81a9acf6",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/bundle/wn.npy": "cddf15cbc084b776f5b715dd793fff1d7b4d710557b59c3d3b98e3603a04c6b4",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/collection_receipt.json": "5a7f59a79a9fa8e3b028ca0d08a73a99ea057b4927db65f0c30a7153a7b6be72",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/corrected_anchorhp_addis.npy": "4a998d4c270376c0a4d1cf6f89e66dde61cbf9e223905ce9776042be524cec85",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/corrected_anchorhp_improve.npy": "218dc5ded5767ccb1a17e5ebe2063788b66b06fb0fb1080798ec3a4386b9bcb5",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/corrected_anchorhp_network.npy": "1f81c181e775eab9dfae53da36f3f0ac1defbbb96087519d995f3fb0a367ccc5",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/corrected_deflate_addis.npy": "5b0eab3ffd550bb59d5160ad32201ff01e94b8024c66d3e9f420482cb0e43cae",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/corrected_deflate_improve.npy": "4cc45bcda31ee67f8428d9395b6bdd0d7676e265a2357924ef475cbf9a6f3625",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/corrected_deflate_network.npy": "7c45f3daa1e3b221146935e3815317d33fc6a5cb19c059f50be3e649139fcfca",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/continuum_v1/fit_diagnostics.csv": "2e4c6b89f7bfbc8ae97fb74d0d683de15a0935603144231714d35e88919a0737",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/MANIFEST.json": "121557f8bf470816e02ddeafed8b7acf91b1c2cd50a59eab08088b7af169db48",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/adama_meta.csv": "625ee10fd66ced196eaf9e6444c632a74afe670f9e7f88577291975a6eba8793",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/adama_spline.npy": "8da4707c989ad76cebfd1d183dc898b9dffc06ca258e92f267611efe9e2e36b5",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/addis_meta.csv": "930bf450850dfacb8acefd2bd7a38fcbd1c3454c6496b02959a9fe28b592b5a4",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/addis_raw.npy": "79e8132a9e34f72a1539dcd5f07a572b8dd1553b1ee496fbdf5e6d139bd320e7",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/addis_spline.npy": "f4905014a1129aa13760d9962ff44d7dc0905a0f79ac0a782c420d9f3430fe48",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/addis_vibes.npy": "c36fc5d1b2b3e361cfa7a851c3f873878030654a2dfc8d67548ff836b52abb56",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/improve_mass.csv": "dedbae21851a0b2281d6c445386e5da3baf66f3822e3535c74ff2469ea5bb294",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/improve_meta.csv": "cfc072c64ba317876058400df9927a04953f6637d7ce9486d53392c9f12cbc3f",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/improve_raw.npy": "49c6f3016708320bc9a93686a27b4743138d228b192db5704b7de76baa77e9f1",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/improve_spline.npy": "ffca9b9580f41d2fe7c8b720c3972d4d478e8fa1368e8d5b8cdbed21e35aba6b",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/improve_vibes.npy": "8beeaed132e246ba92cce904cf7602401707da5cc229bbfe55d8b210dc148871",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/network_meta.csv": "93059a05bad2903c9c2f5a01a861929b9445c87931a8bf863fae08ae0c0c880f",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/network_raw.npy": "be915ab3306f793b8e33fef5ccbb72ccafd65052758db6847b3ec211153ef468",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/network_spline.npy": "ca3d0b83f96e888104b287c5927bebbeb2c1dcb2492043f714dc996f714c166f",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/network_vibes.npy": "56e1570e7a6723971453301c0b8acd4ae3b2cc691db0cd73316dd8a0f68a42aa",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/site_seasons.csv": "f66398e627e6ded75fc2bdea302d78611e08c7571af6d31f5d30486eae370507",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/wn_full.npy": "cddf15cbc084b776f5b715dd793fff1d7b4d710557b59c3d3b98e3603a04c6b4",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/decision_bundle/wn_spline.npy": "6027f1d92ee0f2cc1ab57635f3ac9bd09107d78430ae4f6c16ca4f22b0ef7bf3",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/epo_site_cv_v2/fit_receipt.json": "2b170a465c471f12c545c68df3fc52df7f87e32d2f15adace434c952ba60055c",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/epo_site_cv_v2/fold_membership.csv": "aea3aad9ec757ce5631351dfa13ba72ba9fa6fe8f54d8a326711361f73fd2a74",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/epo_site_cv_v2/predictions.npz": "52deda8957b2457022e2df38f55599378b4bbe08a90c531bd089ab9cb78da6ae",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/source_scores_v2/baseline_scoreboard.csv": "5168d17770e72c8aee52fdfb42a04c614b87e2ffc1fa86d936c60ee7c738487c",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/source_scores_v2/baseline_scoreboard_filters.csv": "9f0203e558a68ba2bb341683e24ebedd758df50452a63fbeaebdb1c10d1e1f0f",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/source_scores_v2/baseline_scoreboard_receipt.json": "ff10bd831f6c11d824b5f244b9696103910c7709c276a06766ac39a265b08c79",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/source_scores_v2/epo_resolution_control.csv": "428278beec2a84e1f0c0ed7392f1cd7d9dbf2bde6aca3102a7cf38e5e2be0e4b",
+    "research/ftir_hips_chem/output/tables/closeout_20261107/source_scores_v2/epo_resolution_control_filters.csv": "9ac1150f869c5365076b48400b8f061d65431432877f9423dd003ef80ca52e7c",
+    "research/ftir_hips_chem/scripts/candidate_metrics.py": "d8870be565f35a0e4377ef8865f0aa51e0c1ad7aebfc8b7714390f4ead69a68f",
+    "research/ftir_hips_chem/scripts/continuum_anchor.py": "86a0a723a82389d14e5ea10103eac2a03404eab4a24c8de86b3a2b4313cd985e",
+    "research/ftir_hips_chem/scripts/epo_validation.py": "1ab0affe6e237df203da2617bea17cc2ec640380556af1c759a559c07854ebbf",
+    "research/ftir_hips_chem/scripts/spectral_provenance.py": "b242d3574154296283b988d5b685005160a648fcdfbdb665ada65a6dec4e5124",
+    "research/ftir_hips_chem/workflows/run_hips_response_20261103.py": "86789d8eb69bfc985d9b3f0d9d9a5e35b8395d534529d118be73cc170d4fcf92",
+    "research/ftir_hips_chem/workflows/run_intercept_fixes_20261103.py": "d469e574a0f6880ed07101c0a18032a862bb4151cec22f8c20ac3b46222d8120",
+    "research/ftir_hips_chem/workflows/run_transfer_diagnosis_20261102.py": "a0e9f5ea15b40255b849cca43021c88dc16502b158a4d22e52d1f2bdc45f90ea",
+    "research/ftir_hips_chem/workflows/verify_closeout_source_20261107.py": "1491b4b8cd0405184c5a1dde78840cf05dff9616d811f98f2ec2da2f90ad14c8",
+    "uv.lock": "78d94792062e781158f85d5008f132840ca864065f549cbd76b3ae1b81a9acf6"
+  },
+  "on_disk_input_hashes_preserved": true,
+  "tolerances": {
+    "atol": 1e-10,
+    "rtol": 1e-10,
+    "rule": "abs(actual - saved) <= atol + rtol * abs(saved); exact equality is reported separately"
+  },
+  "runtime": {
+    "python": "3.13.5",
+    "packages": {
+      "numpy": "2.4.2",
+      "pandas": "2.3.3",
+      "scipy": "1.17.0",
+      "scikit-learn": "1.8.0"
+    },
+    "threads": {
+      "OPENBLAS_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1"
+    }
+  },
+  "protocols": {
+    "epo": "epo_train_only_site_cv_v2",
+    "scores": "fixed_k_common_physical_filter_metrics_v1",
+    "source_qc": "recorded_decision_bundle_raw_qc_v1"
+  },
+  "population": {
+    "n_saved": 12393,
+    "n_saved_sites": 157,
+    "n_common_sites": 157,
+    "n_tor_domain_before_qc": 12387,
+    "n_qc_excluded": 1,
+    "n_tor_domain_qc_excluded": 1,
+    "n_eligible": 12386,
+    "n_common": 12386,
+    "filter_ids_sha256": "99bb751d89a81198e9a9e1b3886a8a7cb80bf139553e13fa7e59e0304c30a58d",
+    "fold_id_sha256": "9ac85449b08f066faf764138e15dd58a582b576f720dca1c197636d31c1f2fa9",
+    "source_qc_policy": {
+      "protocol": "recorded_decision_bundle_raw_qc_v1",
+      "flag_column": "raw_qc_ok",
+      "flag_present": true,
+      "rule": "retain only raw_qc_ok=true for every candidate's source training and scored reference domain",
+      "scope": "fixed recorded spectral QC; retain all physical-filter IDs, frozen site folds, and held-out predictions",
+      "source": "build_decision_workbook_20261022.py: the corrupt raw filter leaves every comparison",
+      "missing_flag_policy": "all true for legacy inputs lacking the column; absence is explicitly recorded",
+      "n_total": 12393,
+      "n_pass": 12392,
+      "n_excluded": 1,
+      "mask_sha256": "d697b108246566491a2c5222abc0e656e4b42c136338d02ccffbf7e8bc7c8389"
+    }
+  },
+  "collection": {
+    "expected_fits": 32286,
+    "collected_fits": 32286,
+    "failed_fits": 0,
+    "manifest_and_output_hashes_verified": true
+  },
+  "same_frozen_site_folds": true,
+  "epo_folds": [
+    {
+      "n_train": 9905,
+      "n_projection_train": 9885,
+      "n_test": 2481,
+      "n_training_sites": 125,
+      "n_test_sites": 32,
+      "training_test_filter_overlap": 0,
+      "training_test_site_overlap": 0,
+      "qc_excluded_training_rows": 0,
+      "training_filter_ids_sha256": "61945e7d6dd24e0bb6969f1eb1e2d23588644bd9183c438ab66405abdb558b9f",
+      "projection_training_filter_ids_sha256": "d19ee9d5e6bd3c14070a01eaec0d40f62ee7e8b7fff9ef9bec02f92a28c0bb9e",
+      "test_filter_ids_sha256": "41e49af277cb549fa55bd943752f4114d42631c041221f4bd854ff1af432da38",
+      "recorded_training_hashes_match": true,
+      "fold_id": 0,
+      "oof_reconstruction": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 44658,
+        "n_missing": 0
+      }
+    },
+    {
+      "n_train": 9910,
+      "n_projection_train": 9887,
+      "n_test": 2477,
+      "n_training_sites": 126,
+      "n_test_sites": 31,
+      "training_test_filter_overlap": 0,
+      "training_test_site_overlap": 0,
+      "qc_excluded_training_rows": 0,
+      "training_filter_ids_sha256": "8f9203454dc4305a1a8f452aa3f0b2089d7ba5f3453da4d24bb20eaf3ca91142",
+      "projection_training_filter_ids_sha256": "ee79955482a05790f57b8c9f948f46545f6d5be4783a43b13946482a55e886d5",
+      "test_filter_ids_sha256": "66ad396543c123387aa70fef05fc35553aaef0608ba562e08feceae439100413",
+      "recorded_training_hashes_match": true,
+      "fold_id": 1,
+      "oof_reconstruction": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 44586,
+        "n_missing": 0
+      }
+    },
+    {
+      "n_train": 9909,
+      "n_projection_train": 9899,
+      "n_test": 2480,
+      "n_training_sites": 126,
+      "n_test_sites": 31,
+      "training_test_filter_overlap": 0,
+      "training_test_site_overlap": 0,
+      "qc_excluded_training_rows": 0,
+      "training_filter_ids_sha256": "e00d9572f84a874319006f57021dea887315b61ea03e88d19070218042291cef",
+      "projection_training_filter_ids_sha256": "cb6573d3bdbcbd169795592848253c9b590305af70739e1a85c675ccbb4c0268",
+      "test_filter_ids_sha256": "5db63e2b4cf199f49380290e54612c5b982021a8d21e340d4fa07ca315dc19b8",
+      "recorded_training_hashes_match": true,
+      "fold_id": 2,
+      "oof_reconstruction": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 44640,
+        "n_missing": 0
+      }
+    },
+    {
+      "n_train": 9910,
+      "n_projection_train": 9887,
+      "n_test": 2477,
+      "n_training_sites": 126,
+      "n_test_sites": 31,
+      "training_test_filter_overlap": 0,
+      "training_test_site_overlap": 0,
+      "qc_excluded_training_rows": 0,
+      "training_filter_ids_sha256": "6e37abc4bd4f0b9441e3c1614fe0b5976f18c140f3c64200f36a26769e295b76",
+      "projection_training_filter_ids_sha256": "bfda9329c8f3a7cbf7bad37b766151a20ef984b3da68164c5735edb31826e3b6",
+      "test_filter_ids_sha256": "2ca5f4895e04ca03798b57db0d3074424690df060c3e3c7982cfd516215453e6",
+      "recorded_training_hashes_match": true,
+      "fold_id": 3,
+      "oof_reconstruction": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 44586,
+        "n_missing": 0
+      }
+    },
+    {
+      "n_train": 9910,
+      "n_projection_train": 9890,
+      "n_test": 2478,
+      "n_training_sites": 125,
+      "n_test_sites": 32,
+      "training_test_filter_overlap": 0,
+      "training_test_site_overlap": 0,
+      "qc_excluded_training_rows": 0,
+      "training_filter_ids_sha256": "b4ba982dd839a829f9ac7d6e0ed1759d27f41bb1ec7e433c86d946bb0dceec53",
+      "projection_training_filter_ids_sha256": "d706f4f9d248a5b3365797bd5e2d81c567ec0f443a977de991ae6d8eb8d07691",
+      "test_filter_ids_sha256": "f00bcf1839a0373e713a2472e9966ac6829a21093b7384015dddc1e045a7983a",
+      "recorded_training_hashes_match": true,
+      "fold_id": 4,
+      "oof_reconstruction": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 44604,
+        "n_missing": 0
+      }
+    }
+  ],
+  "epo_all_source": {
+    "n_train": 12386,
+    "n_projection_train": 12362,
+    "n_test": 0,
+    "n_training_sites": 157,
+    "n_test_sites": 0,
+    "training_test_filter_overlap": 0,
+    "training_test_site_overlap": 0,
+    "qc_excluded_training_rows": 0,
+    "training_filter_ids_sha256": "3dac467c5dfe845785b0a5b8d1b3affc380af95739cfeefbefa89476f441f914",
+    "projection_training_filter_ids_sha256": "c04db2a5581f4f592f8b54a43d08d9aff425f1bc3dcf01554852ac7b7481336e",
+    "test_filter_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "recorded_training_hashes_match": true,
+    "targets": {
+      "addis": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 4194,
+        "n_missing": 0
+      },
+      "network": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 63306,
+        "n_missing": 0
+      }
+    }
+  },
+  "baseline_all_source_targets": {
+    "raw": {
+      "addis": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 4194,
+        "n_missing": 0
+      },
+      "network": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 63306,
+        "n_missing": 0
+      }
+    },
+    "spline": {
+      "addis": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 4194,
+        "n_missing": 0
+      },
+      "network": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 63306,
+        "n_missing": 0
+      }
+    },
+    "vibes": {
+      "addis": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 4194,
+        "n_missing": 0
+      },
+      "network": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 63306,
+        "n_missing": 0
+      }
+    },
+    "vibes_deflate": {
+      "addis": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 4194,
+        "n_missing": 0
+      },
+      "network": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 63306,
+        "n_missing": 0
+      }
+    },
+    "vibes_anchorhp": {
+      "addis": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 4194,
+        "n_missing": 0
+      },
+      "network": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 63306,
+        "n_missing": 0
+      }
+    }
+  },
+  "source_scores": {
+    "primary_metrics": {
+      "rows": 6,
+      "checked_columns": 22,
+      "max_absolute_difference": 8.881784197001252e-16
+    },
+    "primary_ledger": {
+      "rows": 12393,
+      "checked_columns": 23,
+      "max_absolute_difference": 5.684341886080802e-14
+    },
+    "matched_resolution_metrics": {
+      "rows": 2,
+      "checked_columns": 22,
+      "max_absolute_difference": 4.440892098500626e-16
+    },
+    "matched_resolution_ledger": {
+      "rows": 12393,
+      "checked_columns": 15,
+      "max_absolute_difference": 5.684341886080802e-14
+    }
+  },
+  "heldout_perturbation": {
+    "fold_id": 0,
+    "refitted_folds": [
+      0
+    ],
+    "refit_calls": 1,
+    "k_max": 18,
+    "n_heldout": 2481,
+    "fixed_qc_mask_sha256": "d697b108246566491a2c5222abc0e656e4b42c136338d02ccffbf7e8bc7c8389",
+    "source_spectra_sha256": "36e75af3ec3c6365ad25494024fa7b72797ec7bfa33d72b9039012aff297a17c",
+    "heldout_filter_ids_sha256": "41e49af277cb549fa55bd943752f4114d42631c041221f4bd854ff1af432da38",
+    "training_arrays_exactly_unchanged": true,
+    "spectra_unchanged": true,
+    "splits_exactly_unchanged": true,
+    "tor_replacement_cycle": [
+      0.5,
+      149.5,
+      150.0,
+      10000.0,
+      "NaN"
+    ],
+    "nuisance_replacement": "held-out chemistry columns j=1..4 become (j+1)*1000 + held-out row offset; one other_PM becomes NaN",
+    "comparisons": {
+      "basis": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 5444,
+        "n_missing": 0
+      },
+      "signatures": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 6805,
+        "n_missing": 0
+      },
+      "chemistry_mean": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 5,
+        "n_missing": 0
+      },
+      "spectrum_mean": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 1361,
+        "n_missing": 0
+      },
+      "xm": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 1361,
+        "n_missing": 0
+      },
+      "ym": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 1,
+        "n_missing": 0
+      },
+      "B": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 24498,
+        "n_missing": 0
+      },
+      "rank_tolerance": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 1,
+        "n_missing": 0
+      },
+      "heldout_predictions": {
+        "exact_equal": true,
+        "max_absolute_difference": 0.0,
+        "max_fraction_of_tolerance": 0.0,
+        "n_finite": 44658,
+        "n_missing": 0
+      }
+    },
+    "artificial_metric_check": {
+      "scope": "Artificial held-out-label integrity test only; these are not scientific performance estimates",
+      "k": 18,
+      "units": "micrograms per filter",
+      "rule": "QC-pass held-out records with finite reference below 150 and finite prediction",
+      "original_labels": {
+        "n": 2481,
+        "median_absolute_error": 1.2974200724690967,
+        "mean_absolute_error": 1.8074724370583486,
+        "rmse": 4.672591285804583,
+        "mean_signed_bias": 0.20174539875110692
+      },
+      "perturbed_labels": {
+        "n": 993,
+        "median_absolute_error": 81.11442595315405,
+        "mean_absolute_error": 74.57965650031629,
+        "rmse": 102.18986465823322,
+        "mean_signed_bias": -69.45829582645531
+      },
+      "metrics_changed": true
+    }
+  },
+  "limits": [
+    "Only EPO fold 0 is refitted; the other EPO folds are reconstructed from saved transforms/coefficients.",
+    "Baseline OOF identities, folds, QC policy and score inputs are checked; baseline fold coefficients were not saved for independent reconstruction.",
+    "Perturbed-label metrics are an artificial integrity test, not scientific performance estimates.",
+    "Target predictions use separate all-source models; this receipt does not establish absolute Addis EC accuracy or independent model-selection validation."
+  ]
+}

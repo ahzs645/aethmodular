@@ -1,154 +1,132 @@
-# Gallery closeout implementation receipt — 7 November 2026
+# Gallery closeout research receipt — 7 November 2026
 
-## Continuation after the first software batch
+## Current status
 
-The original October decision bundle and production background have now been recovered and hash-verified. A new versioned continuum regeneration and source-evaluation run are described in the [reproduction protocol](gallery-closeout-reproduction-2026-11-07.md). The input-blocker section below records the earlier batch's state; it is not the current recovery instruction. The existing all-candidate raw-QC rule is restored before fitting, and a matched-resolution control separates EPO from channel averaging.
+The numerical closeout is complete. The recovered original decision bundle and production background produced **32,286/32,286 completed continuum fits with zero recorded fit failures**. All six source candidates have predictions for the same **12,386 eligible physical filters across 157 sites**. Saved-model acceptance, the real-data held-out-label check, independent score arithmetic and the figure-population audit passed. The corrected source overlay is attached to the review branch; its final hosted browser/PDF acceptance is the remaining release check. Absolute Addis EC accuracy remains unresolved.
 
-PR #19's availability fix is also verified at `316a53ec423c7344253aef409027b0f607fff23f`: 20 focused Node tests, the research TypeScript/Vite build, four browser journeys and canonical public exclusion passed in [run 42396251333](https://github.com/ahzs645/aethmodular/actions/runs/42396251333). Availability now comes from the active host; it remains distinct from scientific validation.
+The [first software-batch receipt](gallery-closeout-software-batch-2026-11-07.md) is preserved separately. Its missing-spectrum blocker, earlier test counts and earlier PDF describe that batch; they are not verification of this numerical rerun.
 
-The original software-batch receipt follows. Later source results and figure corrections must retain their own run and verification identities; the earlier PDF and CI result below are not relabelled as evidence for new calculations.
+Source changes are in [aethmodular PR #20](https://github.com/ahzs645/aethmodular/pull/20). The companion strict publication workflow is in [aethmodular-gallery PR #1](https://github.com/ahzs645/aethmodular-gallery/pull/1). These review branches have not been merged or deployed by this work.
 
-## Status and scope
+## Frozen inputs and procedure
 
-This is a **review candidate for the software and interpretation batch**. It is not a completed scientific release. Public software checks, the production build and browser acceptance passed in CI for the exact review revision recorded below. The corrected real-data EPO comparison and full research reconciliation remain unresolved. No method is selected by this implementation, and no new absolute Addis EC accuracy claim is made.
-
-Starting analysis source: `cb2e1469ec222719c347b9b5f672765ede3ed7c7`. Starting publication source: `ef92395d1cfd5b7fcacc3b78574f6fb8af53abc6`. Changes are prepared on `codex/gallery-closeout-20261107` in [aethmodular PR #20](https://github.com/ahzs645/aethmodular/pull/20); the companion publication workflow is in [aethmodular-gallery PR #1](https://github.com/ahzs645/aethmodular-gallery/pull/1). The review PR identifies the exact resulting source commit. Neither branch has been merged or deployed as part of this receipt.
-
-The November public archive was restored and its full SHA-256 verified:
-
-| Field | Value |
+| Item | Verified identity and scope |
 |---|---|
-| Release | `data-82d701248232` |
-| Asset | `gallery-data.tar.gz` |
-| SHA-256 | `82d701248232b1975ea2e452bc1d682877e811103a2aa1040aff9d4adc989051` |
-| Extracted members | 5,137 |
-| Scientific outputs changed | None; saved chart summaries were not used to fabricate a rerun. |
+| Scientific implementation checkpoint | `ee1c6adac64b773944ee3bbaea3aac07d60f2f13`; subsequent UI/data/document changes require their own verification identity. |
+| Original decision bundle | 18 files plus the original manifest; 12,393 IMPROVE, 233 Addis and 3,517 network rows. All declared hashes match. Manifest SHA-256 `121557f8bf470816e02ddeafed8b7acf91b1c2cd50a59eab08088b7af169db48`. |
+| Original production background | Rank 70, 87 blank IDs, 2,722 channels; SHA-256 `8b717b6b988465083e0e102f887da4f61c63aed86cce43be640e52dece2165e3`. |
+| Prepared continuum bundle | 16,143 spectra × two variants, or 32,286 fitting jobs; content hash `3583bdb74db1ac2d111d9cdfb6365c1e2a692c545fb8459e507fe9af4633362d`. |
+| Frozen runner | SHA-256 `cb7e689475b31d567558782ad046e7cc1e18b1d117baa6f9277ad584fb1f7ec0`. Original pinball-loss adapter, tau 0.1, initial maximum 10,000 iterations and existing retry policy. No Newton substitution. |
+| Public base archive | `data-82d701248232`; SHA-256 `82d701248232b1975ea2e452bc1d682877e811103a2aa1040aff9d4adc989051`. |
+| Frozen historical display | Generated 4 November; continuum export SHA-256 `90b8e16bfcb002db7e6bc7553d190c94f462753182fcb80d5bacc1c65a2111c9`. Its paired filter map has SHA-256 `a043679b673e82cdc6b539c6aeab38f97855f142ca7f1901a61bc66ff416089d`. |
+| Preserved input archive | 22 scientific inputs, including both frozen display inputs; SHA-256 `d8a9fac2455aecd4d0b7b2b96686c62c4043a91370ba8eaaeb0f109eb97a56a0`, 443,084,226 bytes. |
+| Completed continuum archive | 310 regular members: immutable bundle, 270 checkpoints, six corrected arrays, diagnostics and receipts; SHA-256 `cd44e62160e3717afcfc13f793eea294852e139983c25139ed31cf32ac4d4853`, 980,487,622 bytes. |
+| Completed collection receipt | 32,286 expected/collected fits and zero failures; SHA-256 `5a7f59a79a9fa8e3b028ca0d08a73a99ea057b4927db65f0c30a7153a7b6be72`. This is original-adapter fit-status evidence, not Newton convergence certification. |
+| Corrected source-score receipt | SHA-256 `ff10bd831f6c11d824b5f244b9696103910c7709c276a06766ac39a265b08c79`. Full-precision CSVs and physical-filter ledgers accompany the research package. |
+| Scientific acceptance | [Compact receipt](../gallery/review/closeout_20261107/source_acceptance.json), SHA-256 `2b3836fda7783815fccb41462b7256651558a5bac7c3598b94f6e0ce07273ce6`. |
+| Corrected display overlay | [Review manifest](../gallery/review/closeout_20261107/manifest.json); overlay SHA-256 `f38baa0c6756fadf92583ef3b23c018b4c6f1773efd4bf52b7ce6f56db1649a2`. The base archive retains its original identity. |
+| Complete gallery data candidate | 5,137 files, 167,794,774 bytes; SHA-256 `accc09aa8eea12d32c9c58c2daa54f3d01658edd54dd12c82a67fc363db2f49c`. Only `experimental/continuum_baseline.json` differs from the frozen base; all 5,136 other member bytes match. Suggested tag `data-accc09aa8eea` is not published. |
 
-## What changed
+The [reproduction protocol](gallery-closeout-reproduction-2026-11-07.md) contains exact commands, numerical settings, package versions and restoration boundaries. Completed scientific destinations are never overwritten. Collection requires every expected job exactly once, preserves failures explicitly, and publishes its receipt last.
 
-### EPO evaluation and provenance
+The first execution attempt ended when a worker was killed (`SIGKILL`) after 22,800 jobs were checkpointed. Those completed jobs reported no failed fits. Execution resumed with four workers, preserving all scientific identities and reusing only verified checkpoints. The interruption is recorded separately from fit failures; no incomplete batch is accepted as a result.
 
-`epo_validation.py` treats the EPO projection as part of the fitted pipeline. Each frozen outer site fold estimates chemical spectral signatures, the nuisance projection and PLS coefficients from its training rows only. The source domain is finite training TOR below 150 µg/filter. All bundled source rows determine the site splits before that outcome restriction is applied.
+## Evaluation fixed before reading the new scores
 
-The workflow saves each actual projection and PLS model, projection-fit IDs, PLS-training IDs, held-out IDs, site/fold membership, ranks, settings and hashes. A separate model uses all eligible source data for target prediction. That final model is not used to generate source out-of-fold predictions.
+The six primary pipelines are raw spectra, spline, production VIBES, deflated VIBES, PTFE-anchored VIBES, and anchored EPO. They use 18 PLS components and the same five site-grouped outer folds, defined on all 12,393 physical source filters before label/QC eligibility. The full source population spans 157 sites.
 
-Original spectral files must match the decision-bundle manifest. The corrected spectra additionally require the continuum bundle's manifest-bound `rows.csv` and `wn.npy`, matching physical-filter order and spectral grid. Equal array lengths are insufficient. New archives carry ordered source IDs, sites, folds and metadata/prediction hashes.
+The original decision workbook's all-candidate raw-spectrum QC rule is restored. There are 12,387 finite TOR values below 150 µg/filter before QC, and **12,386 eligible filters** after the one recorded exclusion. The mask hash is `d697b108246566491a2c5222abc0e656e4b42c136338d02ccffbf7e8bc7c8389`. All rows remain in predictions and ledgers. Complete chemistry is required for projection fitting, not for prediction after the projection is frozen.
 
-The primary regression changes held-out TOR across the 150 µg threshold, introduces missing held-out labels and changes nuisance chemistry while keeping spectra and folds fixed. Its own-fold projection, model and predictions must be unchanged. Other folds and the separate all-source fit may change because those records are training data there.
+Each EPO fold estimates chemical signatures, nuisance projection and PLS parameters from its training rows only. It saves actual projection/PLS arrays, training and projection-training IDs, test IDs, membership, ranks and hashes. A separate all-source model predicts Addis and the network. It is not used for source out-of-fold predictions.
 
-The implementation reports insufficient chemistry, rank-deficient chemistry and impossible component counts instead of manufacturing a projection. The numerical nuisance basis uses an SVD with a recorded rank tolerance, preventing zero nuisance signal from producing arbitrary QR directions.
+Raw and VIBES variants use 2,722 channels; the saved spline representation uses 2,002. EPO averages adjacent full-grid channels to 1,361. A separate `anchorhp_bin2_base` versus `epo_bin2` control holds this resolution fixed. It does not replace the full-grid anchored row in the primary comparison.
 
-### Source metrics
+The scorer reports MedAE, true MAE, RMSE, mean/median signed bias, P90/P95 absolute error, composition subsets and eligible/available/common coverage. The primary comparison uses the same finite-prediction intersection; missing predictions stay visible. Heavy low-OC/EC means 15 ≤ TOR <150 µg/filter and TOR OC/EC <2.5. The older sweep uses a different heavy definition and retains its historical status.
 
-The fixed-18-component scorer checks candidate identities and common site folds, rejects repeated physical-filter IDs, and scores the same finite-prediction intersection. It reports MedAE, true MAE, RMSE, mean and median signed bias, P90/P95 absolute error, eligible/available/common counts and coverage. Candidate failures remain visible in the availability ledger.
+This is retrospective evaluation under settings informed by prior exploration. Differences from the historical table cannot all be attributed to leakage repair: QC, numerical runtime and regenerated spectra also have explicit versions. Source-domain performance does not establish absolute target EC accuracy.
 
-New scores live in `intercept_fixes_20261103/source_scores_v2/`; historical tables remain intact. The gallery exporter binds a corrected status to the score and filter-ledger byte hashes. A corrected score receipt cannot promote a stale sweep or pass-rule simulation. Those products need their own matching provenance, and otherwise retain an explicit withheld status for EPO source quantities.
+## Numerical results and acceptance
 
-For the fixed-k scoreboard, the heavy subset is TOR ≥15 and <150 µg/filter with TOR OC/EC <2.5. The older sweep uses HIPS-derived loading >20 µg with OC/EC <2.5. These are different subsets.
+The scientific pipeline completed on 7 November at 19:22:17 UTC. Collection, five primary baseline fits, the binned anchored control/EPO fits, scoring, scientific acceptance, display export and the figure audit all exited successfully. Every primary candidate and both control rows have **100% prediction coverage on all 12,386 eligible filters**. The common population includes 163 heavy low-OC/EC filters and 2,065 filters in the separately declared light subset. Six finite references at or above 150 µg/filter and the one recorded raw-QC exclusion remain in the full ledgers, outside the primary score.
 
-### Gallery and synthesis
+All error quantities below are **µg/filter**; FTIR/TOR is dimensionless. Values are rounded only for this table.
 
-The September synthesis and next-steps documents are preserved as dated files. Their replacements incorporate the November findings, distinguish numerical convergence from accuracy, and define a finite existing-data endpoint.
+| Complete candidate pipeline | MedAE | MAE | RMSE | Mean signed bias | P95 absolute error | Heavy FTIR/TOR |
+|---|---:|---:|---:|---:|---:|---:|
+| Raw | 1.1426 | 1.7617 | 3.7456 | −0.0169 | 5.0782 | 0.7784 |
+| Spline | 1.0828 | 1.8153 | 4.4310 | −0.0531 | 5.2372 | 0.7393 |
+| Production VIBES | 1.1301 | 1.8066 | 4.1923 | −0.0153 | 5.2646 | 0.7390 |
+| Deflated VIBES | 1.3298 | 2.1074 | 4.1333 | −0.0116 | 6.2898 | 0.6308 |
+| PTFE-anchored VIBES | 1.0905 | 1.6986 | 3.7613 | −0.0120 | 4.8428 | 0.7845 |
+| Anchored + fold-local EPO | 1.2401 | 1.8410 | 4.0899 | −0.0296 | 4.9693 | 0.9008 |
 
-Experimental → Continuum has a **Build six-figure review section** action. It uses existing section editing, sharing and PDF/Deck export. The figures cover coverage, source-reference performance, baseline behavior, seasonality, optical-response sensitivity and candidate tradeoffs. Saved section links preserve the selected views and references; they continue to load the active data export, so a link is not a frozen research bundle.
+Anchored VIBES has the lowest MAE and P95 absolute error among these six pipelines. Raw spectra have the lowest RMSE; spline has the lowest median error but the highest RMSE. These are descriptive rankings under the fixed retrospective evaluation, not significance tests or a universally validated target-method selection. Small pooled signed biases coexist with substantial underprediction in the heavy low-OC/EC subset.
 
-Old EPO source scores remain withheld even when an old schema-1 snapshot is opened with the new UI. Essential evidence labels remain visible with explanations off. The October 28 organic-signal axis is now “FTIR residual from seasonal HIPS fit (µg/m³)”, and the distinct carbon-ratio references are explicit. Export composition preserves wrapped evidence text; the source table's population and coverage fields are included in exported content.
+The separate **1,361-channel matched-resolution control** isolates the EPO comparison from adjacent-channel averaging:
 
-### Verification and publication
+| Matched-resolution pipeline | MedAE | MAE | RMSE | Mean signed bias | P95 absolute error | Heavy FTIR/TOR |
+|---|---:|---:|---:|---:|---:|---:|
+| Anchored, pair-averaged, without EPO | 1.0894 | 1.7000 | 3.7611 | −0.0125 | 4.8497 | 0.7845 |
+| Same resolution, with fold-local EPO | 1.2401 | 1.8410 | 4.0899 | −0.0296 | 4.9693 | 0.9008 |
 
-The blanket nonfatal Node-test exception is removed. Source, public-data and research checks have explicit scopes. Missing prerequisites, unexpected failures and skipped/TODO assertions fail the selected gate. Input hashes are checked for changes during verification.
+Both control rows use the same 12,386 filters, folds and 18-component setting as the primary comparison. EPO moves the heavy-subset ratio closer to one while increasing the overall MedAE, MAE, RMSE and P95 error. The corrected result supports a composition-dependent tradeoff; it does not establish EPO as the preferred general EC product.
 
-The canonical Pages workflow now requires type checking, source/public-data tests and the normal production build, verifies the data archive hash against its tag, and writes a source/data verification receipt. The companion publication PR contains the same template. The new source CI workflow checks the pinned November snapshot and includes a phone-width, fresh-context section and completed-PDF-download acceptance journey. It publishes its receipts and browser outputs as a CI artifact; it does not deploy the gallery.
+Acceptance reconstructed all five EPO held-out blocks from saved models and the separate EPO/baseline all-source target predictions under predeclared `atol=rtol=1e-10`. It refitted only EPO fold 0 after replacing the **2,481 held-out TOR labels**, including values crossing 150 and missing values, and changing held-out nuisance chemistry. Training records, spectra, QC and splits remained fixed. The projection basis, signatures, centering, PLS coefficients and all 18-component held-out predictions were **exactly unchanged, with maximum absolute difference 0**. The artificial evaluation scores changed as required; they are not scientific performance estimates. Baseline OOF identities, folds, QC and score inputs were checked, but baseline fold coefficients were not saved for independent reconstruction.
 
-## Verification recorded locally
+A separate CSV/NumPy arithmetic review imported no project scoring or fitting helper. It found no discrepancies in the six reported primary metrics, matched-resolution control, QC, common population, site folds or input hashes; the maximum difference from saved table values was `2.220446049250313e-16`. This checks arithmetic on the same saved predictions and references, not new validation data. The source score receipt and complete ledgers retain the full precision.
 
-| Check | Result and boundary |
+## Figure populations and interpretation
+
+The [reviewed figure ledger](gallery-closeout-figure-populations-2026-11-07.md) and its executable audit distinguish the following populations:
+
+| Figure | Population and reference |
 |---|---|
-| Strict Node source suite | **368 passed**, no failures, skips or TODO assertions. Includes legacy-score guards, section serialization and wrapped-evidence export tests. |
-| Public-data suite, restored archive | **91 passed**, no failures/skips/TODO assertions. |
-| Available research Node assertions | **104 passed**, but the overall research gate is **unavailable, exit 1** because three test files lack declared prerequisites. |
-| Existing selected Python source suite | **104 passed** before adding the focused EPO and metric suites. |
-| EPO/metrics/gate/publication regressions | **40 passed**: 9 EPO, 10 metric/provenance, 12 rebuild-gate, 4 section-policy and 5 publication tests. Only synthetic/source inputs are used for EPO and metric tests. Ruff passed all nine touched science/export/test files. |
-| Workflow syntax | Canonical publication and source-CI YAML parsed; their shell blocks passed `bash -n`. This does not execute a deployment. |
-| Final local TypeScript / production build | **Blocked by execution resources.** TypeScript was killed with exit 137; reduced heap attempts exhausted the configured heap. A separate Vite attempt also exhausted its heap. A prior intermediate typecheck does not substitute for a final pass. |
-| Browser acceptance | **Not completed locally.** Chromium could not create its required socket; the environment rejected an escalation request. The connected Browser service was unavailable, and shared-browser navigation to the local server was refused. No phone-width, fresh-browser or completed-download pass is asserted from those attempts. |
+| Coverage | 233 unique Addis physical filters; Bega/Belg/Kiremt 81/81/71. Repeated scans do not increase this count. |
+| Source performance | 12,386 common eligible physical filters/157 sites, fixed k=18, five held-out site folds, 100% candidate coverage; IMPROVE TOR EC in µg/filter. |
+| Baseline behavior | 102 displayed aggregate bins; per preprocessing, 231/233 Addis bin members appear. The saved 2–3 November injection study uses 16 ambient parent filters, distinct from the later blank experiment. Its export lacks parent IDs and fit-failure counts. |
+| Seasonal contrast | 170 historical complete cases, including an inferred-comparator eligibility requirement. Calendar `belg_feb`: Bega Oct–Jan, Belg Feb–May, Kiremt Jun–Sep. Approximate 90% intervals are correctly transformed from the saved rounded log-scale summaries. |
+| Optical response | Selected overlapping curve populations; main parametric fit 11,311 filters/152 sites. The fitted bend uses a geometric-mean optical-depth coordinate. It is not a certified raw-HIPS reliability boundary. Historical Addis response population: 232. |
+| Target comparison | 172 identical aethalometer pairs for the saved production/anchored panels. MA350 IR BCc is an optical comparator, not independently measured Addis TOR. |
 
-The local execution blocks above are historical context. The production build and browser journeys subsequently passed in CI, as recorded below. The missing research and scientific inputs remain separate from that public verification.
+The source-only refresh preserves historical target values, populations and generation date. New all-source target predictions are archived separately. The corrected fixed-k source receipt does not certify the old EPO sweep or pass-rule simulation; those source quantities remain withheld.
 
-## Verification recorded in CI
+The current exclusion is ETAD-0248, not ETAD-0241. Historical 170/232-case summaries retain the qualification that their eligibility used an older network exclusion state. Their count is not silently imposed on the current 172-pair graph. The October 28 organic-signal axis now names its actual residual: FTIR EC minus the seasonal Deming fitted line.
 
-[Gallery closeout checks, run 42359566329](https://github.com/ahzs645/aethmodular/actions/runs/42359566329) completed successfully on 7 November 2026 for source revision `c366f5095c166acf0e11d72ba44dafeeaeefe6f4`, using the pinned public archive identified above. Both jobs checked out that PR head directly. The downloaded artifact receipt confirms the same `source_sha`, `public_review_status: success`, data tag and full data SHA-256. Both `scientific-regressions` and `public-review` passed.
+The six-figure section uses the existing section/share/PDF tools. A shared link loads active exports; the archive and receipt preserve the research version separately.
 
-| Check | Verified result |
+The completed executable figure ledger has SHA-256 `d0efa3623570c07892d5a8410068aaa36d5a2ae44219f887442d9b9bfe7e39bd`. Attachment checks matched 150 displayed score fields to the saved CSV at the export's rounding precision and confirmed all 35 unchanged historical top-level sections. This source-only export does not refit those historical figures.
+
+## Corrected-overlay release verification
+
+Pending hosted acceptance of the attached corrected overlay. The earlier checkpoint evidence below is retained with its narrower base-only scope. Final browser results, exact tested source revision and the completed corrected-source PDF identity will be recorded here after that run.
+
+## Verification recorded for the implementation checkpoint
+
+[Run 42400410346](https://github.com/ahzs645/aethmodular/actions/runs/42400410346) passed at exact source `ee1c6adac64b773944ee3bbaea3aac07d60f2f13` against the pinned historical public archive, **before the corrected source overlay was available**.
+
+| Check | Result |
 |---|---|
-| Synthetic scientific and release-gate Python regressions | **40 passed**: 9 EPO, 10 metric/provenance, 12 rebuild-gate, 4 section-policy and 5 publication tests. |
-| Node source suite | **368 passed**, zero failures, skips or TODO assertions. |
-| Public-data reconciliation | **91 passed**, zero failures, skips or TODO assertions. |
-| Type checks and public production build | **Passed**. This supplies the successful hosted verification that the local resource-limited attempts could not complete. |
-| Phone-width browser journey | **Passed**: historical EPO source scores remain withheld and reference labels remain visible with notes off. The strengthened checks confirm source-plot text stays within its SVG bounds, table headers retain readable height, and the Evidence column is reachable by scrolling within the table. |
-| Sharing and export browser journey | **Passed**: the six-figure review reopens in a fresh browser context and completes a **seven-page PDF download**. |
-| Browser total and evidence preservation | **2 browser tests passed**; scope recording and CI artifact upload succeeded. |
+| Python scientific/gate regressions | 114 passed; zero failures, errors or skips. These use source/synthetic fixtures. |
+| Strict Node source suite | 372 passed; zero failures, skips or TODO assertions. |
+| Public-data reconciliation | 91 passed; zero failures, skips or TODO assertions. |
+| TypeScript and public production build | Passed. |
+| Browser acceptance | Three tests passed; zero skipped, unexpected or flaky results. Phone evidence/plot/table readability, preserved target date, fresh-context shared section, saved-section reload and completed seven-page PDF download. |
+| Visual inspection | All seven PDF pages and the active phone view inspected; no observed clipping or unreadable headers. |
 
-The retained [gallery-closeout-public-review artifact](https://github.com/ahzs645/aethmodular/actions/runs/42359566329/artifacts/13568394319) is 374,399 bytes, with SHA-256 `eda78aaf8d9b0cad01929c1043860401061e756ded603f7083eefa8d1596ffe4`. The downloaded archive was checked against that hash.
+The verified public-review artifact is 518,496 bytes, SHA-256 `d42e288a77ab97fa7ef33a33e3aeb435ba3960de06d766003486573d2cb34f31`. Its seven-page PDF is 164,264 bytes, SHA-256 `875a00eaba3ce8510e920e0dc8e831645844b14546a2ec571f76db541b0c8732`. This checkpoint PDF correctly withholds historical EPO scores. It is not the final corrected-source figure package.
 
-Visual review of the downloaded artifact confirmed that both phone views are readable, source-plot labels and axes fit, and the table scrolls to Evidence. All seven PDF pages were reviewed; the revised source-performance page is visually clean, and the other six pages are pixel-identical to the previously reviewed package. The delivered `closeout-review.pdf` is **163,562 bytes**, with SHA-256 `19e7c84b75a527e2df1d85beaeca3b1802c55f10db9a954b03ab3c0077e057a2`, independently checked against the downloaded file. This PDF comes from tested source `c366f5095c166acf0e11d72ba44dafeeaeefe6f4`.
+Local browser execution remains unavailable because Chromium cannot create its required socket. The hosted results supply the completed browser/build evidence; no local success is inferred. The optional broad Ruff invocation reported existing style issues in the frozen continuum runner. No global Ruff pass is asserted for this continuation.
 
-An earlier [successful run, 42358778130](https://github.com/ahzs645/aethmodular/actions/runs/42358778130), was associated with PR head `b3d2219368e8f43d9209d2f94990b71915981de6` and tested the default PR merge revision `b885897b7ab20b796cb750711953fa4c827e5281`. Subsequent visual inspection found phone-width label clipping and excessive table-header wrapping. The current revision fixes those issues and verifies the additional readability conditions above.
+## Separate timeline review
 
-This record applies to tested source revision `c366f5095c166acf0e11d72ba44dafeeaeefe6f4` and the pinned public snapshot. A later documentation-only commit recording this evidence does not change the artifact's tested source identity. Subsequent implementation or figure-wording changes require their own CI result. These successful public checks do not constitute a real-data EPO rerun, full research reconciliation, or independent validation of absolute Addis EC accuracy. The unresolved inputs below still block those claims.
+PR #19's active-host availability repair is verified at `316a53ec423c7344253aef409027b0f607fff23f`: 20 focused Node tests, the research TypeScript/Vite build, four browser journeys and canonical public exclusion passed in [run 42396251333](https://github.com/ahzs645/aethmodular/actions/runs/42396251333). Loaded exports, saved execution evidence and scientific validation remain distinct. Research visibility is preserved, and the PR remains separate from the public closeout snapshot.
 
-## Earlier input blocker and original restoration plan
+## Limits and completion boundary
 
-At the end of the first software batch, the published archive contained display products but the checkout lacked the spectral matrices and row provenance needed to refit EPO. The original checkout did not contain the November transfer, continuum or intercept-fix tables. The following was that batch's restoration plan. It is superseded by the recovered inputs and explicit versioned commands in the [reproduction protocol](gallery-closeout-reproduction-2026-11-07.md).
+The strict source/public/research profiles no longer tolerate arbitrary Node failures. Missing declared inputs block their selected profile. The full legacy research gate remains unavailable: three Node test files need seven original paths/file groups, and the full Python research profile needs five daily-instrument pickles. The [historical receipt](gallery-closeout-software-batch-2026-11-07.md#remaining-research-gate-prerequisites) preserves the exact input list.
 
-Restore:
+A bounded recovery search did not restore those inputs. Complete inspection of the 90,894,200-byte October 19 GPU bundle verified its internal hashes and found no matching original gate files. Membership of the 289,297,763-byte resume ZIP remains unverified because it exceeds the connector's download limit. Downstream display exports and differing ChemSpec versions are not substituted for original inputs to make the tests pass.
 
-- The frozen October decision bundle, including its manifest, all three metadata tables, `improve_mass.csv`, original raw/spline/VIBES arrays and grids.
-- `vibes_continuum_20261102/corrected_{anchorhp,deflate}_{improve,addis,network}.npy`, plus `bundle/MANIFEST.json`, `bundle/rows.csv` and `bundle/wn.npy`.
-- The recorded VIBES background model used by the baseline workflow.
-- Historical November tables needed by the full continuum exporter. The corrected source stage itself does not need target optical labels.
+The existing-data endpoint requires the new numerical artifacts and acceptance receipt, reconciled figure populations, an exact tested base/overlay/source combination, a completed figure package and preserved restoration materials. Public CI verifies saved accepted inputs; it does not itself rerun the private scientific fits. Absolute Addis EC accuracy remains unresolved.
 
-Set `AETHMODULAR_CLOSEOUT_BUNDLE` to the restored decision-bundle directory, then run from the repository root:
-
-```bash
-uv run python research/ftir_hips_chem/workflows/run_transfer_diagnosis_20261102.py \
-  --bundle "${AETHMODULAR_CLOSEOUT_BUNDLE:?Set the restored decision bundle}" \
-  --stages fit \
-  --output research/ftir_hips_chem/output/tables/transfer_diagnosis_20261102/source_cv_v2
-
-uv run python research/ftir_hips_chem/workflows/run_intercept_fixes_20261103.py \
-  --bundle "$AETHMODULAR_CLOSEOUT_BUNDLE" --stages fit --models base epo
-
-uv run python research/ftir_hips_chem/workflows/run_hips_response_20261103.py \
-  --bundle "$AETHMODULAR_CLOSEOUT_BUNDLE" --stages scores \
-  --baseline-output research/ftir_hips_chem/output/tables/transfer_diagnosis_20261102/source_cv_v2 \
-  --epo-output research/ftir_hips_chem/output/tables/intercept_fixes_20261103/epo_site_cv_v2
-
-uv run python gallery/data/export_continuum_baseline.py
-```
-
-The last command also requires the historical display tables listed above. It consumes the corrected source-score child directory while preserving separate saved target diagnostics. Do not label the old EPO sweep corrected merely because the fixed-k scorer succeeded. The new fixed settings were informed by earlier exploration; this rerun is retrospective evaluation, not independent confirmation of model selection.
-
-## Remaining research-gate prerequisites
-
-Three Node test files require these seven missing paths or file groups:
-
-```text
-research/ftir_hips_chem/output/tables/vibes_fullrange/interpretation_20261002/benchmark/heldout_predictions.csv
-research/ftir_hips_chem/output/tables/vibes_fullrange/gallery_rank70_20261002/meeting/category_grid.jsonl
-research/ftir_hips_chem/output/tables/vibes_fullrange/gallery_rank70_20261002/followup/common_test_predictions.csv
-research/ftir_hips_chem/output/tables/vibes_fullrange/gallery_rank70_20261002/followup/routing_nested_training_predictions.csv
-research/ftir_hips_chem/output/tables/vibes_fullrange/gallery_rank70_20261002/followup/routing_prior_test_predictions.csv
-research/ftir_hips_chem/output/tables/vibes_fullrange/gallery_rank70_20261002/external/external_fit_diagnostics.csv
-data/spartan/raw/FilterBased/ChemSpecPM25/*.csv
-```
-
-The full Python research profile also requires all five saved daily-instrument pickle inputs. The new runner declares these inputs; it cannot silently skip a missing site.
-
-## PR #19 review boundary and completion criteria
-
-The original PR #19 history indexer derived `missingData` from its local checkout. The continuation replaces those stale flags with declared primary-export checks on the active host and verifies failure/restoration/recheck behavior in exact-head CI. Source history, execution evidence, data availability and scientific validation remain separate facts. Neither that interface check nor this receipt merges PR #19 or certifies missing historical scientific inputs.
-
-Close the existing-data stage only after the corrected numerical artifacts are restored and scored, figure populations/calendars/versions are reconciled, the intended build passes its declared checks, a copied link opens in a fresh context, a complete figure package downloads, and the exact source/data pair plus scientific ledgers are preserved. An explicit conclusion that absolute Addis EC accuracy remains unresolved is compatible with that endpoint.
-
-Independent Ethiopian TOR, full PMF qualification, further GPU optimization and exhaustive notebook migration remain follow-on work. They are not substituted for the bounded tasks above.
+New Ethiopian TOR/sampling, agreement on the proposed future TOR rule, full PMF qualification, numerical-v2 season-composition/fingerprint promotion checks, further GPU optimization and exhaustive historical notebook migration remain follow-on work.

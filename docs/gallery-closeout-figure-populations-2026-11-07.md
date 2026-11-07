@@ -1,8 +1,9 @@
 # Closeout figure populations — reviewed 7 November 2026
 
 The six-figure preset combines several evidence populations. **The corrected
-source comparison is pending in this reviewed ledger.** The other counts below
-are reconstructed from the frozen 4 November export and restored decision
+source comparison is now verified: 12,386 common eligible filters across 157
+sites, with 100% prediction coverage for all six candidates.** The other counts
+below are reconstructed from the frozen 4 November export and restored decision
 metadata; they are not new model fits or a claim of UI/CI acceptance.
 
 Frozen `continuum_baseline.json` SHA-256:
@@ -16,7 +17,7 @@ Both belong under `research/ftir_hips_chem/output/tables/closeout_20261107/froze
 | Preset figure | Population actually represented | Metric, reference and limits |
 |---|---|---|
 | Coverage and identity | **233 unique Addis physical filters**: Bega/Belg/Kiremt **81/81/71**; lots 248/251/253 **34/185/14**. All have HIPS; 172 have aethalometer values. | Physical filters, not scans. Dates 2022-12-07–2026-01-04. This is different from the separate 232-filter matched seasonal study. |
-| Source-reference performance | **Pending verified corrected-score receipt.** The legacy 12,387 fit-row count is not a verified common-score denominator. | IMPROVE TOR EC, µg/filter, fixed 18 components, site-grouped cross-validation. Legacy `improve_error` is median absolute error; MAE, RMSE, signed bias, tail error, common coverage and recorded QC require the new receipt. Historical EPO scores remain withheld. |
+| Source-reference performance | **12,386 common eligible physical filters/157 sites** for all six candidates; five held-out site folds; no eligible prediction loss. The source starts with 12,393 filters, excludes six TOR values ≥150 and one recorded raw-QC failure. Heavy/light subsets contain 163/2,065 filters. | IMPROVE TOR EC, µg/filter, fixed 18 components. Distinct MedAE, MAE, RMSE, signed bias and P90/P95 errors are saved with common identities and coverage. New fold-local EPO scores are verified; historical EPO sweep/simulation values remain withheld. |
 | Baseline behavior | **102 displayed bin medians** across six preprocessing panels. Per panel: 10,701 IMPROVE lot-251, 1,271 lot-248 and **231 Addis** bin members. Two further Addis filters occupy an omitted n=2 bin. | Per-filter mean absorbance at 1850–1910 cm⁻¹, then bin median; display in thousandths of absorbance. HIPS loading at MAC 10; bins require n≥5. Populations repeat across panels. |
 | Seasonal aethalometer contrasts | **170 complete cases** for each of four outcomes. Seasons **51/63/56**; lots 248/251 **33/137**. | Saved log(outcome) on log(MA350 IR BCc) plus season intercepts, relative to Belg. The historical eligibility also required the inferred comparator. Approximate 90% intervals transform saved log-scale SEs; no refit. |
 | Optical-response sensitivity | Different selected, overlapping curve populations; see below. Parametric fits: **11,311 filters/152 sites**, or **794/121** for low OC/EC. Addis response population **232**, with **171** aeth matches. | IMPROVE TOR-derived response transferred to Addis. Curve x is geometric-mean HIPS/reference depth; site-table depth is raw HIPS. Curve bands are approximately 90%; parameter bootstrap ranges are **80%** from 300 site resamples. |
@@ -82,7 +83,8 @@ uv run python research/ftir_hips_chem/workflows/audit_closeout_figures_20261107.
   --output research/ftir_hips_chem/output/tables/closeout_20261107/figure_audit_pending_review
 ```
 
-For the eventual corrected source attachment:
+For the completed corrected source attachment (use a new output directory when
+repeating this command; the original audit is preserved):
 
 ```bash
 uv run python research/ftir_hips_chem/workflows/audit_closeout_figures_20261107.py \
@@ -106,3 +108,13 @@ The JSON records input hashes, physical-ID hashes, interval reconstructions and
 reviewed source-file hashes. Source hashes do not certify execution or test
 success. Fit/projection lineage and held-out-label invariance belong to
 `verify_closeout_source_20261107.py`; browser and release checks remain separate.
+
+Completed audit: `figure_audit/figure-ledger.json`, SHA-256
+`d0efa3623570c07892d5a8410068aaa36d5a2ae44219f887442d9b9bfe7e39bd`.
+It binds source-score receipt
+`ff10bd831f6c11d824b5f244b9696103910c7709c276a06766ac39a265b08c79`
+to the restored metadata, full-grid identity, raw-QC rule and common-filter
+ledger. The common physical-filter ID hash is
+`3dac467c5dfe845785b0a5b8d1b3affc380af95739cfeefbefa89476f441f914`.
+The separate 1,361-channel anchored/EPO control uses the same common population;
+its rows are not added to the six primary pipelines.
