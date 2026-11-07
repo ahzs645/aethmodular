@@ -62,7 +62,11 @@ const BEFORE = 'vibes k18', AFTER = 'vibes_anchorhp k18'
 /** the curve/site tables name models without the k suffix */
 const bare = (m: string) => m.replace(/ k\d+$/, '')
 const runLine = (d: ContinuumData) => `transfer_diagnosis_20261102.ipynb · ${d.source} · IMPROVE out of site (5-fold by site), k 18 · Colab VIBES rerun ${d.settings?.colab?.fits ?? ''} fits, ${d.settings?.colab?.failed ?? '?'} failed`
-const FIXED = 'the 233 Addis filters of the 22 Oct decision bundle, fitted once (k 18) on 12,393 IMPROVE filters'
+const fixedSet = (d: ContinuumData) => {
+  const filters = new Set((d.addis_filters.filter_id ?? []).map((id) => baseFilterId(String(id)))).size
+  const fitted = num(d.settings?.fit?.fit_rows)
+  return `${filters} exported physical Addis filters, fitted once (k 18) on ${Number.isFinite(fitted) ? fitted.toLocaleString('en-US') : 'eligible'} IMPROVE source filters (finite TOR below 150 µg/filter)`
+}
 
 export function ContinuumStudy() {
   const { data, state } = useXp<ContinuumData>('continuum_baseline', 'Continuum and the baseline', [1, 2])
@@ -235,7 +239,7 @@ function AddisFits({ d }: { d: ContinuumData }) {
       subtitle={`Deming fit of each model's Addis FTIR EC against ${xk === 'hips_bc' ? `HIPS BC (${m.label}; another MAC scales the slope and ratio, not the intercept)` : xk === 'hips_lin' ? `HIPS on the IMPROVE TOR response (${m.label}; read the intercept)` : xk === 'aeth_ir' ? 'the aethalometer IR BCc (λ 1; the slope and ratio carry the aethalometer\'s calibration, so only the intercept should be near its ideal 0; HIPS itself is the bold black row)' : 'the TOR yardstick (no MAC)'}, saved by the exporter on the filters that count. A model on the line has intercept 0, slope 1 and ratio 1. Hollow dots are the 3 Nov label-free intercept fixes.`}
       controls={<Segmented label="Against" value={xk} options={XKEYS} optionLabel={(o) => X_SHORT[o]} onChange={setXk} />}>
       <Forest rows={rows} labelWidth={340} panels={[{ key: 'intercept', label: 'Deming intercept (µg/m³)', ref: 0, fmt: coefSigned }, { key: 'slope', label: 'Deming slope', ref: 1, fmt: coef }, { key: 'ratio', label: 'median ratio', ref: 1, fmt: f2 }]} />
-      <FixedSetNote what={FIXED} />
+      <FixedSetNote what={fixedSet(d)} />
     </ChartFrame>
   )
 }
@@ -267,7 +271,7 @@ function ImproveBeforeAfter({ d }: { d: ContinuumData }) {
       <FacetGrid items={panels} minCell={300} maxCols={2} itemKey={(p) => p.key} share render={(p, w) =>
         <Crossplot points={p.points} title={p.title} xLabel="TOR EC (µg per filter)" yLabel="FTIR EC, out of site (µg per filter)" maxSide={Math.min(w - 70, 460)} grouping={only === 'all' ? 'site' : 'none'} />} />
       {only === 'all' && <Legend {...lg.props} items={Object.entries(GROUP_COLOR).map(([k, c]) => ({ label: k, color: c }))} />}
-      <Note>TOR above 150 µg (five wildfire filters at TOR/HIPS 6–8) is left out of the fits and the plot. IMPROVE ids don't open a gallery record.</Note>
+      <Note>The fit and scored population require finite TOR below 150 µg/filter; higher-loading and missing-reference rows are outside that domain. IMPROVE ids don't open a gallery record.</Note>
     </ChartFrame>
   )
 }
@@ -301,7 +305,7 @@ function MatchedLoading({ d }: { d: ContinuumData }) {
         <SweepPlot series={series(m)} xScale="log" xDomain={[0.6, 90]} yDomain={[0.2, 2.4]} reference={1} xLabel="HIPS BC (µg per filter)" yLabel="median FTIR EC / HIPS BC" height={280} width={w} />} />
       <Legend items={[{ label: 'IMPROVE OC/EC < 2.5, out of site', color: '#d35400' }, { label: 'IMPROVE, all, out of site', color: '#9aa0a6' },
         { label: 'Addis, this model (dashed, in the model colour)', color: INK.accent }, { label: 'Addis, SPARTAN published (dotted)', color: INK.text }]} />
-      <FixedSetNote what={FIXED} />
+      <FixedSetNote what={fixedSet(d)} />
     </ChartFrame>
   )
 }
@@ -391,7 +395,7 @@ function Windows({ d }: { d: ContinuumData }) {
       subtitle="Each model's prediction split into windows (coefficient × centred absorbance per µg HIPS, k 12): Addis minus matched IMPROVE filters (OC/EC < 2.5, HIPS 20–60 µg). Negative = Addis gets less EC from that window; every panel shares one axis. The aliphatic C–H stretch (3000–2800) is the largest deficit in every baseline; the anchored backgrounds recover part of it from the continuum windows (2800–2400, 4000–3700). Neighbouring windows offset each other, so read the pattern, not single bars."
       controls={<Segmented label="Show" value={set} options={['pair', 'all'] as const} optionLabel={(o) => o === 'pair' ? 'Before / after' : 'Every baseline'} onChange={setSet} />}>
       <Forest rows={rows} labelWidth={140} rowHeight={20} panels={models.map((m) => ({ key: m, label: SHORT[`${m} k18`] ?? m, ref: 0, fmt: (v: number) => v.toFixed(2), domain }))} />
-      <FixedSetNote what={FIXED} />
+      <FixedSetNote what={fixedSet(d)} />
     </ChartFrame>
   )
 }
@@ -528,7 +532,7 @@ function WindowGain({ d }: { d: ContinuumData }) {
         <Segmented label="k" value={k} options={['12', '18']} onChange={setK} />
       </>}>
       <Forest rows={rows} labelWidth={170} rowHeight={20} panels={models.map((m) => ({ key: m, label: SHORT[`${m} k18`] ?? m, ref: 0, fmt: (v: number) => v.toFixed(2), domain }))} />
-      <FixedSetNote what={FIXED} />
+      <FixedSetNote what={fixedSet(d)} />
     </ChartFrame>
   )
 }
