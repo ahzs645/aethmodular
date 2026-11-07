@@ -11,12 +11,15 @@ docs/gallery-data-pipeline.md; its step table is generated from STEPS (`--markdo
     uv run aeth gallery rebuild --fetch       # also the network steps (AERONET pulls, MAIA catalogue)
     uv run aeth gallery rebuild --only aeronet aeronet-sites availability
     uv run aeth gallery rebuild --from aethalometer
-    uv run aeth gallery check                 # chart index, typecheck, tests, public-build check, sizes
+    uv run aeth gallery check --profile source   # source checks and compiled visibility; no data claim
+    uv run aeth gallery check --profile public   # also reconcile the public snapshot
+    uv run aeth gallery check                    # full research release, including private evidence
     uv run aeth gallery check-public          # only: private sections stay out of a public build
     uv run aeth gallery sizes                 # data per folder, with and without the private sections
 
-A step whose inputs are missing is skipped, and its committed output is left as it is (most outputs
-under gallery/app/public/data are committed). A step after a failed one is skipped. Every run writes
+A rebuild export whose inputs are missing is skipped, and its committed output is left as it is.
+Missing check inputs are unavailable and make the check fail. No test failures are exempted.
+A step after a failed one is skipped. Every run writes
 research/ftir_hips_chem/output/tables/gallery_rebuild/last_run.json (gitignored): what ran, how long,
 which data roots resolved, and the commit.
 """
@@ -33,7 +36,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
@@ -129,6 +132,7 @@ class Step:
     node: bool = False     # an npm/npx command run in gallery/app
     note: str = ""
     order: int = field(default=0, compare=False)
+    check_profile: str = "source"  # minimum check profile: source, public, research
 
 
 STEPS: tuple[Step, ...] = (
@@ -351,26 +355,39 @@ STEPS: tuple[Step, ...] = (
     # --- checks ---------------------------------------------------------------------------------------
     Step("chart-index", "check", ("npm", "run", "index:charts"), "Regenerate the ⌘K chart index", "gallery/app/src/chartIndex.json", (NODE,), node=True),
     Step("typecheck", "check", ("npx", "tsc", "-b"), "Typecheck the gallery", "-", (NODE,), ("chart-index",), node=True),
-    Step("node-tests", "check", ("npm", "test"), "The gallery's node tests (7 fail without gitignored exports)", "-", (NODE,), ("chart-index",), node=True,
-         note="failures are reported, not fatal: the baseline, VIBES and similarity tests need exports absent from a fresh clone"),
+    Step("node-tests", "check", ("npm", "run", "test:source"), "Data-independent Node behavior and contract checks", "gallery_rebuild/node-source.json", (NODE,), ("chart-index",), node=True,
+         note="all failures, skips and TODOs are fatal; data readers are declared in scripts/test-inputs.json"),
+    Step("node-data-public", "check", ("npm", "run", "test:data:public"), "Scientific reconciliation on publishable gallery exports", "gallery_rebuild/node-data-public.json", (NODE,), ("chart-index",), node=True,
+         note="minimum profile: public; missing declared inputs are unavailable, never passed", check_profile="public"),
+    Step("node-data-research", "check", ("npm", "run", "test:data:research"), "Scientific reconciliation requiring research exports or saved analysis tables", "gallery_rebuild/node-data-research.json", (NODE,), ("chart-index",), node=True,
+         note="minimum profile: research; retains the legacy baseline, VIBES and similarity checks", check_profile="research"),
     Step("python-tests", "check", ("-m", "pytest", "-q", "tests/test_gallery_rebuild.py", "tests/test_gallery_sections.py",
                                    "tests/test_aeronet_gallery.py", "tests/test_aeronet_sites_export.py", "tests/test_availability_aeronet.py",
                                    "tests/test_aeth_quality_export.py", "tests/test_aeth_quality_minute.py", "tests/test_aeth_sources_export.py",
                                    "tests/test_aeth_diurnal_export.py", "tests/test_aeth_overview_export.py", "tests/test_gallery_research_hips_met.py",
                                    "tests/test_gallery_research_spectral.py", "tests/test_maia_catalog.py", "tests/test_gallery_publication.py",
-                                   "tests/test_spartan_update_check.py"),
-         "The pipeline's pytest files", "-", tz=True),
+                                   "tests/test_spartan_update_check.py", "tests/test_candidate_metrics.py", "tests/test_epo_validation.py",
+                                   "--deselect", "tests/test_aeth_quality_export.py::test_bins_line_up_with_the_daily_export"),
+         "The pipeline's source and synthetic-data pytest checks", "-", tz=True),
+    Step("python-data-tests", "check", ("-m", "pytest", "-q", "tests/test_aeth_quality_export.py::test_bins_line_up_with_the_daily_export"),
+         "Reconcile exported sampling bins with the saved daily instrument records", "-",
+         tuple(repo(f"research/ftir_hips_chem/processed_sites/df_{name}_9am_resampled.pkl")
+               for name in ("Beijing", "Delhi", "JPL", "Addis_Ababa", "Jacros")),
+         note="minimum profile: research; all five recorded instrument inputs are required", check_profile="research"),
+    Step("public-build", "check", ("gallery/data/rebuild.py", "check-public"),
+         "Compile public visibility and check the publication archive", "-", (NODE,), ("typecheck",),
+         note="source profile checks compiled visibility only; public/research also check packed data"),
 )
 STEPS = tuple(Step(**{**s.__dict__, "order": i}) for i, s in enumerate(STEPS))
 BY_KEY = {s.key: s for s in STEPS}
-NONFATAL = {"node-tests"}
+CHECK_PROFILES = ("source", "public", "research")
 
 
 def command(step: Step) -> tuple[list[str], Path]:
     if step.node:
         return list(step.run), APP
     uv = shutil.which("uv")
-    py = (["uv", "run", "--no-sync"] + (["--with", "timezonefinder"] if step.tz else []) + (["--with", "pytest"] if step.key == "python-tests" else []) + ["python"]) \
+    py = (["uv", "run", "--no-sync"] + (["--with", "timezonefinder"] if step.tz else []) + (["--with", "pytest"] if step.key.startswith("python-") else []) + ["python"]) \
         if uv else [sys.executable]
     first = list(step.run)
     return py + ([str(ROOT / first[0])] + first[1:] if not first[0].startswith("-") else first), ROOT
@@ -423,9 +440,22 @@ def plan(steps: list[Step]) -> None:
             print(f"      missing: {m}")
 
 
-def run(steps: list[Step], dry: bool) -> int:
+def check_steps(profile: str) -> list[Step]:
+    """A public publication does not claim validation of omitted private research."""
+    level = CHECK_PROFILES.index(profile)
+    steps = [s for s in STEPS if s.group == "check" and CHECK_PROFILES.index(s.check_profile) <= level]
+    if profile == "source":
+        steps = [replace(s, run=(*s.run, "--source-only")) if s.key == "public-build" else s for s in steps]
+    return steps
+
+
+def run(steps: list[Step], dry: bool, profile: str | None = None) -> int:
     log = {"started": datetime.now(timezone.utc).isoformat(timespec="seconds"), "commit": git("rev-parse", "HEAD"),
            "dirty": bool(git("status", "--porcelain", "--", "gallery", "research", "scripts")), "roots": roots(), "steps": []}
+    if profile:
+        log["check_profile"] = profile
+        selected_keys = {s.key for s in steps}
+        log["checks_outside_scope"] = [s.key for s in STEPS if s.group == "check" and s.key not in selected_keys]
     failed: set[str] = set()
     for s in steps:
         st, missing = status(s)
@@ -433,23 +463,33 @@ def run(steps: list[Step], dry: bool) -> int:
         entry = {"step": s.key, "command": " ".join(cmd), "cwd": str(cwd.relative_to(ROOT)) or "."}
         if [d for d in s.after if d in failed]:
             entry["status"] = f"skipped: {', '.join(d for d in s.after if d in failed)} failed"
+            failed.add(s.key)
         elif st == "blocked":
-            entry["status"] = "skipped: missing " + "; ".join(missing)
+            entry["status"] = ("unavailable: missing " if s.group == "check" else "skipped: missing ") + "; ".join(missing)
+            entry["missing_inputs"] = missing
+            if s.group == "check" and not dry:
+                failed.add(s.key)
         elif dry:
             entry["status"] = "would run"
         else:
             print(f"\n=== {s.key}: {' '.join(cmd)}", flush=True)
             t0 = time.time()
-            code = subprocess.run(cmd, cwd=cwd).returncode
+            try:
+                code = subprocess.run(cmd, cwd=cwd).returncode
+            except OSError as exc:
+                code = 1
+                entry["error"] = str(exc)
             entry["seconds"] = round(time.time() - t0, 1)
             entry["status"] = "ok" if code == 0 else f"failed (exit {code})"
-            if code and s.key not in NONFATAL:
+            if code:
                 failed.add(s.key)
         log["steps"].append(entry)
     print("\nsummary:")
     for e in log["steps"]:
         print(f"  {e['step']:26} {e['status']}" + (f"  ({e['seconds']} s)" if "seconds" in e else ""))
     if not dry:
+        log["finished"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        log["exit_code"] = 1 if failed else 0
         RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
         RUN_LOG.write_text(json.dumps(log, indent=1))
         print(f"\nrun log: {RUN_LOG.relative_to(ROOT)}")
@@ -486,7 +526,7 @@ def section_markers(sections: dict[str, dict] | None = None) -> dict[str, set[st
     return out
 
 
-def check_public() -> int:
+def check_public(source_only: bool = False) -> int:
     """Build with VITE_PUBLIC_BUILD=1 and confirm no private section's data paths are in the bundle, then
     confirm the publish packer leaves the private data folders out of the archive. An unlisted section
     must be the other way round: its data paths in the bundle and its data in the archive."""
@@ -499,7 +539,8 @@ def check_public() -> int:
         r = subprocess.run(["npx", "vite", "build", "--outDir", str(out), "--emptyOutDir"], cwd=APP, env=env, capture_output=True, text=True)
         if r.returncode:
             print(r.stdout[-2000:], r.stderr[-2000:])
-            raise SystemExit("public build failed")
+            print("public build failed")
+            return 1
         bundle = "".join(p.read_text(errors="ignore") for p in (out / "assets").glob("*.js"))
         for key, ms in markers.items():
             leaked = sorted(m for m in ms if m in bundle)
@@ -509,6 +550,12 @@ def check_public() -> int:
             missing = sorted(m for m in ms if m not in bundle)
             print(f"unlisted section {key}: {len(ms)} data paths checked, {len(missing)} missing from the public bundle")
             problems += [f"{key}: {m} is not in the public bundle" for m in missing]
+        if source_only:
+            for p in problems:
+                print("PROBLEM:", p)
+            print("public source visibility: OK" if not problems else "public source visibility: NOT OK")
+            print("Data availability and publication archive not evaluated in the source profile.")
+            return 1 if problems else 0
         sys.path.insert(0, str(ROOT / "gallery/share"))
         import publish_pages  # noqa: E402
         import tarfile
@@ -595,8 +642,11 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--from", dest="from_step", choices=sorted(BY_KEY), help="start at this step")
         p.add_argument("--skip", nargs="+", default=[], metavar="STEP")
         p.add_argument("--dry-run", action="store_true", help="show what would run")
-    sub.add_parser("check", help="chart index, typecheck, node and python tests, public-build check, sizes")
-    sub.add_parser("check-public", help="private sections stay out of a public build and the publish archive")
+    checks = sub.add_parser("check", help="strict source/public/research verification; missing checks are failures")
+    checks.add_argument("--profile", choices=CHECK_PROFILES, default="research",
+                        help="source: code only; public: code and public snapshot; research (default): all declared evidence")
+    public = sub.add_parser("check-public", help="private sections stay out of a public build and the publish archive")
+    public.add_argument("--source-only", action="store_true", help="check compiled visibility without claiming data availability")
     sub.add_parser("sizes", help="data per folder, with and without the private sections")
     md = sub.add_parser("markdown", help="print the step table for docs/gallery-data-pipeline.md")
     md.add_argument("--write", action="store_true", help="write it into the doc between its markers")
@@ -611,10 +661,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "sizes":
         return sizes()
     if args.cmd == "check-public":
-        return check_public()
+        return check_public(source_only=args.source_only)
     if args.cmd == "check":
-        code = run([s for s in STEPS if s.group == "check"], dry=False)
-        return max(code, check_public(), sizes())
+        code = run(check_steps(args.profile), dry=False, profile=args.profile)
+        if args.profile != "source":
+            sizes()
+        return code
     if args.cmd in (None, "plan"):
         if args.cmd is None:
             args = ap.parse_args(["plan"])

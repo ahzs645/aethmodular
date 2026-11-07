@@ -35,6 +35,8 @@ ROOT = AREA.parents[1]
 sys.path[:0] = [str(AREA / "scripts"), str(ROOT)]
 import continuum_anchor as ca  # noqa: E402
 import data_paths  # noqa: E402
+from candidate_metrics import ids_sha256, sha256_file, validate_physical_ids  # noqa: E402
+from spectral_provenance import verify_corrected_spectra, verify_manifest_files  # noqa: E402
 from aethmodular_cli import env  # noqa: E402
 
 OUT = AREA / "output/tables/transfer_diagnosis_20261102"
@@ -85,7 +87,17 @@ def fit(bundle: Path):
     from sklearn.model_selection import GroupKFold
 
     im, ad, nw = load(bundle)
+    checked_inputs = {bundle / name: value for name, value in verify_manifest_files(
+        bundle, ["wn_full.npy", "improve_meta.csv", "addis_meta.csv", "network_meta.csv", *[f"{group}_{prep}.npy" for group in ("improve", "addis", "network")
+                                   for prep in ("raw", "spline", "vibes")]]).items()}
+    checked_inputs[bundle / "MANIFEST.json"] = sha256_file(bundle / "MANIFEST.json")
+    checked_inputs[VIBES_MODEL] = sha256_file(VIBES_MODEL)
     y, sites = im.tor_ug.to_numpy(), im.site.to_numpy()
+    physical_ids = validate_physical_ids(im.filter_id.to_numpy())
+    splits = list(GroupKFold(5).split(np.zeros((len(y), 1)), y, sites))
+    fold_id = np.full(len(y), -1, dtype=int)
+    for fold, (_, test) in enumerate(splits):
+        fold_id[test] = fold
     # five IMPROVE wildfire filters with TOR 250-390 µg (HIPS ~50) dominate squared error; fit without TOR > 150
     ok = np.isfinite(y) & (y < 150)
     wn = np.load(bundle / "wn_full.npy")
@@ -110,17 +122,20 @@ def fit(bundle: Path):
     for name, v in VC_VARIANTS.items():
         X = vc_spectra(v)
         if X is not None:
+            checked_inputs.update({VC / name: value for name, value in verify_corrected_spectra(
+                VC, {"improve": im, "addis": ad, "network": nw}, wn, (v,)).items()})
             if any(np.isnan(np.asarray(a, float)).any() for a in X.values()):
                 raise ValueError(f"{v}: corrected spectra contain NaN (failed VIBES fits)")
             models[name] = (X, None, None)
-    preds, coefs = {}, {}
+    preds = {"improve_filter_ids": physical_ids, "improve_site_ids": sites.astype(str), "improve_fold_id": fold_id}
+    coefs = {}
     for name, (X, cols, w) in models.items():
         t = time.time()
         XI = np.asarray(X["improve"], np.float64)
         cols = np.ones(XI.shape[1], bool) if cols is None else cols
         XI = XI[:, cols]
         oof = np.full((len(y), K), np.nan)
-        for tr, te in GroupKFold(5).split(XI, y, sites):
+        for tr, te in splits:
             tr = tr[ok[tr]]
             oof[te] = ca.pls_predict(ca.pls_fit(XI[tr], y[tr], K, None if w is None else w[tr]), XI[te])
         full = ca.pls_fit(XI[ok], y[ok], K, None if w is None else w[ok])
@@ -129,6 +144,8 @@ def fit(bundle: Path):
         preds[f"{name}|network"] = ca.pls_predict(full, np.asarray(X["network"], float)[:, cols])
         coefs[f"{name}|xm"], coefs[f"{name}|B"], coefs[f"{name}|cols"] = full[0], full[2], cols
         print(f"{name}: {time.time() - t:.0f}s", flush=True)
+    if any(sha256_file(path) != value for path, value in checked_inputs.items()):
+        raise RuntimeError("a spectral input changed during fitting; source predictions are not certified")
     OUT.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(OUT / "predictions.npz", **preds)
     np.savez_compressed(OUT / "coefficients.npz", **coefs)
@@ -137,6 +154,14 @@ def fit(bundle: Path):
     (OUT / "fit_receipt.json").write_text(json.dumps({
         "bundle": env.display_path(bundle), "vibes_model": env.display_path(VIBES_MODEL), "k_max": K,
         "cv": "GroupKFold(5) by IMPROVE site", "fit_rows": int(ok.sum()), "excluded_tor_over_150": int((y >= 150).sum()),
+        "spectral_inputs": {env.display_path(path): value for path, value in checked_inputs.items()},
+        "source_identity": {
+            "protocol": "physical_filter_order_and_site_folds_v1",
+            "improve_metadata_sha256": sha256_file(bundle / "improve_meta.csv"),
+            "filter_ids_sha256": ids_sha256(physical_ids),
+            "predictions_sha256": sha256_file(OUT / "predictions.npz"),
+            "split_population": "all bundled IMPROVE physical filters; training requires finite TOR <150 micrograms per filter",
+        },
         "anchored": {"windows": ca.PTFE_WINDOWS, "highpass_window_channels": 41, "ridge": 1e-6},
         "balanced_weights": "inverse cell count over 10 OC/EC deciles x 6 log-EC bins, clipped at 20",
         "created": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}, indent=1))
@@ -203,7 +228,7 @@ def tables(bundle: Path):
             fitok = np.isfinite(y) & (y < 150)
             s, i, r2, n = ca.ols(ad.hips_ug, pa)
             t.append(pd.DataFrame([dict(median=np.nanmedian(np.abs(e[fitok])), n=int(fitok.sum()), model=nm, k=k,
-                                        what="IMPROVE out-of-site MAE (µg)")]))
+                                        what="IMPROVE out-of-site median absolute error (µg/filter)")]))
             t.append(pd.DataFrame([dict(median=s, n=n, model=nm, k=k, what="Addis OLS slope vs HIPS"),
                                    dict(median=i, n=n, model=nm, k=k, what="Addis OLS intercept vs HIPS (µg)")]))
     pub = _binmed(ad.pub_ug / ad.hips_ug, ad.hips_ug, LOAD_BINS)
@@ -388,10 +413,14 @@ def perfilter(bundle: Path):
 
 
 def main():
+    global OUT
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--bundle", type=Path, default=None)
+    p.add_argument("--output", type=Path, default=None, help="versioned output directory; use for closeout reruns to preserve the historical archives")
     p.add_argument("--stages", nargs="+", default=["fit", "tables"], choices=["fit", "tables", "inject", "perfilter"])
     a = p.parse_args()
+    if a.output is not None:
+        OUT = a.output
     bundle = a.bundle or default_bundle()
     for s in a.stages:
         {"fit": fit, "tables": tables, "inject": inject, "perfilter": perfilter}[s](bundle)

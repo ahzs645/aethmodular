@@ -184,7 +184,7 @@ export function Figure(props: FigureSpec & { about?: ReactNode; provenance?: Rea
     <ChartFrame id={id} title={spec.title} subtitle={spec.subtitle} tip={spec.tip} controls={controls} about={props.about} provenance={props.provenance}
       exportable={spec.kind !== 'table'} source={bundle ? `gallery/app/src/meetings/${bundle.id}.meeting.ts › ${id}${spec.table ? `; data: table "${spec.table}" in gallery/app/public/data/meetings/${bundle.id}.json, from ${bundle.generated_from}` : ''}` : undefined}>
       {body}
-      {spec.note && <div className={spec.noteAlways ? 'legend-definition' : 'legend-note'} style={{ marginTop: 6 }}><Markdown text={spec.note} /></div>}
+      {spec.note && <div className={spec.noteAlways ? 'legend-definition' : 'legend-note'} data-export={spec.noteAlways ? 'text' : undefined} style={{ marginTop: 6 }}><Markdown text={spec.note} /></div>}
       {props.aside}
     </ChartFrame>
   )

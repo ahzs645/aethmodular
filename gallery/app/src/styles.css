@@ -2139,3 +2139,9 @@ html[data-single='1'] .configuration-section[data-single-path] { border: 0; bord
 .stat-detail-value:hover { text-decoration: underline; text-underline-offset: 4px; }
 .aggregate-details { font-size: 11px; margin: 8px 0; }
 .aggregate-details button { margin: 4px; }
+
+/* Reference and evidence context belongs to the figure, including when explanations are off. */
+.chart-evidence { margin: 0 0 12px; padding: 8px 10px; border-left: 3px solid var(--muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.closeout-table-scroll { max-width: 100%; overflow-x: auto; }
+.closeout-table-scroll .census-table { display: table; min-width: 760px; overflow-wrap: normal; }
+.closeout-scroll-hint { margin: 6px 0; font-size: 12px; color: var(--ink-muted); }

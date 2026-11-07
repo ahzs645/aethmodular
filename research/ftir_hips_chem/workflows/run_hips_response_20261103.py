@@ -14,6 +14,8 @@ Follows run_intercept_fixes_20261103.py, whose tables and helpers it reuses. Sta
                spectrum-to-filter map sensitivity and the draft pass rule; then the rule's behaviour on simulated draws of about
                10 IMPROVE filters held out of their site.
 * ``options``  per-filter anchored and EPO FTIR EC for the gallery's FTIR baseline switch.
+* ``scores``   fixed-k source scores on common physical filters, from identity-verified source-site folds.
+               Requires the corrected EPO evaluation and regenerated baseline identity receipts; no target spectra.
 
     ../../.venv/bin/python workflows/run_hips_response_20261103.py --bundle /tmp/xfer1102/bundle --adama <dir> [--stages flow network tor options]
 
@@ -36,6 +38,9 @@ AREA = Path(__file__).resolve().parents[1]
 ROOT = AREA.parents[1]
 sys.path[:0] = [str(AREA / "scripts"), str(AREA / "workflows"), str(ROOT)]
 import continuum_anchor as ca  # noqa: E402
+from candidate_metrics import (  # noqa: E402
+    METRIC_DEFINITIONS, SCORE_PROTOCOL, paired_candidate_metrics, sha256_file, validate_archive_identity,
+)
 import run_intercept_fixes_20261103 as ix  # noqa: E402
 import run_transfer_diagnosis_20261102 as td  # noqa: E402
 
@@ -193,13 +198,13 @@ def network(bundle, n_boot=300):
     im["oof"] = P["vibes_anchorhp|improve_oof"][:, 17]
     nw["h"], nw["site"] = nw.fabs_Mm1 * nw.volume_m3 / 10, nw.code
     nw["anch"], nw["vib"], nw["pub"] = P["vibes_anchorhp|network"][:, 17], P["vibes|network"][:, 17], nw.ec_ftir_ugm3 * nw.volume_m3
-    I = im[np.isfinite(im.ref) & (im.ref < 150)]
-    op = I[I.tor_optr_ugm3 > 0]
+    improve_eligible = im[np.isfinite(im.ref) & (im.ref < 150)]
+    op = improve_eligible[improve_eligible.tor_optr_ugm3 > 0]
     n = nw[~nw.excluded & (nw.h > 0)]
     noeth = n[~n.code.isin(["ETAD", "ETBI"])]
     rows = _curve(op, AREA_IMPROVE, "IMPROVE: HIPS / TOR")
     rows += _curve(op[op.ocec2 < OCEC_LIMIT], AREA_IMPROVE, "IMPROVE: HIPS / TOR, OC/EC < 2.5")
-    rows += _curve(I.assign(ref=I.oof), AREA_IMPROVE, "IMPROVE: HIPS / FTIR, out of site")
+    rows += _curve(improve_eligible.assign(ref=improve_eligible.oof), AREA_IMPROVE, "IMPROVE: HIPS / FTIR, out of site")
     rows += _curve(noeth.assign(ref=noeth.anch), AREA_SPARTAN, "SPARTAN without Ethiopia: HIPS / anchored FTIR")
     rows += _curve(noeth.assign(ref=noeth["pub"]), AREA_SPARTAN, "SPARTAN without Ethiopia: HIPS / published FTIR")
     pd.DataFrame(rows).to_csv(OUT / "hips_tau_curves.csv", index=False)
@@ -264,7 +269,7 @@ def network(bundle, n_boot=300):
     (OUT / "hips_response_receipt.json").write_text(json.dumps(dict(
         form="HIPS/true = g(s) = 1/(1 + (s - tau0)+/c), s = sqrt(tau_HIPS tau_true); fitted on IMPROVE TOR, OP > 0, site effects",
         heavy_sites=len(heavy), heavy_abs_intercept_raw=float(heavy.raw_intercept_rel.abs().median()), heavy_abs_intercept_corrected=float(heavy.intercept_rel.abs().median()),
-        improve_n_over_0p5=int((I.h / 35 > .5).sum()), improve_n_over_1=int((I.h / 35 > 1).sum()), bootstrap=n_boot,
+        improve_n_over_0p5=int((improve_eligible.h / 35 > .5).sum()), improve_n_over_1=int((improve_eligible.h / 35 > 1).sum()), bootstrap=n_boot,
         created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())), indent=1))
     print(fit.round(3).to_string(index=False))
     print(pd.read_csv(OUT / "addis_vs_hips_response.csv").round(3).to_string(index=False))
@@ -379,6 +384,61 @@ def tor(bundle, adama: Path):
 
 
 # --------------------------------------------------------------------------- options
+def source_scores(bundle, epo_output=None, k=18, baseline_output=None, scores_output=None):
+    """Score saved OOF predictions; never infer old positional archive identity."""
+    epo_output = Path(epo_output) if epo_output is not None else OUT / "epo_site_cv_v2"
+    baseline_output = Path(baseline_output) if baseline_output is not None else XD
+    scores_output = Path(scores_output) if scores_output is not None else OUT / "source_scores_v2"
+    im, _, _ = td.load(bundle)
+    baseline_path, epo_path = baseline_output / "predictions.npz", epo_output / "predictions.npz"
+    baseline_receipt = json.loads((baseline_output / "fit_receipt.json").read_text())
+    epo_receipt = json.loads((epo_output / "fit_receipt.json").read_text())
+    epo_protocol = epo_receipt.get("epo_protocol")
+    if epo_protocol != "epo_train_only_site_cv_v2":
+        raise ValueError("EPO source scores require the fold-local EPO evaluation receipt; historical EPO scores are not eligible")
+    with np.load(baseline_path, allow_pickle=False) as Pd, np.load(epo_path, allow_pickle=False) as Pe:
+        baseline_folds = validate_archive_identity(Pd, baseline_receipt, im, bundle / "improve_meta.csv", baseline_path, label="baseline")
+        epo_folds = validate_archive_identity(Pe, epo_receipt, im, bundle / "improve_meta.csv", epo_path, label="EPO")
+        if not np.array_equal(baseline_folds, epo_folds):
+            raise ValueError("baseline and EPO outer folds differ; rerun candidates on the same frozen site splits")
+        predictions = {}
+        for model in ("raw", "spline", "vibes", "vibes_deflate", "vibes_anchorhp", "epo"):
+            archive = Pe if model == "epo" else Pd
+            values = archive[f"{model}|improve_oof"]
+            if values.ndim != 2 or values.shape[1] < k:
+                raise ValueError(f"{model}: saved predictions do not include k={k}")
+            predictions[model] = values[:, k - 1]
+        scoreboard, population, ledger = paired_candidate_metrics(im, predictions, k=k)
+    scoreboard.loc[scoreboard.model.eq("epo"), "evaluation_status"] = "corrected"
+    scoreboard["identity_status"] = "verified_physical_filter_ids_and_site_folds"
+    ledger["fold_id"] = baseline_folds
+    scores_output.mkdir(parents=True, exist_ok=True)
+    scoreboard.to_csv(scores_output / "baseline_scoreboard.csv", index=False)
+    ledger.to_csv(scores_output / "baseline_scoreboard_filters.csv", index=False)
+    receipt = dict(
+        schema_version=1, status="corrected", protocol=SCORE_PROTOCOL,
+        reason="EPO projection fitted within each source-site training fold; candidates share verified physical-filter IDs and folds",
+        metrics=METRIC_DEFINITIONS, population=population,
+        provenance=dict(
+            epo_protocol=epo_protocol, epo_predictions_sha256=sha256_file(epo_path),
+            epo_fit_receipt_sha256=sha256_file(epo_output / "fit_receipt.json"),
+            baseline_predictions_sha256=sha256_file(baseline_path),
+            baseline_fit_receipt_sha256=sha256_file(baseline_output / "fit_receipt.json"),
+            improve_metadata_sha256=sha256_file(bundle / "improve_meta.csv"),
+        ),
+        outputs={name: {"sha256": sha256_file(scores_output / name)} for name in
+                 ("baseline_scoreboard.csv", "baseline_scoreboard_filters.csv")},
+        limitations=[
+            "Fixed candidate settings include prior exploratory choices; this is not independent model-selection confirmation.",
+            "Scores describe the stated IMPROVE TOR source domain, not absolute Addis EC accuracy.",
+            "All paired scores use the common-filter intersection; candidate-specific coverage is reported separately.",
+        ],
+        created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    )
+    (scores_output / "baseline_scoreboard_receipt.json").write_text(json.dumps(receipt, indent=2, allow_nan=False))
+    print(scoreboard.to_string(index=False))
+
+
 def options(bundle):
     _, _, nw = ix.addis_frame(bundle)
     Pd, Px = np.load(XD / "predictions.npz"), np.load(OUT / "predictions.npz")
@@ -387,16 +447,9 @@ def options(bundle):
     out[out.anchored.notna()].to_csv(OUT / "network_candidates.csv", index=False)
     print(f"options: {out.anchored.notna().sum()} filters")
 
-    # the scoreboard behind "why this baseline": IMPROVE-held-out tests only need the out-of-site predictions
-    im, ad, _ = ix.addis_frame(bundle)
-    y = im.tor_ug.to_numpy()
-    oe = (im.tor_oc_ugm3 / im.tor_ec_ugm3).to_numpy()
-    fit, like = np.isfinite(y) & (y < 150), np.isfinite(y) & (y >= GATE_UG) & (y < 150) & (oe < OCEC_LIMIT)
-    light = np.isfinite(y) & (y > 3.5) & (y < 10) & (oe > 4.5) & (oe < 8)
-    oof = {"raw": Pd["raw|improve_oof"][:, 17], "spline": Pd["spline|improve_oof"][:, 17], "vibes": Pd["vibes|improve_oof"][:, 17], "vibes_deflate": Pd["vibes_deflate|improve_oof"][:, 17],
-           "vibes_anchorhp": Pd["vibes_anchorhp|improve_oof"][:, 17], "epo": Px["epo|improve_oof"][:, 17]}
-    pd.DataFrame([dict(model=m, improve_error=float(np.median(np.abs(o - y)[fit])), improve_heavy_ratio=float(np.median((o / y)[like])), improve_light_ratio=float(np.median((o / y)[light])),
-                       n_heavy=int(like.sum()), n_light=int(light.sum())) for m, o in oof.items()]).to_csv(OUT / "baseline_scoreboard.csv", index=False)
+    # Source evaluation has its own stage and receipt. Regenerating saved target
+    # comparisons must not restore old globally-preprocessed EPO source scores.
+    _, ad, _ = ix.addis_frame(bundle)
 
     # one Addis spectrum story: heavy and light thirds, raw and each corrected spectrum (every 4th channel)
     wn = np.load(bundle / "wn_full.npy")
@@ -433,10 +486,18 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--bundle", type=Path, required=True)
     p.add_argument("--adama", type=Path, default=None)
-    p.add_argument("--stages", nargs="+", default=["flow", "network", "tor", "options"], choices=["flow", "network", "tor", "options"])
+    p.add_argument("--epo-output", type=Path, default=None, help="corrected EPO evaluation directory for the scores stage")
+    p.add_argument("--baseline-output", type=Path, default=None, help="identity-verified baseline evaluation directory for the scores stage")
+    p.add_argument("--scores-output", type=Path, default=None, help="source-score output directory (default: source_scores_v2; preserves historical target tables)")
+    p.add_argument("--stages", nargs="+", default=["flow", "network", "tor", "options"], choices=["flow", "network", "tor", "options", "scores"])
     a = p.parse_args()
     for s in a.stages:
-        tor(a.bundle, a.adama) if s == "tor" else {"flow": flow, "network": network, "options": options}[s](a.bundle)
+        if s == "scores":
+            source_scores(a.bundle, a.epo_output, baseline_output=a.baseline_output, scores_output=a.scores_output)
+        elif s == "tor":
+            tor(a.bundle, a.adama)
+        else:
+            {"flow": flow, "network": network, "options": options}[s](a.bundle)
 
 
 if __name__ == "__main__":

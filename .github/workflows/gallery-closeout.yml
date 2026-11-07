@@ -1,0 +1,109 @@
+name: Gallery closeout checks
+
+on:
+  pull_request:
+    paths:
+      - 'gallery/**'
+      - 'research/ftir_hips_chem/scripts/epo_validation.py'
+      - 'research/ftir_hips_chem/scripts/candidate_metrics.py'
+      - 'research/ftir_hips_chem/scripts/spectral_provenance.py'
+      - 'research/ftir_hips_chem/workflows/run_*2026110*.py'
+      - 'tests/test_epo_validation.py'
+      - 'tests/test_candidate_metrics.py'
+      - 'tests/test_gallery*.py'
+      - '.github/workflows/gallery-closeout.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gallery-closeout-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scientific-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked --python 3.13
+      - name: Synthetic evaluation and release-gate regressions
+        run: uv run pytest -q tests/test_epo_validation.py tests/test_candidate_metrics.py tests/test_gallery_rebuild.py tests/test_gallery_sections.py tests/test_gallery_publication.py
+
+  public-review:
+    runs-on: ubuntu-latest
+    env:
+      DATA_TAG: data-82d701248232
+      DATA_SHA256: 82d701248232b1975ea2e452bc1d682877e811103a2aa1040aff9d4adc989051
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          submodules: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            gallery/app/package-lock.json
+            gallery/packages/geo-toolkit/package-lock.json
+      - name: Install
+        working-directory: gallery/app
+        run: npm ci --no-audit --no-fund
+      - name: Restore pinned public data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$DATA_TAG" --repo ahzs645/aethmodular-gallery --pattern gallery-data.tar.gz --dir "$RUNNER_TEMP"
+          ACTUAL=$(sha256sum "$RUNNER_TEMP/gallery-data.tar.gz" | cut -d ' ' -f 1)
+          [[ "$ACTUAL" == "$DATA_SHA256" ]] || { echo '::error::public snapshot hash differs'; exit 1; }
+          mkdir -p gallery/app/public/data
+          tar -xzf "$RUNNER_TEMP/gallery-data.tar.gz" -C gallery/app/public/data
+          for d in $(jq -r '.sections[] | select(.public == false) | .data[]?' gallery/app/src/sections/sections.json); do
+            [[ "$d" =~ ^[A-Za-z0-9_-]+$ ]] || exit 1
+            rm -rf "gallery/app/public/data/$d"
+          done
+      - name: Source, public-data and type checks
+        working-directory: gallery/app
+        run: |
+          npm run typecheck
+          npm run test:source
+          npm run test:data:public
+      - name: Public production build
+        working-directory: gallery/app
+        env:
+          VITE_HIDE_EXPLAIN: '1'
+          VITE_PUBLIC_BUILD: '1'
+        run: npm run build
+      - name: Browser acceptance
+        working-directory: gallery/app
+        run: |
+          npx playwright install --with-deps chromium
+          CHROMIUM_PATH=$(node --input-type=module -e "import { chromium } from 'playwright'; process.stdout.write(chromium.executablePath())")
+          export CHROMIUM_PATH
+          npx playwright test tests/closeout.spec.ts
+      - name: Record scope
+        if: always()
+        env:
+          CHECK_STATUS: ${{ job.status }}
+        run: |
+          mkdir -p tmp/closeout-receipt
+          SOURCE_SHA=$(git rev-parse HEAD)
+          jq -n --arg source "$SOURCE_SHA" --arg data "$DATA_TAG" --arg hash "$DATA_SHA256" --arg status "$CHECK_STATUS" \
+            '{source_sha:$source, data_tag:$data, data_sha256:$hash, public_review_status:$status, scope:"software, pinned public data and browser acceptance", not_established:["corrected real-data EPO scores","full research reconciliation","independent target EC accuracy"]}' \
+            > tmp/closeout-receipt/receipt.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gallery-closeout-public-review
+          path: |
+            tmp/closeout-receipt
+            tmp/dashboard-playwright
+            deliverables/dashboard_superset/browser-results.json
+            research/ftir_hips_chem/output/tables/gallery_rebuild/node-*.json
