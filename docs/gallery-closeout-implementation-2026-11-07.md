@@ -2,9 +2,9 @@
 
 ## Status and scope
 
-This is a **review candidate for the software and interpretation batch**. It is not a completed scientific release. The corrected real-data EPO comparison, full research reconciliation, final production build and browser acceptance must retain their individual status. No method is selected by this implementation, and no new absolute Addis EC accuracy claim is made.
+This is a **review candidate for the software and interpretation batch**. It is not a completed scientific release. Public software checks, the production build and browser acceptance passed in CI for the exact review revision recorded below. The corrected real-data EPO comparison and full research reconciliation remain unresolved. No method is selected by this implementation, and no new absolute Addis EC accuracy claim is made.
 
-Starting analysis source: `cb2e1469ec222719c347b9b5f672765ede3ed7c7`. Starting publication source: `ef92395d1cfd5b7fcacc3b78574f6fb8af53abc6`. Changes are prepared on `codex/gallery-closeout-20261107`; the companion publication workflow is in [aethmodular-gallery PR #1](https://github.com/ahzs645/aethmodular-gallery/pull/1). The review PR identifies the exact resulting source commit. Neither branch has been merged or deployed as part of this receipt.
+Starting analysis source: `cb2e1469ec222719c347b9b5f672765ede3ed7c7`. Starting publication source: `ef92395d1cfd5b7fcacc3b78574f6fb8af53abc6`. Changes are prepared on `codex/gallery-closeout-20261107` in [aethmodular PR #20](https://github.com/ahzs645/aethmodular/pull/20); the companion publication workflow is in [aethmodular-gallery PR #1](https://github.com/ahzs645/aethmodular-gallery/pull/1). The review PR identifies the exact resulting source commit. Neither branch has been merged or deployed as part of this receipt.
 
 The November public archive was restored and its full SHA-256 verified:
 
@@ -65,7 +65,29 @@ The canonical Pages workflow now requires type checking, source/public-data test
 | Final local TypeScript / production build | **Blocked by execution resources.** TypeScript was killed with exit 137; reduced heap attempts exhausted the configured heap. A separate Vite attempt also exhausted its heap. A prior intermediate typecheck does not substitute for a final pass. |
 | Browser acceptance | **Not completed locally.** Chromium could not create its required socket; the environment rejected an escalation request. The connected Browser service was unavailable, and shared-browser navigation to the local server was refused. No phone-width, fresh-browser or completed-download pass is asserted from those attempts. |
 
-The CI run on the review commit is the next verification surface for the final build and browser journey. Until that run succeeds, those gates remain pending. The research and scientific-data gaps below remain separate even if public CI succeeds.
+The local execution blocks above are historical context. The production build and browser journeys subsequently passed in CI, as recorded below. The missing research and scientific inputs remain separate from that public verification.
+
+## Verification recorded in CI
+
+[Gallery closeout checks, run 42359566329](https://github.com/ahzs645/aethmodular/actions/runs/42359566329) completed successfully on 7 November 2026 for source revision `c366f5095c166acf0e11d72ba44dafeeaeefe6f4`, using the pinned public archive identified above. Both jobs checked out that PR head directly. The downloaded artifact receipt confirms the same `source_sha`, `public_review_status: success`, data tag and full data SHA-256. Both `scientific-regressions` and `public-review` passed.
+
+| Check | Verified result |
+|---|---|
+| Synthetic scientific and release-gate Python regressions | **40 passed**: 9 EPO, 10 metric/provenance, 12 rebuild-gate, 4 section-policy and 5 publication tests. |
+| Node source suite | **368 passed**, zero failures, skips or TODO assertions. |
+| Public-data reconciliation | **91 passed**, zero failures, skips or TODO assertions. |
+| Type checks and public production build | **Passed**. This supplies the successful hosted verification that the local resource-limited attempts could not complete. |
+| Phone-width browser journey | **Passed**: historical EPO source scores remain withheld and reference labels remain visible with notes off. The strengthened checks confirm source-plot text stays within its SVG bounds, table headers retain readable height, and the Evidence column is reachable by scrolling within the table. |
+| Sharing and export browser journey | **Passed**: the six-figure review reopens in a fresh browser context and completes a **seven-page PDF download**. |
+| Browser total and evidence preservation | **2 browser tests passed**; scope recording and CI artifact upload succeeded. |
+
+The retained [gallery-closeout-public-review artifact](https://github.com/ahzs645/aethmodular/actions/runs/42359566329/artifacts/13568394319) is 374,399 bytes, with SHA-256 `eda78aaf8d9b0cad01929c1043860401061e756ded603f7083eefa8d1596ffe4`. The downloaded archive was checked against that hash.
+
+Visual review of the downloaded artifact confirmed that both phone views are readable, source-plot labels and axes fit, and the table scrolls to Evidence. All seven PDF pages were reviewed; the revised source-performance page is visually clean, and the other six pages are pixel-identical to the previously reviewed package. The delivered `closeout-review.pdf` is **163,562 bytes**, with SHA-256 `19e7c84b75a527e2df1d85beaeca3b1802c55f10db9a954b03ab3c0077e057a2`, independently checked against the downloaded file. This PDF comes from tested source `c366f5095c166acf0e11d72ba44dafeeaeefe6f4`.
+
+An earlier [successful run, 42358778130](https://github.com/ahzs645/aethmodular/actions/runs/42358778130), was associated with PR head `b3d2219368e8f43d9209d2f94990b71915981de6` and tested the default PR merge revision `b885897b7ab20b796cb750711953fa4c827e5281`. Subsequent visual inspection found phone-width label clipping and excessive table-header wrapping. The current revision fixes those issues and verifies the additional readability conditions above.
+
+This record applies to tested source revision `c366f5095c166acf0e11d72ba44dafeeaeefe6f4` and the pinned public snapshot. A later documentation-only commit recording this evidence does not change the artifact's tested source identity. Subsequent implementation or figure-wording changes require their own CI result. These successful public checks do not constitute a real-data EPO rerun, full research reconciliation, or independent validation of absolute Addis EC accuracy. The unresolved inputs below still block those claims.
 
 ## Inputs still needed for the numerical rerun
 
