@@ -31,7 +31,7 @@ jobs:
           enable-cache: true
       - run: uv sync --locked --python 3.13
       - name: Synthetic evaluation and release-gate regressions
-        run: uv run pytest -q tests/test_epo_validation.py tests/test_candidate_metrics.py tests/test_gallery_rebuild.py tests/test_gallery_sections.py gallery/share/test_publish_pages.py
+        run: uv run pytest -q tests/test_epo_validation.py tests/test_candidate_metrics.py tests/test_gallery_rebuild.py tests/test_gallery_sections.py tests/test_gallery_publication.py
 
   public-review:
     runs-on: ubuntu-latest
