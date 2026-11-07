@@ -439,6 +439,12 @@ keys so a copied URL reopens them. Public builds omit the Research section and i
 Refresh this index after changing sources or retrospective curation with `npm run index:investigations`
 in `gallery/app` (`scripts/build-investigation-history.mjs`; `--check` checks freshness). The checked-in
 `src/sections/research/history.generated.json` is built from source records without running analyses.
+Its primary-export declarations are independent of files in the indexer's local `public/data` directory.
+Selecting a record checks those exports through the current build's shared data loader. The details
+show the paths and export dates, or the actual load error; **Recheck exports** retries a failed load
+after inputs are restored. A loaded primary export does not certify every graph or validate a result.
+Pages without declared primary exports defer availability checks to the page itself. Historical
+execution/evidence labels remain separate from these runtime file-availability observations.
 Archived notebooks and other research folders are outside its stated coverage. Later notebooks with
 no curated edges stay visible without invented dependencies.
 

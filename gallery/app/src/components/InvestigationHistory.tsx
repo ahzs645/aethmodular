@@ -1,14 +1,35 @@
-import { useId, useMemo } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { Empty } from '@/components/ChartFrame'
 import { Select } from '@/components/Controls'
 import { downloadBlob } from '@/lib/export'
 import { useSearchParam } from '@/lib/url'
-import { EVIDENCE_LABELS, filterHistory, historyMermaid, historyNeighborhood, historySourceUrl, relationLabel,
-  type HistoryEdge, type HistoryRecord, type InvestigationHistory as History } from '@/lib/investigationHistory'
+import { useJsonLoader, useLoaded } from '@/lib/data'
+import { EVIDENCE_LABELS, filterHistory, historyMermaid, historyNeighborhood, historySourceUrl, inspectHistoryExports, relationLabel,
+  type HistoryChart, type HistoryEdge, type HistoryRecord, type InvestigationHistory as History } from '@/lib/investigationHistory'
 
 const dateText = (date: string | null) => date ? new Date(date + 'T12:00:00Z').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : 'Date unknown'
 const Badge = ({ record }: { record: HistoryRecord }) => <span className={`history-badge history-evidence-${record.evidence}`}>{EVIDENCE_LABELS[record.evidence]}</span>
 const SourceLink = ({ source, children }: { source: string; children: React.ReactNode }) => <a href={historySourceUrl(source)} target="_blank" rel="noreferrer">{children}</a>
+
+function GraphAvailability({ chart }: { chart: HistoryChart }) {
+  const loader = useJsonLoader()
+  const [attempt, setAttempt] = useState(0)
+  const paths = [...new Set(chart.primaryExports ?? [])].sort()
+  const key = paths.length ? JSON.stringify([paths, attempt]) : null
+  const { data, loading } = useLoaded(key, () => inspectHistoryExports(chart, loader), { deps: [loader] })
+  if (!paths.length) return <small className="history-context">Open this page to check its data availability.</small>
+  const failures = data?.filter(file => file.error !== null) ?? []
+  const subject = paths.length === 1 ? 'Primary export' : 'Primary exports'
+  return <div className="history-export-availability">
+    <small className="history-context" role="status">{loading ? 'Checking primary exports in this build…'
+      : failures.length ? `Could not load ${failures.length} of ${paths.length} primary exports in this build.`
+        : `${subject} loaded in this build.`}</small>
+    {data && <details className="history-export-details"><summary>Export details</summary>
+      {data.map(file => <p key={file.path} className="history-source"><code>{file.path}</code>{file.error ? <> · {file.error}</> : <> · Loaded{file.generated ? ` · generated ${file.generated}` : ''}</>}</p>)}
+    </details>}
+    {failures.length > 0 && <button type="button" className="area-card-link" aria-label={`Recheck exports for ${chart.label}`} onClick={() => setAttempt(a => a + 1)}>Recheck exports</button>}
+  </div>
+}
 
 /** A navigable graph of all direct neighbours, including neighbours outside the catalog filters. */
 function ExperimentMap({ history, selected, onSelect }: { history: History; selected: HistoryRecord; onSelect: (id: string) => void }) {
@@ -67,8 +88,8 @@ function RecordDetails({ record, history, onSelect, onOpen, canOpen }: {
     <p className="subtitle">{record.sourceDate ? `Source updated ${dateText(record.sourceDate)}. Run date not established by this index.` : 'No source-history date is available.'}</p>
     {record.question && <><h4>Question</h4><p>{record.question}</p></>}
     <h4>Evidence graphs</h4>
-    <p className="history-context">Open the existing analysis to inspect its graphs, cohort and settings. A live diagnostic can differ from a saved historical result.</p>
-    {charts.length ? <div className="history-chart-links">{charts.map(c => <div key={`${c.tab}/${c.page}`}><button type="button" className="btn" onClick={() => onOpen(c.tab, c.page ?? undefined)}>{c.label} ↗</button>{c.missingData?.length ? <small className="history-context">Results unavailable in this checkout</small> : null}</div>)}</div>
+    <p className="history-context">Open the analysis to inspect its graphs, cohort and settings. The availability check loads its declared primary exports in this build; other inputs and graph completeness are checked on the page. Loading a file does not reproduce or validate a historical result.</p>
+    {charts.length ? <div className="history-chart-links">{charts.map(c => <div key={`${c.tab}/${c.page}`}><button type="button" className="btn" onClick={() => onOpen(c.tab, c.page ?? undefined)}>{c.label} ↗</button><GraphAvailability chart={c} /></div>)}</div>
       : <p className="subtitle">No graph page is mapped for this record in this build. Its source remains listed below.</p>}
     {hasWarnings && <div className="history-caution"><h4>Interpretation and limits</h4>
       {record.caveats.map((note, i) => <p key={i}>{note}</p>)}

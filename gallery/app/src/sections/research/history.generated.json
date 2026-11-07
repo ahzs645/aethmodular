@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "coverage": "Top-level FTIR/HIPS and phase-3 notebooks, the retrospective’s release and audit records, and its experiment contracts. Archived notebooks and other research folders are outside this index.",
   "chronology": "Dates show the last committed source change, not when an experiment ran. Undated records remain visible. Saved outputs are historical evidence, not a new reproduction or independent validation.",
   "families": [
@@ -74,7 +74,10 @@
         {
           "tab": "ml",
           "page": "model-form",
-          "label": "Model form and VIP"
+          "label": "Model form and VIP",
+          "primaryExports": [
+            "ml/model-form.json"
+          ]
         }
       ],
       "notebook": {
@@ -99,7 +102,10 @@
         {
           "tab": "ml",
           "page": "protocols",
-          "label": "Protocols and transfer"
+          "label": "Protocols and transfer",
+          "primaryExports": [
+            "ml/protocols.json"
+          ]
         }
       ],
       "notebook": {
@@ -133,7 +139,10 @@
         {
           "tab": "ml",
           "page": "protocols",
-          "label": "Protocols and transfer"
+          "label": "Protocols and transfer",
+          "primaryExports": [
+            "ml/protocols.json"
+          ]
         }
       ],
       "notebook": {
@@ -158,7 +167,10 @@
         {
           "tab": "ml",
           "page": "protocols",
-          "label": "Protocols and transfer"
+          "label": "Protocols and transfer",
+          "primaryExports": [
+            "ml/protocols.json"
+          ]
         }
       ],
       "notebook": {
@@ -183,7 +195,10 @@
         {
           "tab": "ml",
           "page": "components",
-          "label": "Components and CV"
+          "label": "Components and CV",
+          "primaryExports": [
+            "ml/components.json"
+          ]
         }
       ],
       "notebook": {
@@ -208,7 +223,10 @@
         {
           "tab": "ml",
           "page": "protocols",
-          "label": "Protocols and transfer"
+          "label": "Protocols and transfer",
+          "primaryExports": [
+            "ml/protocols.json"
+          ]
         }
       ],
       "notebook": {
@@ -233,7 +251,10 @@
         {
           "tab": "ml",
           "page": "components",
-          "label": "Components and CV"
+          "label": "Components and CV",
+          "primaryExports": [
+            "ml/components.json"
+          ]
         }
       ],
       "notebook": {
@@ -260,7 +281,10 @@
         {
           "tab": "ml",
           "page": "residual",
-          "label": "Residual learners"
+          "label": "Residual learners",
+          "primaryExports": [
+            "ml/residual.json"
+          ]
         }
       ],
       "notebook": {
@@ -314,7 +338,7 @@
           "tab": "experimental",
           "page": "season",
           "label": "Season or composition?",
-          "missingData": [
+          "primaryExports": [
             "experimental/season_composition.json"
           ]
         }
@@ -342,7 +366,7 @@
           "tab": "experimental",
           "page": "continuum",
           "label": "Continuum and the baseline",
-          "missingData": [
+          "primaryExports": [
             "experimental/continuum_baseline.json"
           ]
         }
@@ -389,7 +413,7 @@
           "tab": "experimental",
           "page": "vibes-newton",
           "label": "VIBES solved to convergence",
-          "missingData": [
+          "primaryExports": [
             "experimental/vibes_newton.json"
           ]
         }
@@ -417,7 +441,7 @@
           "tab": "experimental",
           "page": "fixes",
           "label": "February calendar sensitivity",
-          "missingData": [
+          "primaryExports": [
             "experimental/fixes.json"
           ]
         }
@@ -445,7 +469,7 @@
           "tab": "experimental",
           "page": "attribution",
           "label": "Attribution grid",
-          "missingData": [
+          "primaryExports": [
             "experimental/attribution.json"
           ]
         },
@@ -453,7 +477,7 @@
           "tab": "experimental",
           "page": "analogs",
           "label": "Loading-matched analogs",
-          "missingData": [
+          "primaryExports": [
             "experimental/analogs.json"
           ]
         },
@@ -461,7 +485,7 @@
           "tab": "experimental",
           "page": "selector",
           "label": "Error-predicting selector",
-          "missingData": [
+          "primaryExports": [
             "experimental/selector.json"
           ]
         },
@@ -469,7 +493,7 @@
           "tab": "experimental",
           "page": "forward",
           "label": "Earlier → later years",
-          "missingData": [
+          "primaryExports": [
             "experimental/forward.json"
           ]
         }
@@ -496,12 +520,18 @@
         {
           "tab": "ml",
           "page": "decision",
-          "label": "Decision workbook"
+          "label": "Decision workbook",
+          "primaryExports": [
+            "ml/decision.json"
+          ]
         },
         {
           "tab": "ml",
           "page": "decision",
-          "label": "Decision workbook"
+          "label": "Decision workbook",
+          "primaryExports": [
+            "ml/decision.json"
+          ]
         }
       ],
       "notebook": {
@@ -564,7 +594,10 @@
         {
           "tab": "ml",
           "page": "ksweep",
-          "label": "k sweep vs IMPROVE"
+          "label": "k sweep vs IMPROVE",
+          "primaryExports": [
+            "ml/ksweep.json"
+          ]
         }
       ],
       "notebook": {
@@ -693,7 +726,10 @@
         {
           "tab": "ml",
           "page": "residual",
-          "label": "Residual learners"
+          "label": "Residual learners",
+          "primaryExports": [
+            "ml/residual.json"
+          ]
         }
       ],
       "notebook": {
@@ -796,7 +832,7 @@
           "tab": "experimental",
           "page": "tor",
           "label": "Adama TOR study",
-          "missingData": [
+          "primaryExports": [
             "experimental/tor.json"
           ]
         }
@@ -818,7 +854,10 @@
         {
           "tab": "ml",
           "page": "protocols",
-          "label": "Protocols and transfer"
+          "label": "Protocols and transfer",
+          "primaryExports": [
+            "ml/protocols.json"
+          ]
         }
       ],
       "question": "Can the saved R baseline comparison and the ftir_13 locked calibration be reproduced from frozen inputs, without selecting on Addis HIPS agreement?"
@@ -839,7 +878,7 @@
           "tab": "baseline",
           "page": null,
           "label": "Spline baseline vs VIBES",
-          "missingData": [
+          "primaryExports": [
             "baseline_paired_r70.json"
           ]
         }
@@ -864,7 +903,7 @@
           "tab": "baseline",
           "page": null,
           "label": "Spline baseline vs VIBES",
-          "missingData": [
+          "primaryExports": [
             "baseline_paired_r70.json"
           ]
         }
@@ -913,7 +952,7 @@
           "tab": "baseline",
           "page": null,
           "label": "Spline baseline vs VIBES",
-          "missingData": [
+          "primaryExports": [
             "baseline_paired_r70.json"
           ]
         }
@@ -1222,7 +1261,10 @@
         {
           "tab": "ml",
           "page": "targets",
-          "label": "What counts as EC"
+          "label": "What counts as EC",
+          "primaryExports": [
+            "ml/targets.json"
+          ]
         }
       ],
       "notebook": {
@@ -1256,7 +1298,10 @@
         {
           "tab": "ml",
           "page": "model-form",
-          "label": "Model form and VIP"
+          "label": "Model form and VIP",
+          "primaryExports": [
+            "ml/model-form.json"
+          ]
         }
       ],
       "notebook": {
@@ -1311,7 +1356,10 @@
         {
           "tab": "ml",
           "page": "model-form",
-          "label": "Model form and VIP"
+          "label": "Model form and VIP",
+          "primaryExports": [
+            "ml/model-form.json"
+          ]
         }
       ],
       "notebook": {
@@ -1338,7 +1386,10 @@
         {
           "tab": "ml",
           "page": "model-form",
-          "label": "Model form and VIP"
+          "label": "Model form and VIP",
+          "primaryExports": [
+            "ml/model-form.json"
+          ]
         }
       ],
       "notebook": {
@@ -1363,7 +1414,10 @@
         {
           "tab": "ml",
           "page": "targets",
-          "label": "What counts as EC"
+          "label": "What counts as EC",
+          "primaryExports": [
+            "ml/targets.json"
+          ]
         }
       ],
       "notebook": {
@@ -1397,7 +1451,10 @@
         {
           "tab": "ml",
           "page": "targets",
-          "label": "What counts as EC"
+          "label": "What counts as EC",
+          "primaryExports": [
+            "ml/targets.json"
+          ]
         }
       ],
       "notebook": {
@@ -1433,7 +1490,10 @@
         {
           "tab": "ml",
           "page": "targets",
-          "label": "What counts as EC"
+          "label": "What counts as EC",
+          "primaryExports": [
+            "ml/targets.json"
+          ]
         }
       ],
       "notebook": {
@@ -1467,7 +1527,10 @@
         {
           "tab": "ml",
           "page": "residual",
-          "label": "Residual learners"
+          "label": "Residual learners",
+          "primaryExports": [
+            "ml/residual.json"
+          ]
         }
       ],
       "notebook": {
@@ -1605,7 +1668,10 @@
         {
           "tab": "ml",
           "page": "protocols",
-          "label": "Protocols and transfer"
+          "label": "Protocols and transfer",
+          "primaryExports": [
+            "ml/protocols.json"
+          ]
         }
       ],
       "notebook": {
@@ -1805,7 +1871,10 @@
         {
           "tab": "ml",
           "page": "protocols",
-          "label": "Protocols and transfer"
+          "label": "Protocols and transfer",
+          "primaryExports": [
+            "ml/protocols.json"
+          ]
         }
       ],
       "evidenceLabel": "historical validation documented"
@@ -2368,7 +2437,10 @@
         {
           "tab": "ml",
           "page": "components",
-          "label": "Components and CV"
+          "label": "Components and CV",
+          "primaryExports": [
+            "ml/components.json"
+          ]
         }
       ],
       "notebook": {
@@ -2407,7 +2479,10 @@
         {
           "tab": "ml",
           "page": "protocols",
-          "label": "Protocols and transfer"
+          "label": "Protocols and transfer",
+          "primaryExports": [
+            "ml/protocols.json"
+          ]
         }
       ],
       "notebook": {
@@ -2457,7 +2532,10 @@
         {
           "tab": "ml",
           "page": "protocols",
-          "label": "Protocols and transfer"
+          "label": "Protocols and transfer",
+          "primaryExports": [
+            "ml/protocols.json"
+          ]
         }
       ],
       "notebook": {
@@ -2482,7 +2560,10 @@
         {
           "tab": "ml",
           "page": "components",
-          "label": "Components and CV"
+          "label": "Components and CV",
+          "primaryExports": [
+            "ml/components.json"
+          ]
         }
       ],
       "notebook": {
@@ -2532,7 +2613,10 @@
         {
           "tab": "ml",
           "page": "model-form",
-          "label": "Model form and VIP"
+          "label": "Model form and VIP",
+          "primaryExports": [
+            "ml/model-form.json"
+          ]
         }
       ],
       "notebook": {
@@ -2844,7 +2928,7 @@
           "tab": "baseline",
           "page": null,
           "label": "Spline baseline vs VIBES",
-          "missingData": [
+          "primaryExports": [
             "baseline_paired_r70.json"
           ]
         }

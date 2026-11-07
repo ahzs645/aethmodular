@@ -1,6 +1,28 @@
 /** Evidence catalog semantics shared by the private index and the Investigations UI. */
 export type EvidenceState = 'saved' | 'source' | 'documented' | 'missing' | 'verified' | 'diagnostic' | 'blocked'
-export interface HistoryChart { tab: string; page: string | null; label: string; missingData?: string[] }
+export interface HistoryChart {
+  tab: string; page: string | null; label: string
+  /** Primary JSON exports only; other graphs and optional inputs may have separate prerequisites. */
+  primaryExports?: string[]
+}
+export interface HistoryExportStatus { path: string; error: string | null; generated?: string }
+
+/** Inspect the selected page through the same loader it will use when opened.
+ * A readable export is an availability observation, not a successful analysis or validation.
+ * The caller supplies the gallery loader, including a custom section's snapshot scope.
+ */
+export async function inspectHistoryExports(chart: HistoryChart, load: (path: string) => Promise<unknown>): Promise<HistoryExportStatus[]> {
+  return Promise.all([...new Set(chart.primaryExports ?? [])].map(async (path) => {
+    try {
+      const data = await load(path)
+      if (data === null || typeof data !== 'object' || Array.isArray(data)) throw new Error('The primary export is not a JSON object')
+      const generated = 'generated' in data && typeof data.generated === 'string' ? data.generated : undefined
+      return { path, error: null, ...(generated ? { generated } : {}) }
+    } catch (error) {
+      return { path, error: error instanceof Error ? error.message : String(error) }
+    }
+  }))
+}
 export interface HistoryCorrection { from: string; to: string; claim: string; reading: string; source: string }
 export interface HistoryRecord {
   id: string; title: string; family: string; source: string | null; sourceAvailable: boolean

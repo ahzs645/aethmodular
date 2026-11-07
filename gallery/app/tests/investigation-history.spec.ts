@@ -49,3 +49,37 @@ test('empty results, isolated records, original area cards and mobile layout rem
   await expect(page.getByRole('button', { name: /^Research diagnostics \d+ pages$/ })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })
+
+test('availability follows the active host and recovers after restoring an export without regenerating history', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  const exportUrl = '**/data/experimental/continuum_baseline.json'
+  let restored = false
+  let requests = 0
+  await page.route(exportUrl, async route => {
+    requests++
+    if (restored) await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ schema_version: 1, generated: '2026-11-04T03:44:59Z' }) })
+    else await route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><html><body>Static-host fallback</body></html>' })
+  })
+  await page.goto('/?investigations.record=transfer_diagnosis_20261102#tab=investigations')
+  const detail = page.getByRole('complementary', { name: 'Selected experiment' })
+  const availability = detail.locator('.history-export-availability')
+  await expect(availability.getByRole('status')).toHaveText('Could not load 1 of 1 primary exports in this build.')
+  await availability.locator('summary').click()
+  await expect(availability).toContainText('the data export is not available on this host')
+  await expect(detail.locator('.history-badge').first()).toHaveText('Saved notebook outputs')
+
+  restored = true
+  await availability.getByRole('button', { name: 'Recheck exports for Continuum and the baseline' }).click()
+  await expect(availability.getByRole('status')).toHaveText('Primary export loaded in this build.')
+  await expect(availability).toContainText('generated 2026-11-04T03:44:59Z')
+  await expect(detail.locator('.history-badge').first()).toHaveText('Saved notebook outputs')
+  expect(requests).toBe(2)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await availability.scrollIntoViewIfNeeded()
+  await page.screenshot({ path: testInfo.outputPath('history-availability-restored-phone.png'), fullPage: false })
+
+  await page.reload()
+  await expect(availability.getByRole('status')).toHaveText('Primary export loaded in this build.')
+  await page.goto('/?investigations.record=ann_followup_20261009#tab=investigations')
+  await expect(detail.getByText('Open this page to check its data availability.', { exact: true })).toBeVisible()
+})

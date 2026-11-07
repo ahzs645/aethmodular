@@ -2130,6 +2130,8 @@ html[data-single='1'] .configuration-section[data-single-path] { border: 0; bord
 .history-chart-links { display: flex; flex-wrap: wrap; gap: 8px; }
 .history-chart-links .btn { white-space: normal; text-align: left; }
 .history-chart-links small { display: block; margin-top: 3px; }
+.history-detail details.history-export-details { margin-top: 5px; padding-top: 0; border: none; font-size: 11px; }
+.history-export-details p { margin: 5px 0; }
 .history-source { font-size: 11px; overflow-wrap: anywhere; }
 .history-detail details { border-top: 1px solid var(--ink-border); margin-top: 18px; padding-top: 12px; }
 .history-edges { list-style: none; padding: 0; }

@@ -122,15 +122,17 @@ const chartGroups = [
 ]
 for (const [ids, tab, page, label] of chartGroups) for (const id of ids) records.get(id)?.charts.push({ tab, page, label })
 const experimentalFiles = { attribution: 'attribution', analogs: 'analogs', selector: 'selector', forward: 'forward', fixes: 'fixes', season: 'season_composition', 'vibes-newton': 'vibes_newton', continuum: 'continuum_baseline', tor: 'tor' }
+// Describe primary exports, not the indexer's local data snapshot. The reader's
+// shared data loader checks these on the active host when a record is selected.
 for (const r of records.values()) for (const chart of r.charts) {
   const files = chart.tab === 'baseline' ? ['baseline_paired_r70.json']
-    : chart.tab === 'experimental' && experimentalFiles[chart.page] ? [`experimental/${experimentalFiles[chart.page]}.json`] : []
-  const missing = files.filter(f => !fs.existsSync(path.join(APP, 'public/data', f)))
-  if (missing.length) chart.missingData = missing
+    : chart.tab === 'experimental' && experimentalFiles[chart.page] ? [`experimental/${experimentalFiles[chart.page]}.json`]
+      : chart.tab === 'ml' && chart.page ? [`ml/${chart.page}.json`] : []
+  if (files.length) chart.primaryExports = files
 }
 
 const result = {
-  schema: 1,
+  schema: 2,
   coverage: 'Top-level FTIR/HIPS and phase-3 notebooks, the retrospective’s release and audit records, and its experiment contracts. Archived notebooks and other research folders are outside this index.',
   chronology: 'Dates show the last committed source change, not when an experiment ran. Undated records remain visible. Saved outputs are historical evidence, not a new reproduction or independent validation.',
   families: [...families.families.map(({ id, title, purpose }) => ({ id, title, purpose })), { id: 'recent', title: 'Later investigations', purpose: 'Later source records not yet assigned to a retrospective family.' }],

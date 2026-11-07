@@ -1,0 +1,83 @@
+name: Investigation history checks
+
+on:
+  pull_request:
+    paths:
+      - 'gallery/app/src/components/InvestigationHistory.tsx'
+      - 'gallery/app/src/pages/InvestigationsPage.tsx'
+      - 'gallery/app/src/lib/investigationHistory*'
+      - 'gallery/app/src/lib/data.ts'
+      - 'gallery/app/src/sections/research/**'
+      - 'gallery/app/src/sections/sections.json'
+      - 'gallery/app/src/styles.css'
+      - 'gallery/app/scripts/build-investigation-history.mjs'
+      - 'gallery/app/tests/investigation-history.spec.ts'
+      - 'docs/openresearch-retrospective/**'
+      - '.github/workflows/investigation-history.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: investigation-history-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # Catalog dates describe source history, so a shallow checkout is insufficient.
+          fetch-depth: 0
+          submodules: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            gallery/app/package-lock.json
+            gallery/packages/geo-toolkit/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install
+        working-directory: gallery/app
+        run: npm ci --no-audit --no-fund
+      - name: Catalog, loader and shared-chart regressions
+        working-directory: gallery/app
+        run: node --test src/lib/investigationHistory.test.mjs src/lib/data.test.mjs src/lib/pointLayers.test.mjs src/lib/tooltips.test.mjs
+      - name: Research production build
+        working-directory: gallery/app
+        run: npm run build
+      - name: Timeline, sharing and active-host availability
+        working-directory: gallery/app
+        run: |
+          npx playwright install --with-deps chromium
+          CHROMIUM_PATH=$(node --input-type=module -e "import { chromium } from 'playwright'; process.stdout.write(chromium.executablePath())")
+          export CHROMIUM_PATH
+          npx playwright test tests/investigation-history.spec.ts
+      - name: Canonical public-section exclusion gate
+        run: python gallery/data/rebuild.py check-public
+      - name: Record verification scope
+        if: always()
+        env:
+          CHECK_STATUS: ${{ job.status }}
+        run: |
+          mkdir -p tmp/investigation-history-receipt
+          SOURCE_SHA=$(git rev-parse HEAD)
+          jq -n --arg source "$SOURCE_SHA" --arg status "$CHECK_STATUS" \
+            '{source_sha:$source, status:$status, data_scope:"checked-in exports at the source revision", fixture_scope:"the restoration browser test supplies an explicit missing/loaded export response", not_established:["full research input restoration","scientific reproduction","independent target EC accuracy"]}' \
+            > tmp/investigation-history-receipt/receipt.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: investigation-history-review
+          path: |
+            tmp/investigation-history-receipt
+            tmp/dashboard-playwright
+            deliverables/dashboard_superset/browser-results.json
