@@ -2,12 +2,20 @@ name: EPA PMF5 native engine tests
 on:
   pull_request:
     paths:
+      - 'pyproject.toml'
+      - 'requirements*.txt'
+      - 'setup.cfg'
+      - 'setup.py'
       - '.github/workflows/pmf-native-probe.yml'
       - 'research/ftir_hips_chem/scripts/python_pmf/me2.py'
       - 'scripts/diagnostics/pmf_native_smoke.py'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   native:
     runs-on: windows-latest

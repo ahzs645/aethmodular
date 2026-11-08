@@ -2,15 +2,27 @@ name: PMF workflow checks
 on:
   pull_request:
     paths:
-      - 'aethmodular_cli/pmf*.py'
+      - 'pyproject.toml'
+      - 'requirements*.txt'
+      - 'setup.cfg'
+      - 'setup.py'
+      - 'aethmodular_cli/**'
       - 'tests/test_pmf*.py'
       - 'docs/pmf*'
       - '.github/workflows/pmf-checks.yml'
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   pmf:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
