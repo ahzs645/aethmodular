@@ -27,8 +27,10 @@ import { dashParams, parseDash, type DashState, type Scope } from '@/lib/dashboa
 import type { DashFilters } from '@/components/dashboard/DashHeader'
 import { AxisFieldsProvider, type AxisRole } from '@/components/AxisFieldPopover'
 import { ViewsMenu } from '@/components/ViewsMenu'
+import { EmbedExportBridge } from '@/components/EmbedExportBridge'
+import { SectionsMenu } from '@/components/SectionsMenu'
 import { HeaderMore } from '@/components/HeaderMore'
-import { currentView, isEmbed, viewUrl } from '@/lib/views'
+import { LINK_PROBLEM_EVENT, clearLinkProblem, currentView, isEmbed, isEmbedChart, linkProblem, viewHref } from '@/lib/views'
 import { useExport } from '@/lib/data'
 import { customSeasonMeta, customSeasonsParam, parseCustomSeasons } from '@/components/SeasonEditor'
 import { MacControl, Row, SideDock, SubsetBar, type SubsetActions, type SubsetCaps, type SubsetState } from '@/components/SubsetBar'
@@ -86,6 +88,7 @@ const CalibrationPage = lazyView(() => import('@/pages/CalibrationPage').then(m 
 const BaselineComparisonPage = lazyView(() => import('@/pages/BaselineComparisonPage').then(m => m.BaselineComparisonPage))
 const SimilarityPage = lazyView(() => import('@/pages/SimilarityPage').then(m => m.SimilarityPage))
 const MeetingFollowupPage = lazyView<NonNullable<Parameters<typeof import('@/pages/MeetingFollowupPage')['MeetingFollowupPage']>[0]>>(() => import('@/pages/MeetingFollowupPage').then(m => m.MeetingFollowupPage))
+const SectionPage = lazyView(() => import('@/pages/SectionPage').then(m => m.SectionPage))
 const SatoshiFollowupPage = lazyView(() => import('@/pages/SatoshiFollowupPage').then(m => m.SatoshiFollowupPage))
 const MeetingSpecPage = lazyView(() => import('@/pages/MeetingSpecPage').then(m => m.MeetingSpecPage))
 const BlanksPage = lazyView(() => import('@/pages/BlanksPage').then(m => m.BlanksPage))
@@ -127,13 +130,14 @@ const TABS = [
   { key: 'census', label: 'Census', title: 'What the notebooks already draw, mapped onto the gallery’s chart types' },
   { key: 'dashboard', label: 'Dashboard', title: 'Your own page of gallery charts: add, arrange and size tiles' },
   { key: 'builder', label: 'Chart builder', title: 'Free-form measures and facets with Graphic Walker' },
+  { key: 'custom', label: 'Custom sections', title: 'Your own pages of charts picked from anywhere in the gallery, each with its settings, shared as one link' },
   { key: 'correlation', label: 'Correlation' },
   { key: 'distribution', label: 'Distribution' },
   { key: 'evolution', label: 'Evolution' },
   { key: 'ranking', label: 'Ranking' },
   { key: 'partOfWhole', label: 'Composition', title: 'What the PM2.5 is made of, and the FTIR organic functional groups, per site and season' },
   { key: 'map', label: 'Map' },
-  { key: 'investigations', label: 'Investigations', title: 'Cards for the work beyond the chart tabs: Meetings, Experimental, Research diagnostics, Aethalometer and Data availability' },
+  { key: 'investigations', label: 'Investigations', title: 'Research timeline, experiment connections and evidence graphs, plus the investigation areas' },
   { key: 'availability', label: 'Data availability', title: 'Notebook coverage analyses, product inventory, sample-day overlap and filter history' },
   { key: 'weather', label: 'Weather', title: 'Weather over each filter’s sampling window: ERA5 at every SPARTAN site, the airport station at Addis' },
   { key: 'aethalometer', label: 'Aethalometer', title: 'MA350 aethalometers at the focus sites (Instruments section; unlisted in public builds)' },
@@ -171,6 +175,8 @@ const PUBLIC_UNLISTED = import.meta.env.VITE_PUBLIC_BUILD === '1' ? ['census'] :
 /** tabs the menu, the ⌘K search and the Investigations cards leave out unless one is open */
 const UNLISTED_TABS = new Set<string>([...UNLISTED, ...PUBLIC_UNLISTED, ...(SHOW_EXPERIMENTAL ? [] : ['experimental'])])
 const isTab = (v: string | null): v is TabKey => !!v && shared(v) && TABS.some((t) => t.key === v)
+/** whether a link can open a tab in this build (`satoshi` is an old name for a meeting page) */
+const isOpenable = (t: string) => isTab(t) || t === 'satoshi'
 const LANDING_TAB = (SHARE_TABS.find((t) => TABS.some((x) => x.key === t)) ?? 'correlation') as TabKey
 
 // the hand-built meeting pages and every declared one (src/meetings/*.meeting.ts), newest first, each named by its date
@@ -209,7 +215,7 @@ const areaItem = (a: InvestigationArea, p: AreaPage, heading?: string): NavItem 
   ...(a.tab === 'meeting' ? { meeting: p.key } : a.pages.length > 1 ? { sub: p.key } : {}),
 })
 const NAV_GROUPS: NavGroup[] = [
-  { label: 'Charts', items: ['correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'pmf', 'flow', 'builder'].flatMap(tabItem) },
+  { label: 'Charts', items: ['correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'pmf', 'flow', 'builder', 'custom'].flatMap(tabItem) },
   { label: 'Sites', items: ['map', 'weather', 'aeronet'].flatMap(tabItem) },
   { label: 'Calibration', items: ['calibration', 'baseline', 'similarity', 'blanks'].flatMap(tabItem) },
 ].filter((g) => g.items.length)
@@ -310,7 +316,7 @@ const parseSpartanSel = (v: string | null): string[] | 'all' | null =>
 /** tabs whose charts can draw a whole network (Filters sidebar → network) */
 const NETWORK_TABS = ['dashboard', 'builder', 'correlation', 'distribution', 'evolution', 'ranking', 'partOfWhole', 'map', 'weather', 'aeronet', 'aethalometer', 'research'] as const
 const FILTERS: SubsetCaps = { seasons: true, sites: true, excluded: true, dates: true, fields: 'single', datasetLabel: 'SPARTAN filters' }
-const CAPS: Record<Exclude<TabKey, 'investigations' | 'availability' | 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks' | 'experimental' | 'ml'>, SubsetCaps> = {
+const CAPS: Record<Exclude<TabKey, 'investigations' | 'custom' | 'availability' | 'census' | 'baseline' | 'similarity' | 'meeting' | 'blanks' | 'experimental' | 'ml'>, SubsetCaps> = {
   correlation: { ...FILTERS, fields: 'pair', networks: true, fits: true },
   // each tile picks its own fields
   dashboard: { ...FILTERS, fields: 'none', networks: true, fits: true, mac: true },
@@ -418,6 +424,8 @@ export default function App() {
 
   // ---- state, seeded from the URL hash so a pasted link reopens the same view
   const [meeting, setMeeting] = useState<MeetingKey>(() => meetingFromParams(init))
+  // the Custom sections page's section: an id of this browser, or a shared section's token (lib/sections)
+  const [sec, setSec] = useState<string | null>(() => init.get('sec'))
   // the ⌘K search's way to a tab or meeting page (lib/headerNav)
   const [experiment, setExperiment] = useState<string>(() => experimentFromParams(init))
   // a flagged section's sub-page (URL `aep`; empty = its first page)
@@ -662,6 +670,7 @@ export default function App() {
       tab,
       meeting: tab === 'meeting' && meeting !== 'followup' ? meeting : null,
       xp: tab === 'experimental' && experiment !== DEFAULT_EXPERIMENT ? experiment : null,
+      sec: tab === 'custom' ? sec : null,
       aep: SECTION_TABS.has(tab) && sectionPage && sectionPage !== defaultPage(SECTION_TABS.get(tab)!.pages) ? sectionPage : null,
       fits: estimatorParam(estimators),
       ci: showCI ? '1' : null,
@@ -687,7 +696,7 @@ export default function App() {
       log: axes.log ? '1' : null,
       pax: PAX_PARAM[axes.panels ?? 'Shared'],
     })
-  }, [tab, meeting, experiment, sectionPage, estimators, showCI, sampleValues, samplesNow, openPreset, siteSeasons, siteRules, dropIds, dropWhyParam, keepIds, ftirBaseline, xField, yField, field, dash, ratios, groupings, mac, basis, pinnedId, axes])
+  }, [tab, meeting, sec, experiment, sectionPage, estimators, showCI, sampleValues, samplesNow, openPreset, siteSeasons, siteRules, dropIds, dropWhyParam, keepIds, ftirBaseline, xField, yField, field, dash, ratios, groupings, mac, basis, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
@@ -701,6 +710,7 @@ export default function App() {
       if (isTab(p.get('tab')) || p.get('tab') === 'satoshi') {
         setTab(tabFromParams(p))
         if (tabFromParams(p) === 'meeting') setMeeting(meetingFromParams(p))
+        if (tabFromParams(p) === 'custom') setSec(p.get('sec'))
         if (tabFromParams(p) === 'experimental') setExperiment(experimentFromParams(p))
         if (SECTION_TABS.has(tabFromParams(p))) setSectionPage(p.get('aep') ?? '')
       }
@@ -1258,7 +1268,7 @@ export default function App() {
   // the Dashboard's header draws the common filters from the same state and actions (components/dashboard/DashHeader)
   let dashFilters: DashFilters | null = null
   const subset = (() => {
-    if (tab === HUB_TAB || tab === 'availability' || tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental' || tab === 'ml') return null
+    if (tab === HUB_TAB || tab === 'custom' || tab === 'availability' || tab === 'census' || tab === 'baseline' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental' || tab === 'ml') return null
     const baseCaps = net === 'focus' ? CAPS[tab] : { ...CAPS[tab], datasetLabel: net === 'improve' ? 'IMPROVE samples' : net === 'both' ? 'SPARTAN filters + IMPROVE samples' : 'SPARTAN filters', excluded: sourceRows.some((r) => r.excluded) }
     // the chart tabs offer the PMF section while a site with PMF is picked
     const chartTab = (NETWORK_TABS as readonly string[]).includes(tab)
@@ -1534,6 +1544,7 @@ export default function App() {
     {/* Panel axes for every multi-panel crossplot (lib/panelAxes): the sidebar's setting, offered on each chart too */}
     <PanelAxesProvider value={axes.panels ?? 'Shared'} onChange={(panels) => setAxes((a) => ({ ...a, panels }))}>
     <ExportSitesProvider seasons={meta.seasons} sites={[...new Map([...rawMeta.sites, ...meta.sites].map(s => [s.code, s])).values()]}>
+    {isEmbedChart() && <EmbedExportBridge />}
     <HighlightProvider pinnedId={pinnedId} setPinned={setPinnedId} openSample={openSample} openRecord={openRecord} onDismiss={dismissSample}>
     {/* hand edits hold on every tab: each chart that draws a filter leaves the excluded ones out */}
     <PageSidebarProvider>
@@ -1583,9 +1594,10 @@ export default function App() {
           lookup={recordLink && recordLink.recId === baseFilterId(openRec.id) && (recordLink.status === 'loading' || recordLink.status === 'missing') ? recordLink : null} />}
       {!openRow && !openRec && shownGroup && <GroupDrawer group={shownGroup} byId={sourceById} meta={meta}
         fields={tab === 'correlation' ? [xField, yField] : [field]} onClose={() => setGroup(null)} />}
-      {isEmbed() && <a className="embed-open" href="#" onClick={async (e) => { e.preventDefault(); window.open((await viewUrl(currentView())), '_blank', 'noopener') }}>Open in the gallery ↗</a>}
+      {/* the address is set in the click, not after an await: a window opened later counts as a popup and is blocked */}
+      {isEmbed() && !isEmbedChart() && <a className="embed-open" href="#" target="_blank" rel="noopener" onClick={(e) => { e.currentTarget.href = viewHref(currentView()) }}>Open in the gallery ↗</a>}
       {(NETWORK_TABS as readonly string[]).includes(tab) && <BrushBar onKeep={keepFilters} onDrop={dropFilters} />}
-      <Shell nav={nav} dash={tab === 'dashboard'} onDash={toggleDash} wide={tab === 'builder' || tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental'} editsBadge={!subset}>
+      <Shell nav={nav} dash={tab === 'dashboard'} onDash={toggleDash} wide={tab === 'builder' || tab === 'custom' || tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental'} editsBadge={!subset}>
         {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
         {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting' || tab === 'experimental' || tab === 'similarity' || tab === 'ml')
           && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} label={tab === 'similarity' ? 'Target' : 'Samples'}
@@ -1596,7 +1608,9 @@ export default function App() {
             } : undefined} />)}
         {netData.error && (NETWORK_TABS as readonly string[]).includes(tab) && <div className="network-data-error" role="alert"><strong>The selected network data could not be loaded.</strong> {netData.error}
           <button className="btn" type="button" onClick={() => setNetwork('focus')}>Open bundled focus sites</button></div>}
-        {tab === HUB_TAB && <InvestigationsPage areas={HUB_AREAS} onOpen={(t, p) => openTab(t, undefined, p ?? AREAS.find((a) => a.tab === t)?.pages[0]?.key)} />}
+        <LinkProblem />
+        {tab === 'custom' && <SectionPage sec={sec} setSec={setSec} isTab={isOpenable} />}
+        {tab === HUB_TAB && <InvestigationsPage areas={HUB_AREAS} history={research.history} canOpen={isOpenable} onOpen={(t, p) => openTab(t, undefined, p ?? AREAS.find((a) => a.tab === t)?.pages[0]?.key)} />}
         {tab === 'availability' && <DataAvailabilityPage />}
         {tab === 'builder' && <ChartBuilderPage rows={rows} meta={meta} enabled={builderEnabled} />}
         {tab === 'census' && <><AreaHeader area="Census" pages={CENSUS_PAGES} value="census" onPage={() => {}} /><CensusPage census={census} /></>}
@@ -1734,7 +1748,7 @@ function HeaderTools({ dash = false, onDash }: { dash?: boolean; onDash?: () => 
       <CommandPaletteButton />
       <UndoToast />
       {/* on a phone these two fold into the ⋯ menu, with the display toggles */}
-      <span className="header-wide"><GlossaryButton /><ViewsMenu /></span>
+      <span className="header-wide"><GlossaryButton /><SectionsMenu /><ViewsMenu /></span>
       <HeaderMore display={<DisplayToggles />} />
     </span>
   )
@@ -1819,6 +1833,18 @@ function PageSidebar({ fits, label = 'Samples', mac }: {
       </aside>
     </SideDock>
   </>
+}
+
+/** Why the link the page opened on could not be followed: without this the reader only sees the wrong page. */
+function LinkProblem() {
+  const [text, setText] = useState(linkProblem)
+  useEffect(() => {
+    const show = () => setText(linkProblem)
+    window.addEventListener(LINK_PROBLEM_EVENT, show)
+    return () => window.removeEventListener(LINK_PROBLEM_EVENT, show)
+  }, [])
+  if (!text) return null
+  return <div className="network-data-error" role="alert"><strong>{text}</strong> <button className="btn" type="button" onClick={() => { clearLinkProblem(); setText(null) }}>Dismiss</button></div>
 }
 
 /** While a brush is active, a bar at the bottom offers to keep only the brushed filters or exclude them (both go in the link). */

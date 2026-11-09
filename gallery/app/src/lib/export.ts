@@ -1,7 +1,9 @@
+import type { jsPDF } from 'jspdf'
 import { paletteSeason, type ExportSeason, type PaletteSeason } from './exportSeasons'
 import { collectExportPalette, fixedColours, paintColor, printPaint, replacePaint, type ExportPalette, type ExportSite } from './exportColors'
 import { CELL_INK, INK_LIGHT, inkOnFill, isDark } from './theme'
 import { textWidth } from './fitLabel'
+import { textLines } from './exportText'
 /**
  * Download a chart as PNG, JPEG, SVG or PDF. The decks in this repo are built
  * from figures, so a chart that can only be screenshotted is a chart that will
@@ -202,31 +204,28 @@ export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] =
     }
     const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT)
     for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-      const text = n.textContent?.replace(/\s+/g, ' ').trim()
       const parent = n.parentElement
-      if (!text || !parent || parent.closest('svg') || parent.closest(SKIP) || !visible(parent)) continue
-      const range = document.createRange()
-      range.selectNodeContents(n)
-      const rect = range.getBoundingClientRect()
-      if (!rect.width) continue
+      if (!parent || parent.closest('svg') || parent.closest(SKIP) || !visible(parent)) continue
       const cs = getComputedStyle(parent)
-      const el = document.createElementNS(NS, 'text')
-      el.setAttribute('x', String(rect.left))
-      el.setAttribute('y', String(rect.top + rect.height / 2))
-      el.setAttribute('dominant-baseline', 'central')
-      el.setAttribute('font-size', cs.fontSize)
-      sizes.push(parseFloat(cs.fontSize))
-      el.setAttribute('fill', cs.color)
-      if (cs.fontWeight !== '400' && cs.fontWeight !== 'normal') el.setAttribute('font-weight', cs.fontWeight)
       const item = parent.closest('.legend-item')
       const op = Number(item ? getComputedStyle(item).opacity : 1)
-      if (op < 1) el.setAttribute('opacity', String(op))
-      if (parent.closest('.legend-item.off')) el.setAttribute('text-decoration', 'line-through')
-      el.textContent = text
-      // its width on screen: the PDF draws it in Inter, which runs wider, and shrinks it to fit
-      el.setAttribute('data-w', rect.width.toFixed(1))
-      annotate(parent, el)
-      place(parent, { els: [el], box: boxOf(rect), note: !!parent.closest('.legend-note') })
+      for (const { text, rect } of textLines(n as Text)) {
+        const el = document.createElementNS(NS, 'text')
+        el.setAttribute('x', String(rect.left))
+        el.setAttribute('y', String(rect.top + rect.height / 2))
+        el.setAttribute('dominant-baseline', 'central')
+        el.setAttribute('font-size', cs.fontSize)
+        sizes.push(parseFloat(cs.fontSize))
+        el.setAttribute('fill', cs.color)
+        if (cs.fontWeight !== '400' && cs.fontWeight !== 'normal') el.setAttribute('font-weight', cs.fontWeight)
+        if (op < 1) el.setAttribute('opacity', String(op))
+        if (parent.closest('.legend-item.off')) el.setAttribute('text-decoration', 'line-through')
+        el.textContent = text
+        // Each actual screen line gets its own width for Inter's PDF adjustment.
+        el.setAttribute('data-w', rect.width.toFixed(1))
+        annotate(parent, el)
+        place(parent, { els: [el], box: boxOf(rect), note: !!parent.closest('.legend-note') })
+      }
     }
   }
 
@@ -674,7 +673,18 @@ export async function renderFigure(svg: SVGSVGElement, opts: RenderOpts): Promis
  * every text uses it.
  */
 async function renderPdf(svg: SVGSVGElement, background: ExportBackground, widthMm?: number): Promise<Blob> {
-  const [{ jsPDF }, { svg2pdf }, fonts] = await Promise.all([import('jspdf'), import('svg2pdf.js'), pdfFonts()])
+  const fonts = await pdfFonts()
+  const { node, width, height } = await pdfCopy(svg, background, fonts)
+  const pt = widthMm ? (widthMm / 25.4 * 72) / width : 0.75
+  const { jsPDF } = await import('jspdf')
+  const doc = new jsPDF({ unit: 'pt', format: [width * pt, height * pt], orientation: width > height ? 'landscape' : 'portrait', compress: true })
+  addPdfFonts(doc, fonts)
+  await drawPdfFigure(doc, node, 0, 0, width * pt, height * pt)
+  return doc.output('blob')
+}
+
+/** the figure as svg2pdf needs it: every text in Inter, weights it can find, and room for the wider font */
+async function pdfCopy(svg: SVGSVGElement, background: ExportBackground, fonts: { regular: string; bold: string }) {
   const copy = serialise(svg, background, 'Inter')
   const { node, height } = copy
   let { width } = copy
@@ -693,13 +703,19 @@ async function renderPdf(svg: SVGSVGElement, background: ExportBackground, width
     node.setAttribute('width', String(width))
     node.setAttribute('viewBox', `0 0 ${width} ${height}`)
   }
-  const pt = widthMm ? (widthMm / 25.4 * 72) / width : 0.75
-  const doc = new jsPDF({ unit: 'pt', format: [width * pt, height * pt], orientation: width > height ? 'landscape' : 'portrait', compress: true })
+  return { node, width, height }
+}
+
+function addPdfFonts(doc: jsPDF, fonts: { regular: string; bold: string }) {
   doc.addFileToVFS('Inter-Regular.ttf', fonts.regular)
   doc.addFont('Inter-Regular.ttf', 'Inter', 'normal')
   doc.addFileToVFS('Inter-SemiBold.ttf', fonts.bold)
   doc.addFont('Inter-SemiBold.ttf', 'Inter', 'bold')
   doc.setFont('Inter', 'normal')
+}
+
+async function drawPdfFigure(doc: jsPDF, node: SVGSVGElement, x: number, y: number, width: number, height: number) {
+  const { svg2pdf } = await import('svg2pdf.js')
   // svg2pdf measures text and reads computed styles, so the copy has to be in the document while it converts
   const host = document.createElement('div')
   host.style.cssText = 'position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none'
@@ -708,9 +724,40 @@ async function renderPdf(svg: SVGSVGElement, background: ExportBackground, width
   host.appendChild(node)
   document.body.appendChild(host)
   try {
-    await svg2pdf(node, doc, { x: 0, y: 0, width: width * pt, height: height * pt })
+    await svg2pdf(node, doc, { x, y, width, height })
   } finally {
     host.remove()
+  }
+}
+
+/** One page of a many-page PDF: a heading, a vector figure (an exported SVG's text) and a body under it. */
+export interface PdfPage { title: string; body?: string; svg?: string; large?: boolean }
+const PAGE = { w: 960, h: 540, m: 36 }
+
+/** A landscape PDF of many figures, each still vector, with the same embedded font as a single chart's export. */
+export async function renderPdfPages(pages: PdfPage[]): Promise<Blob> {
+  const [{ jsPDF }, fonts] = await Promise.all([import('jspdf'), pdfFonts()])
+  const doc = new jsPDF({ unit: 'pt', format: [PAGE.w, PAGE.h], orientation: 'landscape', compress: true })
+  addPdfFonts(doc, fonts)
+  const width = PAGE.w - 2 * PAGE.m
+  for (const [i, page] of pages.entries()) {
+    if (i) doc.addPage([PAGE.w, PAGE.h], 'landscape')
+    let y = PAGE.m + (page.large ? 150 : 8)
+    const size = page.large ? 30 : 18
+    doc.setFont('Inter', 'bold').setFontSize(size).setTextColor('#22252A')
+    const title: string[] = page.title ? doc.splitTextToSize(page.title, width) : []
+    if (title.length) { doc.text(title, PAGE.m, y); y += title.length * size * 1.25 }
+    doc.setFont('Inter', 'normal').setFontSize(page.large ? 15 : 11).setTextColor('#555a63')
+    const body: string[] = page.body ? doc.splitTextToSize(page.body, width) : []
+    const bodyH = body.length * (page.large ? 15 : 11) * 1.35
+    if (page.svg) {
+      const svg = new DOMParser().parseFromString(page.svg, 'image/svg+xml').documentElement as unknown as SVGSVGElement
+      const { node, width: w, height: h } = await pdfCopy(document.importNode(svg, true), 'white', fonts)
+      const room = PAGE.h - PAGE.m - y - (body.length ? bodyH + 8 : 0)
+      const k = Math.min(width / w, room / h)
+      await drawPdfFigure(doc, node, (PAGE.w - w * k) / 2, y, w * k, h * k)
+      if (body.length) doc.text(body, PAGE.m, PAGE.h - PAGE.m - bodyH + 11)
+    } else if (body.length) doc.text(body, PAGE.m, y + 6)
   }
   return doc.output('blob')
 }

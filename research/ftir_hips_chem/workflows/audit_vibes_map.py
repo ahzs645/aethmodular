@@ -44,9 +44,10 @@ def main():
     diag = pd.read_csv(out / 'fit_diagnostics.csv')
     diag['success'] = diagnostic_flags(diag.success)
     replay, audit = {}, []
-    for row in diag.itertuples():
-        if not row.success:
-            raise ValueError('Cannot replay a fit without saved successful ELBO parameters')
+    # A fit whose ELBO never converged has no parameters to replay: it is counted, not replayed, and every
+    # recovery that needed it is already marked unavailable in signal_recovery.csv.
+    skipped = diag[~diag.success]
+    for row in diag[diag.success].itertuples():
         base = raw[positions[row.parent_id]]
         y = base if row.amplitude == 0 else base + row.amplitude * signals[row.signal]
         latent = cp.Variable(components.shape[1])
@@ -64,7 +65,7 @@ def main():
         if not finite:
             raise ValueError('MAP replay returned nonfinite values')
         replay[(row.parent_id, row.signal, row.amplitude)] = y - (mean + components @ latent.value)
-    metrics = pd.read_csv(out / 'signal_recovery.csv').query("method == 'VIBES'")
+    metrics = pd.read_csv(out / 'signal_recovery.csv').query("method == 'VIBES' and available")
     differences = []
     for row in metrics.itertuples():
         mask = wn >= 1425. if row.window == 'Shared spline window' else np.ones(len(wn), bool)
@@ -78,9 +79,10 @@ def main():
     frame = pd.DataFrame(audit)
     frame.to_csv(out / 'map_audit.csv', index=False)
     record.update(map_optimal=int(frame.status.eq('optimal').sum()), map_replayed=len(frame),
-                  map_metric_max_abs_delta=maximum, map_audit_workflow_sha256=sha(Path(__file__)))
+                  map_not_replayed=len(skipped), map_metric_max_abs_delta=maximum, map_audit_workflow_sha256=sha(Path(__file__)))
     write_run_manifest(out, record)
     print(json.dumps({'statuses': frame.status.value_counts().to_dict(),
+                      'not_replayed': skipped.sample_id.tolist(),
                       'maximum_recovery_metric_difference': maximum}, indent=2))
 
 

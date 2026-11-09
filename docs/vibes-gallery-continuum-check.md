@@ -30,13 +30,21 @@ These synthetic additions probe what the correction can retain; they do not iden
 
 An additional MAP audit replayed the saved pinball objectives with their saved ELBO parameters: **90/90 reported optimal** in CLARABEL. Every VIBES recovery metric reproduced, with maximum difference **7.64 × 10⁻¹³**, below the 10⁻⁸ numerical tolerance. This did not rerun ELBO or change the correction settings.
 
+### Rerun on an Apple Silicon Mac, 6 Nov 2026
+
+The check was rerun with the same reference, code and package versions (numpy 2.4.2, scipy 1.17.0, cvxpy 1.9.3) and no change to any setting. The results reproduce: at 0.05 AU median recovery is 98.27% (four bands), 18.80% (broad hump) and 0.138% (power-law) for VIBES, and 84.32%, 0.96% and about 0% for the spline.
+
+One fit differs. **89 of 90** VIBES fits passed, with 29 retries: L-BFGS-B reached its iteration limit twice on the unspiked blank `etad:4154`, a blank that passed in the original run. Recovery is measured against the unspiked fit, so that blank has no VIBES recovery and the VIBES medians rest on **8 of the 9 blanks** (the spline keeps all nine). The likely cause is floating-point differences between machines, which was not confirmed. The iteration limit was not raised to recover the fit: this check tests a frozen configuration.
+
+The MAP audit now replays every fit that has parameters to replay and counts the rest: **89/89 reported optimal**, with a maximum recovery-metric difference of 1.8 × 10⁻¹³. Figures elsewhere on this page are from the original run. `baseline_validation.json` is gitignored, so the Baselines page shows the run of whichever machine built it.
+
 ## Gallery changes and connections
 
 Open **Calibration → Baselines**, or `/#tab=baseline&net=focus` in the local app.
 
-- One set of URL-backed **signal and window controls** drives recovery curves, individual-filter error points, blank-residual distributions and spectral overlays.
+- One set of URL-backed **signal and window controls**, in the left sidebar, drives recovery curves, individual-filter error points, blank-residual distributions and spectral overlays.
 - `Figure`, `SavedFigure`, `SpectrumPlot`, `ScatterPlot`, `SweepPlot`, `Legend`, `lib/data` and the shared exclusion/identity helpers provide the rendering and behaviour.
-- Band definitions and essential scope notes stay visible with Explain off. Recovery curves show medians and interquartile ranges across independent parents at each scale.
+- Recovery curves show medians and interquartile ranges across independent parents at each scale.
 - The displayed spectrum is explicitly the first parent blank in the frozen ledger. Adjacent groups of three channels are averaged for display; recovery metrics use every native channel.
 - The original solver log used row numbers as its `sample_id`. A checked `case_row` join now resolves those rows to physical filter IDs and rejects conflicting labels.
 - The original log's two failed blanks are labelled **before recovery**. That log, the existing recovered benchmark, the new local controls and the separately reported G4 job remain distinct.

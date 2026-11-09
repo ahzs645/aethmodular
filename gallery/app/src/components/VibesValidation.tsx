@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import { useExport } from '@/lib/data'
 import { useChartOptions } from '@/lib/chartOptions'
-import { rowsOf, type Table } from '@/lib/table'
+import type { Table } from '@/lib/table'
+import { SidebarControls } from '@/lib/pageSidebar'
 import { BASELINE_COLOR, INK } from '@/lib/theme'
-import { ChartFrame } from '@/components/ChartFrame'
 import { ExportState } from '@/components/ExportState'
 import { Figure } from '@/components/Figure'
 import { SavedFigure, type ExportedTables } from '@/components/SavedFigure'
@@ -26,10 +26,6 @@ export function VibesValidation() {
 }
 
 function ValidationFigures({ data }: { data: Evidence }) {
-  const run = rowsOf(data.tables.run)[0]
-  const fits = useMemo(() => rowsOf(data.tables.fits), [data])
-  const passed = fits.filter((r) => r.success === true).length
-  const retried = fits.filter((r) => typeof r.retry_count === 'number' && r.retry_count > 0).length
   const options = useChartOptions('vibes-validation', [
     { key: 'signal', label: 'Known addition', persist: true, default: 'Power-law continuum',
       choices: ['Power-law continuum', 'Broad hump', 'Four diagnostic bands'] },
@@ -42,17 +38,7 @@ function ValidationFigures({ data }: { data: Evidence }) {
   const signalWhere = useMemo(() => ({ signal }), [signal])
   const spectrumWindow: [number, number] = window === 'Shared spline window' ? [4000, 1425] : [4000, 500]
   return <>
-    <ChartFrame id="vibes-validation-scope" title="VIBES signal-preservation check" exportable={false} controls={options.controls()}
-      provenance={`Frozen reference ${String(run.reference_signature)}; local check ${String(run.created_utc)}`}>
-      <p>{String(run.independent_test_blanks)} independent held-out Addis blanks; background trained on {String(run.training_blanks)} other blanks,
-        rank {String(run.background_rank)}. Each method is rerun after adding known spectral signals.</p>
-      <p>{passed}/{fits.length} VIBES optimizer and finite-output checks succeeded; {retried} fits needed a retry.</p>
-      {typeof run.map_replayed === 'number' && <p>Convex-solver replay: {String(run.map_optimal)}/{String(run.map_replayed)} reported optimal.
-        Recovery metrics reproduce within 10⁻⁸.</p>}
-      <p>{data.text.definition}</p>
-      <p>These artificial additions probe signal preservation; they do not identify real EC absorption.</p>
-      <p>{data.text.acceptance} The separately reported 32,286-fit/G4 run awaits its own results export.</p>
-    </ChartFrame>
+    <SidebarControls title="VIBES signal check">{options.controls()}</SidebarControls>
     <SavedFigure bundle={data} table="recovery" kind="sweep" id="vibes-validation-recovery" x="amplitude" y="area_recovery"
       series="method" colors={COLORS} where={recoveryWhere} reference={1}
       aggregate={{ stat: 'median', interval: 'iqr' }} xLabel="Known addition scale (AU)" yLabel="Signed area recovery (1 = retained)"

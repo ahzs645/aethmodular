@@ -7,6 +7,9 @@ import { useCallback, useRef } from 'react'
  * identity. App rebuilds the charts' `meta` on every render; passed through this, an unchanged
  * meta.fields or meta.sites keeps its identity, so the charts' memos keyed on it hold.
  */
+/** a plain object, of this page's or another's: a section's charts read files parsed by the page around them (lib/data) */
+const plain = (o: object) => { const p = Object.getPrototypeOf(o); return p === null || Object.getPrototypeOf(p) === null }
+
 export function share<T>(prev: T, next: T, depth = 4): T {
   if (Object.is(prev, next) || depth <= 0 || prev === null || next === null || typeof prev !== 'object' || typeof next !== 'object') return next
   if (Array.isArray(prev) && Array.isArray(next)) {
@@ -15,7 +18,7 @@ export function share<T>(prev: T, next: T, depth = 4): T {
     const out = next.map((v, i) => { const s = share(prev[i], v, depth - 1); if (s !== prev[i]) same = false; return s })
     return (same ? prev : out) as T
   }
-  if (Object.getPrototypeOf(prev) !== Object.prototype || Object.getPrototypeOf(next) !== Object.prototype) return next
+  if (!plain(prev) || !plain(next)) return next
   const pk = Object.keys(prev), nk = Object.keys(next)
   let same = pk.length === nk.length
   const out: Record<string, unknown> = {}

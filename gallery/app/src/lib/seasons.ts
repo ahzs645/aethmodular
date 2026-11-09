@@ -101,3 +101,40 @@ export const NO_WEATHER = 'No weather'
 
 export const seasonOfMonth = (month: number | null | undefined, seasons: readonly SeasonMeta[]) =>
   month ? seasons.find((s) => s.months.includes(month)) ?? null : null
+
+/** A whole occurrence of a season, with its ending year (Winter Dec 2022–Feb 2023 belongs to 2023). */
+export function seasonOccurrence(date: string, seasons: readonly SeasonMeta[]) {
+  const day = date.slice(0, 10), year = Number(day.slice(0, 4)), month = Number(day.slice(5, 7))
+  const season = seasonOfDate(day, month, seasons)
+  if (!season) return null
+  let start: string, end: string
+  if (isDatedCalendar(seasons)) {
+    const span = season.spans?.find(([a, b]) => day >= a && day < b)
+    if (!span) return null
+    start = span[0]; end = span[1]
+  } else if (season.from) {
+    const starts = seasons.filter(s => s.from).sort((a, b) => a.from!.localeCompare(b.from!))
+    const next = starts[(starts.indexOf(season) + 1) % starts.length]
+    const y = year - (day.slice(5) < season.from ? 1 : 0)
+    start = `${y}-${season.from}`
+    end = `${y + (next.from! <= season.from ? 1 : 0)}-${next.from}`
+  } else {
+    // Walk the calendar, rather than the observed samples: a partial December
+    // record is still the winter ending in the following year.
+    let a = new Date(Date.UTC(year, month - 1, 1)), b = new Date(Date.UTC(year, month, 1))
+    if (new Set(season.months).size === 12) {
+      a = new Date(Date.UTC(year, 0, 1)); b = new Date(Date.UTC(year + 1, 0, 1))
+    } else {
+      for (let n = 0; n < 11; n++) {
+        const prev = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() - 1, 1))
+        if (seasonOfMonth(prev.getUTCMonth() + 1, seasons) !== season) break
+        a = prev
+      }
+      for (let n = 0; n < 11 && seasonOfMonth(b.getUTCMonth() + 1, seasons) === season; n++) {
+        b = new Date(Date.UTC(b.getUTCFullYear(), b.getUTCMonth() + 1, 1))
+      }
+    }
+    start = a.toISOString().slice(0, 10); end = b.toISOString().slice(0, 10)
+  }
+  return { season, start, end, year: new Date(Date.parse(`${end}T00:00:00Z`) - 1).getUTCFullYear() }
+}

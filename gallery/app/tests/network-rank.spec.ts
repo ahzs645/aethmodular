@@ -122,6 +122,29 @@ test('legacy notebook links remain clickable and active-site labels draw above e
   await expect(quantityAxis(page)).toHaveAttribute('aria-label', 'Change the measurement: Iron / HIPS Fabs')
 })
 
+test('clustered active-site names stay apart and inside the plot on linear/log scales and small screens', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('aeth-gallery:theme', 'dark'))
+  const group = 'W1siZ212cmgzMmRzazYiLCJJcm9uIMK3IG1lZGlhbiBzcGxpdCIsIklyb24iLCJtZWRpYW4iLFtdLFtdLCJhYm92ZSIsWyIjMTI3ZWYzIiwiIl1dXQ'
+  await ready(page, `/?view=single&chart=netrank&netrank.networks=improve&netrank.scale=Log#tab=ranking&grp=${group}`)
+  const labels = page.locator('#netrank [data-site-label]')
+  for (const width of [1440, 860, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    for (const scale of ['Log', 'Linear']) {
+      await page.getByRole('radio', { name: scale, exact: true }).click()
+      await expect(labels).toHaveCount(4)
+      await expect.poll(() => page.locator('#netrank svg[aria-label]').evaluate(svg => {
+        const plot = svg.getBoundingClientRect()
+        const boxes = [...svg.querySelectorAll('[data-site-label]')].map(el => el.getBoundingClientRect())
+        const marks = [...svg.querySelectorAll('[data-active-site] path')].map(el => el.getBoundingClientRect())
+        const overlaps = (a: DOMRect, b: DOMRect) => a.left < b.right + 2 && b.left < a.right + 2 && a.top < b.bottom + 2 && b.top < a.bottom + 2
+        return boxes.every((a, i) => a.left >= plot.left + 68 && a.right <= plot.right - 24
+          && a.top >= plot.top + 28 && a.bottom <= plot.bottom - 52
+          && boxes.slice(i + 1).every(b => !overlaps(a, b)) && marks.every(b => !overlaps(a, b)))
+      })).toBe(true)
+    }
+  }
+})
+
 test('active sites keep their Samples colours and stay visible in either comparison network without duplicates', async ({ page }) => {
   await ready(page)
   const active = page.locator('#netrank [data-network-site="SPARTAN:ETAD"]')

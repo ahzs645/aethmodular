@@ -27,7 +27,11 @@ import { useCountedFilter } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 import { usePrefs } from '@/lib/prefs'
 import { useSearchParam } from '@/lib/url'
+import { SidebarControls } from '@/lib/pageSidebar'
+import { useSidePanelOpen, useSidePanelView } from '@/hooks/useSidePanel'
 import { trim } from '@/lib/format'
+import { calibrationSubset, cohortConfig, cohortPreset } from '@/lib/calibrationChoices'
+import { COHORT, CV_PROTOCOL, CV_PROTOCOL_SHORT, label } from '@/lib/labels'
 import type { FilterRow, CalibFile, CalibRunsFile, MetaFile } from '@/lib/types'
 
 /**
@@ -80,14 +84,30 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
   pmfLabelOfDate?: (date: string | null | undefined) => string
 }) {
   const { methods } = useRegressions()
+  const [cohortPick, setCohortPick] = useSearchParam<string>('calibration.cohort', '')
+  const [protocolPick, setProtocol] = useSearchParam<string>('calibration.cv', '')
+  const cohorts = useMemo(() => [...new Set([...Object.keys(calib?.cohorts ?? {}), ...(runs?.presets ?? []).map(p => p.cohort)])], [calib, runs])
+  const protocols = Object.keys(calib?.modes ?? {})
+  const cohort = cohorts.includes(cohortPick) ? cohortPick : ''
+  const protocol = protocols.includes(protocolPick) ? protocolPick : ''
   // the grid at the MAC set under Plot → units (lib/mac): slopes re-expressed before the estimator projection,
   // so the slope box and the guardrails judge the slope the reader sees
   const gallery = useMac()
   const atMac = useMemo(() => (calib ? calibAtMac(calib, gallery.mac) : null), [calib, gallery.mac])
-  const calibrationViews = useMemo(() => Object.fromEntries(ESTIMATORS.map(method => [method, atMac ? { ...atMac, grid: atMac.grid.map(r => projectGrid(r, method)), sweeps: atMac.sweeps.map(r => projectGrid(r, method)) } : null])) as Record<typeof ESTIMATORS[number], CalibFile | null>, [atMac])
-  const [selected, setSelected] = useState<Config>({ co: 'ocec', cut: 800, sel: 'raw', sp: 'airspec' })
-  const [presetKey, setPresetKey] = useState<string>('ocec800_airspec')
-  const [targetId, setTargetId] = useState<string>('addis')
+  const calibrationViews = useMemo(() => {
+    const data = atMac ? calibrationSubset(atMac, cohort) : null
+    return Object.fromEntries(ESTIMATORS.map(method => [method, data ? { ...data, grid: data.grid.map(r => projectGrid(r, method)), sweeps: data.sweeps.map(r => projectGrid(r, method)) } : null])) as Record<typeof ESTIMATORS[number], CalibFile | null>
+  }, [atMac, cohort])
+  const searchViews = useMemo(() => !protocol ? calibrationViews : Object.fromEntries(ESTIMATORS.map(method => [method,
+    calibrationViews[method] ? calibrationSubset(calibrationViews[method]!, '', protocol) : null,
+  ])) as typeof calibrationViews, [calibrationViews, protocol])
+  const [picked, setSelected] = useState<Config>({ co: 'ocec', cut: 800, sel: 'raw', sp: 'airspec' })
+  const selected = useMemo(() => cohortConfig(picked, calib, cohort), [picked, calib, cohort])
+  const [presetKey, setPresetKey] = useSearchParam<string>('calibration.preset', 'ocec800_airspec')
+  const [targetId, setTargetId] = useSearchParam<string>('calibration.target', 'addis')
+  const [, setSidebarOpen] = useSidePanelOpen()
+  const [, setSidebarView] = useSidePanelView()
+  const openSelections = () => { setSidebarView('page'); setSidebarOpen(true) }
   // the specification curve's baselines: one menu, named by the spectra compared. Spline and VIBES
   // come from the spline-vs-VIBES search (completed rank-70 VIBES), raw and 2nd derivative from the
   // original search; the value is '<search>:<baselines>' for SpecCurve's `baselines`
@@ -97,7 +117,16 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
   const { explain } = usePrefs()
 
   const presets = runs?.presets ?? []
-  const preset = presets.find((p) => p.key === presetKey) ?? presets[0]
+  const availablePresets = cohort ? presets.filter(p => p.cohort === cohort) : presets
+  const preset = cohortPreset(presets, presetKey, cohort)
+  const selectCohort = (value: string) => {
+    setCohortPick(value)
+    if (value) {
+      const next = cohortPreset(presets, presetKey, value)
+      if (next) setPresetKey(next.key)
+      setSelected(current => cohortConfig(current, calib, value))
+    }
+  }
   const targetIds = useMemo(() => [...new Set((runs?.runs ?? []).filter((r) => r.preset === preset?.key).map((r) => r.target))], [runs, preset])
   const target = targetIds.includes(targetId) ? targetId : targetIds[0]
   const run = runs?.runs.find((r) => r.preset === preset?.key && r.target === target) ?? null
@@ -134,6 +163,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
   // the nearest exported preset, when one exists for that configuration.
   const selectConfig = (c: Config) => {
     setSelected(c)
+    if (cohort && c.co !== cohort) setCohortPick(c.co)
     const hit = presets.find((p) => p.cohort === c.co && p.cutoff === c.cut && p.spectra === c.sp)
     if (hit) setPresetKey(hit.key)
   }
@@ -170,6 +200,17 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
   }
 
   return (
+    <>
+    <SidebarControls title="Shared selections" tab="Calibration" tabNote={target ? runs?.targets[target]?.code : undefined}>
+      <Select label="Cohort" value={cohort} options={['', ...cohorts]} onChange={selectCohort} optionLabel={value => value ? label(COHORT, value) : 'Per-chart choices'} />
+      {protocols.length > 0 && <Select label="Cross-validation protocol" value={protocol} options={['', ...protocols]} onChange={setProtocol} optionLabel={value => value ? label(CV_PROTOCOL, value) : 'Per-chart choices'} />}
+      <p className="chart-note">Cohort narrows searches, sweeps, transfer and saved configurations. Cross-validation updates the specification curve, cutoff sweep and slope/intercept plot.</p>
+      {runs && <><Select label="Configuration" value={preset?.key ?? ''} options={availablePresets.map(p => p.key)} onChange={setPresetKey}
+        optionLabel={key => { const p = presets.find(p => p.key === key); return p ? presetName(p) : key }} />
+      <Select label="Test set" value={target ?? ''} options={targetIds} onChange={setTargetId} optionLabel={id => runs.targets[id]?.label ?? id} />
+      <p className="chart-note">Configuration drives the cross-validation curve, crossplot, dated series, blind-half check and cohort composition.</p></>}
+      <p className="chart-note">PLS-factor sweeps, the dumbbell, heatmap and saved-run diagnostics use their exported site-grouped CV.</p>
+    </SidebarControls>
     <PageToc>
       {calib && (
         <>
@@ -183,6 +224,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
             excludePreprocessing={['vibes']}
             src={specBoth ? SPEC_BOTH : specOriginal ? 'spec_curve.json' : 'meeting-r70/spec_curve_20260917.json'}
             baselines={specView.slice(specView.indexOf(':') + 1)}
+            cohort={cohort || undefined} protocol={protocol || undefined}
             selected={specOriginal ? selected : undefined}
             onSelect={specOriginal ? selectConfig : undefined}
             controls={<Combobox label="Baselines" value={specView} options={SPEC_VIEWS} onChange={setSpecView}
@@ -192,9 +234,9 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
             provenance={specBoth ? 'spec_curve.json + completed rank-70 migration category_grid.jsonl, merged in the browser · shared specification guardrails'
               : specOriginal ? undefined : 'Completed rank-70 migration · category_grid.jsonl · shared specification guardrails'}
           />}</EstimatorViews>
-          <EstimatorViews>{method => <CutoffSweep calib={calibrationViews[method]!} selected={selected} onSelect={selectConfig} />}</EstimatorViews>
+          <EstimatorViews>{method => <CutoffSweep calib={searchViews[method]!} cohort={cohort || undefined} protocol={protocol || undefined} selected={selected} onSelect={selectConfig} />}</EstimatorViews>
           <EstimatorViews>{method => <KSweep calib={calibrationViews[method]!} selected={selected} onSelect={selectConfig} />}</EstimatorViews>
-          <EstimatorViews>{method => <SlopeInterceptTrap calib={calibrationViews[method]!} selected={selected} onSelect={selectConfig} />}</EstimatorViews>
+          <EstimatorViews>{method => <SlopeInterceptTrap calib={searchViews[method]!} selected={selected} onSelect={selectConfig} />}</EstimatorViews>
           <EstimatorViews>{method => <SpectraDumbbell calib={calibrationViews[method]!} selected={selected} onSelect={selectConfig} />}</EstimatorViews>
           <EstimatorViews>{method => <CrossSiteHeatmap calib={calibrationViews[method]!} selected={selected} onSelect={selectConfig} />}</EstimatorViews>
         </>
@@ -204,9 +246,9 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
         <>
           <section className="configuration-section" aria-label="Selected configuration and its diagnostics"><SectionBar>
             <span className="pill">Configuration for the charts below</span>
-            <Select label="Configuration" value={preset?.key ?? ''} options={presets.map((p) => p.key)} onChange={setPresetKey} optionLabel={(k) => { const p = presets.find((q) => q.key === k); return p ? presetName(p) : k }} title={presets.map((p) => `${p.key}: ${presetName(p)}`).join('\n')} />
-            <Select label="Test set" value={target ?? ''} options={targetIds} onChange={setTargetId} optionLabel={(t) => runs.targets[t]?.label ?? t} />
-            <span style={{ color: 'var(--ink-muted)' }}>{preset ? presetName(preset) : null}</span>
+            <span className="control">Saved {label(CV_PROTOCOL_SHORT, runs.mode)}</span>
+            <button type="button" className="btn quiet" onClick={openSelections}>Shared selections</button>
+            <span style={{ color: 'var(--ink-muted)' }}>{preset ? presetName(preset) : null}{target && <> · {runs.targets[target]?.label ?? target}</>}</span>
             <span className="season-row" style={{ color: 'var(--ink-muted)' }}>
               {runKeep || runPmf
                 ? <>{runKeep && <>seasons: <strong style={{ color: 'var(--ink-text)' }}>{[...runKeep].join(', ')}</strong> · </>}{runPmf && <>PMF: <strong style={{ color: 'var(--ink-text)' }}>{runPmf.keep.size === 5 || (runPmf.keep.size === 2 && runPmf.keep.has('Marine') && runPmf.keep.has('Combustion')) ? 'PMF days only (every source)' : [...runPmf.keep].join(', ')}</strong> · </>}crossplot and dated series refitted on these {nRunCounted} filters (change in Filters)</>
@@ -236,14 +278,14 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
             <span className="pill">Cross-site transfer</span>
             <span style={{ color: 'var(--ink-muted)' }}>one IMPROVE-trained calibration, applied unchanged to every SPARTAN site</span>
           </SectionBar>
-          <EstimatorViews>{method => <CrossSiteTransfer runs={{ ...runs, runs: runs.runs.map(r => projectRun(r, method)) }} galleryRows={galleryRows} sourceRows={sourceRows} galleryMeta={galleryMeta} />}</EstimatorViews>
+          <EstimatorViews>{method => <CrossSiteTransfer runs={{ ...runs, runs: runs.runs.map(r => projectRun(r, method)) }} cohort={cohort || undefined} onCohortChange={selectCohort} galleryRows={galleryRows} sourceRows={sourceRows} galleryMeta={galleryMeta} />}</EstimatorViews>
 
           <SectionBar>
             <span className="pill">Cohort diagnostics</span>
             {explain && <span style={{ color: 'var(--ink-muted)' }}>what the cohorts are, before anything is fitted</span>}
           </SectionBar>
           <CohortComposition info={preset ? runs.cohorts[preset.key] : undefined} label={preset ? presetName(preset) : ''} />
-          <SelectionRanking runs={runs} calib={calib} />
+          <SelectionRanking runs={runs} calib={calib} cohort={cohort || undefined} />
           <OverlapMatrix rows={runs.overlap} />
           <SpectraOverlay
             id="cohort-spectra"
@@ -266,6 +308,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
         </>
       )}
     </PageToc>
+    </>
   )
 }
 

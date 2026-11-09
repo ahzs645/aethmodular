@@ -5,15 +5,17 @@ import { PANEL_TITLE_H } from '@/components/Panels'
 import { ScrubField } from '@/components/ScrubField'
 import { UndoIcon } from '@/components/Icons'
 import { XAxis, YAxis } from '@/components/Axes'
+import { CategoryAxis, categoryAxisHeight, type CategoryLabel, type CategorySpans } from '@/components/CategoryAxis'
 import { timeSeasonBands, type SeasonBand } from '@/components/SeasonBands'
 import { seasonOfDate, seasonOnly } from '@/lib/seasons'
+import { seasonParent, seasonSegmentLayout, seasonSegments, type SeasonOrder, type SeasonSegment } from '@/lib/seasonSegments'
 import { fmt } from '@/lib/stats'
 import { num } from '@/lib/table'
 import { pct as pctOf } from '@/lib/format'
 import { fitsWidth } from '@/lib/fitLabel'
 import { rightAxisDomain } from '@/lib/axes'
 import { dotRim } from '@/lib/highlight'
-import { FONT, INK, MARGIN } from '@/lib/theme'
+import { INK, MARGIN } from '@/lib/theme'
 import { useFitHeight } from '@/lib/chartFit'
 import { useSingleView } from '@/lib/singleView'
 import type { FilterRow, SeasonMeta } from '@/lib/types'
@@ -31,10 +33,6 @@ export type RightMark = (typeof RIGHT_MARKS)[number]
 export interface RightVariable { field: string; label: string; unit: string; title: string; mark: RightMark; color: string }
 /** room for the right axis's ticks and title */
 const RIGHT_MARGIN = 62
-/** a season's next occurrence starts after a sampling gap this long (a season is a few months; its next year's is ~a year on) */
-const SEASON_BREAK = 150 * DAY
-/** px between two season blocks */
-const SEG_GAP = 10
 /** FacetGrid's default gap between two panels */
 const FACET_GAP = 16
 /** a right-axis tick: no trailing zeros, no exponent short of a million */
@@ -82,40 +80,10 @@ export function TimelineSizeControl({ size, auto, onChange }: { size: TimelineSi
 
 /** one filter on the time axis: its stacked values, and what it lacks of the species shown */
 export interface TimePoint { row: FilterRow; d: Date; v: Record<string, number>; missing: string[]; seg?: number }
-/** one occurrence of a season (Belg 2024, Bega 2023/24) on the seasons-side-by-side axis: its points are points[a, b) */
-interface Segment { name: string; label: string; year: string; color: string; a: number; b: number; d0: number; d1: number }
-interface Panel { site: string; color: string; points: TimePoint[]; nRows: number; stacked: d3.Series<TimePoint, string>[]; seasons: readonly SeasonMeta[]; segs: Segment[] }
+interface Panel { site: string; color: string; points: TimePoint[]; nRows: number; stacked: d3.Series<TimePoint, string>[]; seasons: readonly SeasonMeta[]; segs: SeasonSegment[] }
 
 const seasonNameOf = (row: FilterRow, seasons: readonly SeasonMeta[]) =>
   seasonOnly(seasonOfDate(row.date, row.month as number | null, seasons)?.name ?? String(row.season ?? ''))
-
-/**
- * Each run of filters in one season (a new run where the season changes or sampling stops for
- * SEASON_BREAK) is one occurrence; occurrences are ordered by the calendar's season order, then by
- * date, so one season's years sit side by side. Returns the points in that order, each with its block.
- */
-function seasonSegments(points: TimePoint[], seasons: readonly SeasonMeta[]): { points: TimePoint[]; segs: Segment[] } {
-  const runs: { name: string; pts: TimePoint[] }[] = []
-  for (const q of points) {
-    const name = seasonNameOf(q.row, seasons)
-    const last = runs[runs.length - 1]
-    const prev = last?.pts[last.pts.length - 1]
-    if (last && last.name === name && +q.d - +prev!.d <= SEASON_BREAK) last.pts.push(q)
-    else runs.push({ name, pts: [q] })
-  }
-  const order = (name: string) => { const i = seasons.findIndex((s) => seasonOnly(s.name) === name); return i < 0 ? seasons.length : i }
-  runs.sort((a, b) => order(a.name) - order(b.name) || +a.pts[0].d - +b.pts[0].d)
-  const out: TimePoint[] = [], segs: Segment[] = []
-  runs.forEach((r, k) => {
-    const d0 = +r.pts[0].d, d1 = +r.pts[r.pts.length - 1].d
-    const y0 = r.pts[0].d.getFullYear(), y1 = r.pts[r.pts.length - 1].d.getFullYear()
-    const year = y0 === y1 ? String(y0) : `${y0}/${String(y1).slice(2)}`
-    const season = seasons.find((s) => seasonOnly(s.name) === r.name)
-    segs.push({ name: r.name, label: `${r.name.split(' (')[0] || 'no season'} ${year}`, year, color: season?.color ?? INK.muted, a: out.length, b: out.length + r.pts.length, d0, d1 })
-    for (const q of r.pts) out.push({ ...q, seg: k })
-  })
-  return { points: out, segs }
-}
 
 /**
  * The composition chart's "over time" view: every filter on a date axis, the shown species (or
@@ -134,14 +102,14 @@ function seasonSegments(points: TimePoint[], seasons: readonly SeasonMeta[]): { 
  * axis's range follows Panel axes, as the left one's does.
  *
  * Seasons side by side (`timeAxis`) cuts the date axis into one block per season occurrence (Belg 2023,
- * Belg 2024 …), each as wide as its own dates, grouped by season and then by year, with the months between
- * dropped: filter a single season in the sidebar to read it year over year. Each panel keeps its own blocks.
+ * Belg 2024 …), grouped by year then season, or by season then year for annual comparisons.
+ * Whole cross-year seasons belong to their ending year. Each panel keeps its own blocks.
  *
  * Daily bars are one path per species, not a rect per filter and species (all sites is tens of thousands of
  * rects, each with handlers and the `.animated` transition), and one transparent rect over the plot answers the
  * pointer with the nearest sampling day, as the areas always did.
  */
-export function CompositionTimeline({ rows, sites, species, color, dim, pct, share, shape, timeAxis = 'Calendar dates', completeOnly, sharedAxes, seasonsFor, strip = false, size = { w: 0, h: 0 }, right = null, tip, units, itemNoun, onRecord, extraTip }: {
+export function CompositionTimeline({ rows, sites, species, color, dim, pct, share, shape, timeAxis = 'Calendar dates', seasonOrder = 'Year, then season', completeOnly, sharedAxes, seasonsFor, strip = false, size = { w: 0, h: 0 }, right = null, tip, units, itemNoun, onRecord, extraTip }: {
   rows: FilterRow[]
   sites: { name: string; color: string }[]
   /** bottom of the stack first */
@@ -152,6 +120,7 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
   share?: (row: FilterRow, field: string) => number | null
   shape: TimeShape
   timeAxis?: TimeAxis
+  seasonOrder?: SeasonOrder
   completeOnly: boolean
   sharedAxes: boolean
   seasonsFor: (site: string) => readonly SeasonMeta[]
@@ -193,12 +162,12 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
         .sort((a, b) => +a.d - +b.d)
       if (!dated.length) return []
       const seasons = seasonsFor(s.name)
-      const { points, segs } = bySeason ? seasonSegments(dated, seasons) : { points: dated, segs: [] }
+      const { points, segs } = bySeason ? seasonSegments(dated, seasons, seasonOrder) : { points: dated, segs: [] }
       const gen = d3.stack<TimePoint>().keys(species).value((p, k) => p.v[k] ?? 0)
       if (stream) gen.offset(d3.stackOffsetWiggle).order(d3.stackOrderInsideOut)
       return [{ site: s.name, color: s.color, points, nRows: mine.length, stacked: gen(points), seasons, segs }]
     })
-  }, [rows, sites, species, pct, share, completeOnly, stream, seasonsFor, bySeason])
+  }, [rows, sites, species, pct, share, completeOnly, stream, seasonsFor, bySeason, seasonOrder])
 
   const yExtent = (p: Panel): [number, number] => [
     stream ? (d3.min(p.stacked, (l) => d3.min(l, (d) => d[0])) ?? 0) : 0,
@@ -211,6 +180,7 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
   const rightAll = rightValues(panels.flatMap((p) => p.points))
   const several = panels.length > 1
   const autoH = timelineAutoHeight(fit, panels.length, single)
+  const minSeasonWidth = bySeason ? Math.max(0, ...panels.map(p => seasonSegmentLayout(p.segs, seasonOrder, 0).width)) : 0
 
   if (!panels.length) return <p className="chart-note">No filter in this subset has {completeOnly ? `every ${itemNoun.replace(/s$/, '')} shown` : `any ${itemNoun.replace(/s$/, '')} shown`}.</p>
 
@@ -225,32 +195,39 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
         return right && withRight < p.points.length ? `${n}, ${withRight} with ${right.label}` : n
       }}
       render={(p, cellW, i) => {
-        const width = size.w || cellW
+        const sideMargin = right ? RIGHT_MARGIN : MARGIN.right
+        const width = Math.max(size.w || cellW, bySeason ? minSeasonWidth + MARGIN.left + sideMargin : 0)
         const height = size.h || autoH
-        const innerW = Math.max(200, width - MARGIN.left - (right ? RIGHT_MARGIN : MARGIN.right))
-        const innerH = Math.max(60, height - MARGIN.top - MARGIN.bottom)
-        const x = d3.scaleTime().domain(sharedAxes ? xAll : (d3.extent(p.points, (q) => q.d) as [Date, Date])).range([0, innerW])
-        // seasons side by side: each block as wide as its dates (half a day either side of its first and last), at one px per day
-        // across blocks so a day is as wide in every year, SEG_GAP apart
+        const innerW = Math.max(200, width - MARGIN.left - sideMargin)
         const segs = p.segs
-        const pxPerDay = bySeason
-          ? Math.max(0, innerW - SEG_GAP * (segs.length - 1)) / (d3.sum(segs, (g) => g.d1 - g.d0 + DAY) / DAY)
-          : x(new Date(+p.points[0].d + DAY)) - x(p.points[0].d)
-        const segX: number[] = []
-        const segW = (k: number) => ((segs[k].d1 - segs[k].d0 + DAY) / DAY) * pxPerDay
-        segs.forEach((_, k) => segX.push(k ? segX[k - 1] + segW(k - 1) + SEG_GAP : 0))
-        const px = (q: TimePoint) => (bySeason ? segX[q.seg!] + ((+q.d - segs[q.seg!].d0) / DAY + 0.5) * pxPerDay : x(q.d))
+        const segmentLayout = seasonSegmentLayout(segs, seasonOrder, innerW)
+        const segX = segmentLayout.lefts
+        const segW = (k: number) => segmentLayout.widths[k]
+        const axisItems: CategoryLabel[] = segs.map((g, k) => {
+          const ends = `${d3.timeFormat('%b %-d')(new Date(g.d0))} – ${d3.timeFormat('%b %-d')(new Date(g.d1))}`
+          return { key: String(k), label: `${seasonOrder === 'Year, then season' ? g.label : g.year} (${ends})`,
+            parent: seasonParent(g, seasonOrder), color: g.color || INK.muted,
+            parentColor: seasonOrder === 'Year, then season' ? INK.text : g.color || INK.muted }
+        })
+        const axisSpans: CategorySpans = { span: key => { const k = Number(key); return [segX[k], segX[k] + segW(k)] }, range: () => [0, innerW], gap: 10 }
+        const bottom = bySeason ? 12 + categoryAxisHeight(axisItems, axisSpans) : MARGIN.bottom
+        const innerH = Math.max(60, height - MARGIN.top - bottom)
+        const x = d3.scaleTime().domain(sharedAxes ? xAll : (d3.extent(p.points, (q) => q.d) as [Date, Date])).range([0, innerW])
+        // A sparse block keeps enough width for its labels; dates remain proportional inside it.
+        const dayWidth = (k: number) => segW(k) / ((segs[k].d1 - segs[k].d0) / DAY + 1)
+        const pxPerDay = bySeason ? Math.min(...segs.map((_, k) => dayWidth(k))) : x(new Date(+p.points[0].d + DAY)) - x(p.points[0].d)
+        const px = (q: TimePoint) => (bySeason ? segX[q.seg!] + ((+q.d - segs[q.seg!].d0) / DAY + 0.5) * dayWidth(q.seg!) : x(q.d))
         const [lo, hi] = sharedAxes ? yAll : yExtent(p)
         const y = d3.scaleLinear().domain([lo, hi * (stream || pct ? 1 : 1.02)]).range([innerH, 0]).nice()
         const area = d3.area<d3.SeriesPoint<TimePoint>>().x((d) => px(d.data)).y0((d) => y(d[0])).y1((d) => y(d[1])).curve(d3.curveMonotoneX)
         const rightDomain = rightAxisDomain(sharedAxes ? rightAll : rightValues(p.points))
         const yRight = rightDomain && d3.scaleLinear().domain(rightDomain).range([innerH, 0]).nice()
         const bands: SeasonBand[] = !strip ? [] : bySeason
-          ? segs.map((g, k) => ({ x: segX[k], w: segW(k), color: g.color, name: g.name }))
+          ? segs.map((g, k) => ({ x: segX[k], w: segW(k), color: g.color || INK.muted, name: g.name }))
           : timeSeasonBands(x, p.seasons, innerW)
         const seasonOf = (q: TimePoint) => seasonNameOf(q.row, p.seasons)
         // a bar per sampling day: three-quarters of the typical spacing between samples, so gaps read as gaps
-        const spacing = d3.median(p.points.slice(1).filter((q, j) => q.seg === p.points[j].seg).map((q, j) => px(q) - px(p.points[j]))) ?? 6
+        const spacing = d3.median(p.points.slice(1).flatMap((q, j) => q.seg === p.points[j].seg ? [px(q) - px(p.points[j])] : [])) ?? 6
         const barW = Math.max(1.5, Math.min(18, spacing * 0.75, 3 * pxPerDay))
         // a dot as big as the sampling leaves room for: years of filters in one panel would otherwise hide the stack under them
         const rightR = Math.max(1.6, Math.min(right?.mark === 'Line' ? 1.8 : 3, spacing * 0.6))
@@ -264,7 +241,7 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
           const [mx] = d3.pointer(e)
           const j = d3.bisector((q: TimePoint) => px(q)).center(p.points, mx)
           const q = p.points[j]
-          return q && ((!bars && !bySeason) || Math.abs(px(q) - mx) <= Math.max(4, bars ? barW / 2 + 2 : SEG_GAP)) ? q : null
+          return q && ((!bars && !bySeason) || Math.abs(px(q) - mx) <= Math.max(4, bars ? barW / 2 + 2 : 10)) ? q : null
         }
         const tipOf = (q: TimePoint) => [
           `${q.row.date.slice(0, 10)} · ${seasonOf(q)}${several ? ` · ${p.site}` : ''}`,
@@ -281,7 +258,7 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
         ]
         const clip = `${uid}-${i}`
         return (
-          <svg width={width} height={height} className={bars ? undefined : 'animated'}>
+          <svg width={width} height={Math.max(height, innerH + MARGIN.top + bottom)} data-composition-site={p.site} data-composition-filters={p.points.length} className={bars ? undefined : 'animated'}>
             <defs><clipPath id={clip}><rect width={innerW} height={innerH} /></clipPath></defs>
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
               {/* the season strip along the top, named where a band has room */}
@@ -298,7 +275,13 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
                 label={stream ? `${units} (baseline free)` : pct ? `share of shown ${itemNoun}` : units}
                 format={(v: number) => (pct ? `${Math.round(v * 100)}%` : String(v))} />
               {bySeason
-                ? <SeasonBlockAxis segs={segs} segX={segX} segW={segW} y={innerH} />
+                ? <g data-season-axis={seasonOrder}>
+                  {segs.map((g, k) => <g key={k} data-season-block={g.label} data-season-year={g.year} data-season-start={new Date(g.d0).toISOString().slice(0, 10)} data-season-end={new Date(g.d1).toISOString().slice(0, 10)}>
+                    {k > 0 && <line x1={segX[k] - segmentLayout.gaps[k] / 2} x2={segX[k] - segmentLayout.gaps[k] / 2} y2={innerH} stroke={INK.axis}
+                      strokeOpacity={0.45} strokeDasharray={seasonParent(g, seasonOrder) === seasonParent(segs[k - 1], seasonOrder) ? '2 3' : '4 3'} />}
+                  </g>)}
+                  <CategoryAxis items={axisItems} scale={axisSpans} y={innerH} />
+                </g>
                 : <XAxis scale={x as any} y={innerH} format={(d: Date) => d3.timeFormat('%b %Y')(d)} tickCount={Math.max(2, Math.min(7, Math.floor(innerW / 90)))} />}
               <g clipPath={`url(#${clip})`}>
                 <g pointerEvents="none">
@@ -340,36 +323,10 @@ export function CompositionTimeline({ rows, sites, species, color, dim, pct, sha
       }} />
   )
   // panels wider than the chart scroll sideways as one, so the sites stay on the same dates
-  return size.w ? <div className="timeline-scroll">{grid}</div> : grid
-}
-
-/**
- * The seasons-side-by-side axis: a baseline under each block, its season and year below (the year
- * alone where the name does not fit, as the strip and the block's order name the season), its first
- * and last day where there is room, and a faint dashed line up the plot between two blocks, so the cut
- * reads as a cut and not as a sampling gap.
- */
-function SeasonBlockAxis({ segs, segX, segW, y }: { segs: Segment[]; segX: number[]; segW: (k: number) => number; y: number }) {
-  const fits = (text: string, w: number, size = 11, weight = 600) => fitsWidth(text, w - 6, size, weight)
-  return (
-    <g transform={`translate(0,${y})`} fontFamily={FONT.family} pointerEvents="none">
-      {segs.map((g, k) => {
-        const x0 = segX[k], w = segW(k)
-        const label = fits(g.label, w) ? g.label : fits(g.year, w) ? g.year : ''
-        const ends = `${d3.timeFormat('%b %-d')(new Date(g.d0))} – ${d3.timeFormat('%b %-d')(new Date(g.d1))}`
-        return (
-          <g key={k}>
-            {k > 0 && <line x1={x0 - SEG_GAP / 2} x2={x0 - SEG_GAP / 2} y1={-y} y2={0} stroke={INK.axis} strokeOpacity={0.45} strokeDasharray="2 3" />}
-            <line x1={x0} x2={x0 + w} stroke={INK.axis} />
-            <line x1={x0} x2={x0} y2={5} stroke={INK.axis} />
-            <line x1={x0 + w} x2={x0 + w} y2={5} stroke={INK.axis} />
-            {label && <text x={x0 + w / 2} y={17} textAnchor="middle" fontSize={11} fontWeight={600} fill={INK.text}>{label}</text>}
-            {fits(ends, w, 9.5, 400) && <text x={x0 + w / 2} y={30} textAnchor="middle" fontSize={9.5} fill={INK.muted}>{ends}</text>}
-          </g>
-        )
-      })}
-    </g>
-  )
+  return <>
+    {size.w || bySeason ? <div className="timeline-scroll" tabIndex={0} role="region" aria-label="Composition timeline, scroll horizontally for all seasons">{grid}</div> : grid}
+    {bySeason && <p className="chart-note">Whole seasons are grouped by their ending year: Bega Oct 2022–Jan 2023 belongs to 2023. Each block shows its observed sampling dates.</p>}
+  </>
 }
 
 /** the seasons a set of panels' strips show, each once, in order, for the strip's legend */

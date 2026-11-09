@@ -425,6 +425,29 @@ back to the cards, "Area · Page", and one Page dropdown, shown only with Explai
 already names the page). The old links still work (`#tab=research&aep=…`,
 `#tab=aethalometer&aep=…`, `#tab=experimental&xp=…`, `?availability.view=…#tab=availability`).
 
+Full builds also offer **Timeline** and **Connections** on Investigations. The private Research section
+contributes a source-backed catalog of the top-level FTIR/HIPS and phase-3 notebooks, retrospective
+release/audit records and experiment contracts. Search by question or finding, filter by family or
+evidence, select a record to inspect saved execution evidence and qualifications, and open its existing
+graph pages. Connections shows all documented direct neighbours of a selected record, including
+neighbours outside the filters; each edge retains its type and source. Its Mermaid download exports
+that neighbourhood; **Export full Mermaid** exports the entire catalog. Dates are explicitly **last source changes**, not inferred historical run dates.
+Saved outputs, verified reproductions, completed diagnostics and blocked work have separate labels.
+The original cards remain under **Areas**. View, selection and filters live in `investigations.*` query
+keys so a copied URL reopens them. Public builds omit the Research section and its catalog together.
+
+Refresh this index after changing sources or retrospective curation with `npm run index:investigations`
+in `gallery/app` (`scripts/build-investigation-history.mjs`; `--check` checks freshness). The checked-in
+`src/sections/research/history.generated.json` is built from source records without running analyses.
+Its primary-export declarations are independent of files in the indexer's local `public/data` directory.
+Selecting a record checks those exports through the current build's shared data loader. The details
+show the paths and export dates, or the actual load error; **Recheck exports** retries a failed load
+after inputs are restored. A loaded primary export does not certify every graph or validate a result.
+Pages without declared primary exports defer availability checks to the page itself. Historical
+execution/evidence labels remain separate from these runtime file-availability observations.
+Archived notebooks and other research folders are outside its stated coverage. Later notebooks with
+no curated edges stay visible without invented dependencies.
+
 In a public build (`VITE_PUBLIC_BUILD=1`) the **Census** is link-only: it is left out of the menu, the ⌘K
 search and the Investigations cards, and `#tab=census` still opens it (`PUBLIC_UNLISTED` in `app/src/App.tsx`).
 
@@ -469,7 +492,58 @@ the per-chart controls in the query string) into one `#v=<token>` made with
 reference, anything else is lz-compressed or raw, whichever is shorter (a view keeping 101
 brushed filters: 564 characters against 1,352 for the plain URL). **Copy embed code** gives an
 iframe with `?embed=1`, which hides the header and filter panel and adds an "Open in the gallery"
-link. Plain hash links still work.
+link. Plain hash links still work. A link that cannot be read (usually cut off when copied) says
+so at the top of the page instead of quietly opening the default view, and a view too long for a
+link says so in the menu.
+
+### Custom sections
+
+Any chart can join a page of your own as you browse. **+** on a chart's title line (⋯ on a phone)
+puts it in the section being built, exactly as it is on screen; pressing it again takes it out.
+The same chart at other settings is a second item, so two seasons can sit side by side. The header's
+section button shows the count, chooses which section charts go to, starts a new one and opens it.
+**Custom sections** is also in the Charts menu.
+
+On the page (`pages/SectionPage`, tab `custom`) each chart has an editable title, a note, Half or
+Full width, ↑ ↓ to reorder and Open ↗ to go to its page. Taking one out can be undone. The chart
+keeps its own options, and a change made there is saved to the section. **Copy link** gives one link
+(`#tab=custom&sec=<token>`, the same `@firstform/json-url` codec as views): twelve charts sharing
+their settings take about 1,600 characters. The link holds the section, not a pointer to it, so
+it needs no server and later changes need a new link. A reader sees a shared section read-only
+until **Save a copy**; opening your own unchanged link takes you to your section. A section's own
+address (`sec=s-…`) only opens in the browser that made it, and the page says so elsewhere; the
+Views menu's Copy link swaps in the token.
+
+**Add text** (or ¶ on a chart, to put it just before that chart) adds a heading with an optional
+paragraph; `**bold**`, `*italic*` and `- ` lists work in a shared section. **Height** on a chart is Auto,
+which grows to fit it, or a set S, M or L, where a taller chart scrolls inside its card. Dashboard tiles join
+from their ⋯ menu (**+ Add to section**) and open maximised. **PDF** saves one landscape file with a
+page per chart, still vector and with Inter embedded; **Deck** saves one PowerPoint in the house style
+(`docs/deck-style-prompt.md`): 13.33 × 7.5 in, white, a bold title and one figure on each slide. A
+chart's title goes on the slide, so write it as the claim. Its note is the SAY of the speaker notes, and
+NOTES names its page; a heading alone is a divider, a heading with text a text slide. No slide carries an
+em dash. Each chart is drawn one at a time in a hidden frame (`lib/sectionExport`), at its export dialog's
+defaults; a chart that cannot be drawn is named when the file is saved and marked on its page.
+
+How it works (`lib/sections.ts`): an item is the chart's frame key (`tile:<id>` for a Dashboard tile) and
+the whole view it was picked in, not a copy of the chart. Each one draws in its own same-origin iframe of
+that view (`?embed=1&embedchart=1&view=single&chart=<key>`, or `dmax=<id>` for a tile; `components/SectionFrame`),
+so charts from different pages, under different sites and filters, sit together exactly as picked, and every
+chart can be picked with no list of what can be drawn. `lib/embedChart` reports the chart in view and the view
+around it to the card, which is how it knows the chart has drawn, keeps a changed setting, and grows to a tall
+chart. A chart that is no longer on its page, or that comes from a page this build leaves out (a private
+section in a public build), says so instead of drawing something else.
+
+Three things keep a section light. An embed runs its chart's whole page, but only the wanted chart draws
+(`useEmbedDraw`, used by ChartFrame; the rest keep their frame, which is how the page finds the wanted one by key,
+and if it has not appeared after 12 s everything draws, so a key that depends on the drawing still resolves).
+Embeds read their files from the page around them (`lib/data`): one parse and one copy, for files and for derived
+values marked `plain`. **That shared data must never be changed in place**, across a frame as across a page.
+And only the charts near the screen stay alive: 8, or 3 on a phone; the longest out of view is let go and reopens
+from its saved settings when scrolled back to, so memory does not grow with a section's length and a section can
+hold 40 charts. Measured on a production build, Chrome's JS heap: 6 Calibration charts 429 → 256 MB, 6
+Correlation 197 → 75, and 24 mixed charts 246 MB against 245 for 12. An option changed in a shared
+(read-only) section's chart is not saved, so it is lost if that chart is let go.
 
 SPARTAN and IMPROVE are a multi-select: with both on, sites from either network share the list,
 the map and the charts (HIPS absorption and PM₂.₅ mass are measured by both; EC/OC by FTIR in
@@ -839,7 +913,12 @@ drew, each over the live subset:
   value), with a season strip and a continuous legend.
 - **Composition hierarchy** — the treemap and donut gained a family → species
   level, plus **circle pack** and **stacked bars** (the one encoding that
-  compares sites on one axis).
+  compares sites on one axis). Over time → Seasons side by side has two label
+  levels: **Group time by → Year, then season** shows each year's seasons;
+  **Season, then year** puts the available years of each season side by side.
+  Whole cross-year seasons belong to their ending year (Bega Oct 2022–Jan 2023
+  is in 2023), including partially sampled seasons. The choice is saved in
+  `composition.seasonOrder`; crowded panels scroll horizontally.
 - **Density layout** and **mirror statistics** on the histogram: the mirror
   reports median difference, Welch t and p, Cohen's d and the Mann–Whitney
   AUC, effect sizes first (`lib/stats.twoSample`, checked against hand
@@ -1024,6 +1103,18 @@ RMSE 3.8587 µg/filter and inner RMSECV 6.5587 µg/filter.
 One configuration is selected across the page (click a point or a heatmap
 row); when it matches an exported preset, the per-filter section below
 follows.
+
+The left dock's **Calibration** tab holds **Shared selections**. **Cohort**
+narrows the specification search, sweeps, slope/intercept plot, heatmap,
+dumbbell, transfer, selection ranking and exported **Configuration** choices.
+**Cross-validation protocol** filters the specification curve, cutoff sweep
+and slope/intercept plot. PLS-factor sweeps and per-filter run diagnostics
+retain their exported site-grouped CV; unavailable search results stay empty.
+**Per-chart choices** retains the charts' individual settings. Configuration
+and **Test set** drive the per-filter diagnostics; the configuration summary
+opens the same sidebar. `calibration.cohort`, `calibration.cv`,
+`calibration.preset` and `calibration.target` preserve these choices in shared
+links and reloads, including the single-chart view.
 
 The **Specification curve** has dropdowns for cohort selection method,
 selection spectra, cohort cutoff, model spectra, cross-validation protocol,

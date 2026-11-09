@@ -7,6 +7,8 @@ import { SectionShell } from '../SectionShell'
 import type { Section, SectionPageProps } from '../types'
 import { RESEARCH_PAGES } from './pages'
 import './baselineLabDashboard'
+import history from './history.generated.json'
+import type { InvestigationHistory } from '@/lib/investigationHistory'
 
 function ResearchPage(props: SectionPageProps) {
   return <SectionShell name="Research diagnostics" pages={RESEARCH_PAGES} props={props} />
@@ -15,6 +17,7 @@ function ResearchPage(props: SectionPageProps) {
 const research: Section = {
   key: 'research',
   label: 'Research',
+  history: history as InvestigationHistory,
   tabs: [{
     key: 'research',
     label: 'Research diagnostics',

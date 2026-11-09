@@ -1,4 +1,8 @@
 import type { AreaPage } from '@/components/AreaHeader'
+import { InvestigationHistory } from '@/components/InvestigationHistory'
+import { Segmented } from '@/components/Controls'
+import { useSearchParam } from '@/lib/url'
+import type { InvestigationHistory as History } from '@/lib/investigationHistory'
 
 export interface InvestigationArea {
   tab: string
@@ -16,16 +20,20 @@ const LISTED = 6
  * diagnostics, Aethalometer, Data availability). A card opens its area; each page listed on it opens
  * that page. The header menu's Investigations group holds the same pages.
  */
-export function InvestigationsPage({ areas, onOpen }: { areas: readonly InvestigationArea[]; onOpen: (tab: string, page?: string) => void }) {
+export function InvestigationsPage({ areas, onOpen, history, canOpen = () => true }: {
+  areas: readonly InvestigationArea[]; onOpen: (tab: string, page?: string) => void; history?: History; canOpen?: (tab: string) => boolean
+}) {
+  const [view, setView] = useSearchParam<'timeline' | 'connections' | 'areas'>('investigations.view', 'timeline', ['timeline', 'connections', 'areas'])
   return (
     <>
       <div className="panel weather-head">
         <div>
           <h2 style={{ margin: 0 }}>Investigations</h2>
-          <p className="subtitle" style={{ margin: '4px 0 0' }}>The analyses beyond the chart tabs: open an area, or go straight to one of its pages</p>
+          <p className="subtitle" style={{ margin: '4px 0 0' }}>{history ? `${history.records.length} research records · ${history.edges.length} documented connections. Follow the checks, findings and changes in interpretation.` : 'The analyses beyond the chart tabs: open an area, or go straight to one of its pages'}</p>
         </div>
+        {history && <Segmented label="View" value={view} onChange={setView} options={['timeline', 'connections', 'areas']} />}
       </div>
-      <div className="area-cards">
+      {history && view !== 'areas' ? <InvestigationHistory history={history} view={view} onOpen={onOpen} canOpen={canOpen} /> : <div className="area-cards">
         {areas.map((a) => {
           const rest = a.pages.length - LISTED
           return (
@@ -46,7 +54,7 @@ export function InvestigationsPage({ areas, onOpen }: { areas: readonly Investig
             </section>
           )
         })}
-      </div>
+      </div>}
     </>
   )
 }

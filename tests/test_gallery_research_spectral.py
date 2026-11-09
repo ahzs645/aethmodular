@@ -79,6 +79,15 @@ def test_ranked_sites_keeps_only_complete_entries():
     assert exporter.ranked_sites(frame, "mix", "js")["site"].tolist() == ["GRSA1", "CAVE1", "PHOE5"]
 
 
+# How a table may have been read. The last three only occur where the Drive is reachable (elsewhere those tables are
+# listed as missing), and each of those paths raises unless it reproduces the values its notebook printed.
+SOURCE_READS = ("csv", "tracked csv", "executed notebook output", "executed notebook output (printed)",
+                "retained export; source CSV unavailable",
+                "drive",
+                "recomputed from the Drive (FTIR/apps, FTIR/notebook/extracted)",
+                "recomputed from the Davis Data raw spectra (ftir_52 §7's method), checked against its printed site count and median pair r")
+
+
 @pytest.mark.parametrize("build", exporter.PAGES, ids=lambda b: b.__name__)
 def test_every_page_builds_from_the_committed_notebooks(build):
     page = build()
@@ -86,8 +95,7 @@ def test_every_page_builds_from_the_committed_notebooks(build):
     for name, frame in page.tables.items():
         assert len(frame), name
     for source in page.sources:
-        assert source["read"] in ("csv", "tracked csv", "executed notebook output", "executed notebook output (printed)", "retained export; source CSV unavailable",
-                                  "recomputed from the Drive (FTIR/apps, FTIR/notebook/extracted)")
+        assert source["read"] in SOURCE_READS
 
 
 def test_headline_numbers_match_what_the_notebooks_print():

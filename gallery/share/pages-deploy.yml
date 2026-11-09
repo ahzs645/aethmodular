@@ -67,6 +67,11 @@ jobs:
           sparse-checkout: |
             gallery/app
             gallery/packages
+            gallery/data
+            gallery/share
+            tests
+            docs
+            research/ftir_hips_chem/scripts
           submodules: true
           fetch-depth: 1
       - uses: actions/setup-node@v4
@@ -89,19 +94,30 @@ jobs:
         run: |
           gh release download "${{ steps.req.outputs.data_tag }}" --repo "${{ github.repository }}" --pattern gallery-data.tar.gz --dir "$RUNNER_TEMP"
           mkdir -p gallery/app/public/data
+          DATA_SHA=$(sha256sum "$RUNNER_TEMP/gallery-data.tar.gz" | cut -d ' ' -f 1)
+          DATA_PREFIX="${{ steps.req.outputs.data_tag }}"
+          DATA_PREFIX="${DATA_PREFIX#data-}"
+          [[ "$DATA_SHA" == "$DATA_PREFIX"* ]] || { echo "::error::data snapshot hash does not match its release tag"; exit 1; }
+          echo "GALLERY_DATA_SHA256=$DATA_SHA" >> "$GITHUB_ENV"
           tar -xzf "$RUNNER_TEMP/gallery-data.tar.gz" -C gallery/app/public/data
           for d in $(jq -r '.sections[] | select(.public == false) | .data[]?' gallery/app/src/sections/sections.json); do
             [[ "$d" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "::error::odd data folder name $d"; exit 1; }
             rm -rf "gallery/app/public/data/$d"
           done
           du -sh gallery/app/public/data
+      - name: Source and public-data checks
+        working-directory: gallery/app
+        run: |
+          npm run typecheck
+          npm run test:source
+          npm run test:data:public
       - name: Build
         working-directory: gallery/app
         env:
           VITE_HIDE_EXPLAIN: '1'
           # leaves out the sections gallery/app/src/sections/sections.json marks private
           VITE_PUBLIC_BUILD: '1'
-        run: npx vite build --base ./ --outDir "$RUNNER_TEMP/site" --emptyOutDir
+        run: npm run build -- --base ./ --outDir "$RUNNER_TEMP/site" --emptyOutDir
       - name: Check
         run: |
           touch "$RUNNER_TEMP/site/.nojekyll"
@@ -109,6 +125,15 @@ jobs:
             echo "::error::machine paths or tokens in the build"; exit 1
           fi
           du -sh "$RUNNER_TEMP/site"
+      - name: Record source and data verification
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          DATA_TAG: ${{ steps.req.outputs.data_tag }}
+        run: |
+          jq -n --arg source "$SOURCE_SHA" --arg data_tag "$DATA_TAG" --arg data_sha256 "$GALLERY_DATA_SHA256" \
+            --arg run "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            '{schema_version:1, source_sha:$source, data_tag:$data_tag, data_sha256:$data_sha256, workflow_run:$run, scope:"public gallery software and data integration", passed:["typecheck","node-source","node-data-public","production-build","machine-path-scan"], not_established:["independent target EC accuracy","research-only data reconciliation","fresh-context link and export acceptance"]}' \
+            > "$RUNNER_TEMP/site/verification-receipt.json"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ${{ runner.temp }}/site
@@ -121,4 +146,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

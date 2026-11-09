@@ -1,4 +1,4 @@
-import { FONT } from '@/lib/theme'
+import { FONT } from './theme.ts'
 
 let measurer: CanvasRenderingContext2D | null = null
 /** the drawn width of a label at a size, so fits follow the text instead of a guessed character width */
@@ -103,4 +103,55 @@ export const fitInCircle = (text: string, r: number, opts: FitOptions & { pad?: 
     const half = (n * lh) / 2
     return half >= r - pad ? 0 : 2 * Math.sqrt((r - pad) ** 2 - half ** 2)
   }, opts)
+}
+
+interface PointLabel { key: string; text: string; x: number; y: number }
+interface LabelBox { left: number; right: number; top: number; bottom: number }
+
+/**
+ * Direct labels near points: prefer above/right, turn left at the edge, then
+ * move the text to the nearest free row. Points stay fixed. Both labels and
+ * point markers are obstacles; the result includes a connector for moved text.
+ * Labels that cannot fit stay in the caller's legend/tooltip instead.
+ */
+export function placePointLabels(points: readonly PointLabel[], width: number, height: number,
+  { size = 10.5, weight = 600, radius = 10, gap = 4 }: { size?: number; weight?: number; radius?: number; gap?: number } = {}) {
+  const overlaps = (a: LabelBox, b: LabelBox) => a.left < b.right + gap && b.left < a.right + gap
+    && a.top < b.bottom + gap && b.top < a.bottom + gap
+  const obstacles: LabelBox[] = points.map(p => ({ left: p.x - radius, right: p.x + radius, top: p.y - radius, bottom: p.y + radius }))
+  const placed: { key: string; text: string; x: number; y: number; anchor: 'start' | 'end';
+    connector: { x1: number; y1: number; x2: number; y2: number } | null }[] = []
+  const descent = size * 0.25, pad = 2, offset = radius + gap + 2
+  for (const p of [...points].sort((a, b) => a.y - b.y || a.x - b.x || a.key.localeCompare(b.key))) {
+    const w = textWidth(p.text, size, weight)
+    if (w + pad * 2 > width || size + descent + pad * 2 > height) continue
+    const preferred = p.y - 9
+    const end = p.x + offset + w > width - pad
+    const sides = end ? ['end', 'start'] as const : ['start', 'end'] as const
+    let best: { box: LabelBox; x: number; y: number; anchor: 'start' | 'end'; score: number } | null = null
+    for (const anchor of sides) {
+      const left = Math.max(pad, Math.min(width - w - pad, anchor === 'start' ? p.x + offset : p.x - offset - w))
+      const ys = [preferred, size + pad, height - descent - pad,
+        ...obstacles.flatMap(b => [b.top - gap - descent, b.bottom + gap + size])]
+      for (const y of ys) {
+        const box = { left, right: left + w, top: y - size, bottom: y + descent }
+        if (box.top < pad || box.bottom > height - pad || obstacles.some(b => overlaps(box, b))) continue
+        const dx = (anchor === 'start' ? left : left + w) - p.x
+        const score = (y - preferred) ** 2 + dx ** 2 + (anchor === sides[0] ? 0 : offset ** 2)
+        if (!best || score < best.score) best = { box, x: anchor === 'start' ? left : left + w, y, anchor, score }
+      }
+    }
+    if (!best) continue
+    const x2 = Math.max(best.box.left, Math.min(best.box.right, p.x))
+    const y2 = Math.max(best.box.top, Math.min(best.box.bottom, p.y))
+    const distance = Math.hypot(x2 - p.x, y2 - p.y)
+    const moved = Math.abs(best.y - preferred) > 0.5
+    const connector = moved && distance > radius + 2 ? {
+      x1: p.x + (x2 - p.x) * (radius + 1) / distance,
+      y1: p.y + (y2 - p.y) * (radius + 1) / distance, x2, y2,
+    } : null
+    placed.push({ key: p.key, text: p.text, x: best.x, y: best.y, anchor: best.anchor, connector })
+    obstacles.push(best.box)
+  }
+  return placed
 }

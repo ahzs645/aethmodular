@@ -561,13 +561,6 @@
    "file": "components/SimilaritySpectra.tsx"
   },
   {
-   "title": "VIBES signal-preservation check",
-   "id": "vibes-validation-scope",
-   "component": "ValidationFigures",
-   "tab": "baseline",
-   "file": "components/VibesValidation.tsx"
-  },
-  {
    "title": "Does the known signal survive?",
    "id": "vibes-validation-recovery",
    "component": "ValidationFigures",
@@ -732,7 +725,7 @@
    "file": "meetings/meeting-20261028.meeting.ts"
   },
   {
-   "title": "OC/EC: Addis sits below almost every IMPROVE filter",
+   "title": "Carbon ratios with different references: IMPROVE and Addis",
    "id": "m1028-ocec",
    "component": "histogram",
    "tab": "meeting",
@@ -748,7 +741,7 @@
    "file": "meetings/meeting-20261028.meeting.ts"
   },
   {
-   "title": "Error against the C–H band, both with HIPS EC’s effect removed (season-specific calibrations)",
+   "title": "FTIR residual from seasonal HIPS fit against residual C–H signal",
    "id": "m1028-deficit",
    "component": "crossplot",
    "tab": "meeting",
@@ -756,7 +749,7 @@
    "file": "meetings/meeting-20261028.meeting.ts"
   },
   {
-   "title": "FTIR EC against the organic index, HIPS EC held fixed",
+   "title": "FTIR EC against the organic index, HIPS-derived optical BC held fixed",
    "id": "m1028-deficit-rho",
    "component": "heatmap",
    "tab": "meeting",
@@ -764,7 +757,7 @@
    "file": "meetings/meeting-20261028.meeting.ts"
   },
   {
-   "title": "SPARTAN dust elements and HIPS EC (medians, µg/m³)",
+   "title": "SPARTAN dust elements and HIPS optical BC (MAC 10) (medians, µg/m³)",
    "id": "m1028-dust",
    "component": "table",
    "tab": "meeting",
@@ -772,7 +765,7 @@
    "file": "meetings/meeting-20261028.meeting.ts"
   },
   {
-   "title": "FTIR EC against Si, HIPS EC held fixed",
+   "title": "FTIR EC against Si, HIPS-derived optical BC held fixed",
    "id": "m1028-dust-rho",
    "component": "heatmap",
    "tab": "meeting",
@@ -820,7 +813,7 @@
    "file": "meetings/meeting-20261028.meeting.ts"
   },
   {
-   "title": "TOR EC / (HIPS Fabs / 10) against HIPS EC on the filter, IMPROVE library",
+   "title": "TOR EC / (HIPS Fabs / 10) against HIPS-derived optical BC on the filter, IMPROVE library",
    "id": "m1028-dark",
    "component": "sweep",
    "tab": "meeting",

@@ -31,6 +31,14 @@ try {
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (pref === 'auto') apply(resolveTheme('auto')); emit() })
 } catch { /* no matchMedia (node tests) */ }
 
+// the choice made in another window, or around a section's charts (each is a page of its own, components/SectionFrame)
+if (typeof window !== 'undefined') window.addEventListener('storage', (e) => {
+  if (e.key !== THEME_KEY) return
+  pref = readThemePref()
+  apply(resolveTheme(pref))
+  emit()
+})
+
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
 export const useThemePref = () => useSyncExternalStore(subscribe, () => pref)
 export const useTheme = () => useSyncExternalStore(subscribe, currentTheme)

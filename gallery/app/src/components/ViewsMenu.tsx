@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ViewsIcon, XIcon } from '@/components/Icons'
-import { PRESETS, applyView, currentView, encodeView, sameView, savedViews, saveViews, viewUrl, type SavedView } from '@/lib/views'
+import { PRESETS, applyView, copyText, currentView, sameView, savedViews, saveViews, viewUrl, type SavedView } from '@/lib/views'
+import { shareableView } from '@/lib/sections'
 
 /**
  * Header menu for views: built-in presets, the reader's saved views, and sharing — a link that
@@ -33,17 +34,17 @@ export function ViewsPanel({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('')
   const [note, setNote] = useState('')
 
-  const copy = async (text: string, done: string) => {
-    try { await navigator.clipboard.writeText(text); setNote(done) } catch { setNote('Could not copy; select the address bar instead') }
+  // the token takes a moment, and a browser may only allow a copy begun inside the click: copyText starts it there
+  const copy = (text: Promise<string>, done: (text: string) => string) => {
+    let made = ''
+    copyText(text.then((t) => (made = t))).then(() => setNote(done(made)), (e: unknown) => setNote(
+      // the one way a token fails: json-url's length limit (a long list of hand-excluded filters)
+      /maxLength/.test(String(e)) ? 'This view is too long for a link, usually a long list of hand-excluded filters. Clear some and try again.' : 'Could not copy; select the address bar instead'))
   }
-  const shareLink = async () => {
-    const url = await viewUrl(currentView())
-    await copy(url, `Link copied · ${(await encodeView(currentView())).length} characters`)
-  }
-  const shareEmbed = async () => {
-    const url = await viewUrl(currentView(), true)
-    await copy(`<iframe src="${url}" width="100%" height="760" style="border:0" loading="lazy" title="Aethmodular graph gallery"></iframe>`, 'Embed code copied (iframe, no header or filters)')
-  }
+  const view = () => shareableView(currentView())
+  const shareLink = () => copy(view().then((v) => viewUrl(v)), (url) => `Link copied · ${url.length} characters`)
+  const shareEmbed = () => copy(view().then((v) => viewUrl(v, true)).then((url) => `<iframe src="${url}" width="100%" height="760" style="border:0" loading="lazy" title="Aethmodular graph gallery"></iframe>`),
+    () => 'Embed code copied (iframe, no header or filters)')
   const save = () => {
     const n = name.trim()
     if (!n) return

@@ -8,7 +8,7 @@ import { loadDerived, loadJson, useLoaded } from './data.ts'
 import { normalizeSiteIdentity } from './metricDefinition.ts'
 import type { CalibFile, CalibRunsFile } from './types.ts'
 
-const relabelled = <T,>(name: string) => loadDerived<T>(`gallery:${name}`, async () => normalizeSiteIdentity(await loadJson<T>(`${name}.json`)))
+const relabelled = <T,>(name: string) => loadDerived<T>(`gallery:${name}`, async () => normalizeSiteIdentity(await loadJson<T>(`${name}.json`)), { plain: true })
 
 /** calibration.json: the explorer's summary grid */
 export const loadCalibration = () => relabelled<CalibFile>('calibration')

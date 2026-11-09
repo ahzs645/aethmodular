@@ -228,10 +228,10 @@ export function SingleViewProvider({ on: wanted, setOn, available, page, childre
 
   // ← → and Page Up / Down step, unless a control has the keys
   useEffect(() => {
-    if (!on || frames.length < 2) return
+    if (!on || frames.length < 2 || document.documentElement.dataset.embedChart) return
     const key = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return
-      if ((e.target as Element)?.closest?.('input, textarea, select, [contenteditable], [role="listbox"], [role="combobox"], [role="slider"], [role="menu"], [role="dialog"], .drawer')) return
+      if ((e.target as Element)?.closest?.('input, textarea, select, [contenteditable], [role="listbox"], [role="combobox"], [role="slider"], [role="menu"], [role="dialog"], [role="region"][tabindex], .drawer')) return
       if (['ArrowRight', 'PageDown'].includes(e.key)) { e.preventDefault(); go(1) }
       else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); go(-1) }
     }

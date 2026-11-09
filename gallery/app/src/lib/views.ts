@@ -118,7 +118,7 @@ const presetRef = {
 
 const engine = createWebShareEngine<ViewState>({ version: '1', codecs: ['lz', 'raw'], maxLength: 32000, transforms: [presetRef as any] })
 
-const IGNORED_QUERY = new Set(['embed', 'v'])
+const IGNORED_QUERY = new Set(['embed', 'embedchart', 'v'])
 
 /** The view the page shows right now. */
 export function currentView(): ViewState {
@@ -130,6 +130,43 @@ export function currentView(): ViewState {
 
 export const encodeView = async (view: ViewState) => (await engine.compressBest(view)).token as string
 export const decodeView = (token: string) => engine.decompress(token)
+
+/** A view as a plain address: no token, so nothing to wait for, and readable. */
+export function viewHref(view: ViewState) {
+  const q = new URLSearchParams(view.q).toString(), h = new URLSearchParams(view.h).toString()
+  return `${window.location.pathname}${q ? `?${q}` : ''}${h ? `#${h}` : ''}`
+}
+
+/** The older way to copy, from a hidden field: the only one a page on plain http has, where browsers leave out navigator.clipboard. */
+function copyFromField(text: string) {
+  const field = document.createElement('textarea')
+  field.value = text
+  field.readOnly = true
+  field.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0'
+  document.body.appendChild(field)
+  const back = document.activeElement as HTMLElement | null
+  field.select()
+  try { return document.execCommand('copy') } finally { field.remove(); back?.focus({ preventScroll: true }) }
+}
+
+/**
+ * Put text on the clipboard from a click, including text still being made. A browser may refuse a copy that
+ * starts after an await (Safari does), so a promise of the text goes in as a ClipboardItem, inside the click.
+ * Rejects when the copy is refused or the text could not be made.
+ */
+export async function copyText(text: string | Promise<string>) {
+  if (!navigator.clipboard) {
+    // no awaiting ahead of a ready text: the copy has to run inside the click
+    if (!copyFromField(typeof text === 'string' ? text : await text)) throw new Error('the browser refused the copy')
+    return
+  }
+  if (typeof text !== 'string' && typeof ClipboardItem !== 'undefined') {
+    const blob = text.then((t) => new Blob([t], { type: 'text/plain' }))
+    await navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })])
+    return
+  }
+  await navigator.clipboard.writeText(await text)
+}
 
 /** A full link to a view; `embed` opens it without the header and filters, for an iframe. */
 export async function viewUrl(view: ViewState, embed = false) {
@@ -153,6 +190,9 @@ export function applyView(view: ViewState) {
   window.dispatchEvent(new HashChangeEvent('hashchange'))
 }
 
+export const LINK_PROBLEM_EVENT = 'gallery:link-problem'
+export const clearLinkProblem = () => { linkProblem = null }
+
 /** Before the first render: expand a `#v=<token>` link into the plain URL the app reads. */
 export async function restoreSharedView() {
   const hash = window.location.hash.replace(/^#/, '')
@@ -161,20 +201,30 @@ export async function restoreSharedView() {
     writeView(await decodeView(decodeURIComponent(hash.slice(2))))
   } catch (e) {
     console.warn('Could not read the shared view; opening the default instead.', e)
+    linkProblem = 'This link could not be read, so the gallery opened its default view. It may have been cut off when it was copied.'
     writeView({ h: {}, q: {} })
   }
 }
+
+/** why the link the page opened on could not be followed (App shows it once), or null */
+export let linkProblem: string | null = null
 
 /** A `#v=` link pasted into a page that is already open arrives as a hash change, not a load. */
 export function watchSharedViews() {
   window.addEventListener('hashchange', async () => {
     const hash = window.location.hash.replace(/^#/, '')
     if (!hash.startsWith('v=')) return
-    try { applyView(await decodeView(decodeURIComponent(hash.slice(2)))) } catch (e) { console.warn('Could not read the shared view.', e) }
+    try { applyView(await decodeView(decodeURIComponent(hash.slice(2)))) } catch (e) {
+      console.warn('Could not read the shared view.', e)
+      linkProblem = 'This link could not be read, so the view did not change. It may have been cut off when it was copied.'
+      window.dispatchEvent(new Event(LINK_PROBLEM_EVENT))
+    }
   })
 }
 
 export const isEmbed = () => new URL(window.location.href).searchParams.get('embed') === '1'
+/** an embed of one chart on a custom section's page (components/SectionFrame): only the chart, the section's card is its frame */
+export const isEmbedChart = () => isEmbed() && new URL(window.location.href).searchParams.get('embedchart') === '1'
 
 /** The reader's own saved views: a per-browser convenience (localStorage), never shared state. */
 const SAVED = 'gallery.views'

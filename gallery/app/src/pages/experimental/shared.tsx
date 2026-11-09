@@ -13,8 +13,8 @@ export type Cols = Record<string, (number | string | boolean | null)[]>
 export interface XpBase { schema_version: number; generated: string; source: string; settings: Record<string, any> }
 
 /** one subpage's export, or the standard "run the exporter" panel while it loads or is missing */
-export function useXp<T extends XpBase>(name: string, title: string): { data: T | null; state: ReactNode } {
-  const { data, error } = useExport<T>(`experimental/${name}.json`, (d) => d.schema_version === 1 ? null : 'unsupported data version')
+export function useXp<T extends XpBase>(name: string, title: string, acceptedVersions: readonly number[] = [1]): { data: T | null; state: ReactNode } {
+  const { data, error } = useExport<T>(`experimental/${name}.json`, (d) => acceptedVersions.includes(d.schema_version) ? null : 'unsupported data version')
   return { data, state: data ? null : <ExportState title={title} what={`the ${title.toLowerCase()} results`} error={error} command="uv run --no-sync python gallery/data/export_experiments.py" /> }
 }
 

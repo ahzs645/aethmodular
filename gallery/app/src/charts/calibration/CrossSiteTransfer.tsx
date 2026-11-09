@@ -63,13 +63,16 @@ const noteOf = (p: Preset) => p.label.match(/×[^(]*\(([^)]*)\)\s*$/)?.[1]
  * filter id): an excluded filter leaves the panels' points, their fits, the table and the ordering; under Mark the
  * panels draw it as ×. The IMPROVE cross-validation row is the explorer's (training filters, not the gallery's).
  */
-export function CrossSiteTransfer({ runs, galleryRows, sourceRows, galleryMeta }: {
+export function CrossSiteTransfer({ runs, galleryRows, sourceRows, galleryMeta, cohort, onCohortChange }: {
   runs: CalibRunsFile
   galleryRows?: FilterRow[]; galleryMeta?: MetaFile
   /** every filter's row before the view's options, for its deployed SPARTAN EC */
   sourceRows?: FilterRow[]
+  /** A page-wide cohort narrows the selectable saved calibrations; the overview still compares every cohort. */
+  cohort?: string
+  onCohortChange?: (cohort: string) => void
 }) {
-  const presets = runs.presets.filter((p) => runs.runs.some((r) => r.preset === p.key))
+  const presets = runs.presets.filter((p) => (!cohort || p.cohort === cohort) && runs.runs.some((r) => r.preset === p.key))
 
   const sites = useMemo(() => {
     const present = [...new Set(runs.runs.map((r) => r.target))]
@@ -98,7 +101,13 @@ export function CrossSiteTransfer({ runs, galleryRows, sourceRows, galleryMeta }
   const mac = gallery.mac
   // the fits' MAC context: the saved row at this MAC, or the export's re-expressed (lib/mac); λ ∝ MAC²
   const at: MacAt = { mac, exportMac: runs.mac_value, lambda10: gallery.lambda10 }
-  const setPresetKey = (k: string) => { const p = presets.find((q) => q.key === k); if (p) { o.set('cohort', p.cohort); o.set('size', sizeOf(p)); o.set('spectra', p.spectra) } }
+  const setPresetKey = (k: string) => {
+    const p = runs.presets.find(q => q.key === k)
+    if (p) {
+      if (cohort && cohort !== p.cohort) onCohortChange?.(p.cohort)
+      o.set('cohort', p.cohort); o.set('size', sizeOf(p)); o.set('spectra', p.spectra)
+    }
+  }
   const siteRuns = sites.map((s) => runs.runs.find((r) => r.preset === presetKey && r.target === s)).filter((r): r is CalibRun => !!r)
   const preset = presets.find((p) => p.key === presetKey)
 

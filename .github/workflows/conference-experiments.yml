@@ -1,0 +1,49 @@
+name: Conference experiment checks
+
+on:
+  pull_request:
+    paths:
+      - 'research/ftir_hips_chem/scripts/conference_experiments/**'
+      - 'research/ftir_hips_chem/scripts/active_interval_matching.py'
+      - 'research/ftir_hips_chem/scripts/seasonal_ml_checks.py'
+      - 'research/ftir_hips_chem/scripts/seasonal_spectral_ml.py'
+      - 'research/ftir_hips_chem/scripts/config.py'
+      - 'research/ftir_hips_chem/scripts/outliers.py'
+      - 'research/ftir_hips_chem/scripts/data_matching.py'
+      - 'research/ftir_hips_chem/scripts/optics.py'
+      - 'research/ftir_hips_chem/workflows/*conference*'
+      - 'tests/test_conference*'
+      - 'docs/conference-experiments*'
+      - '.github/workflows/conference-experiments.yml'
+      - 'uv.lock'
+      - 'pyproject.toml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install uv==0.13.5
+      - run: uv sync --frozen
+      - name: Scientific contracts and related regression tests
+        run: >-
+          uv run pytest tests/test_conference*.py
+          tests/test_active_interval_matching.py tests/test_seasonal_ml_checks.py
+          tests/test_seasonal_spectral_ml.py -q
+      - name: Synthetic end-to-end demonstration
+        run: >-
+          uv run python research/ftir_hips_chem/workflows/run_conference_experiments.py
+          --demo --output research/ftir_hips_chem/output/tables/conference/ci_demo
+      - name: Check workflow imports and syntax
+        run: >-
+          uv run python -m compileall -q
+          research/ftir_hips_chem/scripts/conference_experiments
+          research/ftir_hips_chem/workflows/run_conference_experiments.py
+          research/ftir_hips_chem/workflows/prepare_conference_inputs.py

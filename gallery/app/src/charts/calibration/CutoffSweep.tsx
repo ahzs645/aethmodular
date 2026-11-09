@@ -72,16 +72,16 @@ function sweepSeries(rows: CalibRow[], metric: SweepMetric, allPairs: boolean, a
     .sort((a, b) => a.label.localeCompare(b.label))
 }
 
-export function CutoffSweep({ calib, selected, onSelect }: { calib: CalibFile; selected: Config; onSelect: (c: Config) => void }) {
+export function CutoffSweep({ calib, selected, onSelect, cohort: sharedCohort, protocol }: { calib: CalibFile; selected: Config; onSelect: (c: Config) => void; cohort?: string; protocol?: string }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const tip = useTooltip(wrapRef)
   // in a tile or the one-chart view the two panels share the height, as 340 : 250 elsewhere
 
-  const rankedCohorts = Object.keys(calib.default_cutoff)
+  const rankedCohorts = sharedCohort ? [sharedCohort] : Object.keys(calib.default_cutoff)
   const { hidden, dim, props: legendProps } = useLegend()
 
   const targets = useMemo(() => [...new Set(calib.grid.map((r) => r.tg))].sort(), [calib.grid])
-  const modes = useMemo(() => Object.keys(calib.modes).filter((m) => calib.grid.some((r) => r.mo === m)), [calib])
+  const modes = useMemo(() => protocol ? [protocol] : Object.keys(calib.modes).filter((m) => calib.grid.some((r) => r.mo === m)), [calib, protocol])
   // the swept rows for a cohort / protocol / test set (any of them may be left out)
   const swept = (c: Record<string, unknown>) => calib.grid.filter((r) => r.lot === 'all' && r.el === 'all' && r.cut !== null
     && r.co === c.cohort && (!('mode' in c) || r.mo === c.mode) && (!('target' in c) || r.tg === c.target))

@@ -6,8 +6,9 @@ intercept is almost all gain: intercept ~ -(slope - 1) x mean. Stage ``attrib`` 
 windows and gives each window's OLS slope and intercept against HIPS (they add up to the total), which says where the
 excess day-to-day gain comes from.
 
-Stage ``fit`` trains every candidate on IMPROVE TOR EC only (site-grouped 5-fold CV for the IMPROVE error, the full pool
-for Addis and the SPARTAN network). Addis HIPS is never used to fit or choose anything; two candidates use the *unlabeled*
+Stage ``fit`` defaults to the bounded base/EPO comparison, with each EPO projection fitted only within its outer training
+sites. A separate all-source model produces Addis and SPARTAN predictions. Historical globally preprocessed EPO source
+scores are not valid end-to-end held-out scores. Addis HIPS is never used to fit or choose anything; two optional candidates use the *unlabeled*
 Addis spectra (di-PLS, importance weights). Spectra are averaged over channel pairs (2722 -> 1361) to keep di-PLS cheap;
 ``base`` repeats the full-resolution model on that grid to show the binning changes nothing.
 
@@ -21,7 +22,9 @@ Addis spectra (di-PLS, importance weights). Spectra are averaged over channel pa
                 penalised by γ x |covariance difference| (scaled by its spectral norm); source centering for prediction.
 * dipls_net     the same with the whole SPARTAN network as target (γ 3).
 
-Writes output/tables/intercept_fixes_20261103/.
+New command-line runs default to output/tables/intercept_fixes_20261103/epo_site_cv_v2/; historical outputs are preserved.
+Use --models to select additional candidates, and --output for another versioned directory.
+Use --continuum-output to select the regenerated spectra and their provenance bundle explicitly.
 
 Stage ``aeth`` checks the reference itself: HIPS, published FTIR EC and the models against the MA350 aethalometer's IR BCc
 at its four sites (ETAD, INDH, CHTS, USPA). The aethalometer is a separate instrument on a separate inlet, so it says which
@@ -38,7 +41,7 @@ there volume is tied to concentration and to the sampling period; where volume i
 is small. So the stage also fits HIPS optical depth against aethalometer loading on the other sites and predicts Addis,
 reads the Addis level from every anchor available, and asks whether the season effect survives the aethalometer.
 
-    ../../.venv/bin/python workflows/run_intercept_fixes_20261103.py --bundle /tmp/xfer1102/bundle [--stages attrib fit tables aeth hips stress]
+    uv run python research/ftir_hips_chem/workflows/run_intercept_fixes_20261103.py --bundle <bundle> --stages fit --models base epo
 """
 from __future__ import annotations
 
@@ -54,10 +57,14 @@ import pandas as pd
 AREA = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(AREA / "scripts"), str(AREA / "workflows"), str(AREA.parents[1])]
 import continuum_anchor as ca  # noqa: E402
+import epo_validation as ev  # noqa: E402
+from candidate_metrics import ids_sha256, recorded_source_qc, sha256_file, validate_archive_identity, validate_physical_ids  # noqa: E402
+from spectral_provenance import verify_corrected_spectra, verify_manifest_files  # noqa: E402
 from aethmodular_cli import env  # noqa: E402
 import run_transfer_diagnosis_20261102 as td  # noqa: E402
 
 OUT = AREA / "output/tables/intercept_fixes_20261103"
+EPO_OUT = OUT / "epo_site_cv_v2"
 XD = td.OUT
 K = 20
 LAMBDA_ADDIS = 2.96
@@ -165,22 +172,6 @@ def dipls_fit(Xs, y, Xt, kmax, gamma, w=None):
     return xm, ym, B
 
 
-def epo_basis(X, im, ok, bundle):
-    """Orthonormal basis of the OC, other-PM, Fe and K spectral signatures (IMPROVE multivariate regression, per filter µg)."""
-    v = im.volume_m3.to_numpy()
-    oc = im.tor_oc_ugm3.to_numpy() * v
-    ec = im.tor_ug.to_numpy()
-    pm = pd.read_csv(bundle / "improve_mass.csv").set_index("filter_id").pm25_ugm3
-    other = (im.filter_id.map(pm).to_numpy() * v) - 1.8 * oc - ec
-    Z = np.column_stack([ec, oc, other, im.fe_ugm3.to_numpy() * v, im.k_xrf_ugm3.to_numpy() * v])
-    m = ok & np.isfinite(Z).all(1)
-    Zc = Z[m] - Z[m].mean(0)
-    Xc = X[m] - X[m].mean(0)
-    S = np.linalg.lstsq(Zc, Xc, rcond=None)[0]            # 5 x p signatures
-    Q, _ = np.linalg.qr(S[1:].T)                          # everything but EC
-    return Q, S, int(m.sum())
-
-
 def domain_weights(XI, XA, n_pc=20):
     from sklearn.linear_model import LogisticRegression
     mu = XI.mean(0)
@@ -197,60 +188,145 @@ def domain_weights(XI, XA, n_pc=20):
 
 
 
-def fit(bundle):
-    from sklearn.model_selection import GroupKFold
-
-    im, ad, nw = addis_frame(bundle)
+def fit(bundle, models=("base", "epo"), output=None, kmax=K, continuum_output=None):
+    """Fit selected models without requiring any target optical/aethalometer data."""
+    bundle = Path(bundle)
+    destination = Path(output) if output is not None else EPO_OUT
+    continuum_directory = td.VC if continuum_output is None else Path(continuum_output)
+    fit_outputs = ("predictions.npz", "fold_membership.csv", "fit_receipt.json")
+    td.require_new_fit_outputs(destination, fit_outputs)
+    if not isinstance(kmax, (int, np.integer)) or isinstance(kmax, bool) or kmax < 1:
+        raise ValueError("k-max must be a positive integer")
+    models = tuple(models)
+    choices = ("base", "cont_only", "mask_org", "epo", "iw", *[f"dipls_g{g}" for g in GAMMAS], "dipls_net")
+    if not models or len(set(models)) != len(models) or set(models) - set(choices):
+        raise ValueError(f"select unique models from {sorted(choices)}")
+    S = td.vc_spectra("anchorhp", continuum_directory, required=True)
+    im, ad, nw = td.load(bundle)
     y, sites = im.tor_ug.to_numpy(), im.site.to_numpy()
-    ok = np.isfinite(y) & (y < 150)
+    ids = validate_physical_ids(im.filter_id.to_numpy())
+    qc_mask, qc_policy = recorded_source_qc(im)
+    reference_domain = np.isfinite(y) & (y < 150)
+    source_domain = reference_domain & qc_mask
+    splits = ev.site_folds(ids, sites)
+    fold_id = np.full(len(y), -1, dtype=int)
+    for fold, (_, test) in enumerate(splits):
+        fold_id[test] = fold
     wn = np.load(bundle / "wn_full.npy")
-    S = td.vc_spectra("anchorhp")
+    verify_manifest_files(bundle, ("wn_full.npy", "improve_meta.csv", "addis_meta.csv", "network_meta.csv"))
+    spectral_provenance = verify_corrected_spectra(continuum_directory, {"improve": im, "addis": ad, "network": nw}, wn, ("anchorhp",))
     XI, wb = bin2(S["improve"], wn)
     XA, _ = bin2(S["addis"], wn)
     XN, _ = bin2(S["network"], wn)
+    if [len(XI), len(XA), len(XN)] != [len(im), len(ad), len(nw)]:
+        raise ValueError("corrected spectra and bundle metadata have different row counts")
     cont = ca.window_mask(wb, CONT)
     noorg = ~ca.window_mask(wb, ORG)
-    Q, sig, n_epo = epo_basis(XI, im, ok, bundle)
-    proj = lambda X: X - (X @ Q) @ Q.T  # noqa: E731
-    iw = domain_weights(XI, XA)
-    ess = iw.sum() ** 2 / (iw ** 2).sum()
-
-    cands = {"base": dict(), "cont_only": dict(cols=cont, k=10), "mask_org": dict(cols=noorg), "epo": dict(tf=proj),
-             "iw": dict(w=iw)}
+    cands = {"base": dict(), "cont_only": dict(cols=cont, k=min(10, kmax)), "mask_org": dict(cols=noorg),
+             "epo": dict(epo=True), "iw": dict()}
     cands.update({f"dipls_g{g}": dict(dipls=g, target="addis") for g in GAMMAS})
     cands["dipls_net"] = dict(dipls=3, target="network")
-    preds, receipt = {}, {}
-    for name, c in cands.items():
+    inputs = {bundle / name for name in ("MANIFEST.json", "improve_meta.csv", "addis_meta.csv", "network_meta.csv", "wn_full.npy")}
+    inputs.update(continuum_directory / name for name in spectral_provenance)
+    inputs.add(continuum_directory / "bundle/MANIFEST.json")
+    chemistry = None
+    if "epo" in models:
+        manifest = json.loads((bundle / "MANIFEST.json").read_text())
+        mass_path = bundle / "improve_mass.csv"
+        if manifest.get("files", {}).get("improve_mass.csv", {}).get("sha256") != sha256_file(mass_path):
+            raise ValueError("improve_mass.csv is missing from, or differs from, the frozen bundle manifest")
+        inputs.add(mass_path)
+        chemistry = ev.chemistry_matrix(im, pd.read_csv(mass_path))
+    input_hashes = {env.display_path(path): sha256_file(path) for path in sorted(inputs)}
+    iw, ess = None, None
+    if "iw" in models:
+        iw = domain_weights(XI, XA)
+        ess = float(iw.sum() ** 2 / (iw ** 2).sum())
+        cands["iw"]["w"] = iw
+    preds = {"improve_filter_ids": ids, "improve_site_ids": sites.astype(str), "improve_fold_id": fold_id,
+             "improve_raw_qc_ok": qc_mask,
+             "wn_bin2": wb}
+    receipt, epo_receipt = {}, None
+    all_rows = np.arange(len(y))
+    for name in models:
+        c = cands[name]
         t0 = time.time()
-        kmax = c.get("k", K)
+        components = c.get("k", kmax)
         cols = c.get("cols", np.ones(XI.shape[1], bool))
-        tf = c.get("tf", lambda X: X)
-        A, Ad, Nt = tf(XI)[:, cols], tf(XA)[:, cols], tf(XN)[:, cols]
+        if name == "epo":
+            oof, epo_fold_id, fitted_folds, folds, full = ev.fit_site_cv(
+                XI, y, chemistry, ids, sites, components, splits=splits, qc_mask=qc_mask)
+            if not np.array_equal(epo_fold_id, fold_id):
+                raise RuntimeError("EPO folds differ from the frozen source splits")
+            preds.update(ev.model_arrays("epo", full, ids))
+            for fold, fitted in enumerate(fitted_folds):
+                preds.update(ev.model_arrays(f"epo_fold_{fold}", fitted, ids))
+            preds.update({"epo|improve_oof": oof, "epo|addis": full.predict(XA), "epo|network": full.predict(XN),
+                          "epo|cols": cols, "epo_signatures": full.projection.signatures})
+            epo_receipt = dict(folds=folds, final_model=ev.fit_receipt(full, XI, y, chemistry, ids, sites),
+                               chemistry_columns=list(ev.CHEMISTRY_COLUMNS), projection="SVD basis of non-EC signatures; rank determined on training data")
+            receipt[name] = dict(k_max=components, channels=int(cols.sum()), projection_rank=full.projection.rank,
+                                 seconds=round(time.time() - t0, 1))
+            print(f"{name}: {time.time() - t0:.0f}s", flush=True)
+            continue
+        A, Ad, Nt = XI[:, cols], XA[:, cols], XN[:, cols]
         w = c.get("w")
         tgt = {"addis": Ad, "network": Nt}.get(c.get("target"))
 
         def fitone(rows):
+            rows = ev.training_rows(A, y, rows, qc_mask=qc_mask)
+            if components > min(len(rows) - 1, A.shape[1]):
+                raise ValueError(f"{name}: too few training rows/channels for {components} PLS components")
             if "dipls" in c:
-                return dipls_fit(A[rows], y[rows], tgt, kmax, c["dipls"])
-            return ca.pls_fit(A[rows], y[rows], kmax, None if w is None else w[rows])
+                return dipls_fit(A[rows], y[rows], tgt, components, c["dipls"])
+            return ca.pls_fit(A[rows], y[rows], components, None if w is None else w[rows])
 
-        oof = np.full((len(y), kmax), np.nan)
-        for tr, te in GroupKFold(5).split(A, y, sites):
-            tr = tr[ok[tr]]
-            oof[te] = ca.pls_predict(fitone(tr), A[te])
-        full = fitone(np.where(ok)[0])
+        oof = np.full((len(y), components), np.nan)
+        for tr, te in splits:
+            available = te[np.isfinite(A[te]).all(axis=1)]
+            oof[available] = ca.pls_predict(fitone(tr), A[available])
+        full = fitone(all_rows)
         preds[f"{name}|improve_oof"], preds[f"{name}|addis"] = oof, ca.pls_predict(full, Ad)
         preds[f"{name}|network"], preds[f"{name}|B"], preds[f"{name}|xm"] = ca.pls_predict(full, Nt), full[2], full[0]
+        preds[f"{name}|ym"] = np.asarray(full[1])
         preds[f"{name}|cols"] = cols
-        receipt[name] = dict(k_max=kmax, channels=int(cols.sum()), seconds=round(time.time() - t0, 1))
+        receipt[name] = dict(k_max=components, channels=int(cols.sum()), seconds=round(time.time() - t0, 1))
         print(f"{name}: {time.time() - t0:.0f}s", flush=True)
-    OUT.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(OUT / "predictions.npz", wn_bin2=wb, epo_signatures=sig, iw=iw, **preds)
-    (OUT / "fit_receipt.json").write_text(json.dumps(dict(
-        spectra="vibes_continuum_20261102 corrected_anchorhp_*, channel pairs averaged", cv="GroupKFold(5) by IMPROVE site",
-        fit_rows=int(ok.sum()), epo_rows=n_epo, iw_effective_n=round(float(ess), 1), gammas=GAMMAS, cont_windows=CONT,
+    if any(sha256_file(path) != input_hashes[env.display_path(path)] for path in inputs):
+        raise RuntimeError("an input changed during fitting; no corrected EPO receipt will be written")
+    if iw is not None:
+        preds["iw"] = iw
+    destination.mkdir(parents=True, exist_ok=True)
+    td.require_new_fit_outputs(destination, fit_outputs)
+    with (destination / "predictions.npz").open("xb") as stream:
+        np.savez_compressed(stream, **preds)
+    membership = pd.DataFrame(dict(filter_id=ids, site=sites, fold_id=fold_id,
+                                   raw_qc_ok=qc_mask, source_domain_before_qc=reference_domain,
+                                   source_domain=source_domain, spectra_available=np.isfinite(XI).all(axis=1)))
+    membership.to_csv(destination / "fold_membership.csv", index=False, mode="x")
+    receipt = dict(
+        schema_version=3, epo_protocol=ev.EPO_PROTOCOL if epo_receipt is not None else None,
+        spectra="corrected_anchorhp_*, channel pairs averaged", continuum_output=env.display_path(continuum_directory),
+        cv="GroupKFold(5) by IMPROVE site",
+        source_identity=dict(protocol="physical_filter_order_and_site_folds_v1", improve_metadata_sha256=sha256_file(bundle / "improve_meta.csv"),
+                             filter_ids_sha256=ids_sha256(ids), predictions_sha256=sha256_file(destination / "predictions.npz"),
+                             split_population="all bundled IMPROVE physical filters; training requires recorded raw_qc_ok and finite TOR <150 micrograms per filter"),
+        inputs=input_hashes, corrected_spectra_provenance=spectral_provenance, source_code={path.name: sha256_file(path) for path in
+                                        (Path(__file__), Path(ev.__file__), Path(ca.__file__), AREA / "scripts/spectral_provenance.py",
+                                         AREA / "scripts/candidate_metrics.py")},
+        fold_membership_sha256=sha256_file(destination / "fold_membership.csv"), epo=epo_receipt,
+        fit_rows=int(len(ev.training_rows(XI, y, all_rows, qc_mask=qc_mask))), source_domain_rows=int(source_domain.sum()),
+        source_qc_policy=qc_policy, source_domain_rows_before_qc=int(reference_domain.sum()),
+        source_domain_qc_excluded=int((reference_domain & ~qc_mask).sum()),
+        source_qc_excluded_filter_ids=ids[~qc_mask].tolist(), source_qc_excluded_filter_ids_sha256=ids_sha256(ids[~qc_mask]),
+        iw_effective_n=ess, gammas=GAMMAS, cont_windows=CONT,
         organic_mask=ORG, models=receipt, addis_hips_used_for_fitting=False,
-        created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())), indent=1))
+        target_model_scope="separate all-source fit; target optical comparisons do not validate target absolute EC",
+        settings_scope="fixed exploratory settings; no outer-score-driven tuning certified",
+        created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+    with (destination / "fit_receipt.json").open("x") as stream:
+        json.dump(receipt, stream, indent=2, allow_nan=False)
+    return destination
 
 
 # --------------------------------------------------------------------------- tables
@@ -260,6 +336,11 @@ def tables(bundle):
     Pd = np.load(XD / "predictions.npz")
     y = im.tor_ug.to_numpy()
     fitok = np.isfinite(y) & (y < 150)
+    fit_receipt_path = OUT / "fit_receipt.json"
+    fit_receipt = json.loads(fit_receipt_path.read_text()) if fit_receipt_path.exists() else {}
+    epo_verified = fit_receipt.get("epo_protocol") == ev.EPO_PROTOCOL
+    if epo_verified:
+        validate_archive_identity(P, fit_receipt, im, bundle / "improve_meta.csv", OUT / "predictions.npz", label="EPO summary")
     heavy_low = fitok & (im.hips_ug > 20).to_numpy() & (im.ocec < 2.5).to_numpy()
     keep, v = ad.keep.to_numpy(), ad.volume_m3.to_numpy()
     yard = pd.read_csv(XD / "network_filters.csv")
@@ -272,8 +353,20 @@ def tables(bundle):
         key = "vibes_anchorhp" if nm == "vibes_anchorhp_full" else nm
         for k in range(1, kmax + 1):
             oof, pa, pn = src[f"{key}|improve_oof"][:, k - 1], src[f"{key}|addis"][:, k - 1] / v, src[f"{key}|network"][:, k - 1]
-            r = dict(model=nm, k=k, improve_mae=np.median(np.abs(oof - y)[fitok]),
-                     improve_heavy_lowocec_ratio=np.median((oof / y)[heavy_low]))
+            available = fitok & np.isfinite(oof)
+            residual = (oof - y)[available]
+            heavy_available = heavy_low & np.isfinite(oof)
+            r = dict(model=nm, k=k,
+                     improve_median_absolute_error=float(np.median(np.abs(residual))) if available.any() else np.nan,
+                     improve_mae=float(np.mean(np.abs(residual))) if available.any() else np.nan,
+                     improve_rmse=float(np.sqrt(np.mean(residual ** 2))) if available.any() else np.nan,
+                     improve_mean_bias=float(np.mean(residual)) if available.any() else np.nan,
+                     improve_heavy_lowocec_ratio=float(np.median(oof[heavy_available] / y[heavy_available])) if heavy_available.any() else np.nan,
+                     n_eligible=int(fitok.sum()), n_available=int(available.sum()),
+                     evaluation_status="corrected" if nm == "epo" and epo_verified else "historical_source_cv")
+            if nm == "epo" and not epo_verified:
+                r.update({key: np.nan for key in r if key.startswith("improve_")})
+                r["evaluation_status"] = "legacy_withheld"
             for xn in ("hips_bc", "tor_equiv"):
                 s, i, r2 = deming(ad[xn][keep], pa[keep])
                 r[f"slope_{xn}"], r[f"intercept_{xn}"], r[f"ratio_{xn}"] = s, i, np.median(pa[keep] / ad[xn][keep])
@@ -290,13 +383,25 @@ def tables(bundle):
                 addis_cols[f"{nm} k{k}"] = pa
     out = pd.DataFrame(rows)
     out.to_csv(OUT / "summary.csv", index=False)
+    summary_receipt_path = OUT / "summary_receipt.json"
+    if epo_verified:
+        summary_receipt_path.write_text(json.dumps(dict(
+            schema_version=1, epo_protocol=ev.EPO_PROTOCOL,
+            predictions_sha256=sha256_file(OUT / "predictions.npz"),
+            outputs={"summary.csv": {"sha256": sha256_file(OUT / "summary.csv")}},
+            source_population="candidate-available physical filters; finite TOR <150 micrograms per filter",
+            heavy_population="HIPS-derived loading >20 micrograms; TOR OC/EC <2.5; finite TOR <150",
+            target_scope="all-source model optical comparisons; not target EC accuracy validation",
+        ), indent=2))
+    else:
+        summary_receipt_path.unlink(missing_ok=True)
     a = ad[["filter_id", "date", "lot", "hips_bc", "tor_equiv", "exp_tor_hips", "aeth_ir", "excluded"]].copy()
     for c, vals in addis_cols.items():
         a[c] = vals
     a.to_csv(OUT / "addis_predictions.csv", index=False)
     pd.set_option("display.width", 200)
     sel = out[out.k.isin([6, 10, 12, 18])]
-    print(sel[["model", "k", "improve_mae", "improve_heavy_lowocec_ratio", "slope_hips_bc", "intercept_hips_bc", "ratio_hips_bc",
+    print(sel[["model", "k", "improve_median_absolute_error", "improve_mae", "improve_heavy_lowocec_ratio", "slope_hips_bc", "intercept_hips_bc", "ratio_hips_bc",
                "slope_tor_equiv", "intercept_tor_equiv", "ratio_tor_equiv", "intercept_aeth", "loglog_aeth", "sites_median_abs_log"]].round(3).to_string(index=False))
 
 
@@ -589,13 +694,25 @@ def stress(bundle, n_boot=300):
 
 
 def main():
+    global OUT
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--bundle", type=Path, default=None)
-    p.add_argument("--stages", nargs="+", default=["attrib", "fit", "tables"], choices=["attrib", "fit", "tables", "aeth", "hips", "stress"])
+    p.add_argument("--output", type=Path, default=EPO_OUT, help="versioned destination; defaults to epo_site_cv_v2 to preserve historical outputs")
+    p.add_argument("--continuum-output", type=Path, default=None, help="verified corrected spectra and their continuum bundle/receipt")
+    p.add_argument("--models", nargs="+", default=["base", "epo"],
+                   choices=["base", "epo", "cont_only", "mask_org", "iw", *[f"dipls_g{g}" for g in GAMMAS], "dipls_net"])
+    p.add_argument("--k-max", type=int, default=K, help="fixed maximum PLS component count; no outer-score selection")
+    p.add_argument("--stages", nargs="+", default=["fit"], choices=["attrib", "fit", "tables", "aeth", "hips", "stress"])
     a = p.parse_args()
+    OUT = a.output
+    if a.continuum_output is not None:
+        td.VC = a.continuum_output
     bundle = a.bundle or td.default_bundle()
     for s in a.stages:
-        {"attrib": attrib, "fit": fit, "tables": tables, "aeth": aeth, "hips": hips, "stress": stress}[s](bundle)
+        if s == "fit":
+            fit(bundle, models=a.models, output=OUT, kmax=a.k_max, continuum_output=td.VC)
+        else:
+            {"attrib": attrib, "tables": tables, "aeth": aeth, "hips": hips, "stress": stress}[s](bundle)
 
 
 if __name__ == "__main__":

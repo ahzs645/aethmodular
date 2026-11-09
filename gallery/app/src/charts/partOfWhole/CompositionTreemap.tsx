@@ -27,6 +27,7 @@ import { useSingleView } from '@/lib/singleView'
 import { ComponentSetBar, ComponentSetPicker, insertInOrder, useComponentSets, useSetEditor, type BasisInfo, type Underlying } from '@/components/ComponentSetPicker'
 import { describeField, fieldOrigin } from '@/lib/glossary'
 import { useSearchParam } from '@/lib/url'
+import { SEASON_ORDERS, type SeasonOrder } from '@/lib/seasonSegments'
 import { BUILT_IN_SETS, resolveSet, type Basis, type ComponentSetDef } from '@/lib/componentSets'
 import { RECON_FIELDS, RECON_SOURCE, reconMeta, useReconstructedRows } from '@/lib/spartanReconstruction'
 
@@ -192,7 +193,10 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
     { key: 'shape', label: 'Shape', choices: TIME_SHAPES.map((v) => ({ value: v, when: v === 'Streamgraph' ? (c) => c.units !== 'composition (%)' : undefined })), default: initialShape,
       when: (c) => c.bars === 'over time', title: "Daily bars: one bar per sampling day on the date axis (the PMF paper's Figure 7). Streamgraph (concentration only): wiggle offset, inside-out order, no baseline, better shape" },
     { key: 'axis', label: 'Time axis', choices: TIME_AXES, default: 'Calendar dates', hidden: 'Calendar dates', when: (c) => c.bars === 'over time',
-      title: 'Calendar dates: one continuous date axis. Seasons side by side: one block per season and year (Belg 2023, Belg 2024 …), grouped by season, the months between left out; filter one season in the sidebar to compare it year over year' },
+      title: 'Calendar dates: one continuous date axis. Seasons side by side: whole season occurrences, with a two-level year/season axis; Group time by chooses annual cycles or the same season across years' },
+    { key: 'seasonOrder', label: 'Group time by', choices: SEASON_ORDERS, default: 'Year, then season', hidden: 'Year, then season',
+      when: (c) => c.bars === 'over time' && c.axis === 'Seasons side by side',
+      title: 'Year, then season: each ending year contains its seasons. Season, then year: compare the same season across years side by side. Cross-year seasons stay whole under their ending year (Bega Oct 2022–Jan 2023 belongs to 2023)' },
     { key: 'stat', label: 'Statistic', choices: STATS, default: 'Mean', when: (c) => c.bars !== 'over time' },
     { key: 'twoLevel', label: 'Group by family', toggle: true, default: true, hidden: true, when: (c) => c.mode !== 'Stacked bars' && c.bars !== 'over time' && (c.nFamilies as number) > 1, title: 'Two levels of hierarchy: family → species' },
     { key: 'missing', label: `Missing ${itemNoun}`, choices: MISSING, default: 'Leave missing out', when: (c) => c.bars === 'over time' && (c.incomplete as number) > 0,
@@ -425,7 +429,7 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
         {overTime ? (
           <div style={{ width: '100%' }}>
             <CompositionTimeline rows={rows} sites={composition.sites} species={timeSpecies} color={color} dim={(f) => dimK({ name: f, family: familyOf(f) })}
-              pct={pct} share={share} shape={shape} timeAxis={o.values.axis as TimeAxis} completeOnly={o.values.missing === 'Complete filters only'} sharedAxes={collapsePanelAxes(panelAxes, 'site') === 'Shared'}
+              pct={pct} share={share} shape={shape} timeAxis={o.values.axis as TimeAxis} seasonOrder={o.values.seasonOrder as SeasonOrder} completeOnly={o.values.missing === 'Complete filters only'} sharedAxes={collapsePanelAxes(panelAxes, 'site') === 'Shared'}
               seasonsFor={seasonsFor} strip={showStrip} size={timeSize} right={right} tip={tip} units={UNITS} itemNoun={itemNoun} onRecord={recordOf} extraTip={extraTip} />
           </div>
         ) : mode === 'Stacked bars' ? (

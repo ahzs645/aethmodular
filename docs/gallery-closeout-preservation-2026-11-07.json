@@ -1,0 +1,329 @@
+{
+  "schema_version": 1,
+  "release_id": "aethmodular-closeout-20261107",
+  "record_date": "2026-11-07",
+  "scientific_status": "verified_research_review_candidate",
+  "preservation_status": "drive_upload_and_raw_byte_readback_verified",
+  "publication_status": "candidate_unpublished_not_deployed",
+  "archive": {
+    "provider": "Google Drive",
+    "logical_location": "Aethmodular VIBES/results/closeout_20261107",
+    "index_filename": "ARCHIVE_INDEX.json",
+    "private_metadata_policy": "Provider file IDs, account information, share links and local absolute paths remain outside the public repositories.",
+    "remote_verification": {
+      "status": "passed",
+      "verified_at_utc": "2026-11-07T20:26:44.433140+00:00",
+      "receipt_filename": "verification-drive-payload-readback-20261107.json",
+      "receipt_sha256": "6003324bcd5ae7e8d32486fb641837f4be3a3dd813bcdca8626de99320216581",
+      "method": "Read back metadata for destination, filename and byte size; fetch every uploaded payload from Google Drive and compare streamed byte count and SHA-256 with the original local identities.",
+      "payload_files_verified": 21,
+      "payload_bytes_verified": 1781911342,
+      "support_files_verified": 8,
+      "support_verification_method": "Raw byte readback and SHA-256 for README, restoration utility and six supplemental records."
+    }
+  },
+  "source_identities": {
+    "repository": "ahzs645/aethmodular",
+    "scientific_implementation_sha": "ee1c6adac64b773944ee3bbaea3aac07d60f2f13",
+    "tested_review_and_pdf_source_sha": "2341cbbbab41b9dfde143d36aac5ea84585aea31",
+    "completion_documentation_sha": "76b369eff84dada214fb21343f43a990cb45c880",
+    "preservation_record_parent_sha": "76b369eff84dada214fb21343f43a990cb45c880",
+    "identity_rule": "Archive placement and restoration tooling do not relabel the scientific implementation, accepted figure export or previously verified documentation head.",
+    "source_pr": "https://github.com/ahzs645/aethmodular/pull/20",
+    "separate_timeline_pr": "https://github.com/ahzs645/aethmodular/pull/19",
+    "separate_timeline_sha": "316a53ec423c7344253aef409027b0f607fff23f",
+    "gallery_repository": "ahzs645/aethmodular-gallery",
+    "gallery_workflow_pr": "https://github.com/ahzs645/aethmodular-gallery/pull/1",
+    "gallery_workflow_verification_sha": "b81c910d9c1ce9b1d6e4c2b909c87b229998f13e"
+  },
+  "verification": {
+    "accepted_review_run": "https://github.com/ahzs645/aethmodular/actions/runs/42407030717",
+    "accepted_review_receipt_sha256": "b228b3911acf990776eaa328cc5010919ac166cfaae43b3d41b3b20b0f931f66",
+    "completion_documentation_run": "https://github.com/ahzs645/aethmodular/actions/runs/42407701722",
+    "scientific_acceptance_path": "gallery/review/closeout_20261107/source_acceptance.json",
+    "scientific_acceptance_sha256": "2b3836fda7783815fccb41462b7256651558a5bac7c3598b94f6e0ce07273ce6",
+    "overlay_manifest_path": "gallery/review/closeout_20261107/manifest.json",
+    "scope": "The numerical run and accepted source/base/overlay review retain their existing receipts. This preservation record does not claim a new scientific rerun or deployment."
+  },
+  "payloads": [
+    {
+      "filename": "Aethmodular_Closeout_Review_Candidate_2026-11-07.pdf",
+      "role": "completed_seven_page_figure_review",
+      "bytes": 166336,
+      "sha256": "9c6cd156e6b45fc18ee243b01df1174defd077b7c56a5963083838edf7e9726c",
+      "restoration": "Read directly; the bytes match the original accepted CI export.",
+      "transport": {
+        "form": "single_file",
+        "path": "Aethmodular_Closeout_Review_Candidate_2026-11-07.pdf"
+      }
+    },
+    {
+      "filename": "Aethmodular_Closeout_Research_Release_20261107.zip",
+      "role": "fitted_results_and_verification",
+      "bytes": 22580271,
+      "sha256": "df6fcd117041ce5163ed75996c4db881ce9031662656972bbdb4ca944dc651a7",
+      "restoration": "Read README.md and RELEASE_MANIFEST.json; restore research/ at the source repository root into empty destinations.",
+      "regular_member_count": 42,
+      "transport": {
+        "form": "single_file",
+        "path": "Aethmodular_Closeout_Research_Release_20261107.zip"
+      }
+    },
+    {
+      "filename": "Aethmodular_Closeout_Inputs_20261107.tar.gz",
+      "role": "original_scientific_inputs",
+      "bytes": 443084226,
+      "sha256": "d8a9fac2455aecd4d0b7b2b96686c62c4043a91370ba8eaaeb0f109eb97a56a0",
+      "restoration": "After reassembly and hash verification, restore closeout_20261107/ beneath research/ftir_hips_chem/output/tables/ into an empty run destination.",
+      "regular_member_count": 24,
+      "transport": {
+        "form": "ordered_binary_parts",
+        "folder": "inputs",
+        "part_count": 5,
+        "maximum_part_bytes": 100000000,
+        "parts": [
+          {
+            "order": 1,
+            "path": "inputs/Aethmodular_Closeout_Inputs_20261107.tar.gz.part01",
+            "bytes": 100000000,
+            "sha256": "9589f653973531c6586a3817c5b01ccc08b75fc68b46e471fdc023b5dce05270"
+          },
+          {
+            "order": 2,
+            "path": "inputs/Aethmodular_Closeout_Inputs_20261107.tar.gz.part02",
+            "bytes": 100000000,
+            "sha256": "f715d2737fd6a9c91257189401e663a8a408b34f473a02ba8af56ed9d442c084"
+          },
+          {
+            "order": 3,
+            "path": "inputs/Aethmodular_Closeout_Inputs_20261107.tar.gz.part03",
+            "bytes": 100000000,
+            "sha256": "d54c9ae7aee3d32a9b882b6569b600005653ed1adb083e88ab016789b1c5e20d"
+          },
+          {
+            "order": 4,
+            "path": "inputs/Aethmodular_Closeout_Inputs_20261107.tar.gz.part04",
+            "bytes": 100000000,
+            "sha256": "89bcf794a69196a9c38899e0ee1ca7a1d0e88aeb7c1de3526acb8e76f48e19a5"
+          },
+          {
+            "order": 5,
+            "path": "inputs/Aethmodular_Closeout_Inputs_20261107.tar.gz.part05",
+            "bytes": 43084226,
+            "sha256": "82d67e1751140fb6417516ffef66407b8324df50759f3470d98ae6b3814facd3"
+          }
+        ]
+      }
+    },
+    {
+      "filename": "Aethmodular_Continuum_Run_20261107.tar.gz",
+      "role": "complete_continuum_run",
+      "bytes": 980487622,
+      "sha256": "cd44e62160e3717afcfc13f793eea294852e139983c25139ed31cf32ac4d4853",
+      "restoration": "After reassembly and hash verification, restore closeout_20261107/continuum_v1/ beneath research/ftir_hips_chem/output/tables/ into an empty run destination.",
+      "regular_member_count": 310,
+      "transport": {
+        "form": "ordered_binary_parts",
+        "folder": "continuum_run",
+        "part_count": 10,
+        "maximum_part_bytes": 100000000,
+        "parts": [
+          {
+            "order": 1,
+            "path": "continuum_run/Aethmodular_Continuum_Run_20261107.tar.gz.part01",
+            "bytes": 100000000,
+            "sha256": "44c231193f794fcad89098bcef10a266c90d70d5cffb84ccacc854e5b5a96ae9"
+          },
+          {
+            "order": 2,
+            "path": "continuum_run/Aethmodular_Continuum_Run_20261107.tar.gz.part02",
+            "bytes": 100000000,
+            "sha256": "6af07e8e365baff32e7b36ec850e28f7e7f292acd5f60fa29ccdf54e65bed7cf"
+          },
+          {
+            "order": 3,
+            "path": "continuum_run/Aethmodular_Continuum_Run_20261107.tar.gz.part03",
+            "bytes": 100000000,
+            "sha256": "de0136327419f1d494a9463e6016e37544a206d878a7341439af91ca6a135c75"
+          },
+          {
+            "order": 4,
+            "path": "continuum_run/Aethmodular_Continuum_Run_20261107.tar.gz.part04",
+            "bytes": 100000000,
+            "sha256": "aad720c3dcba67ca03262d5338d3e52bdafda7bdf3744e94c69cc62aba86bf1d"
+          },
+          {
+            "order": 5,
+            "path": "continuum_run/Aethmodular_Continuum_Run_20261107.tar.gz.part05",
+            "bytes": 100000000,
+            "sha256": "13ba0ceca99c314ca1ea9be05b2e8bd8df908ed9ea22021b5b4260f77ffba47f"
+          },
+          {
+            "order": 6,
+            "path": "continuum_run/Aethmodular_Continuum_Run_20261107.tar.gz.part06",
+            "bytes": 100000000,
+            "sha256": "a7b19e39ef8e36abf90573f3b76a8c116155ec0f2178b7d57c2f5bc3e758a2b9"
+          },
+          {
+            "order": 7,
+            "path": "continuum_run/Aethmodular_Continuum_Run_20261107.tar.gz.part07",
+            "bytes": 100000000,
+            "sha256": "90bf83c3082dfc98a0c502f5104175f386989e7c7615b9e68897a4e7b430ed62"
+          },
+          {
+            "order": 8,
+            "path": "continuum_run/Aethmodular_Continuum_Run_20261107.tar.gz.part08",
+            "bytes": 100000000,
+            "sha256": "8a1ac056c67f4845dd67b1f9e49cc2494bef71028d6c0a8f05c81ca50721aba1"
+          },
+          {
+            "order": 9,
+            "path": "continuum_run/Aethmodular_Continuum_Run_20261107.tar.gz.part09",
+            "bytes": 100000000,
+            "sha256": "2ed597c78f53e91b8e7f7a91ce8073d51a80dd92f5347b5fa3b0ba7626fa64a1"
+          },
+          {
+            "order": 10,
+            "path": "continuum_run/Aethmodular_Continuum_Run_20261107.tar.gz.part10",
+            "bytes": 80487622,
+            "sha256": "5c6b214aaa0511998b569c86ae0872908d3f4997cc4023141aee7ffb7bc11ac1"
+          }
+        ]
+      }
+    },
+    {
+      "filename": "Aethmodular_Gallery_Data_Closeout_20261107.tar.gz",
+      "role": "complete_unpublished_gallery_data_candidate",
+      "bytes": 167794774,
+      "sha256": "accc09aa8eea12d32c9c58c2daa54f3d01658edd54dd12c82a67fc363db2f49c",
+      "restoration": "After reassembly and hash verification, inspect in a separate empty data staging directory. Do not substitute it for the original base archive in the base-plus-overlay CI workflow.",
+      "regular_member_count": 5137,
+      "transport": {
+        "form": "ordered_binary_parts",
+        "folder": "gallery_candidate",
+        "part_count": 2,
+        "maximum_part_bytes": 100000000,
+        "parts": [
+          {
+            "order": 1,
+            "path": "gallery_candidate/Aethmodular_Gallery_Data_Closeout_20261107.tar.gz.part01",
+            "bytes": 100000000,
+            "sha256": "01c3c1fff9184ca259f66fc31299c58b5913fdd6b90b30d0c553730b50a72542"
+          },
+          {
+            "order": 2,
+            "path": "gallery_candidate/Aethmodular_Gallery_Data_Closeout_20261107.tar.gz.part02",
+            "bytes": 67794774,
+            "sha256": "526a30be30e78b5e094462caafb3d3988a282fac4863a600894de552dcf6c582"
+          }
+        ]
+      }
+    },
+    {
+      "filename": "gallery-data-82d701248232.tar.gz",
+      "role": "original_gallery_base_for_review_ci",
+      "bytes": 167798113,
+      "sha256": "82d701248232b1975ea2e452bc1d682877e811103a2aa1040aff9d4adc989051",
+      "restoration": "After reassembly and hash verification, use as the unchanged data-82d701248232 input in the exact-source base-plus-overlay review workflow.",
+      "regular_member_count": 5137,
+      "transport": {
+        "form": "ordered_binary_parts",
+        "folder": "gallery_base",
+        "part_count": 2,
+        "maximum_part_bytes": 100000000,
+        "parts": [
+          {
+            "order": 1,
+            "path": "gallery_base/gallery-data-82d701248232.tar.gz.part01",
+            "bytes": 100000000,
+            "sha256": "ca6cc5d2683b524a15959f0e083b7fe71c6012034db0defaa056c970498d844a"
+          },
+          {
+            "order": 2,
+            "path": "gallery_base/gallery-data-82d701248232.tar.gz.part02",
+            "bytes": 67798113,
+            "sha256": "c63ee2c337a0ed5010997d2dff2e5ebfb06dc6b207d09d709e6929dd3b523878"
+          }
+        ]
+      }
+    }
+  ],
+  "supplemental_evidence": [
+    {
+      "filename": "verification-docs-head-76b369ef.json",
+      "role": "separate_completion_documentation_head_ci_receipt",
+      "bytes": 2046,
+      "sha256": "3a9bae2585886a06f3078abd1b398b4e757ad0406869a54f04cfba485f70575b",
+      "archive_status": "raw_byte_readback_verified"
+    },
+    {
+      "filename": "verification-timeline-316a53ec-scope.json",
+      "role": "separate_timeline_review_scope",
+      "bytes": 385,
+      "sha256": "4afea402358cb884441c3327ad452fde7c171de4113c82d0383bc6a4e7586e89",
+      "archive_status": "raw_byte_readback_verified"
+    },
+    {
+      "filename": "verification-timeline-316a53ec-browser-results.json",
+      "role": "separate_timeline_structured_browser_results",
+      "bytes": 323111,
+      "sha256": "2c8e1b6b2fdcb4b96667560535f0d9806b3691e2100ce7dcf038b0636c727039",
+      "archive_status": "raw_byte_readback_verified"
+    },
+    {
+      "filename": "verification-archive-restoration-20261107.json",
+      "role": "actual_reconstruction_and_independent_reread",
+      "bytes": 5166,
+      "sha256": "cfbc2412ecbc28f33105e978a1b642e4e146912c4b1735bbc6bcb6fce414aa38",
+      "archive_status": "raw_byte_readback_verified"
+    },
+    {
+      "filename": "verification-restoration-guards-20261107.json",
+      "role": "restoration_failure_and_reuse_guards",
+      "bytes": 631,
+      "sha256": "dde337c128e041f65cfa29f7d14d6415c44ae1077c618ed8e59807203e5bd634",
+      "archive_status": "raw_byte_readback_verified"
+    },
+    {
+      "filename": "verification-drive-payload-readback-20261107.json",
+      "role": "private_provider_payload_readback_receipt",
+      "bytes": 8842,
+      "sha256": "6003324bcd5ae7e8d32486fb641837f4be3a3dd813bcdca8626de99320216581",
+      "archive_status": "raw_byte_readback_verified"
+    }
+  ],
+  "restoration": {
+    "utility_source_path": "research/ftir_hips_chem/workflows/restore_closeout_archives.py",
+    "utility_archive_filename": "restore_closeout_archives.py",
+    "command_from_downloaded_archive_root": "python3 restore_closeout_archives.py --manifest ARCHIVE_INDEX.json --output-dir restored",
+    "check_only_option": "--check-only",
+    "behavior": "Verify each declared part and the complete reconstructed archive; preserve differing existing outputs; do not extract automatically.",
+    "transport_note": "These Drive deliveries use up to 100,000,000 bytes per part. The immutable research-results ZIP also records an earlier three-part continuum transport. The two part sets must not be mixed; either complete set reconstructs the same 980,487,622-byte archive and SHA-256.",
+    "historical_manifest_note": "The immutable three-part manifest records upload_performed:false at packaging time. Current Drive placement is established by the separate archive index and this preservation status, without changing the accepted archive bytes.",
+    "protocol_path": "docs/gallery-closeout-reproduction-2026-11-07.md",
+    "utility_bytes": 12369,
+    "utility_sha256": "5ab937df54892dad79a58ce062a36cf9de2f30daf0af98cdfcb5ce5f80335717",
+    "verified_archive_count": 4,
+    "verified_part_count": 19,
+    "actual_reconstruction_and_independent_reread": "passed",
+    "total_reconstructed_bytes": 1759164735
+  },
+  "gallery_candidate": {
+    "suggested_data_tag": "data-accc09aa8eea",
+    "release_published": false,
+    "deployment_requested_by_this_preservation": false,
+    "base_data_tag": "data-82d701248232",
+    "base_release_url": "https://github.com/ahzs645/aethmodular-gallery/releases/tag/data-82d701248232",
+    "regular_member_count": 5137,
+    "changed_member": "experimental/continuum_baseline.json",
+    "changed_member_sha256": "f38baa0c6756fadf92583ef3b23c018b4c6f1773efd4bf52b7ce6f56db1649a2",
+    "unchanged_member_count": 5136,
+    "added_or_removed_members": 0,
+    "review_ci_rule": "Restore the original base archive and apply the separately hashed overlay. A future publication of the full candidate requires its own exact source/data verification receipt."
+  },
+  "limits": [
+    "Absolute Addis EC accuracy remains unresolved.",
+    "The full legacy research gate remains unavailable because its original declared inputs were not recovered.",
+    "An archived candidate is not a merged change, published data release or live deployment."
+  ]
+}

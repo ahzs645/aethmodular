@@ -16,12 +16,32 @@ export const dataUrl = (path: string) => DATA + path.replace(/^\/+/, '')
 
 const cache = new Map<string, Promise<unknown>>()
 
-function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
-  let p = cache.get(key) as Promise<T> | undefined
+/**
+ * A custom section's charts are each a page of their own in a frame (components/SectionFrame), and would each hold
+ * their own parsed copy of every file. They use the files of the page around them instead: one parse, one copy.
+ * Files only, which are never changed once parsed; a derived value stays with its frame, since it can hold
+ * class instances of that frame's own. Same origin only by construction: reading another origin's parent throws.
+ */
+const FILES = '__galleryFiles'
+type FilesWindow = Window & { [FILES]?: Map<string, Promise<unknown>> }
+function sharedFiles(): Map<string, Promise<unknown>> {
+  if (typeof window === 'undefined') return cache
+  const here = window as unknown as FilesWindow
+  try {
+    const up = window.parent as unknown as FilesWindow
+    if (up !== here && up[FILES]) return up[FILES]!
+  } catch { /* an embed on another site */ }
+  here[FILES] = cache
+  return cache
+}
+const files = sharedFiles()
+
+function cached<T>(key: string, load: () => Promise<T>, store: Map<string, Promise<unknown>> = cache): Promise<T> {
+  let p = store.get(key) as Promise<T> | undefined
   if (!p) {
     p = load()
-    p.catch(() => cache.delete(key))
-    cache.set(key, p)
+    p.catch(() => store.delete(key))
+    store.set(key, p)
   }
   return p
 }
@@ -50,13 +70,14 @@ async function bytes(path: string): Promise<ArrayBuffer> {
 
 /** Parsed JSON of an exported file (cached per session). */
 export const loadJson = <T,>(path: string): Promise<T> => cached(`json:${path}`, async () =>
-  path.endsWith('.gz') ? JSON.parse(new TextDecoder().decode(await bytes(path))) as T : (await get(path)).json() as Promise<T>)
+  path.endsWith('.gz') ? JSON.parse(new TextDecoder().decode(await bytes(path))) as T : (await get(path)).json() as Promise<T>, files)
 
 /** Raw bytes of an exported binary (cached per session). */
-export const loadBinary = (path: string): Promise<ArrayBuffer> => cached(`bin:${path}`, () => bytes(path))
+export const loadBinary = (path: string): Promise<ArrayBuffer> => cached(`bin:${path}`, () => bytes(path), files)
 
-/** Any derived value built from loaded files (an index, a decoded table), cached under its own key. */
-export const loadDerived = <T,>(key: string, build: () => Promise<T>): Promise<T> => cached(`derived:${key}`, build)
+/** Any derived value built from loaded files (an index, a decoded table), cached under its own key.
+ * `plain`: it is plain JSON-like data, so a section's charts may share it as they share the files. */
+export const loadDerived = <T,>(key: string, build: () => Promise<T>, opts: { plain?: boolean } = {}): Promise<T> => cached(`derived:${key}`, build, opts.plain ? files : cache)
 
 /** Snapshot data is scoped to a tile; it never poisons the current-source cache. */
 export const SnapshotFiles = createContext<Record<string, unknown> | null>(null)

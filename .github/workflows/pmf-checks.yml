@@ -3,21 +3,29 @@ on:
   pull_request:
     paths:
       - 'src/pmf/**'
-      - 'aethmodular_cli/pmf*.py'
-      - 'aethmodular_cli/cli.py'
+      - 'aethmodular_cli/**'
       - 'pyproject.toml'
+      - 'requirements*.txt'
+      - 'setup.cfg'
+      - 'setup.py'
       - '.gitattributes'
       - 'tests/test_pmf*.py'
       - 'scripts/pmf/**'
-      - 'requirements-pmf.txt'
       - 'docs/pmf*'
       - '.github/workflows/pmf-checks.yml'
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
+
 jobs:
   pmf:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
         python: ['3.12', '3.13']
