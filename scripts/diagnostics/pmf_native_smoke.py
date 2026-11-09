@@ -4,7 +4,6 @@ EPA_PMF_RUNTIME points to the extracted official app directory. No private
 FTIR inputs, executables, sealed scripts or license keys enter CI artifacts.
 """
 import csv
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -13,9 +12,9 @@ import sys
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location('native_me2_test', ROOT/'research/ftir_hips_chem/scripts/python_pmf/me2.py')
-me2 = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(me2)
+sys.path.insert(0, str(ROOT))
+from src.pmf.io import Dataset
+from src.pmf.native_backend import fit_native, ingest_case
 
 
 def synthetic(n, m, k, seed):
@@ -46,9 +45,19 @@ def main():
             for seed in (1,10):
                 case=f'{name}_{"robust" if robust else "ordinary"}_s{seed}'
                 try:
-                    _,_,receipt=me2.run_one(x,u,runtime,root/case,factors=k,seed=seed,robust=robust,timeout=300)
+                    loss = 'native-robust' if robust else 'quadratic'
+                    result = fit_native(x, u, k, seed, root/case, runtime=runtime, loss=loss, timeout=300)
+                    receipt = result['provenance']['native_receipt']
+                    data = Dataset(x, u, np.asarray([f'row-{i}' for i in range(len(x))]),
+                        np.asarray([f'feature-{j}' for j in range(x.shape[1])]),
+                        {'status': 'unknown', 'validation_case': name, 'private_measurements': False})
+                    imported = ingest_case(data, root/case, root/'reports'/case,
+                        dataset_id=name, loss=loss)
+                    if not imported['native_EPA_PMF_or_ME2_executed'] or imported['status'] != receipt['status']:
+                        raise ValueError('Common workflow lost native execution status')
                     row={'case':case,'shape':list(x.shape),'status':receipt['status'],
-                         **receipt['metrics'],'elapsed_seconds':receipt['elapsed_seconds']}
+                         **receipt['metrics'],'elapsed_seconds':receipt['elapsed_seconds'],
+                         'verified_import': True, 'report': f'reports/{case}/report/index.html'}
                 except Exception as exc:
                     row={'case':case,'shape':list(x.shape),'status':'failed','error':str(exc)}
                 results.append(row)

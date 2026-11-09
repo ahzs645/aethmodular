@@ -400,6 +400,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Aethmodular repository commands.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers.add_parser("pmf", help="Prepare, fit, project and report FTIR PMF datasets.")
 
     doctor = subparsers.add_parser("doctor", help="Check the local environment and data root.")
     doctor.add_argument("--json", action="store_true", help="Emit machine-readable results.")
@@ -493,6 +494,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     from aethmodular_cli.env import load_repo_env
 
     load_repo_env()
+    # Lazy PMF dispatch keeps doctor/help independent of scientific imports.
+    raw_args = list(sys.argv[1:] if argv is None else argv)
+    if raw_args and raw_args[0] == "pmf":
+        from .pmf import main as pmf_main
+        return pmf_main(raw_args[1:])
     parser = build_parser()
     args = parser.parse_args(argv)
     return int(args.func(args))

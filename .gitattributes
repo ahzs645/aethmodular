@@ -1,0 +1,4 @@
+# Preserve exact recovered and pinned numerical source bytes.
+src/pmf/** -text
+aethmodular_cli/pmf*.py -text
+research/ftir_hips_chem/scripts/python_pmf/me2.py text eol=lf

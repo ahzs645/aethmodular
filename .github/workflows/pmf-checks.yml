@@ -2,12 +2,15 @@ name: PMF workflow checks
 on:
   pull_request:
     paths:
+      - 'src/pmf/**'
+      - 'aethmodular_cli/**'
       - 'pyproject.toml'
       - 'requirements*.txt'
       - 'setup.cfg'
       - 'setup.py'
-      - 'aethmodular_cli/**'
+      - '.gitattributes'
       - 'tests/test_pmf*.py'
+      - 'scripts/pmf/**'
       - 'docs/pmf*'
       - '.github/workflows/pmf-checks.yml'
   workflow_dispatch:
@@ -23,11 +26,28 @@ jobs:
   pmf:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      matrix:
+        python: ['3.12', '3.13']
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MPLBACKEND: Agg
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-      - run: python -m pip install numpy scipy pytest
-      - run: python -m pytest tests/test_pmf_runner.py tests/test_pmf_intake.py -q
-      - run: python -m compileall -q aethmodular_cli/pmf.py aethmodular_cli/pmf_intake.py
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -r requirements-pmf.txt ruff
+      - run: python -m pytest tests/test_pmf*.py tests/test_cli.py tests/test_repo_env.py -q
+      - run: python -m ruff check src/pmf aethmodular_cli/pmf.py aethmodular_cli/pmf_intake.py aethmodular_cli/cli.py tests/test_pmf*.py scripts/pmf scripts/diagnostics/pmf_native_smoke.py
+      - run: python scripts/pmf/validate_solver.py --out pmf-ci-evidence/solver.json
+      - run: python scripts/pmf/validate_uncertainty.py
+      - run: python -m compileall -q src/pmf aethmodular_cli/pmf.py aethmodular_cli/pmf_intake.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pmf-numerical-evidence-py${{ matrix.python }}
+          path: |
+            pmf-ci-evidence/
+            scripts/pmf/uncertainty_validation.json
