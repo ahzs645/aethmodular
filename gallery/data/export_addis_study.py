@@ -27,6 +27,7 @@ from config import SITES, resolve_seasons  # noqa: E402
 
 DATA = ROOT / "gallery/app/public/data/aethalometer"
 PROFILE = ROOT / "research/ftir_hips_chem/workflows/profiles/shlipak_2026.json"
+SOURCE_REVIEW = ROOT / "research/ftir_hips_chem/workflows/profiles/ec_bc_jpl_review.json"
 OUT = DATA / "addis-study.json"
 SITE = "ETAD"
 SITE_NAME = "Addis_Ababa"
@@ -175,8 +176,9 @@ def _events(frame: pd.DataFrame, profile: dict) -> list[dict]:
         elif name == "Hidar Sitaten":
             start_hour = 0
             rule = (
-                "Exploratory local calendar day, midnight to midnight (24 hours); the paper's "
-                "exact event-exclusion window is unresolved."
+                "Local calendar day, midnight to midnight (24 hours), also used by the archived "
+                "JPL Figures.ipynb Hidar display. Its relation to the final paper's exact "
+                "climatology exclusion remains unverified."
             )
         else:
             raise ValueError(f"No explicit display window declared for event {name!r}")
@@ -270,7 +272,7 @@ def build_study(snapshot: dict, metadata: dict, profile: dict, *, generated: str
             "All means describe available finite hours, with no new daily or event completeness gate. Missing hours are not zero, and sparse bins can be unrepresentative.",
             "Full-study calendar coverage and coverage within the saved grid have different denominators. Neither reproduces the paper's reported 93.9% deployment completeness.",
             "All festival hours remain in the monthly, seasonal and diurnal summaries; the paper excludes festivals in some climatologies, with exact exclusion windows unresolved.",
-            "Meskel uses the paper's Figure 6 noon-to-noon display window. Hidar Sitaten uses an explicitly exploratory midnight-to-midnight window. Event means are available-hour means, not causal effects.",
+            "Meskel uses the paper's Figure 6 noon-to-noon display window. Hidar Sitaten uses the archived JPL notebook's midnight-to-midnight display window, not a verified final-paper climatology exclusion. Event means are available-hour means, not causal effects.",
             "ETAD and ETAD-JACROS identify overlapping records from the same Jacros MA350-0238, not two independent sites. Central is not reconstructed from either alias.",
             "Published BC statistics and source estimates are separate benchmarks; overlapping Jacros observations cannot provide independent validation.",
             "Saved concentrations were rounded to integer ng/m3 upstream and are converted to ug/m3 once. SD uses the sample definition (n-1); quartiles describe the available hourly distribution.",
@@ -285,14 +287,53 @@ def _recorded_path(path: Path) -> str:
         return path.name
 
 
-def export_study(data_dir: Path = DATA, profile_path: Path = PROFILE, output: Path = OUT) -> dict:
+def build_source_review(profile: dict) -> dict:
+    """Keep attributed historical summaries separate from an analytical response.
+
+    The response is a constant-k illustration, never a correction to saved BC.
+    Negative or singular denominators are explicitly unavailable. No fit or
+    uncertainty interval is reconstructed from deck images or notebook outputs.
+    """
+    if profile.get("schema_version") != 1:
+        raise ValueError("Unsupported source-material review profile")
+    candidates = profile.get("loading_candidates", [])
+    if not candidates or len({row["id"] for row in candidates}) != len(candidates):
+        raise ValueError("Loading candidates need unique identities")
+    series = []
+    for candidate in candidates:
+        k = candidate.get("k")
+        if isinstance(k, bool) or not isinstance(k, (int, float)) or not math.isfinite(k) or k <= 0:
+            raise ValueError("Loading candidate k must be finite and positive")
+        points = []
+        for atn in range(61):
+            denominator = 1 - k * atn
+            valid = denominator > 0
+            points.append({"atn1": atn, "multiplier": 1 / denominator if valid else None,
+                           "denominator_valid": valid})
+        series.append({"candidate_id": candidate["id"], "singular_atn1": 1 / k, "points": points})
+    return {
+        **profile,
+        "applied_to_observations": False,
+        "loading_sensitivity": {
+            "basis": "analytical_constant_k",
+            "equation": "BCc / BC1 = 1 / (1 - k * ATN1)",
+            "atn_min": 0, "atn_max": 60,
+            "scope": "Illustrative ATN interval in instrument units; not an observed range or a QC cutoff.",
+            "series": series,
+        },
+    }
+
+
+def export_study(data_dir: Path = DATA, profile_path: Path = PROFILE, output: Path = OUT,
+                 source_review_path: Path = SOURCE_REVIEW) -> dict:
     """Read and hash the exact input bytes, then write strict JSON."""
     input_path = data_dir / "overview/hourly/ETAD.json"
     metadata_path = data_dir / "overview/index.json"
     inputs = [("input", input_path), ("metadata", metadata_path), ("profile", profile_path),
-              ("config", CONFIG), ("exporter", Path(__file__))]
+              ("source_review", source_review_path), ("config", CONFIG), ("exporter", Path(__file__))]
     raw = {key: path.read_bytes() for key, path in inputs}
     result = build_study(*(json.loads(raw[key]) for key in ("input", "metadata", "profile")))
+    result["source_review"] = build_source_review(json.loads(raw["source_review"]))
     for key, path in inputs:
         result["source"][f"{key}_file"] = _recorded_path(path)
         result["source"][f"{key}_sha256"] = hashlib.sha256(raw[key]).hexdigest()
@@ -305,9 +346,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", type=Path, default=DATA)
     parser.add_argument("--profile", type=Path, default=PROFILE)
+    parser.add_argument("--source-review", type=Path, default=SOURCE_REVIEW)
     parser.add_argument("--out", type=Path, default=OUT)
     args = parser.parse_args()
-    result = export_study(args.data_dir, args.profile, args.out)
+    result = export_study(args.data_dir, args.profile, args.out, args.source_review)
     coverage = result["coverage"]
     print(f"Wrote {_recorded_path(args.out)}: {coverage['valid_hours']:,}/{coverage['expected_hours']:,} "
           "study-calendar hours; identified Jacros IR observations only")

@@ -146,7 +146,7 @@ def test_complete_calendar_has_empty_months_and_leap_day_without_fabricated_data
 
 @pytest.mark.parametrize("name,day,start_hour,mean,qualifier", [
     ("Meskel", "2022-09-26", 12, 23.5, "Figure 6"),
-    ("Hidar Sitaten", "2022-11-21", 0, 11.5, "Exploratory"),
+    ("Hidar Sitaten", "2022-11-21", 0, 11.5, "archived"),
 ])
 def test_event_windows_are_explicit_twenty_four_local_hours(name, day, start_hour, mean, qualifier):
     beginning = pd.Timestamp(day).tz_localize(study.ZONE)
@@ -220,10 +220,51 @@ def test_exact_input_bytes_are_hashed_and_output_is_strict_json(tmp_path):
     before = copy.deepcopy(data)
     output = tmp_path / "addis-study.json"
     result = study.export_study(directory, paths["profile"], output)
-    for key, path in {**paths, "config": study.CONFIG, "exporter": Path(study.__file__)}.items():
+    for key, path in {**paths, "source_review": study.SOURCE_REVIEW, "config": study.CONFIG, "exporter": Path(study.__file__)}.items():
         assert result["source"][f"{key}_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
     assert json.loads(output.read_text()) == result
     assert json.loads(hourly.read_text()) == before
     assert result["source"]["source_unit"] == "ng/m3"
     assert result["deployment"]["unit"] == "ug/m3"
     assert result["summary"]["mean_bc_ug_m3"] == 2
+    assert result["source_review"]["applied_to_observations"] is False
+
+
+def test_loading_illustration_is_separate_and_preserves_invalid_denominators():
+    source = {"schema_version": 1, "loading_candidates": [{"id": "example", "k": 0.02}]}
+    before = copy.deepcopy(source)
+    review = study.build_source_review(source)
+    assert source == before
+    assert review["applied_to_observations"] is False
+    response = review["loading_sensitivity"]["series"][0]
+    assert response["singular_atn1"] == 50
+    points = {row["atn1"]: row for row in response["points"]}
+    assert points[0]["multiplier"] == 1
+    assert points[25]["multiplier"] == 2
+    assert points[49]["multiplier"] == pytest.approx(50)
+    for atn in range(50, 61):
+        assert points[atn]["multiplier"] is None
+        assert points[atn]["denominator_valid"] is False
+    json.dumps(review, allow_nan=False)
+
+
+@pytest.mark.parametrize("candidate", [0, -0.1, True, "0.01", float("nan"), float("inf")])
+def test_loading_illustration_rejects_invalid_candidate(candidate):
+    with pytest.raises(ValueError, match="finite and positive"):
+        study.build_source_review({"schema_version": 1, "loading_candidates": [{"id": "bad", "k": candidate}]})
+
+
+def test_archived_sensitivity_keeps_distinct_settings_and_explicit_provenance():
+    source = json.loads(study.SOURCE_REVIEW.read_bytes())
+    review = study.build_source_review(source)
+    assert review["historical_regressions"] == source["historical_regressions"]
+    assert review["optical_sensitivity"] == source["optical_sensitivity"]
+    rows = review["optical_sensitivity"]["rows"]
+    assert len(rows) == 18
+    assert len({(r["site"], r["alpha_fossil"], r["alpha_biomass"]) for r in rows}) == 18
+    paper_settings = [r for r in rows if r["alpha_fossil"] == 1 and r["alpha_biomass"] == 2]
+    pipeline_settings = [r for r in rows if r["alpha_fossil"] == 1 and r["alpha_biomass"] == 1.8]
+    assert {r["site"] for r in paper_settings} == {"Central", "Jacros"}
+    assert all(r["biomass_percent"] == 5.8 for r in paper_settings)
+    assert all(r["biomass_percent"] == 7.7 for r in pipeline_settings)
+    assert all(len(s["sha256"]) == 64 for s in review["sources"])

@@ -1598,6 +1598,38 @@
    "file": "sections/instruments/study/Events.tsx"
   },
   {
+   "title": "What the supplied materials add",
+   "id": "aeth-addis-study-materials",
+   "component": "AddisStudySourceMaterials",
+   "tab": "aethalometer",
+   "page": "addis-study",
+   "file": "sections/instruments/study/Methods.tsx"
+  },
+  {
+   "title": "EC/BC fits reported in the presentation",
+   "id": "aeth-addis-study-historical-fits",
+   "component": "AddisStudyHistoricalFits",
+   "tab": "aethalometer",
+   "page": "addis-study",
+   "file": "sections/instruments/study/Methods.tsx"
+  },
+  {
+   "title": "Source-model sensitivity saved in the archive",
+   "id": "aeth-addis-study-optical-sensitivity",
+   "component": "AddisStudyOpticalSensitivity",
+   "tab": "aethalometer",
+   "page": "addis-study",
+   "file": "sections/instruments/study/Methods.tsx"
+  },
+  {
+   "title": "Loading-correction sensitivity from the presentation",
+   "id": "aeth-addis-study-loading-sensitivity",
+   "component": "AddisStudyLoadingSensitivity",
+   "tab": "aethalometer",
+   "page": "addis-study",
+   "file": "sections/instruments/study/Methods.tsx"
+  },
+  {
    "title": "Jacros by season",
    "id": "aeth-addis-study-seasons",
    "component": "AddisStudySeasons",

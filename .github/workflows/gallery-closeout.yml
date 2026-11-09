@@ -7,15 +7,18 @@ on:
       - 'src/analysis/bc/source_model.py'
       - 'src/analysis/bc/source_apportionment.py'
       - 'src/external/calibration.py'
+      - 'src/data/processors/site_corrections.py'
       - 'aethmodular_cli/cli.py'
       - 'research/ftir_hips_chem/scripts/paper_comparison.py'
       - 'research/ftir_hips_chem/workflows/compare_shlipak_2026.py'
       - 'research/ftir_hips_chem/workflows/profiles/shlipak_2026.json'
+      - 'research/ftir_hips_chem/workflows/profiles/ec_bc_jpl_review.json'
       - 'tests/test_source_apportionment_model.py'
       - 'tests/test_aethalometer_model_clipping.py'
       - 'tests/test_paper_comparison.py'
       - 'tests/test_aeth_sources_export.py'
       - 'tests/test_addis_study_export.py'
+      - 'tests/test_site_corrections.py'
       - 'research/ftir_hips_chem/scripts/epo_validation.py'
       - 'research/ftir_hips_chem/scripts/candidate_metrics.py'
       - 'research/ftir_hips_chem/scripts/spectral_provenance.py'
@@ -67,7 +70,7 @@ jobs:
           tests/test_closeout_figure_audit.py
           tests/test_gallery_rebuild.py tests/test_gallery_sections.py tests/test_gallery_publication.py tests/test_gallery_continuum_publication.py
           tests/test_source_apportionment_model.py tests/test_aethalometer_model_clipping.py
-          tests/test_aeth_sources_export.py tests/test_paper_comparison.py tests/test_addis_study_export.py
+          tests/test_aeth_sources_export.py tests/test_paper_comparison.py tests/test_addis_study_export.py tests/test_site_corrections.py
           --junitxml=tmp/closeout-scientific-regressions.xml
       - uses: actions/upload-artifact@v4
         if: always()
