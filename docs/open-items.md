@@ -176,21 +176,17 @@ they close, no PMF output counts as a qualified source result:
 Details are in [`pmf-integration-2026-11-05.md`](pmf-integration-2026-11-05.md) and
 [`pmf-future-batch-engine-readiness.md`](pmf-future-batch-engine-readiness.md).
 
-### Decide whether to turn on the strict gallery deploy gate (8 Nov 2026)
+### Strict gallery deploy gate is on (decided, 8 Nov 2026)
 
-[aethmodular-gallery#1](https://github.com/ahzs645/aethmodular-gallery/pull/1) is the deployment half of PR #20
-(gallery closeout, merged 8 Nov). It is still a draft. Merging it changes the Pages deploy so that every publish
-must:
-
-- verify the downloaded data archive against its content-addressed release tag;
-- pass TypeScript, the strict source tests and the strict public-data tests before the normal build;
-- keep a receipt naming the exact source and data pair it checked.
-
-The test scripts it relies on (`npm run test:source`, `test:data:public`) are now on main, so nothing blocks the
-merge. The cost is that a publish fails if any of those checks fails, including a public-data test whose input is
-missing from the release. On 8 Nov its `deploy.yml` was byte-identical to `gallery/share/pages-deploy.yml` on main;
-recheck if either changes. The closeout data candidate `data-accc09aa8eea` is prepared but unpublished. Publishing it is
-the [data-release item below](#publish-a-new-data-release-from-a-machine-that-can-upload-release-assets).
+[aethmodular-gallery#1](https://github.com/ahzs645/aethmodular-gallery/pull/1), the deployment half of PR #20, merged
+as `1af2ca89`. Every publish now verifies the data archive against its release tag and must pass typecheck,
+`test:source` and `test:data:public` before the public build. Each publish also writes `verification-receipt.json`
+into the site. A local run of the gate on main `d9451f2e` with `data-82d701248232` passed every step: 380/380 source
+tests, 91/91 public-data tests, the build and the path scan. A future publish fails if a public-data test's input
+is missing from the release, so check `npm run test:data:public` before publishing. The workflow is still
+installed from `gallery/share/pages-deploy.yml`, so edit it there. The closeout data candidate `data-accc09aa8eea`
+is still unpublished; see the
+[data-release item below](#publish-a-new-data-release-from-a-machine-that-can-upload-release-assets).
 
 ## Unfinished migrations
 
