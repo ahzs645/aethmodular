@@ -15,15 +15,15 @@ export default {
   sections: [
     {
       id: 'domain',
-      title: '1. Addis is outside the IMPROVE calibration library',
+      title: '1. Addis has much higher optical loading than the IMPROVE library',
       text: '@domain',
       columns: 2,
       figures: [
         {
           kind: 'bars', id: 's1109-ec-share', table: 'ec_share', label: 'population', value: 'ec_share', color: 'network', format: 'f2',
-          xLabel: 'EC share of PM2.5 (%)',
-          title: 'EC is about a fifth of Addis PM2.5, against about 4 % across IMPROVE',
-          subtitle: 'Median EC / PM2.5 by population (28 Oct speciation table). Addis EC is SPARTAN FTIR EC; IMPROVE EC is TOR.',
+          xLabel: 'Optical BC or TOR EC share of PM2.5 (%)',
+          title: 'Addis optical BC share is higher than IMPROVE TOR EC share; the measurement bases differ',
+          subtitle: '28 Oct table. Addis: HIPS Fabs / MAC 10, historical dry_feb seasons. IMPROVE: TOR EC. This is not independent Addis EC validation.',
         },
         {
           kind: 'table', id: 's1109-loading', table: 'loading',
@@ -46,8 +46,8 @@ export default {
           kind: 'bars', id: 's1109-addis-intercept', table: 'addis', label: 'candidate', value: 'intercept', color: 'candidate', reference: 0, format: 'f2',
           choose: [{ column: 'comparator', label: 'Against', default: HIPS }],
           xLabel: 'Addis intercept (µg/m³)',
-          title: 'Baselining moves the HIPS intercept from about −6 to about −1.4; against the aethalometer most candidates are near zero',
-          subtitle: 'Deming FTIR EC against the chosen optical comparator, k 18 (closeout saved fits). The published product is on 189 filters, the recalibrated candidates on 233 (HIPS) or 172 (aethalometer).',
+          title: 'Saved published and spline pipelines have HIPS intercepts near −6 and −1.4 on different populations',
+          subtitle: 'Deming FTIR EC against the chosen optical comparator, k 18 (saved fits). HIPS: 189 published-product filters, 233 recalibrated filters. Aethalometer: 172 pairs for both.',
           noteAlways: true,
           note: 'Optical comparators, not thermal EC: an intercept near zero is agreement between methods, not validated Addis EC.',
         },
@@ -67,8 +67,10 @@ export default {
       figures: [
         {
           kind: 'intervals', id: 's1109-seasons', table: 'cals', row: 'season', series: 'calibration',
-          title: 'Season-specific look-alikes fix Kiremt’s slope; Dry and Belg stay between 0.3 and 0.75 whatever the calibration filters',
-          subtitle: 'Addis slope and intercept by season for five ways of choosing the IMPROVE calibration filters (28 Oct meeting). Baseline-corrected spectra, Deming FTIR EC vs HIPS Fabs / MAC 10, the 189 poster filters.',
+          title: 'Historical dry_feb results: look-alikes bring Kiremt’s optical slope near one',
+          subtitle: 'Dry Oct–Feb; Belg Mar–May; Kiremt Jun–Sep. Deming FTIR EC vs HIPS Fabs / MAC 10, 189 poster filters (28 Oct). Under belg_feb, the recorded Belg look-alike slope changes from 0.32 to 0.67; these plotted values retain dry_feb.',
+          noteAlways: true,
+          note: 'Calendar-dependent optical agreement. A near-one slope does not validate absolute EC or establish a chemical cause.',
           panels: [
             { value: 'slope', label: 'Slope', reference: 1 },
             { value: 'intercept', label: 'Intercept (µg/m³)', reference: 0 },
@@ -115,7 +117,7 @@ export default {
         {
           kind: 'bars', id: 's1109-commits', table: 'commits', label: 'week', value: 'commits', format: 'int',
           xLabel: 'commits to aethmodular (week starting)',
-          title: 'Analysis and tooling peaked in late October; no manuscript draft yet',
+          title: 'Repository activity peaked in late October; external writing progress is unknown',
           subtitle: 'Commits per week since 31 Aug 2026, from the repository history. A proxy for where effort went, not a measure of progress.',
         },
       ],

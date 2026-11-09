@@ -1,5 +1,16 @@
 # Project next steps: existing-data closeout
 
+**9 November implementation follow-up.** PRs #18–#21 have merged; the PR #19
+availability repair is no longer waiting to merge. A live-data audit at source
+`aa0e68ad71d04fded178b14ef92e6201631d7908` and snapshot `data-fddbc66c54ab`
+found the historical continuum export still served while the November status
+page used the corrected source scoreboard. The new shared publication validator
+applies the accepted overlay and binds the built bytes to a separate receipt.
+Merge and exact-release verification remain necessary before claiming this
+follow-up is live. The [paper integration guide](aethalometer-paper-comparison.md)
+describes the implemented source/coverage fixes and the remaining real-data and
+supporting-information work. No new FTIR fitting is required for that correction.
+
 Updated **7 November 2026 after the completed existing-data research closeout**. Numerical acceptance, independent arithmetic review, figure-population audit, actual corrected-overlay public/browser acceptance, seven-page visual review and release receipt are complete. The result is a verified research-review candidate; merge/publication remains separate. This plan supersedes the [September plan](project-next-steps-2026-09-22.md). The [current synthesis](current-research-summary.md) gives the candidate results and scientific limits; the [implementation receipt](gallery-closeout-implementation-2026-11-07.md) records each verification scope.
 
 ## Endpoint
@@ -28,7 +39,7 @@ These are inputs to the synthesis, not tasks to restart. Preserve their distinct
 | EPO and source metrics | **Complete on real data.** Fold-specific training-only fitting, model reconstruction and the held-out-label integrity test passed. | Preserve accepted arrays, ledgers, code/input hashes and distinct metric definitions. No new fitting is required for release acceptance. |
 | Comparison population | **Complete.** Identical frozen folds, zero train/test site or filter overlap, one contribution per physical filter and zero eligible prediction loss. | Retain all 12,393 saved rows and the declared TOR/QC exclusions alongside the 12,386-filter score. |
 | Six-figure review | **Complete.** Actual corrected-overlay metrics, retained target date, notes-off evidence, phone access, fresh-context shared link, saved-section reload and seven-page PDF passed. The legacy-EPO guard also passed. | Preserve the tested source and artifact identities; do not transfer this receipt to an unverified source/data change. |
-| PR #19 | Active-host availability repair and its bounded research-browser review are verified at the recorded checkpoint. | Review/merge remains separate from this public snapshot; retain Research visibility and distinguish availability from scientific validation. |
+| PR #19 | Merged; active-host availability repair and its bounded research-browser review retain their recorded scope. | Retain Research visibility and distinguish availability from scientific validation. |
 | Release preservation | **Complete.** Inputs, completed continuum run, models/predictions, score ledgers, acceptance, figure audit, structured CI reports and final PDF have recorded identities and restoration materials. | Keep the original base and source overlay hashes distinct. The full continuum archive is restored by concatenating its three verified parts. |
 | Closeout declaration | **Complete for the declared existing-data research-review scope.** | Absolute Addis EC accuracy and the unavailable full legacy research profile remain explicit limits. Keep new sampling, PMF and further numerical work separate. |
 
