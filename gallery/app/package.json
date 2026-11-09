@@ -15,6 +15,7 @@
     "test:walker": "node --test src/lib/chartBuilder.test.mjs",
     "test:walker:browser": "node scripts/check-chart-builder.mjs",
     "index:charts": "node scripts/build-chart-index.mjs",
+    "index:investigations": "node scripts/build-investigation-history.mjs",
     "postinstall": "node scripts/ensure-toolkit.mjs",
     "toolkit": "node scripts/ensure-toolkit.mjs --force",
     "test:dashboard": "playwright test"

@@ -7,6 +7,7 @@ import type { ComponentType } from 'react'
 import type { AxesOpts } from '@/lib/axes'
 import type { SamplePreset } from '@/lib/samplePresets'
 import type { FilterRow, MetaFile } from '@/lib/types'
+import type { InvestigationHistory } from '@/lib/investigationHistory'
 
 export interface SectionPage { key: string; label: string; title?: string
   /** left out of the header menu, the Investigations card and the page picker; opens only from a link (`aep=<key>`) */
@@ -54,6 +55,8 @@ export interface Section {
   key: string
   label: string
   tabs: SectionTab[]
+  /** Source-backed history contributed to Investigations; omitted along with a private section. */
+  history?: InvestigationHistory
   /** a hook: the section's per-filter fields for the sites in view, or null */
   useFields: (codes: readonly string[]) => SectionFields | null
 }
