@@ -33,6 +33,7 @@ test('a mark with the gallery tooltip has no native <title> as well', () => {
     'charts/correlation/Correlogram.tsx': 'the full field name of the wrapped row, column and diagonal headers; the headers have no tooltip',
     'charts/calibration/SpecCurvePlots.tsx': 'the full panel and selection names clipped to fit, and the help text on the choice-strip rows; none of those labels has a tooltip',
     'charts/partOfWhole/CompositionTreemap.tsx': 'the full season name behind the shortened strip label, and the "of PM2.5" text a narrow bar drops; neither mark has a tooltip',
+    'components/IntervalStrip.tsx': 'the full row and block names behind labels clipped to a narrow card\'s gutter; a row that has the gallery tooltip gets no <title>',
     'charts/weather/SiteWeatherSummary.tsx': 'the full variable name behind an abbreviated column header; the header has no tooltip',
     'pages/SatoshiFollowupPage.tsx': 'excluded × marks drawn beside the points, not through ScatterLayer: the native title is their only readout (no per-mark handlers on filter marks)',
     'pages/experimental/FlagStudy.tsx': 'excluded × marks drawn beside the points, not through ScatterLayer: the native title is their only readout (no per-mark handlers on filter marks)',

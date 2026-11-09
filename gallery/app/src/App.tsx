@@ -1717,13 +1717,15 @@ export default function App() {
 /** `onDash`: the header's Dashboard button, which opens it and, clicked again, returns to the page before */
 function Shell({ children, nav, wide = false, editsBadge = false, dash = false, onDash }: { children: React.ReactNode; nav?: React.ReactNode; wide?: boolean; editsBadge?: boolean; dash?: boolean; onDash?: () => void }) {
   const container = dash ? 'container dash' : wide ? 'container wide' : 'container'
+  // the header keeps one width on every tab, so the title and menus do not shift when a wide tab opens
+  const headerContainer = dash ? 'container dash' : 'container wide'
   // the sticky header's height, for what sticks under it (a chart's options column, styles.css --header-h)
   const headerH = useHeaderHeight()
   useEffect(() => { document.documentElement.style.setProperty('--header-h', `${headerH}px`) }, [headerH])
   return (
     <>
       <header className="app-header">
-        <div className={container}>
+        <div className={headerContainer}>
           <div className="app-title-row">
             <h1 className="app-title">Air Gallery</h1>
             {editsBadge && <HandEditsBadge />}

@@ -6,6 +6,7 @@ import { useDimensions } from '@/hooks/useGalleryData'
 import { useTooltip } from '@/hooks/useTooltip'
 import { FONT, INK } from '@/lib/theme'
 import { trim } from '@/lib/format'
+import { clipText } from '@/lib/fitLabel'
 
 /**
  * Grouped dot-interval rows (a forest plot): blocks of rows, e.g. one block per
@@ -69,7 +70,10 @@ export function IntervalStrip({ blocks, panels, labelWidth = 220, rowHeight = 20
   const { width } = useDimensions(ref)
   const tip = useTooltip(ref)
   const panelGap = 28
-  const m = { top: panels.some((p) => p.heading || p.marker) ? 24 : 10, right: 20 + noteWidth, bottom: 44, left: labelWidth }
+  // the label column never takes more than ~42% of a narrow card (a phone), so the strip keeps room for
+  // its marks; labels that no longer fit are cut with an ellipsis and keep their full text on hover
+  const gutter = width ? Math.min(labelWidth, Math.max(110, Math.round(width * 0.42))) : labelWidth
+  const m = { top: panels.some((p) => p.heading || p.marker) ? 24 : 10, right: 20 + noteWidth, bottom: 44, left: gutter }
   // panels that cannot sit side by side at their minimum width stack, one strip each, instead of
   // pushing the page into a horizontal scroll
   const fits = !width || m.left + m.right + panels.length * minPanelWidth + panelGap * (panels.length - 1) <= width
@@ -81,7 +85,9 @@ export function IntervalStrip({ blocks, panels, labelWidth = 220, rowHeight = 20
       ))}
     </div>
   )
-  const pw = Math.max(minPanelWidth, (width - m.left - m.right - panelGap * (panels.length - 1)) / panels.length)
+  // a single strip on a card narrower than its minimum shrinks to the card instead of scrolling it
+  const minPw = width ? Math.max(120, Math.min(minPanelWidth, width - m.left - m.right)) : minPanelWidth
+  const pw = Math.max(minPw, (width - m.left - m.right - panelGap * (panels.length - 1)) / panels.length)
   const scales = panels.map((p, k) => {
     if (p.domain) return d3.scaleLinear().domain(p.domain).range([0, pw])
     const vals = blocks.flatMap((b) => b.rows.flatMap((r) => (r.marks[k] ?? []).flatMap((mk) => [mk.lo, mk.mid, mk.hi])))
@@ -119,7 +125,8 @@ export function IntervalStrip({ blocks, panels, labelWidth = 220, rowHeight = 20
         <g transform={`translate(${m.left},${m.top})`}>
           {layout.map(({ b, top, rowsTop }, bi) => <g key={b.key}>
             {bi % 2 === 0 && blocks.length > 1 && <rect x={-m.left + 4} y={top - 3} width={w - 8} height={rowsTop - top + b.rows.length * rowHeight + 4} fill={INK.page} />}
-            {b.title && <text x={-m.left + 8} y={top + 11} fontSize={11.5} fontWeight={700} fill={b.color ?? INK.text}>{b.title}</text>}
+            {b.title && <text x={-m.left + 8} y={top + 11} fontSize={11.5} fontWeight={700} fill={b.color ?? INK.text}>
+              {clipText(b.title, w - 16, { size: 11.5, weight: 700 })}{b.title.length > 0 && <title>{b.title}</title>}</text>}
           </g>)}
           {panels.map((p, k) => {
             const x = scales[k], left = k * (pw + panelGap)
@@ -130,7 +137,7 @@ export function IntervalStrip({ blocks, panels, labelWidth = 220, rowHeight = 20
                 <Marker orient="v" at={x(p.marker.value)} from={-6} to={ih + 4} />
                 <text x={x(p.marker.value)} y={-10} textAnchor="middle" fontSize={10} fontFamily={FONT.mono} fill={INK.muted}>{p.marker.label}</text>
               </g>}
-              <XAxis scale={x} y={ih + 4} tickCount={6} label={p.label} labelDy={36} pick={p.pick ? 'x' : undefined} format={(v) => p.format ? p.format(+v) : trim(v, 2)} />
+              <XAxis scale={x} y={ih + 4} tickCount={pw < 240 ? 3 : 6} label={clipText(p.label, pw + 16, { size: 12, weight: 600 })} labelDy={36} pick={p.pick ? 'x' : undefined} format={(v) => p.format ? p.format(+v) : trim(v, 2)} />
             </g>
           })}
           {layout.map(({ b, rowsTop }) => b.rows.map((r, j) => {
@@ -140,7 +147,8 @@ export function IntervalStrip({ blocks, panels, labelWidth = 220, rowHeight = 20
               {/* the whole row answers the pointer, so its note follows along the line and not only over the marks */}
               {r.tip && <rect x={-m.left + 4} y={cy - rowHeight / 2} width={w - 8} height={rowHeight} fill="transparent" />}
               {r.selected && <rect x={-m.left + 4} y={cy - rowHeight / 2} width={w - 8} height={rowHeight} fill={INK.accent} fillOpacity={0.08} />}
-              <text x={-10} y={cy} dy="0.32em" textAnchor="end" fontSize={11} fill={r.labelColor ?? INK.text} fontWeight={r.selected || r.strong ? 600 : 400}>{r.label}</text>
+              <text x={-10} y={cy} dy="0.32em" textAnchor="end" fontSize={11} fill={r.labelColor ?? INK.text} fontWeight={r.selected || r.strong ? 600 : 400}>
+                {clipText(r.label, m.left - 14, { weight: r.selected || r.strong ? 600 : 400 })}{!r.tip && <title>{r.label}</title>}</text>
               {panels.map((p, k) => <g key={k} transform={`translate(${k * (pw + panelGap)},0)`}>{(r.marks[k] ?? []).map((mk, i) => mark(mk, scales[k], cy, i, p.stems, r.selected))}</g>)}
               {r.note && <text x={w - m.left - m.right + 8} y={cy} dy="0.32em" fontSize={10.5} fontFamily={FONT.mono} fill={INK.muted}>{r.note}</text>}
               <rect x={-m.left + 4} y={cy - rowHeight / 2} width={w - 8} height={rowHeight} fill="transparent" />

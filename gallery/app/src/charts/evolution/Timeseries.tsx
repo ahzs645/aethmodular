@@ -14,6 +14,7 @@ import { INK, MARGIN, FONT, withUnit, type DotLevel } from '@/lib/theme'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { calendarLabel, mixedCalendars, seasonsForSite } from '@/siteSeasons'
 import { useChartOptions } from '@/lib/chartOptions'
+import { BASIC_PANEL_AXES } from '@/lib/axes'
 import { useChartGrouping } from '@/components/GroupingDialog'
 import { useChartLabel, useFitHeight } from '@/lib/chartFit'
 import { ExcludedNote, toMarks, useMarkReason, useMarkedRows } from '@/lib/markedRows'
@@ -88,6 +89,10 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
   // panels are the same chart; an overlay of sites on their own calendars has nothing to shade
   const o = useChartOptions('timeseries', [
     { key: 'layout', label: 'Layout', choices: LAYOUTS.map((v) => ({ value: v, label: v === 'Per site' && byGroup ? 'Per group' : v })), default: 'Per site', when: (c) => (c.nSeries as number) > 1, hidden: 'Per site' },
+    // per-site panels: each its own dates (the default: records that barely overlap fill their width), or one
+    // shared date range so the panels line up and a month sits in the same column on every site, as the
+    // Panel axes control does on the Weather and Composition charts
+    { key: 'xAxes', label: 'Panel axes', choices: BASIC_PANEL_AXES.map((v) => ({ value: v, label: v })), default: 'Own', when: (c) => (c.nSeries as number) > 1 && c.layout !== 'Overlay' },
     { key: 'smooth', label: 'Rolling median', toggle: true, default: true, title: `Median over ${ROLLING_WINDOW_SAMPLES} consecutive filter measurements per series. The time span depends on sampling frequency. The line breaks at sampling gaps over 45 days.` },
     { key: 'shading', label: 'Season shading', toggle: true, default: true, hidden: false, when: (c) => !(c.mixed && c.layout === 'Overlay') },
     { key: 'cursor', when: () => !!cursor, node: () => <span className="control" style={{ fontFamily: 'var(--mono)' }}>{cursor && d3.timeFormat('%Y-%m-%d')(cursor)}</span> },
@@ -95,6 +100,7 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
   const layout = o.values.layout as (typeof LAYOUTS)[number]
   const smooth = o.values.smooth as boolean
   const seasonShading = o.values.shading as boolean
+  const sharedX = layout !== 'Overlay' && o.values.xAxes === 'Shared'
 
   // a hovered site dims the other sites; a hovered season (a background key, not a series) deepens its own bands
   const siteHover = lg.hover
@@ -110,8 +116,8 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
   // shared y so panels compare; per-panel x so each site fills its own width. The same scales until the data or the
   // size change, so the dots survive the cursor (which re-renders the chart on every move)
   const panels = useMemo(() => (layout === 'Overlay' ? [{ key: 'all', title: null as string | null, color: INK.text, series }] : series.map((s) => ({ key: s.name, title: s.name, color: s.color, series: [s] })))
-    .map((panel) => ({ ...panel, x: d3.scaleTime().domain(d3.extent(panel.series.flatMap((s) => s.pts), (p) => p.date) as [Date, Date]).range([0, innerW]) })),
-  [layout, series, innerW])
+    .map((panel) => ({ ...panel, x: d3.scaleTime().domain(d3.extent((sharedX ? series : panel.series).flatMap((s) => s.pts), (p) => p.date) as [Date, Date]).range([0, innerW]) })),
+  [layout, series, innerW, sharedX])
   const y = useMemo(() => {
     const allPts = series.flatMap((s) => s.pts)
     return d3.scaleLinear().domain([Math.min(0, d3.min(allPts, (p) => p.value) ?? 0), (d3.max(allPts, (p) => p.value) ?? 1) * 1.08]).range([innerH, 0]).nice()
@@ -229,14 +235,14 @@ export function Timeseries({ rows, meta, field }: { rows: FilterRow[]; meta: Met
             )
           })
         )}
-        <Legend
+        {series.length > 0 && <Legend
           items={[
             ...meta.sites.filter((s) => rows.some((r) => r.site === s.name)).map((s) => ({ label: s.name, color: s.color })),
             ...(seasonShading ? meta.seasons.map((s) => ({ label: s.name, color: s.color, shape: 'band' as const })) : []),
           ]}
           {...lg.props}
           note="hover any panel: the dashed cursor is the same date on every panel"
-        />
+        />}
         {byGroup && missingNote('left out of the series')}
         <ExcludedNote fields={[field]} drawn />
         {tip.node}

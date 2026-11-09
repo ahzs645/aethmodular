@@ -188,7 +188,8 @@ export function SplitFit({ rows, meta, xField, yField }: { rows: FilterRow[]; me
                   extraLines={b.trend ? [{ slope: b.trend.slope, intercept: b.trend.intercept, color: INK.text, label: `OLS trend, R² ${coef(b.trend.r2)}`, method: 'ols', stats: b.trend }] : []}
                   background={(x, y) => <>
                     <RefLine orient="h" at={y(0)} from={0} to={x.range()[1]} />
-                    {b.mark !== null && <Marker orient="v" at={x(b.mark)} from={0} to={y.range()[0]} label={`cutoff ${fmt(b.mark, 3)}`} color={INK.text} />}
+                    {b.mark !== null && <Marker orient="v" at={x(b.mark)} from={0} to={y.range()[0]} label={`cutoff ${fmt(b.mark, 3)}`} color={INK.text}
+                      labelSide={x(b.mark) > x.range()[1] * 0.6 ? 'left' : 'right'} />}
                   </>} />)
               : (p.points.length === 0 ? <Empty>No filters on this side.</Empty>
                 : <Crossplot points={p.points} marked={p.marked} title={`${p.title} · n = ${p.points.length}`} xLabel={xl} yLabel={yl} sameScale={units} grouping="pooled" maxSide={w - 70}
