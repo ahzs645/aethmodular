@@ -1,141 +1,63 @@
-# Project next steps
+# Project next steps: existing-data closeout
 
-Updated 2026-09-22. This is the project-level work plan; the detailed technical
-backlog remains in [open-items.md](open-items.md).
+Updated **7 November 2026 after the completed existing-data research closeout**. Numerical acceptance, independent arithmetic review, figure-population audit, actual corrected-overlay public/browser acceptance, seven-page visual review and release receipt are complete. The result is a verified research-review candidate; merge/publication remains separate. This plan supersedes the [September plan](project-next-steps-2026-09-22.md). The [current synthesis](current-research-summary.md) gives the candidate results and scientific limits; the [implementation receipt](gallery-closeout-implementation-2026-11-07.md) records each verification scope.
 
-## Scientific direction
+## Endpoint
 
-The central question is: **How reliably can the FTIR calibration transfer to
-Addis, and under what conditions?** The [current research summary](current-research-summary.md)
-now separates reproducibility and source-domain performance from independent
-Addis accuracy, with claim-level evidence, corrections and missing measurements.
+Conclude the existing-data investigation with one recoverable source/data release and a short figure sequence. Absolute Addis EC accuracy may remain unresolved. A method does not have to win for this stage to finish.
 
-OpenResearch now supports navigating the historical catalog and executing a
-frozen AIRSpec baseline. Prioritize scientific evidence and reproducibility;
-extend the dashboard when a concrete research task needs it.
+## Completed work to reuse
 
-## Current position
+- Matched calibration/seasonal study and sensitivities (PR #14).
+- Baseline lab and seasonal spectral ML (PR #15).
+- Initial GPU investigation and later Newton/JAX/WebGPU research (PR #16 and subsequent dated studies).
+- Notebook diagnostics and narrow/broad continuum controls (PR #17).
+- Existing graph focus, custom sections, shared links and figure/section export.
+- Recovery and hash verification of the decision bundle and original production background; collection of both regenerated continuum variants, **32,286/32,286 fits with zero failed fits**, using the original adapter.
+- The six-candidate source evaluation and separate matched-resolution EPO control: fixed **18 PLS components**, the same **five site folds**, **12,386 common eligible physical filters / 157 sites**, and **100% eligible prediction coverage** for every candidate.
+- Actual artifact acceptance: exact reconstruction of all five EPO held-out blocks; one fold-0 refit after changing **2,481 held-out TOR labels and nuisance chemistry**, with exact zero model/prediction differences and unchanged training inputs, spectra, splits and QC.
+- Independent CSV/NumPy score arithmetic and the final figure-population audit. The arithmetic check uses the same saved predictions and references; the figure audit reconstructs saved populations and is not a browser test.
 
-- The September filter-only release and a locked AIRSpec calibration have real
-  completed OpenResearch runs. AIRSpec reproduced 11 result tables with all
-  84 column checks passing at absolute tolerance 1e-6. This is numerical
-  reproduction from corrected caches, not independent Addis accuracy validation.
-- The VIBES investigation repeated corrections for 12 selected cases. Both
-  methods severely underpredict the two leading problematic cases, with VIBES
-  making predictions more negative. The repeats converged; a chemical cause
-  has not been established.
-- Independent Addis validation remains blocked on reference measurements,
-  authoritative filter identities and sampling confirmation. A confirmation
-  queue and data-request draft exist locally; the request has not been sent.
-- The retrospective contains 104 research records and six family headings.
-  Twenty-five inventoried sources without executed companions remain
-  unexecuted. Evidence labels do not turn them into verified results.
-- Substantial analysis, environment, gallery and documentation work remains
-  uncommitted. This plan does not constitute a checkpoint of those changes.
+These are inputs to the synthesis, not tasks to restart. Preserve their distinct populations and versions. The [real-data acceptance receipt](../gallery/review/closeout_20261107/source_acceptance.json) and [numerical results](gallery-closeout-implementation-2026-11-07.md#numerical-results-and-acceptance) record the new work separately from historical studies and source/synthetic tests.
 
-These status statements summarize the local evidence reviewed on 2026-09-22.
-The consolidation below must preserve its receipts and manifests in a durable,
-reviewable release. The frozen AIRSpec source commit is
-`fb0abeaf5d272b76c64bf6616743e56f00800362`; its local OpenResearch run is
-`5e953103-e1b4-4218-8ddf-f9c67188bfd4`.
+## Closeout status and remaining acceptance
 
-## 1. Consolidate the existing work
+| Work | Current status | Remaining acceptance |
+|---|---|---|
+| Current synthesis | Updated with the new source results and saved target findings. | Keep the source/target version boundary and historical receipt scopes visible. |
+| EPO and source metrics | **Complete on real data.** Fold-specific training-only fitting, model reconstruction and the held-out-label integrity test passed. | Preserve accepted arrays, ledgers, code/input hashes and distinct metric definitions. No new fitting is required for release acceptance. |
+| Comparison population | **Complete.** Identical frozen folds, zero train/test site or filter overlap, one contribution per physical filter and zero eligible prediction loss. | Retain all 12,393 saved rows and the declared TOR/QC exclusions alongside the 12,386-filter score. |
+| Six-figure review | **Complete.** Actual corrected-overlay metrics, retained target date, notes-off evidence, phone access, fresh-context shared link, saved-section reload and seven-page PDF passed. The legacy-EPO guard also passed. | Preserve the tested source and artifact identities; do not transfer this receipt to an unverified source/data change. |
+| PR #19 | Active-host availability repair and its bounded research-browser review are verified at the recorded checkpoint. | Review/merge remains separate from this public snapshot; retain Research visibility and distinguish availability from scientific validation. |
+| Release preservation | **Complete.** Inputs, completed continuum run, models/predictions, score ledgers, acceptance, figure audit, structured CI reports and final PDF have recorded identities and restoration materials. | Keep the original base and source overlay hashes distinct. The full continuum archive is restored by concatenating its three verified parts. |
+| Closeout declaration | **Complete for the declared existing-data research-review scope.** | Absolute Addis EC accuracy and the unavailable full legacy research profile remain explicit limits. Keep new sampling, PMF and further numerical work separate. |
 
-- [ ] Review the current changes and separate analysis/environment, evidence
-  catalog, gallery and presentation work into coherent commits.
-- [ ] Verify the relevant tests and reproduction commands for each group;
-  inspect dependency-lock and vendored-source changes before committing.
-- [ ] Inventory large inputs, generated results and local-only artifacts with
-  hashes, provenance and a documented backup location. Verify recovery of a
-  representative bundle; a manifest alone is not a backup.
-- [ ] Preserve the completed AIRSpec baseline and September release snapshots.
-  New scientific changes must have their own recorded source and inputs.
+The current implementation adds a **Build six-figure review section** button at Experimental → Continuum. It uses existing section editing, Copy link, PDF and Deck. A section is a selection of live exports; the release must preserve the data separately.
 
-Done when: maintained source and tests are committed, necessary local-only
-inputs/results are recoverable, and another checkout can locate its requirements.
+## Completed scientific evaluation and reproduction
 
-## 2. Write one current research summary — completed 2026-09-22
+The October decision bundle and original production background are restored and hash-verified. The old November corrected-array bundle was not located; both variants have now been regenerated and collected under the [versioned reproduction protocol](gallery-closeout-reproduction-2026-11-07.md). This uses the original PB/tau/maxiter/retry adapter, not Newton certification or numerical-v2 promotion. New baseline/EPO archives carry ordered physical-filter IDs, sites, fold assignments, the recorded raw-spectrum QC mask and metadata hashes. Equal array lengths alone do not prove alignment.
 
-See [the synthesis and its verification scope](current-research-summary.md).
-The selected reruns and missing evidence remain future work; only this summary
-and prioritization are complete.
+The primary domain applies the existing all-candidate raw-QC exclusion before fitting and scoring: 12,393 saved filters, 12,387 finite TOR values below 150 µg/filter, and 12,386 eligible after the one recorded QC exclusion. All six candidates predict every eligible filter. Preserve the full row ledger, the six complete-pipeline comparison and the separate matched-resolution control. Reproduction commands require new output destinations; do not overwrite accepted or historical predictions. [Population and verification](../gallery/review/closeout_20261107/source_acceptance.json).
 
-- [x] Create a claim-to-evidence table with the question, result, population,
-  split, uncertainty, supporting files/run, limitations and next decision.
-- [x] Distinguish established, exploratory, superseded and blocked claims;
-  link corrections to the specific earlier statements they revise.
-- [x] Reconcile older overview documents and pending-task lists with the
-  completed reproductions and current catalog counts.
-- [x] Select the historical analyses needed for the intended final claims.
-  Prioritize those for reproduction rather than rerunning every notebook.
+The [current source table](current-research-summary.md#completed-7-november-source-evaluation) supports a tradeoff: anchored VIBES has the lowest observed MAE/P95, raw spectra the lowest RMSE, and spline the lowest MedAE. In the matched 1,361-channel control, anchored PLS without EPO has MedAE **1.089408**, RMSE **3.761128** µg/filter and heavy median FTIR/TOR **0.784547**; EPO gives **1.240100**, **4.089865** and **0.900773**. No significance claim or universally validated target model follows. Differences from older scores cannot be assigned solely to leakage repair because QC, regenerated spectra and numerical runtime also changed. Prior exploratory settings do not become independent model-selection confirmation when evaluated on this scoreboard.
 
-Done when: each proposed conclusion has traceable evidence and an explicit
-scope; completed work is no longer presented as an outstanding task.
+The prepared source-only review refresh attaches the verified fixed-k scores to the frozen display export without recreating unavailable historical target tables. Its [manifest](../gallery/review/closeout_20261107/manifest.json) hashes the overlay and base separately. Historical target comparisons retain their values and **4 November generation date**. The new all-source target predictions remain separate; the corrected fixed-k receipt does not certify old EPO sweep/pass-rule derivatives.
 
-## 3. Obtain the missing independent validation evidence
+The [figure audit](gallery-closeout-figure-populations-2026-11-07.md) preserves **233** counted Addis filters, **172** target/aethalometer pairs, **170** historical seasonal complete cases and **232** historical response cases. These cohorts have different eligibility rules; the matched seasonal study, its 188-filter sensitivity subset and the independent-blank/ambient-parent synthetic studies also retain their own definitions. Reopening and exporting the six-figure section on the actual corrected overlay passed final UI acceptance.
 
-This can proceed alongside consolidation and the research summary.
+## Verification profiles
 
-- [x] Freeze the existing 253-filter Addis full-pool AIRSpec/VIBES predictions and publish a hash-checked pairing template and scorer. Six source records lack volume; see [freeze package](addis-validation-freeze.md). No real pairing eligibility is locked yet.
-- [ ] Review the existing data-request draft and identify its intended recipient.
-  Obtain explicit authorization before sending it.
-- [ ] Obtain independent thermal EC measurements, units, uncertainties and
-  method/provenance information for the relevant physical filters.
-- [ ] Resolve the authoritative Adama spectral-ID crosswalk and sampling flags,
-  including the July 9 start-time offset and July 30 PTFE/quartz volume mismatch.
-- [ ] Finalize identity and sampling acceptance rules before evaluation; freeze
-  predictions and retain an auditable inclusion/exclusion ledger.
+- `uv run aeth gallery check --profile source`: source/synthetic behavior and compiled visibility, without claiming scientific input availability.
+- `uv run aeth gallery check --profile public`: source checks plus the public snapshot's declared integration checks.
+- `uv run aeth gallery check --profile research`: the full set, including private/legacy research evidence. This is the default for `check`.
 
-Done when: a defensible independently measured paired evaluation set exists,
-or the scientific summary clearly limits its claims to the available evidence.
-ChemSpec EC derived from FTIR cannot serve as an independent EC reference.
+Unexpected failures are fatal. Missing declared inputs are unavailable and block their selected profile. Preserve the generated receipt, data hash, commands and tested source revision. A deployment success alone is not the whole acceptance record.
 
-## 4. Specify and run the next VIBES experiment
+The **full legacy research profile remains unavailable** because required original tables and daily-instrument pickles are missing. Downstream display exports are not substituted for those inputs to make the checks pass. The final actual-overlay [run 42407030717](https://github.com/ahzs645/aethmodular/actions/runs/42407030717) passed at `2341cbbbab41b9dfde143d36aac5ea84585aea31`: 114 Python regressions, 372 source Node tests, 91 public-data Node tests, three browser journeys and type/build checks. Earlier receipts retain their historical scopes. See the [release status](gallery-closeout-implementation-2026-11-07.md#corrected-overlay-release-verification) and [legacy prerequisites](gallery-closeout-software-batch-2026-11-07.md#remaining-research-gate-prerequisites).
 
-Proposed question: **Can unreliable predictions be identified using information
-available before observing reference EC?** This is a new experiment, not a
-retroactive correction of the completed comparison.
+## Follow-on work outside this closeout
 
-- [ ] Freeze the comparison population, physical-filter identities, site split,
-  preprocessing settings and input/source hashes.
-- [ ] Predeclare the reliability indicators, training-only selection procedure,
-  evaluation metrics and success criteria, including retained coverage and error.
-- [ ] Compare AIRSpec and VIBES on the same population and evaluation protocol.
-  The reproduced 800-filter AIRSpec calibration is not an interchangeable
-  comparator for the full-pool VIBES study.
-- [ ] Keep the original problematic cases and predictions in the reported
-  evaluation. Do not improve reported scores by clipping or removing failures
-  after inspecting reference values.
-- [ ] Use fresh evaluation data for improvement claims. Rules motivated by
-  already-inspected held-out failures remain exploratory without fresh evidence,
-  even when their thresholds are subsequently fitted on training data.
-- [ ] Register the executable experiment with one fixed command, its contract,
-  logs, metrics and an explicit decision after completion.
+Independent Ethiopian thermal EC and sampling confirmation; agreed future TOR acceptance criteria; full PMF qualification (PR #18); numerical-v2 season-composition/fingerprint promotion checks if those analyses adopt v2; further acceleration; historical notebook coverage without a specific conclusion to support.
 
-Done when: the result answers the declared question, reports the coverage/error
-tradeoff and supports a clear accept, reject or inconclusive decision. If fresh
-evaluation is unavailable, report an exploratory result rather than a validated
-improvement.
-
-## 5. Assemble a reproducible scientific release
-
-- [ ] Resolve the deposit-area convention and uncertainty semantics where they
-  affect the selected claims; see [open scientific decisions](open-items.md).
-- [ ] Connect inputs, processing, predictions, evaluation, figures and claims in
-  a release manifest with fixed commands and environment versions.
-- [ ] Reproduce the selected supporting analyses in a clean environment;
-  preserve historical evidence separately from the new execution results.
-- [ ] Produce the final figures and narrative from the verified outputs, with
-  calibration diagnostics distinguished from independent validation.
-
-Done when: a clean checkout plus the documented input bundle reproduces the
-reported results within declared tolerances, and the release states which
-claims remain limited by missing measurements.
-
-## Execution order
-
-Start with consolidation; the research summary and claim-bearing rerun priorities
-are now recorded. Review the missing-data request in parallel. Use the summary
-to finalize the VIBES contract and carry out the selected historical reruns. Assemble the release after those results and
-limitations have been adjudicated. Broader notebook cleanup follows scientific
-priority; it is not a prerequisite for every new result.
+Do not send the existing data request or contact collaborators without explicit authorization. Keep the proposed TOR rule labelled proposed; no new sampling requirement is introduced as a condition for finishing the existing-data account.

@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import * as d3 from 'd3'
 import {
   boxStats, deming, describe, goldenJitter, hashUnit, IQR_MIN_N, jitter, mean, median, meanSe, monthlyMeans, monthlyStats, orNull,
-  pearson, quantile, quantileSorted, regression, sd, spearman,
+  pearson, percentIntervalFromLogEffect, quantile, quantileSorted, regression, sd, spearman,
 } from './stats.ts'
 
 const near = (a, b, tol = 1e-12) => assert.ok(Math.abs(a - b) <= tol * Math.max(1, Math.abs(b)), `${a} vs ${b}`)
@@ -69,6 +69,40 @@ test('meanSe and describe', () => {
   const s = describe([5, 1, null, 3, 2, 4])
   assert.equal(s.n, 5); near(s.median, 3); near(s.q25, 2); near(s.q90, 4.6); near(s.sd, Math.sqrt(2.5))
   assert.equal(describe([null]), null)
+})
+
+test('log-effect percent intervals preserve multiplicative uncertainty for increases and decreases', () => {
+  // A twofold uncertainty around a ratio of 2 gives ratios 1–4: effects 0–300%.
+  // Around a ratio of 1/2, the same uncertainty gives ratios 1/4–1: effects -75–0%.
+  const logSe = Math.log(2) / 1.645
+  const increase = percentIntervalFromLogEffect(1, logSe)
+  near(increase.v, 100); near(increase.lo, 0); near(increase.hi, 300)
+  const decrease = percentIntervalFromLogEffect(-0.5, logSe)
+  near(decrease.v, -50); near(decrease.lo, -75); near(decrease.hi, 0)
+  assert.ok(increase.hi - increase.v > increase.v - increase.lo)
+  assert.ok(decrease.lo > -100)
+})
+
+test('log-effect intervals retain the saved point estimate and allow a zero standard error', () => {
+  const saved = percentIntervalFromLogEffect(-0.1444, 0)
+  near(saved.v, -14.44); near(saved.lo, saved.v); near(saved.hi, saved.v)
+  assert.deepEqual(percentIntervalFromLogEffect(0, 0), { v: 0, lo: 0, hi: 0 })
+  const custom = percentIntervalFromLogEffect(0, Math.log(2), 1)
+  near(custom.lo, -50); near(custom.hi, 100)
+})
+
+test('log-effect intervals reject missing, impossible and non-finite summaries', () => {
+  for (const effect of [null, undefined, NaN, Infinity, -Infinity, -1, -1.1, '0']) {
+    assert.equal(percentIntervalFromLogEffect(effect, 0.1), null)
+  }
+  for (const logSe of [null, undefined, NaN, Infinity, -Infinity, -0.1, '0']) {
+    assert.equal(percentIntervalFromLogEffect(0, logSe), null)
+  }
+  for (const z of [null, NaN, Infinity, -Infinity, 0, -1, '1.645']) {
+    assert.equal(percentIntervalFromLogEffect(0, 0.1, z), null)
+  }
+  assert.equal(percentIntervalFromLogEffect(0, 1e308), null)
+  assert.equal(percentIntervalFromLogEffect(Number.MAX_VALUE, 0), null)
 })
 
 test('boxStats: quartiles, 1.5·IQR whiskers and fences, a minN', () => {

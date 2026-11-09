@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "base_data_tag": "data-82d701248232",
+  "base_data_sha256": "82d701248232b1975ea2e452bc1d682877e811103a2aa1040aff9d4adc989051",
+  "base_export_sha256": "90b8e16bfcb002db7e6bc7553d190c94f462753182fcb80d5bacc1c65a2111c9",
+  "overlay": {
+    "path": "gallery/review/closeout_20261107/continuum_baseline.json",
+    "sha256": "f38baa0c6756fadf92583ef3b23c018b4c6f1773efd4bf52b7ce6f56db1649a2"
+  },
+  "scientific_status": "fold_local_source_verified",
+  "source_scores_receipt_sha256": "ff10bd831f6c11d824b5f244b9696103910c7709c276a06766ac39a265b08c79",
+  "source_acceptance": {
+    "path": "gallery/review/closeout_20261107/source_acceptance.json",
+    "sha256": "2b3836fda7783815fccb41462b7256651558a5bac7c3598b94f6e0ce07273ce6"
+  }
+}

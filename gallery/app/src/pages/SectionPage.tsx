@@ -62,7 +62,7 @@ export function SectionPage({ sec, setSec, isTab }: {
   if (sec && !section) return <div className="sec-empty"><h2>This section is in another browser</h2><p>A section’s address only opens where it was made. Use its <strong>Copy link</strong> button to share it.</p></div>
   if (!section) return <div className="sec-empty">
     <h2>Build a section of your own</h2>
-    <p>Press <strong>+</strong> beside any chart in the gallery, on any page. It joins a section with its sites, filters, dates and options as they are at that moment, so charts from different pages can sit side by side.</p>
+    <p>Open a chart’s <strong>More (⋯)</strong> menu and choose <strong>Add to section</strong>, on any page. It joins a section with its sites, filters, dates and options as they are at that moment, so charts from different pages can sit side by side.</p>
     <button type="button" className="btn" onClick={() => createSection()}>Start an empty section</button>
   </div>
   return <SectionView key={section.id} section={section} isTab={isTab} onDeleted={() => setSec(null)} choose={sections.length > 1 ? { sections, onPick: setActiveSection } : undefined} />
@@ -136,7 +136,7 @@ function SectionView({ section, isTab, choose, onSave, onDeleted }: {
     {exporting && <p className="sec-banner" role="status">{exporting.done < exporting.total ? `Drawing chart ${exporting.done + 1} of ${exporting.total}${exporting.title ? `: ${exporting.title}` : ''}` : 'Writing the file…'}
       <button type="button" className="btn quiet" onClick={() => { cancelled.current = true }}>Cancel</button></p>}
     {section.items.length === 0
-      ? <div className="sec-empty"><h2>No charts yet</h2><p>Go to any page and press <strong>+</strong> beside a chart. It joins “{section.name}” as it is at that moment.</p></div>
+      ? <div className="sec-empty"><h2>No charts yet</h2><p>Go to any page, open a chart’s <strong>More (⋯)</strong> menu and choose <strong>Add to section</strong>. It joins “{section.name}” as it is at that moment.</p></div>
       : <div className="sec-grid">{section.items.map((item, i) => (
         <SectionCard key={item.id} item={item} first={i === 0} last={i === section.items.length - 1} available={isTab(itemTab(item))}
           edit={editable ? {

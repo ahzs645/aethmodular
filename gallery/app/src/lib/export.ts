@@ -3,6 +3,7 @@ import { paletteSeason, type ExportSeason, type PaletteSeason } from './exportSe
 import { collectExportPalette, fixedColours, paintColor, printPaint, replacePaint, type ExportPalette, type ExportSite } from './exportColors'
 import { CELL_INK, INK_LIGHT, inkOnFill, isDark } from './theme'
 import { textWidth } from './fitLabel'
+import { textLines } from './exportText'
 /**
  * Download a chart as PNG, JPEG, SVG or PDF. The decks in this repo are built
  * from figures, so a chart that can only be screenshotted is a chart that will
@@ -203,31 +204,28 @@ export function composeFigure(panel: HTMLElement, sites: readonly ExportSite[] =
     }
     const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT)
     for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-      const text = n.textContent?.replace(/\s+/g, ' ').trim()
       const parent = n.parentElement
-      if (!text || !parent || parent.closest('svg') || parent.closest(SKIP) || !visible(parent)) continue
-      const range = document.createRange()
-      range.selectNodeContents(n)
-      const rect = range.getBoundingClientRect()
-      if (!rect.width) continue
+      if (!parent || parent.closest('svg') || parent.closest(SKIP) || !visible(parent)) continue
       const cs = getComputedStyle(parent)
-      const el = document.createElementNS(NS, 'text')
-      el.setAttribute('x', String(rect.left))
-      el.setAttribute('y', String(rect.top + rect.height / 2))
-      el.setAttribute('dominant-baseline', 'central')
-      el.setAttribute('font-size', cs.fontSize)
-      sizes.push(parseFloat(cs.fontSize))
-      el.setAttribute('fill', cs.color)
-      if (cs.fontWeight !== '400' && cs.fontWeight !== 'normal') el.setAttribute('font-weight', cs.fontWeight)
       const item = parent.closest('.legend-item')
       const op = Number(item ? getComputedStyle(item).opacity : 1)
-      if (op < 1) el.setAttribute('opacity', String(op))
-      if (parent.closest('.legend-item.off')) el.setAttribute('text-decoration', 'line-through')
-      el.textContent = text
-      // its width on screen: the PDF draws it in Inter, which runs wider, and shrinks it to fit
-      el.setAttribute('data-w', rect.width.toFixed(1))
-      annotate(parent, el)
-      place(parent, { els: [el], box: boxOf(rect), note: !!parent.closest('.legend-note') })
+      for (const { text, rect } of textLines(n as Text)) {
+        const el = document.createElementNS(NS, 'text')
+        el.setAttribute('x', String(rect.left))
+        el.setAttribute('y', String(rect.top + rect.height / 2))
+        el.setAttribute('dominant-baseline', 'central')
+        el.setAttribute('font-size', cs.fontSize)
+        sizes.push(parseFloat(cs.fontSize))
+        el.setAttribute('fill', cs.color)
+        if (cs.fontWeight !== '400' && cs.fontWeight !== 'normal') el.setAttribute('font-weight', cs.fontWeight)
+        if (op < 1) el.setAttribute('opacity', String(op))
+        if (parent.closest('.legend-item.off')) el.setAttribute('text-decoration', 'line-through')
+        el.textContent = text
+        // Each actual screen line gets its own width for Inter's PDF adjustment.
+        el.setAttribute('data-w', rect.width.toFixed(1))
+        annotate(parent, el)
+        place(parent, { els: [el], box: boxOf(rect), note: !!parent.closest('.legend-note') })
+      }
     }
   }
 

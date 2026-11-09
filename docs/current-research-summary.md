@@ -1,162 +1,104 @@
-# FTIR calibration transfer to Addis: current scientific position
+# FTIR calibration transfer: current scientific position
 
-Evidence reviewed through **22 September 2026**. This is the current synthesis
-for the Addis FTIR/HIPS work, not a replacement for the dated experiment records
-or a review of every subproject in this repository.
+Updated **7 November 2026 after the completed existing-data research closeout**. Numerical acceptance, independent score arithmetic, the figure-population audit, exact-source public/browser checks and the seven-page visual review are complete. The actual corrected overlay passed at source `2341cbbbab41b9dfde143d36aac5ea84585aea31`; the preserved release remains a review candidate, with no deployment or absolute Addis EC validation implied. See the [final implementation receipt](gallery-closeout-implementation-2026-11-07.md#corrected-overlay-release-verification).
 
-## Main question and claim
+The new source evaluation follows the [reproduction protocol](gallery-closeout-reproduction-2026-11-07.md) at scientific checkpoint `ee1c6adac64b773944ee3bbaea3aac07d60f2f13`. The review's saved target/optical figures retain the export generated **4 November 2026 at 03:44:59 UTC**, from public data release `data-82d701248232` and its earlier deployment source `cb2e1469ec222719c347b9b5f672765ede3ed7c7`. The [review manifest](../gallery/review/closeout_20261107/manifest.json) binds the base and source overlay separately. The [September synthesis](current-research-summary-2026-09-22.md) and its [numerical verification receipt](current-research-summary-checks.json) remain historical evidence; that receipt does not validate the November analyses.
 
-**Question:** How reliably can an IMPROVE-trained FTIR EC calibration transfer
-to Addis, and under what conditions?
+## Question and present conclusion
 
-**Claim supported now:** The locked calibration is numerically reproducible,
-and its held-out IMPROVE EC performance can be quantified. At Addis, changing
-the calibration and spectral background correction changes the relationship
-between predicted EC and optical absorption. That relationship is a transfer
-diagnostic; independent Addis EC accuracy and a validated operating range have
-not yet been established.
+**How reliably can an IMPROVE-trained FTIR EC calibration transfer to Addis, and under what conditions?**
 
-The scientific contribution is presently **a reproducible assessment of transfer
-limitations**, not a validated Addis EC measurement method or an identified
-chemical cause of the discrepancy. Retain AIRSpec as the current operational
-EC preprocessing default while investigating applicability; the paired VIBES
-benchmark does not establish an overall EC improvement or method equivalence.
+The existing work supports a reproducible investigation of spectral preprocessing, calibration transfer, numerical convergence, Ethiopian seasonality and optical-response assumptions. It does **not** yet establish independent absolute EC accuracy for the Addis target population or select one universally validated target EC product.
 
-The next confirmatory claim would be: *A frozen calibration meets predeclared
-error and coverage requirements against independently measured EC on
-identity-confirmed Addis samples across a stated loading/seasonal domain.*
-Those requirements and the independent evaluation set still need to be fixed.
-Do not choose them retrospectively from the inspected failures.
+The corrected source evaluation now quantifies candidate tradeoffs on the same physical filters. PTFE-anchored VIBES has the lowest observed source MAE and P95 absolute error, raw spectra the lowest RMSE, and spline the lowest MedAE. EPO moves a heavy, low-OC/EC subset's median FTIR/TOR ratio toward one while increasing overall error relative to its matched-resolution anchored control. These descriptive results do not establish statistical superiority or a universal target winner. Converged VIBES remains a numerical improvement with a separately defined downstream scope.
 
-## Established findings within their tested scope
+## Completed 7 November source evaluation
 
-Here, “established” means supported by the specified saved results or completed
-reproduction. It does not imply independent validation of all upstream inputs.
+All six primary candidates use **18 PLS components, the same five site-grouped outer folds, and 12,386 common eligible physical filters across 157 IMPROVE sites**. Every candidate has 12,386 available predictions: **100% eligible coverage and zero prediction loss**. The full ledger retains 12,393 filters. Six finite TOR values at or above 150 µg/filter lie outside the declared source domain; the original all-candidate raw-spectrum QC rule excludes one additional filter from training and primary scoring. This QC rule was restored before examining the new scores. [Population and acceptance](../gallery/review/closeout_20261107/source_acceptance.json).
 
-| Finding | Population and result | Limit and consequence |
+The table reports pooled out-of-fold errors against IMPROVE TOR EC. All error columns are **µg/filter**; FTIR/TOR is dimensionless. The heavy subset contains **163 filters**, with 15 ≤ TOR EC <150 µg/filter and TOR OC/EC <2.5. Values are rounded here; the saved tables and [source-score export](../gallery/review/closeout_20261107/continuum_baseline.json) retain their declared precision.
+
+| Candidate | MedAE | MAE | RMSE | Mean signed bias | P95 absolute error | Heavy median FTIR/TOR |
+|---|---:|---:|---:|---:|---:|---:|
+| Raw spectra | 1.1426 | 1.7617 | 3.7456 | −0.0169 | 5.0782 | 0.7784 |
+| Spline baseline | 1.0828 | 1.8153 | 4.4310 | −0.0531 | 5.2372 | 0.7393 |
+| Production VIBES | 1.1301 | 1.8066 | 4.1923 | −0.0153 | 5.2646 | 0.7390 |
+| Deflated VIBES | 1.3298 | 2.1074 | 4.1333 | −0.0116 | 6.2898 | 0.6308 |
+| PTFE-anchored VIBES | 1.0905 | 1.6986 | 3.7613 | −0.0120 | 4.8428 | 0.7845 |
+| Anchored + EPO | 1.2401 | 1.8410 | 4.0899 | −0.0296 | 4.9693 | 0.9008 |
+
+These rows compare complete pipelines, including different spectral representations. Raw/VIBES candidates use 2,722 channels, spline 2,002 and EPO 1,361 after adjacent-channel averaging. A separate control holds that last resolution fixed and uses the same 12,386 common filters and folds:
+
+| Matched 1,361-channel control | MedAE, µg/filter | RMSE, µg/filter | Heavy median FTIR/TOR |
+|---|---:|---:|---:|
+| Anchored PLS without EPO | 1.089408 | 3.761128 | 0.784547 |
+| Anchored PLS with training-only EPO | 1.240100 | 4.089865 | 0.900773 |
+
+The control supports a composition-dependent tradeoff: EPO's heavy-subset ratio is nearer one, while its overall MedAE, MAE, RMSE and P95 error increase. It does not establish EPO as the preferred general EC product. Fixed settings include prior exploratory choices, so this is retrospective source evaluation rather than independent model-selection confirmation. Differences from the old November scores cannot be attributed solely to leakage repair: the numerical runtime, regenerated continuum spectra and restored QC rule also have explicit versions. [Results, control and limits](gallery-closeout-implementation-2026-11-07.md#numerical-results-and-acceptance).
+
+### What numerical acceptance established
+
+The two continuum variants were collected for **32,286/32,286 fits with zero failed fits**, covering 12,393 IMPROVE, 233 Addis and 3,517 network spectra per variant. This run uses the original CPU `vibes_baseline_matrix` adapter and recorded PB/tau/maxiter/retry procedure. Its completed diagnostics are not a Newton convergence certificate. The [reproduction record](gallery-closeout-reproduction-2026-11-07.md#numerical-procedure) preserves the numerical environment and execution history.
+
+All five EPO held-out prediction blocks were reconstructed from their saved projection and PLS parameters with **exact equality and maximum absolute difference 0**. Training/test sites and filter IDs do not overlap. Only fold 0 was refitted for the integrity test: changing its **2,481 held-out TOR labels**, including values crossing the domain boundary and missing values, and changing held-out nuisance chemistry left the projection, signatures, centering, coefficients and predictions **exactly unchanged**. Spectra, splits, QC and training inputs stayed fixed; the artificial evaluation scores changed. Those artificial scores are not scientific performance estimates. Baseline OOF identities, folds, QC and score inputs were checked, but baseline fold coefficients were not saved for independent reconstruction. [Actual acceptance receipt](../gallery/review/closeout_20261107/source_acceptance.json).
+
+A separate CSV/NumPy arithmetic review, importing no project scoring or fitting helper, agreed with the primary and control tables, population, folds and hashes; its maximum saved-table difference was approximately `2.22e-16`. It checks the same saved predictions and references and supplies no new validation observations. The [implementation receipt](gallery-closeout-implementation-2026-11-07.md#numerical-results-and-acceptance) records that review alongside the scientific acceptance.
+
+## Saved November evidence and the decision each supports
+
+The numerical findings below are **reported saved results with their original populations and versions**. The source-only refresh does not replace historical target predictions, optical-response models, seasonal summaries or synthetic controls with the new all-source prediction archives.
+
+| Question | Saved evidence | Interpretation and limits |
 |---|---|---|
-| **The locked AIRSpec calculation reproduces.** | Native OpenResearch run `5e953103-e1b4-4218-8ddf-f9c67188bfd4`, source `fb0abea`: all 84 column checks across 11 historical/prior-local tables pass at absolute tolerance 1e-6; maximum difference 2.47e-13. | Reuses corrected spectral caches. It does not rerun full-pool baseline correction or introduce independent Addis truth. [Run and recipe](openresearch-retrospective/native-execution-2026-09-22.md). |
-| **Source-domain prediction has a measured error.** | Historical lowest-OC/EC 800: 606 training and 194 test rows, disjoint sites; corrected DF1=6 selects k=5. Recomputed test RMSE **3.859 µg/filter**, MAE **2.523**, bias **+1.085**. | A single source-domain split, without a new refitting interval in this review. This is not Addis accuracy. [Predictions](../research/ftir_hips_chem/output/tables/airspec_locked_reproduction/ocec_df6_predictions.csv). |
-| **Background correction changes the Addis optical comparison.** | Historical fixed 190-filter subset, x=HIPS Fabs/10: raw low-OC/EC to AIRSpec DF1=6 changes the saved OLS intercept **−3.22 → −1.62 µg/m³**, while optical-disagreement RMSE increases **1.16 → 2.41 µg/m³**. | These are reproduced historical OLS diagnostics, not a new errors-in-variables fit or independent thermal errors. A smaller intercept alone is not an accuracy improvement. [Saved table](../research/ftir_hips_chem/output/tables/airspec_locked_reproduction/reproduced_tables/addis_metrics_corrected.csv). |
-| **The completed paired EC benchmark does not establish an overall VIBES advantage.** | Full pool: same **2,327** test filters, AIRSpec/VIBES RMSE **3.224/3.296 µg/filter**. Restricted comparison: same **137** test filters, RMSE **2.548/2.420**, but MAE **1.581/1.824**. | Full-pool ΔRMSE (VIBES−AIRSpec) **+0.071**, existing 95% interval **[−0.083, +0.264]**. Both cohort-level RMSE intervals include zero; this is not equivalence. Methods are paired within each cohort; cohorts are not interchangeable. [Scores](../research/ftir_hips_chem/output/tables/vibes_colab_cloud/persistent_results/full-83dcf32e86bc0f09/calibration_scores.csv), [audit and interval scope](vibes-subgroup-audit-2026-09-21.md). |
-| **Better blank removal does not imply better EC prediction.** | Saved held-out ETAD blank residual RMS medians: AIRSpec **5.77e-4**, VIBES **6.73e-6 absorbance**, nine blanks. Synthetic recovery is better with VIBES at amplitudes 0.05 and 0.15, worse at 0.01. | Nine independent parent blanks, reused across amplitudes. Field blanks are not guaranteed chemically empty; synthetic additions do not establish recovery of ambient EC or identify a species. [Blank summary](../research/ftir_hips_chem/output/tables/vibes_subgroup_audit/blank_summary.csv), [recovery summary](../research/ftir_hips_chem/output/tables/vibes_subgroup_audit/injection_summary.csv). |
+| Does broad-signal recovery follow from successful optimization? | The documented 6 November continuum rerun has 89/90 successful fits. The failed unspiked blank leaves eight independent parent blanks for VIBES recovery and nine for spline. At 0.05 AU, reported VIBES recovery is approximately 98.27% for four bands, 18.80% for the broad hump and 0.138% for the power-law addition. | Successful fitting does not establish preservation of these broad synthetic shapes. The additions are repeated tests on parent blanks; paired method differences need common available parents. This does not identify the real continuum's chemical origin. [Run and limits](vibes-gallery-continuum-check.md). |
+| Does anchoring improve transfer diagnostics? | The saved production/anchored Addis aethalometer intercepts are approximately −0.955 and +0.098 µg/m³. The three unflagged provisional Adama pairs give median FTIR/TOR of 0.96 and 1.31. | A promising tradeoff, not a demonstrated absolute accuracy improvement or equivalence. Adama is a different site, lot and sampling arrangement with provisional mapping. These saved target comparisons are separate from the new held-out source table above. [Comparison implementation](../research/ftir_hips_chem/workflows/run_hips_response_20261103.py). |
+| Can the old EPO score select a method? | Historical EPO projection jointly regressed source spectra on EC, OC, other PM, Fe and K before site splitting. Its saved 1.24 µg/filter MedAE and heavy-subset ratio used a label-dependent transformation informed by test rows. | The completed training-only fixed-k evaluation above supersedes that primary source score. Numerical proximity does not validate the old pipeline or isolate the size of leakage bias. Historical EPO sweeps/pass-rule simulations are outside the new receipt and remain withheld; target optical comparisons remain exploratory. [Corrected workflow](../research/ftir_hips_chem/workflows/run_intercept_fixes_20261103.py). |
+| What does Newton change? | The adoption study reports 4,452/4,452 network analyses fitted and certified, and rebuilt source test RMSE 3.8501 → 3.8499 µg/filter. Functional-group, lot, blank-bank and continuum checks are documented. | Supports numerical control and reproducibility, not improved absolute EC accuracy. Season-composition and fingerprint-grouping impact checks remain necessary before numerical v2 is promoted into those conclusion-bearing analyses. Preserve both runs meanwhile. [Adoption study](vibes-newton-adoption-tests-2026-11-03.md). |
+| Is seasonality a central result? | The matched study has common calibration populations/folds and 232 direct-HIPS Addis physical-filter pairs. Raw shared-window median FTIR-minus-HIPS differences at MAC 10 are approximately −0.896, −0.268 and +1.420 µg/m³ for Bega, Belg and Kiremt. The pattern persists within lot 251 and the 188-filter complete-month 2023–24 subset. | Preserve the calendar and cohort. New reporting uses `belg_feb`: Bega Oct–Jan, Belg Feb–May, Kiremt Jun–Sep; `dry_feb` is a labelled sensitivity. These are optical disagreements, not thermal EC errors or validated seasonal correction factors. [Matched study](drive-calibration-seasonal-study-2026-11-03.md). |
+| What does spectral ML add? | The completed seasonal ML work evaluates physical filters with blocked later-cycle tests; task and test cycle change the raw/corrected ranking. | A predictive diagnostic, not chemical identification or a season-specific EC correction. Do not restart it as uncompleted work. [Study and evaluation](https://github.com/ahzs645/aethmodular/pull/15). |
+| How should HIPS-response changes be interpreted? | An IMPROVE TOR-derived response model changes the Addis optical comparison. Its fitted bend is around optical-depth coordinate 0.3, using a geometric-mean HIPS/reference coordinate. | An empirical fitted feature, not an instrument-certified raw-HIPS cutoff. Transferring the response does not create independently measured Addis TOR. Keep raw HIPS, MAC conversion, response scenarios and inferred comparators distinct. [Response model](../research/ftir_hips_chem/workflows/run_hips_response_20261103.py). |
 
-**Metric discipline:** calibration errors above are µg/filter; Addis optical
-comparisons are µg/m³; blank residuals are absorbance. The historical AIRSpec
-table's `R2=0.90424` is **squared correlation**. From the same 194 predictions,
-predictive R² = 1−SSE/SST is **0.88234**. The VIBES score table uses predictive R².
-Do not compare those two R² definitions as if they were the same metric.
+## Reference and metric discipline
 
-The original AIRSpec reproduction has 194 test rows; the Colab restricted
-comparison has 137. Their similar cohort names do not establish identical
-membership or evaluation conditions. The 12,808 completed Colab cases are
-processing cases, not 12,808 independent EC validation observations.
-These source-domain scores describe the recorded models and splits; they do
-not account for the entire historical model search or repeated inspection of
-Addis optical diagnostics when choosing which candidate to pursue.
+| Quantity | Meaning |
+|---|---|
+| HIPS Fabs | Optical absorption measurement, normally Mm⁻¹. |
+| Fabs / assumed MAC | HIPS-derived optical BC/eBC; report the MAC, normally 10 m²/g here. |
+| HIPS under an IMPROVE-derived response | Model-based transferred-response sensitivity. |
+| HIPS × IMPROVE TOR/HIPS relationship | Inferred comparator, not TOR measured on Addis filters. |
+| Matched thermal-optical TOR | Direct reference within its actual paired population and method limits. The Adama pilot is not representative Addis validation. |
+| ChemSpec EC/OC and in-house FTIR EC/OC | Two feeds of FTIR-derived products, not independent validation observations. See the provenance rules in [AGENTS.md](../AGENTS.md). |
+| Median absolute error (MedAE) | `median(abs(prediction − TOR))`. The historical `improve_error` and misleading `improve_mae` fields used this statistic. |
+| Mean absolute error (MAE) / RMSE | `mean(abs(error))` / `sqrt(mean(error²))`; computed as distinct fields in the corrected scorer. |
+| Mean signed bias / tail errors | Mean of `prediction − TOR`; explicitly named 90th/95th percentiles of absolute error. |
 
-## Exploratory findings and hypotheses
+Source scores use µg/filter, while target optical comparisons use µg/m³. The fixed-k primary source population retains the recorded raw-spectrum QC flag and finite TOR below 150 µg/filter, an outcome-restricted domain. Report high-loading exclusions/stress cases and candidate availability alongside the common-filter scores. Repeated scans and synthetic injections do not increase the number of independent physical filters or parent blanks. Historical squared correlation and predictive R² also remain different statistics.
 
-| Finding | Evidence and uncertainty | What it supports next |
-|---|---|---|
-| **A loading-associated failure pattern warrants investigation.** | Full-pool Q3, defined from training loadings: 545 test filters at 30 sites; VIBES increases RMSE by **0.453 µg/filter**, existing pointwise 95% interval **[0.187, 0.743]**. Intervals use 10,000 paired site-cluster draws conditional on saved fits; they omit refitting uncertainty and multiple-comparison adjustment. | Investigate prospective applicability indicators. Q3 uses reference EC; its boundary is not an operational flag available for Addis without independent EC. [Subgroup evidence](../research/ftir_hips_chem/output/tables/vibes_subgroup_audit/subgroup_metrics.csv). |
-| **The largest two failures are shared by both methods.** | BRIS1 `1970697` and CACR1 `1973864` account for **52.2% of the net Q3 squared-error increase**. Both methods predict negative EC; VIBES is more negative. All 12 selected correction repeats converge, maximum prediction change **0.001994 µg/filter**. | Gross solver nonconvergence is not supported as the explanation for those two cases. Chemical identity, reference error and physically correct background remain unresolved. Keep cases in evaluation. [Case investigation](../research/ftir_hips_chem/output/tables/vibes_case_investigation/report.md). |
-| **Spectral residual information depends on the comparator.** | Saved ftir_46 blocked ΔRMSE for spectra beyond metadata is **−0.060 [−0.134, +0.020] µg/m³**; beyond metadata plus mass it is **−0.126 [−0.199, −0.032]**. Existing block-bootstrap intervals; no new fit here. | Preserve both comparisons. Predicting an FTIR–HIPS residual is not independent thermal validation or chemical attribution. [Paired results](../research/ftir_ec_phase3/output/tables/ftir46/paired_differences.csv). |
-| **The 1617 cm⁻¹ feature is a candidate regional marker, not an established cause.** | Later neutral-baseline analysis reports the feature at Addis and Bishoftu; Bishoftu's band does not share the same offset. Earlier site patterns changed with the baseline definition. | Require independent chemical standards and controlled attribution before naming charcoal/eucalyptus or claiming the band causes the offset. [Corrected historical account](../research/ftir_ec_phase3/BAND1617_LEAD_2026-08-23.md). |
+The October 28 organic-signal figure's y value is **FTIR residual from seasonal HIPS fit (µg/m³)**: FTIR EC minus its seasonal Deming fitted line. It is neither a simple FTIR−HIPS difference nor an independently measured EC error. The gallery now retains that definition with explanations off and in exports.
 
-Training-only threshold fitting does not make a hypothesis confirmatory when it
-was designed after inspecting the outer-test failures. Fresh evaluation is
-needed for improvement claims. New work should test whether spectral/loading
-indicators available at prediction time identify unreliable predictions, and
-report retained coverage together with error.
+## Completed figure audit and release acceptance
 
-## Superseded or overstrong claims
+The completed [figure-population audit](gallery-closeout-figure-populations-2026-11-07.md) reconciles six distinct views. Its source panel attaches the verified scores above; its other panels preserve the saved November export.
 
-| Earlier claim | Current replacement | Correcting evidence |
-|---|---|---|
-| Low-OC/EC selection beats all random cohorts on held-out RMSE. | Lowest-OC/EC 800 RMSE is 3.415 on 194 filters; random #3 is 3.097 on 154. Different test populations prevent a common-test superiority claim. Higher R² across different populations does not resolve that comparison. | [ftir_11 saved scores](../research/ftir_ec_phase3/output/tables/ftir11/site_held_out_tor_metrics.csv). |
-| A smaller Addis intercept validates better EC, or identifies a non-EC absorber. | The intercept is relative to an optical proxy and depends on model, population and estimator. Reduced offset does not identify the correct EC or its chemical cause. Changing a constant MAC rescales x; it cannot remove the fitted intercept by itself. | [Corrected ftir_13 table](../research/ftir_hips_chem/output/tables/airspec_locked_reproduction/reproduced_tables/addis_metrics_corrected.csv), [intercept invariant](../research/ftir_ec_phase3/ftir_25_intercept_invariant.md). |
-| ChemSpec EC or BC supplies an independent reference. | EC tracks the FTIR product; BC is derived from Fabs/MAC. Neither arbitrates FTIR versus HIPS independently. | [Provenance findings](open-items.md#establish-the-provenance-of-ec_ftir--substantially-resolved). |
-| The early spectral residual learner proves an increment beyond metadata. | The paired comparison without mass includes zero; the mass-adjusted comparison is different and must be named. | [ftir_46 paired contrasts](../research/ftir_ec_phase3/output/tables/ftir46/paired_differences.csv), qualifying ftir_43. |
-| A pooled-lot blank correction resolves Pasadena's slope or a large part of the Addis offset. | Blank response must be keyed to the deployed calibration line, not lot alone. ftir_47 withdraws the pooled-lot interpretation; the historical correction reports only a small Addis change. | [Dated correction](../research/ftir_ec_phase3/OFFSET_ADJUDICATION_2026-08-23.md), [per-line ledger](../research/ftir_ec_phase3/output/tables/ftir47/blank_ledger_per_line.csv). |
-| The 1617 band identifies the offset's chemical carrier. | The band/offset link was withdrawn. Regional association and a specific source or absorbing mechanism are separate hypotheses. | [Two explicit corrections](../research/ftir_ec_phase3/BAND1617_LEAD_2026-08-23.md). |
-| Historical aethalometer/filter crossplots establish co-sampled independent validation. | Legacy timing, ±1-day matching and processing provenance need evidence recovery. A repaired notebook does not repair sampling identity or stored data provenance. | [Active-interval audit](active-interval-matching-2026-09-10.md). |
+| Review view | Audited population or summary |
+|---|---|
+| Coverage | 233 counted physical filters; 172 have aethalometer values. |
+| Source-reference performance | 12,386 common eligible IMPROVE filters / 157 sites. |
+| Baseline behavior | 102 displayed bin medians across preprocessing panels; repeated views of the same filters. |
+| Seasonal contrasts | 170 historical complete cases per outcome, under `belg_feb`, with an additional inferred-comparator eligibility requirement. |
+| Optical response | 232 historical response-eligible Addis filters; 171 aethalometer matches. |
+| Candidate target comparison | The same 172 physical aethalometer pairs in the saved production/anchored panels. |
 
-Older narratives retain value as a record of hypothesis development. Their
-stronger mechanistic conclusions are not carried forward by this synthesis.
+The 170 seasonal cases, 172 target pairs and 232 response cases are not interchangeable. The matched seasonal study's 232 direct-HIPS pairs and its 188-filter sensitivity subset retain their own definitions. The saved ambient-parent synthetic display also has its own population: 16 parents, three backgrounds and 192 fitting jobs, with parent IDs/fit diagnostics absent from that export. It is separate from the later independent-blank control described above. Historical flag and inclusion differences remain documented in the ledger rather than silently harmonized.
 
-## Missing evidence and decisions
+The endpoint is met as a **versioned existing-data research review release**. The real-data rerun, source acceptance, independent arithmetic review, source export, figure audit, corrected-overlay browser journeys, phone/export review and final source/base/overlay receipt are complete. [Run 42407030717](https://github.com/ahzs645/aethmodular/actions/runs/42407030717) passed 114 Python, 372 source Node, 91 public-data Node and three browser tests, plus type/build checks, on the exact review source. All seven exported pages were visually inspected. The full legacy research gate remains unavailable because its original input tables and daily-instrument pickles have not been restored; the selected public scope does not certify that full profile. [Release identities and limits](gallery-closeout-implementation-2026-11-07.md#corrected-overlay-release-verification).
 
-1. **Independent Addis reference:** thermal EC, method and target definition
-   (including TOR versus TOT), units, uncertainty and blanks/MDLs on confirmed
-   physical samples. The local search checked 753 filenames and seven exports;
-   absence there is not proof the data do not exist in laboratory systems.
-2. **Identity and sampling:** confirm the five candidate Adama pairs, the
-   authoritative mapping of spectral IDs 4744–4748, and the July 9 start offset
-   and July 30 volume mismatch. Adama is not an Addis reference population.
-3. **A prospective operating domain:** predeclare input-based applicability
-   indicators, minimum retained coverage, acceptable errors and evaluation
-   design. Freeze predictions before opening independent outcomes. Seasonal
-   statements must name the calendar convention; cross-lot tests must document
-   whether sites and time periods are genuinely new.
-4. **Measurement conventions:** confirm HIPS uncertainty semantics before
-   treating them as measurement-error variances, and resolve the IMPROVE deposit
-   area where mass-per-area comparisons depend on it. Existing sensitivity fits
-   do not supply those confirmations.
-5. **Independent mechanism evidence:** blank/standard recovery across lots and
-   weak signals, and chemical evidence to distinguish composition, background
-   correction and loading effects. Neither optimizer convergence nor optical
-   agreement identifies the correct chemical mechanism.
+The review sequence covers physical-filter coverage, source-reference performance, baseline behavior, Bega/Belg/Kiremt, optical-response sensitivity and candidate tradeoffs. A shared section refers to the active exports; it is not itself a frozen data archive. Preserve the separately hashed historical base, corrected source overlay, acceptance/figure evidence and final export receipt together. The [reproduction protocol](gallery-closeout-reproduction-2026-11-07.md) records the restored inputs and exact source/target version boundary.
 
-The [validation readiness report](../research/ftir_hips_chem/output/tables/addis_validation_readiness/report.md)
-links the confirmation queue and unsent request. [Open decisions](open-items.md)
-retain the detailed measurement questions. No request was sent in this review.
-The [253-filter Addis prediction freeze](addis-validation-freeze.md) now preserves
-the full-pool AIRSpec/VIBES outputs and a pre-outcome pairing lock procedure;
-it does not supply thermal values or an eligible paired cohort.
+PR #19 remains a separate Research-only timeline review. Its catalog records source history and saved evidence, not scientific validation. The closeout fix replaces the indexer's checkout-based `missingData` flags with checks of declared primary exports on the active review host. Exact-head CI at `316a53ec423c7344253aef409027b0f607fff23f` passed 20 focused tests, four browser journeys, the research build and public exclusion ([run 42396251333](https://github.com/ahzs645/aethmodular/actions/runs/42396251333)). A loaded export does not establish scientific reproduction; public builds intentionally omit this area.
 
-## Focus for the next research cycle
+New Ethiopian sampling/TOR, full PMF scientific qualification, further GPU/WebGPU work and exhaustive historical notebook migration are follow-on work. None is required to state the supported existing-data findings and the unresolved absolute Addis level. The proposed future TOR rule still requires agreement on eligibility, uncertainty, acceptance limits and target coverage.
 
-Use three main figures for the current story: **the frozen source-domain
-prediction benchmark**, **the Addis optical comparison explicitly labelled as
-a diagnostic**, and **the paired AIRSpec/VIBES result with uncertainty**.
-Keep spectra, solver traces and mechanism leads as supporting material.
+## Claims not carried forward
 
-Prioritize claim-bearing reproductions in this order:
-
-1. Retain the completed ftir_13/native baseline; do not rerun it simply to fill
-   another dashboard node. A fresh raw-spectra correction would be a separate scope.
-2. Reproduce ftir_15's uncertainty and ftir_46's paired contrasts if they enter
-   the final claim; retain their exact comparators, sampling blocks and estimators.
-3. Reproduce ftir_47's per-line blank analysis before making a quantitative
-   blank-artifact claim; preserve the refuted pooled-lot comparator.
-4. Use ftir_11/32 as protocol evidence. Any common-test cohort ranking is a new
-   experiment, not a conclusion from unlike historical splits.
-5. Gate ftir_41/44 external-reference interpretations on confirmed identities.
-   Leave the 25 unexecuted historical sources as a prioritized context backlog.
-
-This selection is based on what supports the main claim. It is not a declaration
-that those historical analyses have all been rerun or independently validated.
-
-## Current operational status and verification
-
-The live retrospective contains **101 historical/release records + 3 prospective
-contracts = 104 research records**, plus **6 family headings = 110 nodes**. Its
-**82 typed links** comprise 45 dependencies, 29 related-work links, five
-qualifications and three revisions. Counts describe documentation, not validated
-experiments. The separate AIRSpec execution project contains one experiment and
-one completed run; the retrospective retains its original completed release run.
-
-The [retrospective overview](openresearch-retrospective/README.md) tracks the
-catalog, and [project next steps](project-next-steps.md) tracks execution priorities.
-
-This review independently recomputed both methods' headline RMSE, MAE, bias and
-predictive R² from the saved Colab predictions; checked paired test identities,
-truth and sites; recomputed Q3 errors and the two-case share; checked all 12
-repeat results; recomputed historical AIRSpec test errors and both R² definitions;
-and checked the 43 historical and 84 native comparison rows. Results and input
-hashes are in the [verification receipt](current-research-summary-checks.json).
-Existing bootstrap intervals were read, not recalculated. The review did not
-refit models, validate raw laboratory records or regenerate historical figures.
-Local-only output links require the preserved evidence bundle; this summary is
-not yet a portable release. **Ready within this reviewed scope, with these limits.**
+Do not claim that a near-zero aethalometer intercept proves correct EC, that the fitted HIPS bend certifies an instrument operating range, that a seasonal residual identifies its chemical cause, or that three provisional Adama pairs select a universally accurate method. Do not transfer the September reproduction receipt to a different November experiment. Historical mechanistic corrections and unavailable independent evidence are preserved in the [September synthesis](current-research-summary-2026-09-22.md) and [open items](open-items.md).

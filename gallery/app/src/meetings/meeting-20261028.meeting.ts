@@ -21,7 +21,7 @@ export default {
         {
           kind: 'intervals', id: 'm1028-cals', table: 'cals', row: 'season', series: 'calibration',
           title: 'Addis slope and intercept by season, for five ways of choosing the IMPROVE calibration filters',
-          subtitle: 'Each calibration is fitted on baseline-corrected spectra with the poster’s protocol (site-held-out k; the urban set uses the AQRC app’s interleaved CV because six sites are too few to group). Deming FTIR EC vs HIPS EC (Fabs / MAC 10) on the 189 poster filters.',
+          subtitle: 'Each calibration is fitted on baseline-corrected spectra with the poster’s protocol (site-held-out k; the urban set uses the AQRC app’s interleaved CV because six sites are too few to group). Deming FTIR EC vs HIPS-derived optical BC (Fabs / MAC 10 m²/g) on the 189 poster filters.',
           panels: [
             { value: 'slope', label: 'Slope', reference: 1 },
             { value: 'intercept', label: 'Intercept (µg/m³)', reference: 0 },
@@ -31,9 +31,11 @@ export default {
         },
         {
           kind: 'histogram', id: 'm1028-ocec', table: 'ocec_dist', value: 'oc_ec', series: 'population', log: true,
-          title: 'OC/EC: Addis sits below almost every IMPROVE filter',
-          subtitle: 'IMPROVE: TOR OC / TOR EC, filters with at least 1 µg EC. Addis: SPARTAN OC (FTIR) / HIPS EC.',
-          xLabel: 'OC / EC',
+          title: 'Carbon ratios with different references: IMPROVE and Addis',
+          subtitle: 'IMPROVE: TOR OC / TOR EC, filters with at least 1 µg EC. Addis: SPARTAN OC (FTIR) / HIPS-derived optical BC (MAC 10). These denominators are different measurement products.',
+          xLabel: 'TOR OC / TOR EC (IMPROVE); FTIR OC / optical BC (Addis)',
+          noteAlways: true,
+          note: 'Different reference products: IMPROVE uses thermal TOR OC/TOR EC; Addis uses FTIR OC/HIPS-derived optical BC at MAC 10 m²/g. This is a composition comparison, not independent Addis EC validation.',
         },
         {
           kind: 'table', id: 'm1028-cals-table', table: 'cals', title: 'The same fits as a table',
@@ -48,19 +50,21 @@ export default {
     },
     {
       id: 'deficit',
-      title: '2. Does the Addis error track the organic signal?',
+      title: '2. Does the seasonal-fit residual track the organic signal?',
       text: '@deficit',
       figures: [
         {
           kind: 'crossplot', id: 'm1028-deficit', table: 'deficit_points', x: 'ch_resid', y: 'error', color: 'season', facet: 'season', fit: false, sameScale: false,
           idColumn: 'MediaId', maxSide: 340,
-          title: 'Error against the C–H band, both with HIPS EC’s effect removed (season-specific calibrations)',
-          subtitle: 'y: FTIR EC minus the season’s Deming line. x: C–H band area (2800–3000 cm⁻¹, per m³) minus what HIPS EC predicts for it. Points to the right carry more organic material than their EC suggests.',
-          xLabel: 'C–H band beyond HIPS EC (10⁻³ absorbance per m³)', yLabel: 'FTIR EC error (µg/m³)',
+          title: 'FTIR residual from seasonal HIPS fit against residual C–H signal',
+          subtitle: 'y: FTIR EC minus its seasonal Deming fitted line against HIPS-derived optical BC. x: C–H band area (2800–3000 cm⁻¹, per m³) minus its HIPS fitted value. Both are residuals; neither is an independently measured EC error.',
+          xLabel: 'C–H residual from HIPS fit (10⁻³ absorbance per m³)', yLabel: 'FTIR residual from seasonal HIPS fit (µg/m³)',
+          noteAlways: true,
+          note: 'The y value is FTIR EC minus its seasonal Deming fitted line against HIPS-derived optical BC (MAC 10). It is not a simple FTIR-minus-HIPS difference or an error against independent thermal EC.',
         },
         {
           kind: 'heatmap', id: 'm1028-deficit-rho', table: 'deficit', row: 'calibration', column: 'season', value: 'partial_rho', domain: [-1, 1], format: 'f2',
-          valueLabel: 'partial Spearman ρ', title: 'FTIR EC against the organic index, HIPS EC held fixed',
+          valueLabel: 'partial Spearman ρ', title: 'FTIR EC against the organic index, HIPS-derived optical BC held fixed',
           subtitle: 'Organic index: the mean percentile of the C–H, O–H and carbonyl band areas per m³.',
         },
       ],
@@ -72,15 +76,15 @@ export default {
       columns: 2,
       figures: [
         {
-          kind: 'table', id: 'm1028-dust', table: 'dust', title: 'SPARTAN dust elements and HIPS EC (medians, µg/m³)',
+          kind: 'table', id: 'm1028-dust', table: 'dust', title: 'SPARTAN dust elements and HIPS optical BC (MAC 10) (medians, µg/m³)',
           columns: [
             { key: 'season', label: 'Season' }, { key: 'n', format: 'int' }, { key: 'Al', format: 'f2' }, { key: 'Si', format: 'f2' },
-            { key: 'Fe', format: 'f2' }, { key: 'HIPS EC', format: 'f2' }, { key: 'Si / EC', format: 'f2' }, { key: 'Al / EC', format: 'f2' },
+            { key: 'Fe', format: 'f2' }, { key: 'HIPS EC', label: 'HIPS optical BC (MAC 10)', format: 'f2' }, { key: 'Si / EC', label: 'Si / HIPS optical BC', format: 'f2' }, { key: 'Al / EC', label: 'Al / HIPS optical BC', format: 'f2' },
           ],
         },
         {
           kind: 'heatmap', id: 'm1028-dust-rho', table: 'dust_rho', row: 'calibration', column: 'season', value: 'partial_rho', domain: [-1, 1], format: 'f2',
-          valueLabel: 'partial Spearman ρ', title: 'FTIR EC against Si, HIPS EC held fixed',
+          valueLabel: 'partial Spearman ρ', title: 'FTIR EC against Si, HIPS-derived optical BC held fixed',
         },
       ],
     },
@@ -124,7 +128,7 @@ export default {
         {
           kind: 'sweep', id: 'm1028-loading', table: 'loading_bins', x: 'loading', y: 'ratio', lo: 'lo', hi: 'hi', series: 'series',
           title: 'FTIR EC / reference EC against EC on the filter',
-          subtitle: 'Median and interquartile range in loading bins (0–2, 2–5, 5–10, 10–20, 20–40, 40–80, 80+ µg; bins with at least 5 filters). IMPROVE against TOR on the filter; Addis against HIPS EC × volume. “Out of range”: a baseline-corrected calibration trained on lot-251 filters below 20 µg, predicting the 367 above.',
+          subtitle: 'Median and interquartile range in loading bins (0–2, 2–5, 5–10, 10–20, 20–40, 40–80, 80+ µg; bins with at least 5 filters). IMPROVE against TOR on the filter; Addis against HIPS-derived optical BC × volume (MAC 10). “Out of range”: a baseline-corrected calibration trained on lot-251 filters below 20 µg, predicting the 367 above.',
           xLabel: 'EC on the filter (µg)', yLabel: 'FTIR / reference', xScale: 'log', reference: 1, interval: 'whisker',
           variants: [LOG_AXIS],
         },
@@ -145,9 +149,9 @@ export default {
       figures: [
         {
           kind: 'sweep', id: 'm1028-dark', table: 'dark_bins', x: 'loading', y: 'ratio', lo: 'lo', hi: 'hi', series: 'group',
-          title: 'TOR EC / (HIPS Fabs / 10) against HIPS EC on the filter, IMPROVE library',
+          title: 'TOR EC / (HIPS Fabs / 10) against HIPS-derived optical BC on the filter, IMPROVE library',
           subtitle: 'OP = 0: TOR’s optical pyrolysis (reflectance) reads zero. Median and interquartile range per loading bin (bins with at least 10 filters).',
-          xLabel: 'HIPS EC on the filter (µg)', yLabel: 'TOR / HIPS', xScale: 'log', reference: 1, interval: 'whisker',
+          xLabel: 'HIPS-derived optical BC on the filter (µg, MAC 10)', yLabel: 'TOR / HIPS', xScale: 'log', reference: 1, interval: 'whisker',
           variants: [LOG_AXIS],
         },
         {
@@ -192,7 +196,7 @@ export default {
           kind: 'heatmap', id: 'm1028-speciation', table: 'speciation', row: 'population', column: 'species', value: 'median share of PM2.5',
           ramp: 'sequential', format: 'pct', domain: [0, 0.35], valueLabel: 'median share of PM2.5',
           title: 'Composition as a share of PM2.5',
-          subtitle: 'IMPROVE from the validated FED archive (SO4f, NO3f, OCf, ECf, SOILf, MF) for the library filters. Addis: SPARTAN sulfate, nitrate and OC, HIPS EC, soil from the IMPROVE formula on SPARTAN Al, Si, Ca, Fe, Ti.',
+          subtitle: 'IMPROVE from the validated FED archive (SO4f, NO3f, OCf, ECf, SOILf, MF) for the library filters. Addis: SPARTAN sulfate, nitrate and OC, HIPS-derived optical BC (MAC 10), soil from the IMPROVE formula on SPARTAN Al, Si, Ca, Fe, Ti.',
         },
         {
           kind: 'table', id: 'm1028-speciation-table', table: 'speciation_table', title: 'The same shares, with OC/EC',

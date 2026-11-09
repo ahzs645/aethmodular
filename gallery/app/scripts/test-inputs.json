@@ -1,0 +1,335 @@
+{
+  "schema_version": 1,
+  "description": "Data-dependent Node test files. Unlisted tests are source-only; source checks reject unclassified direct data readers. Inputs are repository-relative; a final-component * glob requires at least one matching file. Public scope reads only publishable gallery data; research additionally requires private exports or saved analysis inputs.",
+  "tests": {
+    "src/charts/calibration/runFit.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/calibration_runs.json"
+      ],
+      "reason": "Reconcile saved metrics and blind halves from per-filter readouts."
+    },
+    "src/lib/analogLadder.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/meeting-r70/analog_ladder/manifest.json",
+        "gallery/app/public/data/meeting-r70/followup_20260917.json",
+        "gallery/app/public/data/meeting-r70/analog_ladder/*.json",
+        "gallery/app/public/data/meeting-r70/analog_ladder/*.bin.gz"
+      ],
+      "reason": "Reconcile analog membership and predictions on the saved calibration."
+    },
+    "src/lib/baselineComparison.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/baseline_comparison.json",
+        "gallery/app/public/data/baseline_applicability.json",
+        "gallery/app/public/data/baseline_followup.json"
+      ],
+      "reason": "Reconcile frozen paired errors, contributions and applicability populations."
+    },
+    "src/lib/calibrationChoices.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/calibration.json",
+        "gallery/app/public/data/calibration_runs.json"
+      ],
+      "reason": "Cohort and protocol choices resolve to exported configurations."
+    },
+    "src/lib/fullRangeVibes.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/vibes_fullrange_results.json",
+        "gallery/app/public/data/similarity/traces_VIBES-full-r70.json",
+        "gallery/app/public/data/similarity/traces_VIBES-full.json",
+        "gallery/app/public/data/similarity/traces_VIBES-full-r70.bin",
+        "research/ftir_hips_chem/output/tables/vibes_fullrange/interpretation_20261002/benchmark/heldout_predictions.csv"
+      ],
+      "reason": "Reconcile exported scores against the frozen analysis predictions, plus spectral grids."
+    },
+    "src/lib/guardrails.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/spec_curve.json",
+        "gallery/app/public/data/meeting/spec_curve_20260917.json",
+        "gallery/app/public/data/meeting-r70/spec_curve_20260917.json"
+      ],
+      "reason": "Reproduce saved guardrail decisions for every exported configuration."
+    },
+    "src/lib/improveLink.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/similarity/similarity.json",
+        "gallery/app/public/data/improve_samples/PINN1.json",
+        "gallery/app/public/data/improve_samples/*.json"
+      ],
+      "reason": "Reconcile physical sample links against the source-network shards."
+    },
+    "src/lib/mac.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/calibration.json",
+        "gallery/app/public/data/calibration_runs.json",
+        "gallery/app/public/data/research/spectral/applicability.json",
+        "gallery/app/public/data/research/spectral/committee.json"
+      ],
+      "reason": "Reconcile optical-conversion metrics against saved calibration and research tables."
+    },
+    "src/lib/meetingCoverage.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/meeting/followup_20260917.json"
+      ],
+      "reason": "Reproduce complete-pair counts and Deming fits from the saved meeting analysis."
+    },
+    "src/lib/notebookAvailability.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/availability.json"
+      ],
+      "reason": "Reconcile monthly, product and physical-filter coverage."
+    },
+    "src/lib/pilotRecord.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/pilot_filters.json",
+        "gallery/app/public/data/pilot_spectra.json"
+      ],
+      "reason": "Reconcile the provisional direct-reference pilot, identities and spectral grids."
+    },
+    "src/lib/pmfCoverage.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/pmf.json"
+      ],
+      "reason": "Reproduce the archived PMF dominance distribution."
+    },
+    "src/lib/rainSeasons.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/weather/daily/ETAD.json"
+      ],
+      "reason": "Reconcile the rain-rule calendar against the saved Addis daily weather."
+    },
+    "src/lib/referencePopulation.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/spartan_reference.json",
+        "gallery/app/public/data/filters.json"
+      ],
+      "reason": "Reconcile unique physical filters, carbon provenance and exclusions."
+    },
+    "src/lib/referenceRank.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/improve_site_quantiles.json",
+        "gallery/app/public/data/filters.json"
+      ],
+      "reason": "Reproduce the source-reference rank and ratio tables."
+    },
+    "src/lib/satoshiSpectra.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/satoshi/followup_20261002.json",
+        "gallery/app/public/data/similarity/similarity.json",
+        "gallery/app/public/data/similarity/etad_ids.json"
+      ],
+      "reason": "Reconcile ranked analogs and the frozen 233-filter evaluation population."
+    },
+    "src/lib/seasonalComposition.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/meta.json",
+        "gallery/app/public/data/filters.json"
+      ],
+      "reason": "Reconcile seasonal counts with the declared calendars."
+    },
+    "src/lib/siteColours.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/meta.json"
+      ],
+      "reason": "Check exported calendar colours against the source defaults."
+    },
+    "src/lib/spartanPublic.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "data/spartan/raw/FilterBased/ChemSpecPM25/*.csv"
+      ],
+      "reason": "Validate the parser against the local public-source mirror, beyond synthetic cases."
+    },
+    "src/lib/specification.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/spec_curve.json",
+        "gallery/app/public/data/meeting-r70/spec_curve_20260917.json",
+        "gallery/app/public/data/meeting/spec_curve_20260917.json",
+        "gallery/app/public/data/calibration.json"
+      ],
+      "reason": "Reconcile specification filters and their evaluation-set-specific optical metrics."
+    },
+    "src/lib/splitFit.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/filters.json"
+      ],
+      "reason": "Reproduce the source notebook threshold table on exported filters."
+    },
+    "src/lib/vibesMigration.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/meeting-r70/followup_20260917.json",
+        "gallery/app/public/data/meeting-r70/spec_curve_20260917.json",
+        "gallery/app/public/data/baseline_paired_r70.json",
+        "gallery/app/public/data/baseline_followup_r70.json",
+        "gallery/app/public/data/baseline_applicability_r70.json",
+        "gallery/app/public/data/similarity/similarity.json",
+        "gallery/app/public/data/similarity/traces_VIBES-full-r70.bin",
+        "gallery/app/public/data/similarity/pairs_VIBES-full-r70_full.bin",
+        "gallery/app/public/data/similarity/traces_VIBES-full-cut-r70.bin",
+        "gallery/app/public/data/similarity/pairs_VIBES-full-cut-r70_full.bin",
+        "gallery/app/public/data/rank70/baseline_external_pilot.json",
+        "gallery/app/public/data/baseline_external_pilot.json",
+        "research/ftir_hips_chem/output/tables/vibes_fullrange/gallery_rank70_20261002/meeting/category_grid.jsonl",
+        "research/ftir_hips_chem/output/tables/vibes_fullrange/interpretation_20261002/benchmark/heldout_predictions.csv",
+        "research/ftir_hips_chem/output/tables/vibes_fullrange/gallery_rank70_20261002/followup/common_test_predictions.csv",
+        "research/ftir_hips_chem/output/tables/vibes_fullrange/gallery_rank70_20261002/followup/routing_nested_training_predictions.csv",
+        "research/ftir_hips_chem/output/tables/vibes_fullrange/gallery_rank70_20261002/followup/routing_prior_test_predictions.csv",
+        "research/ftir_hips_chem/output/tables/vibes_fullrange/gallery_rank70_20261002/external/external_fit_diagnostics.csv"
+      ],
+      "reason": "Reconcile the rank-70 export against saved grids, predictions, routing and fit diagnostics."
+    },
+    "src/sections/instruments/quality/flowQc.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/aethalometer/quality/minute/USPA.json",
+        "gallery/app/public/data/aethalometer/quality/minute/USPA.flow.json",
+        "gallery/app/public/data/aethalometer/quality/CHTS.json",
+        "gallery/app/public/data/aethalometer/quality/USPA.json"
+      ],
+      "reason": "Reconcile rolling windows, flow distributions and daily unions against the saved instrument data."
+    },
+    "src/sections/ml/pages/decision/decision.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/ml/decision.json"
+      ],
+      "reason": "Reproduce saved site and site-season comparisons."
+    },
+    "src/sections/ml/pages/model-form/hips.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/ml/model-form.json"
+      ],
+      "reason": "Reproduce saved optical transfer and VIP comparisons."
+    },
+    "src/sections/research/common/blankLines.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/research/hips_optics/filters.json",
+        "gallery/app/public/data/calibration_runs.json"
+      ],
+      "reason": "Reproduce deployed-line blank fits and HIPS readouts."
+    },
+    "src/sections/research/common/charcoal.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/research/charcoal/scores.json"
+      ],
+      "reason": "Reconcile saved spectral summaries and seasonal grouping."
+    },
+    "src/sections/research/common/envelope.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/research/improve_envelope/envelope.json",
+        "gallery/app/public/data/research/hips_optics/filters.json",
+        "gallery/app/public/data/filters.json"
+      ],
+      "reason": "Reproduce source-reference envelopes with the same physical filters and optics."
+    },
+    "src/sections/research/common/explorerFit.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/calibration_runs.json",
+        "gallery/app/public/data/research/spectral/mac_choice.json"
+      ],
+      "reason": "Reconcile saved model fits and per-filter dates."
+    },
+    "src/sections/research/common/filterOnly.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/research/filter_only/points.json",
+        "gallery/app/public/data/research/filter_only/release.json",
+        "gallery/app/public/data/filters.json"
+      ],
+      "reason": "Reproduce held-out temporal fits, errors and physical-filter identity."
+    },
+    "src/sections/research/common/holdout.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/research/spectral/applicability.json",
+        "gallery/app/public/data/research/spectral/holdout_fabs.json"
+      ],
+      "reason": "Reproduce the locked optical holdout metrics and source-domain splits."
+    },
+    "src/sections/research/common/lotSpectra.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/research/lot_spectra/lot_spectra.json",
+        "gallery/app/public/data/research/lot_spectra/deriv.bin",
+        "gallery/app/public/data/research/spectral/applicability.json",
+        "gallery/app/public/data/research/charcoal/scores.json"
+      ],
+      "reason": "Reconcile lot, seasonal, derivative-grid and envelope results."
+    },
+    "src/sections/research/common/massLead.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/calibration_runs.json",
+        "research/ftir_ec_calibration_2026_06_25/tables/ethiopia_new_ec_by_component.csv"
+      ],
+      "reason": "Reproduce the mass sensitivity on the source notebook physical filters."
+    },
+    "src/sections/research/common/pythonPmf.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/research/python_pmf/python_pmf.json",
+        "gallery/app/public/data/pmf.json",
+        "gallery/app/public/data/filters.json"
+      ],
+      "reason": "Reconcile held-out PMF metrics, archived factors and filter identities."
+    },
+    "src/sections/research/common/rawBaselined.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/research/spectral/network_map.json"
+      ],
+      "reason": "Reproduce the paired source/network spectral distances."
+    },
+    "src/sections/research/common/savedSites.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/research/spectral/committee.json",
+        "gallery/app/public/data/research/spectral/band_1617.json",
+        "gallery/app/public/data/research/spectral/network_map.json"
+      ],
+      "reason": "Reconcile saved site labels against research exports."
+    },
+    "src/sections/research/pages/ethiopia/data.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/research/spectral/ethiopia_calibrations.json",
+        "gallery/app/public/data/filters.json"
+      ],
+      "reason": "Reconcile Ethiopia calibration tables, provisional TOR pairs and physical counts."
+    },
+    "src/sections/research/pages/ethiopia/spectraMath.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "gallery/app/public/data/research/spectral/ethiopia_calibrations.json",
+        "research/ftir_ec_calibration_2026_06_25/tables/etad_variant_ratio_vs_cal0.csv"
+      ],
+      "reason": "Reproduce spectral summaries and repeated-scan accounting against saved tables."
+    }
+  }
+}

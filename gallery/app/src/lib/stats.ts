@@ -115,6 +115,20 @@ export function meanSe(values: readonly Num[]): { mean: number | null; se: numbe
   return { mean: m, se: s / Math.sqrt(v.length), n: v.length }
 }
 
+/**
+ * Percent effect and a normal interval from a log contrast: `effect = exp(beta) - 1`,
+ * while `logSe` is the SE of beta. Transform the log endpoints before expressing them as
+ * percentages; adding a log-scale SE directly to the fractional effect mixes scales.
+ * The default z = 1.645 gives an approximate 90% interval. Saved rounded summaries yield
+ * a reconstructed interval at that precision; this does not refit the underlying model.
+ */
+export function percentIntervalFromLogEffect(effect: Num, logSe: Num, z = 1.645): { v: number; lo: number; hi: number } | null {
+  if (!isFiniteNumber(effect) || effect <= -1 || !isFiniteNumber(logSe) || logSe < 0 || !isFiniteNumber(z) || z <= 0) return null
+  const beta = Math.log1p(effect), margin = z * logSe
+  const v = effect * 100, lo = Math.expm1(beta - margin) * 100, hi = Math.expm1(beta + margin) * 100
+  return [v, lo, hi].every(Number.isFinite) ? { v, lo, hi } : null
+}
+
 export interface Summary { n: number; mean: number; sd: number | null; median: number; q10: number; q25: number; q75: number; q90: number; min: number; max: number }
 
 /** n, mean, sample SD and quantiles of the finite values; null when there are none */

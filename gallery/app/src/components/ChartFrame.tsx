@@ -61,6 +61,7 @@ export function ChartFrame({
   tip,
   source,
   about,
+  evidence,
   statsPlace,
   controlsSide,
   pageOnly = false,
@@ -83,6 +84,8 @@ export function ChartFrame({
   source?: string
   /** longer explanation (e.g. a meeting section's findings) shown with the subtitle, behind the "?" */
   about?: ReactNode
+  /** Essential reference, population and evidence status; always visible and retained in exports. */
+  evidence?: ReactNode
   /** where this chart's fit statistics go in the single-chart view unless the viewer set it for this chart; else the shared setting */
   statsPlace?: StatsPlace
   /** where this chart's options sit unless the viewer set it for this chart; else the shared setting. A tile and the single-chart view keep their own placement */
@@ -171,6 +174,7 @@ export function ChartFrame({
       <TileMenu name={short} extras={extras!} about={info && hasInfo ? <>{rest && <p>{rest}</p>}{about && <div className="frame-about">{about}</div>}{subtitle && <p className="subtitle">{subtitle}</p>}{provenance && <p className="provenance">{provenance}</p>}</> : null}
         tip={tip} onNoteBox={setNoteBox} onStatsBox={setStatsBox} controls={side === 'top' ? allControls : null} export={exportable ? <ExportButton panelRef={ref} title={short} /> : null} onCopyRef={copyRef} copied={refCopied} />
       {info && hasInfo && <div className="compact-explanation"><strong>{short}</strong>{about}{subtitle && <p className="subtitle">{subtitle}</p>}{provenance && <p className="provenance">{provenance}</p>}</div>}
+      {evidence && <p className="chart-evidence" data-export="text">{evidence}</p>}
       <div className={`frame-body controls-${side}`}>
         {side !== 'top' && allControls && <div className="frame-controls">{allControls}</div>}
         {/* the same elements in every fit mode, so switching does not remount the chart; the column is empty unless beside */}
@@ -225,6 +229,7 @@ export function ChartFrame({
     {focused && <div className="focus-scrim" onClick={() => setFocused(false)} />}
     <section className={`panel${focused ? ' focused' : ''}`} ref={ref} id={anchor} {...(pageOnly ? {} : { 'data-frame': '', 'data-frame-title': short, 'data-frame-key': focusKey })} {...cardAttrs} {...displayAttrs}>{/* data-frame: a chart the single-chart view steps through (lib/singleView) */}
       {!headInColumn && head}
+      {evidence && <p className="chart-evidence" data-export="text">{evidence}</p>}
       {/* the fit statistics in single-chart view: at the head of an options column, else above the options row */}
       {inView && (!controls || side === 'top') && <SingleViewStats />}
       {/* the same elements whichever side the options are on: a different tree would remount the chart's
