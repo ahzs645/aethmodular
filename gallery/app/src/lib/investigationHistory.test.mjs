@@ -54,7 +54,13 @@ test('Mermaid exports preserve relationship types, escape source labels and omit
   assert.ok(!output.includes('<html>') && !output.includes('undefined'))
 })
 
-test('the checked-in catalog can be regenerated without executing research', () => {
+// The catalog is built from the research notebooks and their git history. The Pages deploy checks out gallery/
+// only, at depth 1, so it cannot regenerate the catalog; freshness is checked where the sources are
+// (.github/workflows/investigation-history.yml, full history) and in any full local checkout.
+const RESEARCH_SOURCES = ['research/ftir_hips_chem', 'research/ftir_ec_phase3'].every(d => fs.existsSync(new URL(`../../../../${d}`, import.meta.url)))
+test('the checked-in catalog can be regenerated without executing research', {
+  skip: !RESEARCH_SOURCES && 'research notebooks are not in this checkout (gallery-only deploy)',
+}, () => {
   execFileSync(process.execPath, ['scripts/build-investigation-history.mjs', '--check'], { cwd: new URL('../../', import.meta.url), stdio: 'pipe' })
 })
 
