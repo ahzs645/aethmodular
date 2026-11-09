@@ -15,6 +15,7 @@ on:
       - 'tests/test_aethalometer_model_clipping.py'
       - 'tests/test_paper_comparison.py'
       - 'tests/test_aeth_sources_export.py'
+      - 'tests/test_addis_study_export.py'
       - 'research/ftir_hips_chem/scripts/epo_validation.py'
       - 'research/ftir_hips_chem/scripts/candidate_metrics.py'
       - 'research/ftir_hips_chem/scripts/spectral_provenance.py'
@@ -66,7 +67,7 @@ jobs:
           tests/test_closeout_figure_audit.py
           tests/test_gallery_rebuild.py tests/test_gallery_sections.py tests/test_gallery_publication.py tests/test_gallery_continuum_publication.py
           tests/test_source_apportionment_model.py tests/test_aethalometer_model_clipping.py
-          tests/test_aeth_sources_export.py tests/test_paper_comparison.py
+          tests/test_aeth_sources_export.py tests/test_paper_comparison.py tests/test_addis_study_export.py
           --junitxml=tmp/closeout-scientific-regressions.xml
       - uses: actions/upload-artifact@v4
         if: always()

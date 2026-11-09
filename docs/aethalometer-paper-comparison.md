@@ -10,6 +10,10 @@ reproduction while supporting-information settings remain unresolved.
 The [9 November verification receipt](aethalometer-paper-integration-verification-2026-11-09.md)
 records the passed local checks and the pending browser and real-data acceptance.
 
+The [Addis study gallery page](aethalometer-addis-study-gallery.md) now applies
+the study's calendar and event context to the saved Jacros hourly IR record,
+with coverage, seasonal and festival views and explicit missing-input states.
+
 ## Implemented components
 
 | Component | Implementation and interpretation |

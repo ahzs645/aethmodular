@@ -30,7 +30,7 @@ import { JACROS, useDailySites, useInstrument, usePmf } from '../sources/data'
  * The notebooks took it directly from BCc,
  * which sits about 1 lower for every sample; the page says where that moves their numbers.
  */
-export function Sources({ rows, meta }: SectionPageProps) {
+export function Sources({ rows, meta, onPage }: SectionPageProps) {
   const [pair, setPair] = useSearchParam<AaePair>('aes.pair', 'UV-IR', AAE_PAIR_KEYS)
   const [basis, setBasis] = useSearchParam<Basis>('aes.basis', 'Daily bins', BASES)
   const [jacros, setJacros] = useSearchParam<'0' | '1'>('aes.jacros', '0', ['0', '1'])
@@ -86,6 +86,7 @@ export function Sources({ rows, meta }: SectionPageProps) {
           The Jacros toggle selects the longer record of the Addis MA350-0238; it does not add the paper’s Central deployment.
           New paper comparisons use Belg February–May and keep the hourly coverage and instrument identities explicit.
         </p>
+        <button type="button" className="btn" style={{ marginTop: 10 }} onClick={() => onPage('addis-study')}>Open the Addis study comparison ›</button>
       </div>
       {daily === null ? <ExportState what="the aethalometer daily bins" /> : <>
         <AaeDistribution rows={rows} meta={meta} daily={daily} pair={pair} basis={basis} regions={regions} />
