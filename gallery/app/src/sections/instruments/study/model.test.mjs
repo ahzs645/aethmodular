@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { checkAddisStudy, eventHours, localAxisDate, localClockLabel, localRangeLabel } from './model.ts'
+import { readFileSync } from 'node:fs'
+import { checkAddisStudy, checkSourceReview, eventHours, localAxisDate, localClockLabel, localRangeLabel } from './model.ts'
 
 // Deliberately tiny contract fixture: one real zero-valued hour, with all other
 // hours absent. Zero, no saved observation, and incomplete support must differ.
@@ -103,4 +104,38 @@ test('calendar month assignments and local-hour identities cannot silently overl
   unavailable.events[0] = { ...unavailable.events[0], ...empty, available_hours: 0, unavailable: true, trace: [] }
   assert.equal(checkAddisStudy(unavailable), null)
   assert.ok(eventHours(unavailable.events[0]).every((h) => h.observation === null))
+})
+
+function sourceReview() {
+  const profile = JSON.parse(readFileSync(new URL('../../../../../../research/ftir_hips_chem/workflows/profiles/ec_bc_jpl_review.json', import.meta.url), 'utf8'))
+  return { ...profile, applied_to_observations: false,
+    loading_sensitivity: { basis: 'analytical_constant_k', equation: 'BCc/BC1 = 1/(1-k*ATN1)', atn_min: 0, atn_max: 60,
+      scope: 'Analytical illustration', series: profile.loading_candidates.map((c) => ({ candidate_id: c.id, singular_atn1: 1 / c.k,
+        points: [{ atn1: 0, multiplier: 1, denominator_valid: true }] })) } }
+}
+
+test('source materials keep historical summaries separate from observed concentrations', () => {
+  const review = sourceReview()
+  const before = JSON.stringify(review)
+  assert.equal(checkSourceReview(review), null)
+  const study = fixture()
+  study.source_review = review
+  assert.equal(checkAddisStudy(study), null)
+  assert.equal(JSON.stringify(review), before)
+  assert.equal(study.summary.mean_bc_ug_m3, 0)
+})
+
+test('source-review contract rejects ambiguous settings and fabricated evidence states', () => {
+  for (const mutate of [
+    (x) => { x.applied_to_observations = true },
+    (x) => { x.sources[0].sha256 = 'unverified' },
+    (x) => { x.loading_candidates[0].k = 0 },
+    (x) => { x.loading_sensitivity.series[0].candidate_id = 'unknown' },
+    (x) => { x.loading_sensitivity.series[0].points[0].denominator_valid = false },
+    (x) => { x.optical_sensitivity.rows[0].biomass_percent = null },
+    (x) => { x.optical_sensitivity.rows.push({ ...x.optical_sensitivity.rows[0] }) },
+  ]) {
+    const review = sourceReview(); mutate(review)
+    assert.notEqual(checkSourceReview(review), null)
+  }
 })

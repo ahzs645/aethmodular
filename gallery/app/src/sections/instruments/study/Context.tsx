@@ -37,6 +37,7 @@ export function AddisStudyReadiness() {
     { item: 'Central–Jacros common hours', status: 'Pending', detail: 'Requires a separately identified Central deployment. ETAD and ETAD-JACROS are overlapping records from the same Jacros instrument.' },
     { item: 'Two-source optical calculation', status: 'Implemented · awaiting optical inputs', detail: 'Uses explicit wavelengths and signal basis for nonlinear mixing, preserving unbounded fractions and invalid/clipping flags. Outputs are long-wavelength optical fractions; a BC mass partition also requires a declared common reference MAC.' },
     { item: 'Local source fractions', status: 'Pending', detail: data.capabilities.source_fractions.reason },
+    { item: 'Supplied presentation and archive', status: data.source_review ? 'Reviewed · visible on this page' : 'Pending export', detail: 'The supplied EC/BC deck and JPL archive have attributed method notes, historical fit summaries, a discrete archived source-sensitivity table and analytical loading curves. None is substituted for current hourly observations.' },
     { item: 'Exact paper reproduction', status: 'Pending', detail: 'The complete deployment records, supporting-information QC and source-model settings, and exact climatology exclusion windows are still needed.' },
     { item: 'Independent validation', status: 'Not established', detail: 'Overlapping Jacros observations provide descriptive context, not an independent validation dataset.' },
   ] : [], [data])
@@ -44,7 +45,7 @@ export function AddisStudyReadiness() {
   return <Figure kind="table" id="aeth-addis-study-readiness" title="What is available and what is pending" data={rows}
     provenance={STUDY_PROVENANCE}
     columns={[{ key: 'item', label: 'Comparison', format: 'text' }, { key: 'status', label: 'Status', format: 'text' }, { key: 'detail', label: 'Basis', format: 'text' }]}
-    noteAlways note="This page describes a saved hourly export. It does not rerun raw-minute QC, infer Central from a Jacros alias, or estimate source fractions from IR concentration alone."
+    noteAlways note="The observational views use a saved hourly export. The source-material views retain historical summaries and analytical illustrations with their own labels. Current source fractions require paired optical inputs."
     aside={<details className="legend-definition" style={{ marginTop: 8 }}>
       <summary>Input provenance and remaining method details</summary>
       <p>Input: <code>{data.source.input_file}</code>. Upstream record: {typeof data.source.upstream_record === 'string' ? data.source.upstream_record : 'identified in the export'}.</p>

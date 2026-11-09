@@ -21,11 +21,15 @@ retain their existing visibility.
 | Local-hour patterns | Seasonal hourly patterns with contributing observation counts | Descriptive temporal association; event windows are included. |
 | Festival traces | Meskel and Hidar Sitaten windows for the six published dates | The actual saved hours and missing hours remain visible; the two 2024 events are unavailable. |
 | Published context | Reported Central/Jacros means, SDs, maxima and completeness | These describe the paper's populations, not matched agreement with this partial export. |
+| Supplied materials | A source-by-source transfer review of `EC_BC.pptx` and `JPL-main.zip`, linked to existing Data quality and Sources pages | Each method keeps its source identity and implementation/readiness status. |
+| Archived optical sensitivity | Eighteen saved Central/Jacros rows across nine fossil/biomass exponent pairs, selected with discrete controls | Archived ratio-of-sums results and bootstrap intervals, not new fractions from the gallery record. |
+| Loading sensitivity | Analytical gain curves for the deck's three distinct constant-k candidates | An illustration over ATN1 0–60; no current concentration is corrected or refitted. |
+| Historical EC/BC fits | Four fit summaries transcribed from slide 9 | FTIR-derived EC is the response; fit strength does not establish independent thermal-EC accuracy. |
 | Implementation status | Available comparisons, implemented source model and missing observation inputs | No Central series or fossil/biomass fractions are invented. |
 
-The six figures use the gallery's shared chart/table components, tooltips,
+The ten figures use the gallery's shared chart/table components, tooltips,
 export controls and dashboard registry. View selections are encoded in the
-URL so a shared chart keeps its aggregation, calendar or event choice. Key
+URL so a shared chart keeps its aggregation, calendar, event, archived alpha pair or loading candidate. Key
 coverage and interpretation labels remain visible with Explain disabled.
 
 ## Observations and denominators
@@ -105,13 +109,40 @@ The seasonal and hourly summaries include event windows. They do not claim
 to reproduce the paper's event-excluded climatologies.
 
 Meskel uses **local noon on the cited date to noon the following day**, matching
-the main paper's Figure 6 display window. Hidar Sitaten uses an explicitly
-declared **local midnight-to-midnight exploratory window**; the exact paper
-window remains unresolved. All windows are end-exclusive and contain 24 hour
+the main paper's Figure 6 display window. Hidar Sitaten uses a declared
+**local midnight-to-midnight display window**, also used by the supplied
+archive's `Figures.ipynb`. The final paper's exact climatology exclusion
+remains unresolved. All windows are end-exclusive and contain 24 hour
 starts. Their means are labeled as means over available hours, with no new
 minimum-hour acceptance rule. For example, Meskel 2022 has only **17/24** saved
 hours. Its peak and partial trace remain inspectable without implying full
 window coverage. Both 2024 festival dates occur after the saved record ends.
+
+## What the supplied presentation and archive resolve
+
+The [source-materials review](aethalometer-source-materials-review.md) records
+slide and notebook evidence, file hashes and the current modules that already
+implement related methods. The curated profile is
+`research/ftir_hips_chem/workflows/profiles/ec_bc_jpl_review.json`; the exporter
+hashes it and attaches its attributed summaries without changing any hourly
+observation or paper benchmark.
+
+The archive's executed optical-sensitivity table reports **5.8% biomass BC at
+both sites for exponents 1.0/2.0**, and **7.7% at both sites for 1.0/1.8**.
+The cleaning pipeline visibly calls the latter parameter pair; the separate
+sensitivity notebook includes both. The saved statistic is
+`100 × sum(Biomass BCc) / sum(IR BCc)` over finite paired rows. Its archived
+bootstrap intervals use 5,000 independent row resamples, which do not preserve
+time dependence or account for end-member uncertainty. Input files, paired
+coverage, the wavelength pair and exact final-run lineage remain unavailable.
+
+The deck provides three distinct k candidates: **0.011723**, **0.011846** and
+**0.0129**. The gallery's analytical curve uses
+`BCc / BC1 = 1 / (1 - k × ATN1)` and retains only positive denominators. This
+curve is explicitly separate from observed concentration. The existing
+minute-level spot-closure checks remain the route for internal instrument
+diagnostics. A future calibration comparison needs raw minute fields, flow and
+tape/status context, matched filter IDs and evaluation on separate time blocks.
 
 ## Rebuild and audit
 
@@ -138,23 +169,30 @@ study export through the shared resource registry.
 
 ### Verification on 9 November 2026
 
-- **61 focused Python regressions passed**, including the 21 new exporter
+- **95 focused Python regressions passed**, including the 29 new exporter
   cases, the upstream Overview checks, rebuild/section contracts and closeout
-  workflow inputs.
-- **385 source-only Node tests and 91 public-data Node tests passed**, with no
-  skipped or unavailable cases. The source suite includes the new five-case
+  workflow inputs, and 26 cases for safe failure and truthful reporting in the
+  existing opt-in site-correction routine.
+- **387 source-only Node tests and 91 public-data Node tests passed**, with no
+  skipped or unavailable cases. The source suite includes the new seven-case
   display/data contract and public history/index checks.
 - TypeScript, the public production build, Ruff and `git diff --check` passed.
   The public visibility/archive check found no private Research or ML data
   paths in compiled code and no private files in the 5,140-file archive.
 - An independent calculation from the original IR JSON matched all **1,290
   statistical summary rows** and **144 event-hour values**, plus the five
-  recorded source hashes. This checks the saved-data derivation, not the
+  original source hashes. A further review verified all 18 archived sensitivity
+  rows, the three deck candidates, four fit rows and 183 analytical response
+  points; the supplied-materials addition leaves every observational summary
+  and event value unchanged. This checks the saved-data derivation, not the
   paper's raw processing or its unprovided deployments.
-- A managed-browser review confirmed the six rendered views with Explain
+- A managed-browser review confirmed the ten rendered views with Explain
   off, daily/monthly selection, synchronized named calendar controls, the
   incomplete Meskel 2022 label and the explicit unavailable Meskel 2024 state.
-  The selected options appeared in the page URL.
+  The selected options appeared in the page URL and survived reload. Archived
+  alpha-pair selection and loading-candidate selection worked, and a timeline
+  PNG export completed. The public build's Investigations → Areas → Addis study
+  card opens the intended study page with all ten views.
 
 The public source and saved-export checks do not establish a full private-data
 rebuild, exact study reproduction, independent target EC accuracy or mobile

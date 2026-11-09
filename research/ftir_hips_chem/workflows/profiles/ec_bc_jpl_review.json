@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "ec_bc_deck",
+      "title": "EC_BC.pptx",
+      "kind": "user_supplied_presentation",
+      "sha256": "956d9d49ab69c3f14868c350c075bbc33ed0fca1fa5cf234da736033be7fb674",
+      "evidence": [
+        "Seventeen slides, visually reviewed. Slides 2–6 describe dual-spot loading correction and three distinct fixed-k candidates; slides 7–9 report historical EC–BC linear fits.",
+        "Slide 17 states 140 Addis and 52 JPL data points. The plots label EC as FTIR-derived; these are historical comparison counts, not the current gallery's hourly observations.",
+        "Thirty-six raster images and one editable table are recoverable. There are no embedded chart workbooks, numeric chart caches, populated speaker notes, serial-number manifests or exact matched-observation dates."
+      ]
+    },
+    {
+      "id": "jpl_archive",
+      "title": "JPL-main.zip",
+      "kind": "user_supplied_source_archive",
+      "sha256": "d303eb2ff6decaa1ca8ac2c1dd411a23f53a1771e1a5c217389c225eba39b3d3",
+      "evidence": [
+        "Archive size 94,837,746 bytes; 44 files, including 24 Python files, 11 notebooks and 3 R Markdown files. ZIP metadata is dated 2026-06-11. The archive comment b4526955b7ab2c02e4d3530678207ce42de084dc is a commit-shaped marker, not a remotely verified commit.",
+        "Figures.ipynb has SHA256 1cc78ec634b6b390a391783c9b0fbd5d58b3ffa72cbadcd4eaeeadca13331bd0. Its saved cells 215–218 contain a nine-pair, two-site optical sensitivity table and an explicit ratio-of-sums aggregation; notebook cell indices here are zero-based.",
+        "The visible cleaning pipeline calls fossil/biomass exponents 1.0/1.8. The notebook also includes 1.0/2.0, matching the final paper's stated end members, among its sensitivity settings. These are distinct processing variants.",
+        "Exact decoded-pixel matches link slide 8's BC1/BC2 figures to k_exploration.ipynb cells 27/28 (executions 635/636), whose plotting function uses statsmodels OLS. The notebook SHA256 is eadb3db8bad545c75cfde605446b9a72270d91fcfa8df84bfd9bc03557c44ac0. This does not identify the estimator for unmatched deck figures.",
+        "The invoked external aethpy source-apportionment implementation is absent. A separate bundled calibration.py model defaults to IR/Blue 880/470 nm, C=1.3, exponents 1.0/2.0, integer arithmetic and clipping; its linkage to the external calls or final paper is unverified.",
+        "The referenced complete Central/Jacros BC input pickles are absent. Some other notebooks contain recoverable Plotly subsets for JPL in 2025 and PM-monitor comparisons; those do not supply the missing Addis BC deployments."
+      ]
+    }
+  ],
+  "loading_candidates": [
+    {
+      "id": "ec_residual_atn",
+      "label": "EC-residual objective",
+      "k": 0.011723,
+      "objective": "Minimize correlation between residuals labelled EC−BC and IR ATN1, as stated in the deck.",
+      "source_note": "EC_BC.pptx, slide 5, left column; stated optimization bounds 0.004–0.016. The residual definition, fitting population and evaluation split are not supplied."
+    },
+    {
+      "id": "bc_atn",
+      "label": "BC–ATN objective",
+      "k": 0.011846,
+      "objective": "The heading and plotted objective indicate minimizing absolute correlation between corrected IR BC and IR ATN1; the accompanying sentence also refers to residuals, so the exact objective remains ambiguous.",
+      "source_note": "EC_BC.pptx, slide 5, right column and optimization plot; stated bounds 0.004–0.016. This is a separate candidate from the EC-residual objective."
+    },
+    {
+      "id": "median_ir_k",
+      "label": "Median reported IR K",
+      "k": 0.0129,
+      "objective": "Use the displayed median of the reported IR K distribution as a fixed loading parameter.",
+      "source_note": "EC_BC.pptx, slide 5 histogram; slide 6 explicitly labels its monthly diurnal comparison as median(k). Slide 9 instead says optimized k without identifying which optimization objective."
+    }
+  ],
+  "historical_regressions": [
+    {"variant": "Reported IR BCc", "slope": 0.60, "r_squared": 0.69, "intercept_ug_m3": 0.77, "residual_r_atn1": 0.06},
+    {"variant": "IR BC1", "slope": 1.03, "r_squared": 0.84, "intercept_ug_m3": 0.25, "residual_r_atn1": 0.28},
+    {"variant": "IR BC2", "slope": 0.94, "r_squared": 0.82, "intercept_ug_m3": 0.31, "residual_r_atn1": 0.26},
+    {"variant": "IR BCc with optimized k", "slope": 0.65, "r_squared": 0.88, "intercept_ug_m3": 0.14, "residual_r_atn1": 0.01}
+  ],
+  "regression_context": "Linear fits reported in EC_BC.pptx, slides 7–9: FTIR-derived EC is the y variable and the named BC variant is the x variable. The four rows transcribe slide 9; they are not rebuilt observations. Exact image matches to archived k_exploration.ipynb establish a statsmodels OLS implementation for the BC1 and BC2 figures only. The estimator for the other two rows is not verified. Slide 17 states 140 Addis and 52 JPL points, but does not establish exact membership of every fit. Exact filter IDs, date bounds, coverage rules, FTIR model version and training/evaluation split are not supplied. Applying a slope and intercept predicts FTIR-derived EC from BC; it must not be substituted for measured BC or called independent thermal-EC validation.",
+  "optical_sensitivity": {
+    "context": "Saved Central/Jacros sensitivity results from JPL-main.zip, not recomputed from current gallery observations and not verified as the final-paper processing run. Both sites report 5.8% at exponents 1.0/2.0 in this archive; that agreement narrows the provenance question but does not establish the final input population or correction recipe.",
+    "aggregation": "100 × sum(Biomass BCc) / sum(IR BCc), after replacing positive/negative infinity with missing values and dropping rows missing either component. The input filenames describe hourly data and nine alpha pairs. Input bytes, selected time windows, paired counts, wavelength pair and clipping rules are not available.",
+    "uncertainty": "Saved 2.5th/97.5th percentiles from 5,000 independent row-bootstrap resamples. The displayed code has no random seed and does not preserve temporal dependence. Values are rounded to one decimal percent as archived. These intervals are saved outputs, not newly validated uncertainty, and do not cover uncertainty in the end members or missing processing provenance.",
+    "source_note": "JPL-main.zip, Figures.ipynb, zero-based cells 215–218. Cell 216 (execution 131) produces the 18-row summary; cell 218 (execution 132) repeats it as a site pivot. Cell 217 is unexecuted and contributes no result.",
+    "rows": [
+      {"site": "Jacros", "alpha_fossil": 0.8, "alpha_biomass": 1.8, "biomass_percent": 20.3, "ci_low_percent": 20.1, "ci_high_percent": 20.5},
+      {"site": "Central", "alpha_fossil": 0.8, "alpha_biomass": 1.8, "biomass_percent": 17.3, "ci_low_percent": 17.0, "ci_high_percent": 17.5},
+      {"site": "Jacros", "alpha_fossil": 0.8, "alpha_biomass": 2.0, "biomass_percent": 15.8, "ci_low_percent": 15.6, "ci_high_percent": 15.9},
+      {"site": "Central", "alpha_fossil": 0.8, "alpha_biomass": 2.0, "biomass_percent": 13.4, "ci_low_percent": 13.2, "ci_high_percent": 13.7},
+      {"site": "Jacros", "alpha_fossil": 0.8, "alpha_biomass": 2.2, "biomass_percent": 12.6, "ci_low_percent": 12.5, "ci_high_percent": 12.7},
+      {"site": "Central", "alpha_fossil": 0.8, "alpha_biomass": 2.2, "biomass_percent": 10.7, "ci_low_percent": 10.5, "ci_high_percent": 10.9},
+      {"site": "Jacros", "alpha_fossil": 1.0, "alpha_biomass": 1.8, "biomass_percent": 7.7, "ci_low_percent": 7.6, "ci_high_percent": 7.9},
+      {"site": "Central", "alpha_fossil": 1.0, "alpha_biomass": 1.8, "biomass_percent": 7.7, "ci_low_percent": 7.5, "ci_high_percent": 7.9},
+      {"site": "Jacros", "alpha_fossil": 1.0, "alpha_biomass": 2.0, "biomass_percent": 5.8, "ci_low_percent": 5.6, "ci_high_percent": 5.9},
+      {"site": "Central", "alpha_fossil": 1.0, "alpha_biomass": 2.0, "biomass_percent": 5.8, "ci_low_percent": 5.6, "ci_high_percent": 5.9},
+      {"site": "Jacros", "alpha_fossil": 1.0, "alpha_biomass": 2.2, "biomass_percent": 4.5, "ci_low_percent": 4.4, "ci_high_percent": 4.6},
+      {"site": "Central", "alpha_fossil": 1.0, "alpha_biomass": 2.2, "biomass_percent": 4.5, "ci_low_percent": 4.4, "ci_high_percent": 4.6},
+      {"site": "Jacros", "alpha_fossil": 1.2, "alpha_biomass": 1.8, "biomass_percent": 1.0, "ci_low_percent": 0.9, "ci_high_percent": 1.1},
+      {"site": "Central", "alpha_fossil": 1.2, "alpha_biomass": 1.8, "biomass_percent": 2.2, "ci_low_percent": 2.0, "ci_high_percent": 2.4},
+      {"site": "Jacros", "alpha_fossil": 1.2, "alpha_biomass": 2.0, "biomass_percent": 0.7, "ci_low_percent": 0.6, "ci_high_percent": 0.8},
+      {"site": "Central", "alpha_fossil": 1.2, "alpha_biomass": 2.0, "biomass_percent": 1.6, "ci_low_percent": 1.4, "ci_high_percent": 1.7},
+      {"site": "Jacros", "alpha_fossil": 1.2, "alpha_biomass": 2.2, "biomass_percent": 0.5, "ci_low_percent": 0.5, "ci_high_percent": 0.6},
+      {"site": "Central", "alpha_fossil": 1.2, "alpha_biomass": 2.2, "biomass_percent": 1.2, "ci_low_percent": 1.1, "ci_high_percent": 1.3}
+    ]
+  },
+  "transfer_items": [
+    {
+      "item": "Loading-correction sensitivity",
+      "status": "sensitivity_only",
+      "detail": "Show the three documented k candidates and the analytic gain 1/(1−k·ATN1) only where the denominator is positive. This is an explanatory model curve, not a correction applied to current observations. The deck's preference against more than threefold correction is not a validated cutoff.",
+      "source_note": "EC_BC.pptx, slides 2–6."
+    },
+    {
+      "item": "Minute correction and held-out comparison",
+      "status": "requires_inputs",
+      "detail": "A defensible rebuild needs device/deployment identity, minute UTC timestamps, BC1/BC2, ATN1/ATN2, instrument K, flow and tape/status records, plus matched FTIR observations, model version and eligibility rules. Correct at minute resolution before averaging and evaluate candidate k values on separated time or tape blocks. The IR-only Addis study series cannot supply those inputs.",
+      "source_note": "EC_BC.pptx, slides 5–9 and 17; current gallery/data/export_addis_study.py input contract."
+    },
+    {
+      "item": "Existing instrument consistency checks",
+      "status": "existing",
+      "detail": "The gallery already compares minute instrument K with dual-spot closure K* and examines flow, tape advances and environment. Saved Jacros IR loading-bin summaries show near-equal K and K*, with the compensated spot-2/reported-BCc median ratio 1.0. This verifies internal algebra at the displayed precision, not independent concentration accuracy or absence of flow bias.",
+      "source_note": "gallery/app/src/sections/instruments/quality/MinuteCharts.tsx and public quality/minute/ETAD-JACROS.json; deck slides 3–5."
+    },
+    {
+      "item": "Historical EC–BC comparison",
+      "status": "ready",
+      "detail": "Display the slide-9 coefficients as historical reported fits with explicit FTIR-EC/BC axis direction and missing cohort metadata. Keep them separate from current observed BC and from validation against an independent EC reference.",
+      "source_note": "EC_BC.pptx, slides 7–9, 13 and 17."
+    },
+    {
+      "item": "Archived optical end-member sensitivity",
+      "status": "ready",
+      "detail": "Display the saved 18-row sensitivity table as archive evidence. The archive's saved 1.0/1.8 case reports 7.7% at both sites; its saved 1.0/2.0 case reports 5.8% at both sites. Preserve the reported ratio-of-sums definition and bootstrap caveats without presenting these as current gallery source fractions.",
+      "source_note": "JPL-main/data_cleaning_pipeline.py, source-apportionment block; Figures.ipynb cells 215–218; final-paper profile shlipak_2026.json."
+    },
+    {
+      "item": "Calendar and festival-window provenance",
+      "status": "ready",
+      "detail": "The archive supports February in Belg, Meskel noon-to-noon, and Hidar local-calendar-day display windows. Its event-baseline code selects other days across all months despite monthly labels, and one climatology cell constructs an event exclusion but plots the unfiltered frame. Do not copy those baselines or infer exact final-paper climatology exclusions.",
+      "source_note": "JPL-main/Figures.ipynb cells 22, 126, 300 and 303; paper Figure 6."
+    },
+    {
+      "item": "Central deployment identity",
+      "status": "requires_verification",
+      "detail": "Archived processing scripts associate Jacros with MA350-0238 and the other Addis processing record with MA350-0225. The latter is a Central identity lead, pending confirmation from a deployment manifest, dates and source files; it does not create Central observations.",
+      "source_note": "JPL-main/rafael_processing/jacros_data_processing_rafael_cmu.py and all_data_processing_rafael_cmu.py."
+    },
+    {
+      "item": "Calibration-code reuse",
+      "status": "existing",
+      "detail": "An AST comparison found 43 of 47 distinct top-level function names identical between archived calibration.py and current src/external/calibration.py; comments and formatting were ignored and duplicate definitions counted by their last definition. Review the four differences individually instead of replacing the current module.",
+      "source_note": "JPL-main/calibration.py versus src/external/calibration.py; differing functions: set_up_environment, histogram_plot, read_AE33 and sa_aethalometer_model."
+    },
+    {
+      "item": "AE33 import provenance",
+      "status": "requires_verification",
+      "detail": "The archived reader extracts a serial number from the header and uses wavelength-named channels. These are useful import-provenance candidates, but actual AE33 header/schema fixtures are needed before changing current channel handling.",
+      "source_note": "JPL-main/calibration.py, read_AE33; current src/external/calibration.py."
+    },
+    {
+      "item": "Other recoverable plotted data",
+      "status": "requires_verification",
+      "detail": "Some notebooks embed numeric Plotly traces for JPL fires in June–August 2025 and T640/BAM comparisons in August–November 2022. Recover these only as plotted subsets with their own units, sampling and QC audit. They do not fill missing Central/Jacros BC hours or support assigning Addis source fractions.",
+      "source_note": "JPL-main notebook outputs audited separately from the source files; no complete Central/Jacros BC input arrays were recovered."
+    }
+  ],
+  "limitations": [
+    "The presentation and archive are historical source material, not a verified final-paper processing receipt. No exact source lineage connects every slide, notebook output and final published statistic.",
+    "The deck's 140 Addis and 52 JPL points are historical counts with incomplete cohort metadata; they must not be equated with current matched-filter counts or 18,280 valid hourly observations.",
+    "FTIR-derived EC, HIPS optical BC and MA350 equivalent BC are different quantities. Agreement or fitted rescaling among them does not establish independent thermal-EC accuracy.",
+    "The three fixed-k values use different or incompletely documented objectives. Optimizing against the same reference observations used for evaluation can improve in-sample fit without demonstrating transferability.",
+    "A minute-level dual-spot closure test checks internal consistency, not independent accuracy. Applying a nonlinear correction to daily-mean inputs is not equivalent to correcting minutes before averaging.",
+    "The optical sensitivity table supplies an archive-specific aggregation definition, but the final input population, wavelength pair, correction and clipping settings remain unverified. Keep the final-paper reproduction caveats in force.",
+    "Archived independent-row bootstrap intervals do not preserve serial dependence or include end-member uncertainty. They are transcribed outputs, not a new uncertainty analysis.",
+    "The deck provides no validated threefold-correction threshold, seasonal MAC assignment, source-model wavelength pair, updated deployment manifest or replacement observations for the missing 2024 festival periods.",
+    "The archive contains useful code and saved plotted subsets, but also missing dependencies and identifiable implementation defects. Do not execute or import it wholesale."
+  ]
+}

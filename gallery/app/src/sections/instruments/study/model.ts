@@ -56,6 +56,24 @@ export interface StudyPaper {
   reported: { central: ReportedSite; jacros: ReportedSite; biomass_bc_percent_discussion: number }
   unresolved_for_exact_reproduction: string[]
 }
+export interface StudySourceReview {
+  schema_version: 1
+  applied_to_observations: false
+  sources: { id: string; title: string; kind: string; sha256: string; evidence: string[] }[]
+  loading_candidates: { id: string; label: string; k: number; objective: string; source_note: string }[]
+  historical_regressions: { variant: string; slope: number; r_squared: number; intercept_ug_m3: number; residual_r_atn1: number }[]
+  regression_context: string
+  transfer_items: { item: string; status: string; detail: string; source_note: string }[]
+  limitations: string[]
+  optical_sensitivity: {
+    context: string; aggregation: string; uncertainty: string; source_note: string
+    rows: { site: string; alpha_fossil: number; alpha_biomass: number; biomass_percent: number; ci_low_percent: number; ci_high_percent: number }[]
+  }
+  loading_sensitivity: {
+    basis: 'analytical_constant_k'; equation: string; atn_min: number; atn_max: number; scope: string
+    series: { candidate_id: string; singular_atn1: number; points: { atn1: number; multiplier: number | null; denominator_valid: boolean }[] }[]
+  }
+}
 export interface AddisStudyFile {
   schema_version: 1
   generated: string
@@ -79,6 +97,8 @@ export interface AddisStudyFile {
   events: StudyEvent[]
   capabilities: { central: { available: false; reason: string }; source_fractions: { available: false; reason: string } }
   limitations: string[]
+  /** Optional for saved exports predating the supplied presentation and archive review. */
+  source_review?: StudySourceReview
 }
 
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
@@ -102,6 +122,36 @@ function timed(v: unknown): boolean {
 function timeSeries(v: unknown): boolean {
   if (!Array.isArray(v) || !v.every(timed)) return false
   return v.every((r, i) => i === 0 || Date.parse(v[i - 1].end_local_exclusive) <= Date.parse(r.start_local))
+}
+
+/** Historical values and model curves must retain their separate evidence identities. */
+export function checkSourceReview(v: unknown): string | null {
+  if (!object(v) || v.schema_version !== 1 || v.applied_to_observations !== false) return 'invalid source-review evidence status'
+  if (!Array.isArray(v.sources) || !v.sources.length || !v.sources.every((s) => object(s) && ['id', 'title', 'kind'].every((k) => text(s[k]))
+    && text(s.sha256) && /^[a-f0-9]{64}$/.test(s.sha256) && Array.isArray(s.evidence) && s.evidence.every(text))) return 'missing source-material provenance'
+  if (!Array.isArray(v.loading_candidates) || !v.loading_candidates.length || !v.loading_candidates.every((c) => object(c)
+    && ['id', 'label', 'objective', 'source_note'].every((k) => text(c[k])) && finite(c.k) && c.k > 0)) return 'invalid historical loading candidates'
+  const ids = new Set(v.loading_candidates.map((c) => c.id))
+  if (ids.size !== v.loading_candidates.length) return 'duplicate loading candidates'
+  if (!text(v.regression_context) || !Array.isArray(v.historical_regressions) || !v.historical_regressions.every((r) => object(r) && text(r.variant)
+    && ['slope', 'r_squared', 'intercept_ug_m3', 'residual_r_atn1'].every((k) => finite(r[k])))) return 'invalid historical regression table'
+  if (!Array.isArray(v.transfer_items) || !v.transfer_items.every((r) => object(r) && ['item', 'status', 'detail', 'source_note'].every((k) => text(r[k])))) return 'missing source transfer status'
+  if (!Array.isArray(v.limitations) || !v.limitations.every(text)) return 'missing source-review limitations'
+  const optical = v.optical_sensitivity
+  if (!object(optical) || !['context', 'aggregation', 'uncertainty', 'source_note'].every((k) => text(optical[k]))
+    || !Array.isArray(optical.rows) || !optical.rows.length || !optical.rows.every((r) => object(r) && text(r.site)
+      && ['alpha_fossil', 'alpha_biomass', 'biomass_percent', 'ci_low_percent', 'ci_high_percent'].every((k) => finite(r[k]))
+      && (r.ci_low_percent as number) <= (r.ci_high_percent as number))) return 'invalid archived optical sensitivity'
+  if (new Set(optical.rows.map((r) => `${r.site}:${r.alpha_fossil}:${r.alpha_biomass}`)).size !== optical.rows.length) return 'duplicate archived optical settings'
+  const loading = v.loading_sensitivity
+  if (!object(loading) || loading.basis !== 'analytical_constant_k' || !text(loading.equation) || !text(loading.scope)
+    || !finite(loading.atn_min) || !finite(loading.atn_max) || loading.atn_min >= loading.atn_max
+    || !Array.isArray(loading.series) || loading.series.length !== ids.size
+    || new Set(loading.series.map((s) => object(s) ? s.candidate_id : null)).size !== ids.size
+    || !loading.series.every((s) => object(s) && ids.has(s.candidate_id) && finite(s.singular_atn1) && s.singular_atn1 > 0
+      && Array.isArray(s.points) && s.points.length > 0 && s.points.every((p) => object(p) && finite(p.atn1)
+        && typeof p.denominator_valid === 'boolean' && (p.denominator_valid ? finite(p.multiplier) && p.multiplier > 0 : p.multiplier === null)))) return 'invalid analytical loading response'
+  return null
 }
 
 /** Fail closed on an unsupported or incomplete export, rather than display missing data as zero. */
@@ -148,6 +198,7 @@ export function checkAddisStudy(v: unknown): string | null {
   const capabilities = v.capabilities
   if (!object(capabilities) || !['central', 'source_fractions'].every((k) => object(capabilities[k]) && capabilities[k].available === false && text(capabilities[k].reason))) return 'missing pending-input status'
   if (!Array.isArray(v.limitations) || !v.limitations.every(text)) return 'missing study limitations'
+  if (v.source_review !== undefined) return checkSourceReview(v.source_review)
   return null
 }
 
