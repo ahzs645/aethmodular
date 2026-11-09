@@ -1,223 +1,281 @@
-"""
-Source Apportionment Analyzer for Aethalometer Data
+"""Instrument-aware source-apportionment summaries for aethalometer data.
+
+The no-argument analyzer still accepts the existing BC column families and
+returns its established summary keys. Calculations now use explicit wavelength
+pairs and the nonlinear two-component optical model. This is conditional
+optical source estimation, not independent chemical source identification.
 """
 
-import pandas as pd
+from itertools import combinations
+from typing import Any, Dict, Mapping, Optional, Tuple
+
 import numpy as np
-from typing import Dict, Any, Optional, Tuple, List
+import pandas as pd
+
 from src.core.base import BaseAnalyzer
-from src.core.exceptions import DataValidationError
+from .source_model import (
+    MA350_ATTENUATION_CROSS_SECTIONS,
+    MA350_WAVELENGTHS_NM,
+    two_source_absorption,
+)
+
+
+# BC1..BC7 belong to the AE33 family, not the MA350's named wavelength / spot
+# columns. No AE33 cross-section is guessed from MA350 values.
+AE33_WAVELENGTHS_NM = {
+    'BC1': 370, 'BC2': 470, 'BC3': 520, 'BC4': 590,
+    'BC5': 660, 'BC6': 880, 'BC7': 950,
+}
+
 
 class SourceApportionmentAnalyzer(BaseAnalyzer):
+    """Summarize a declared optical two-source model without silently dropping rows.
+
+    Existing ``SourceApportionmentAnalyzer()`` and ``analyze(data)`` calls remain
+    valid. Named MA350 columns identify that family; BC1..BC7 identify the AE33
+    family. Numeric BC_470 aliases and mixed families require ``instrument``.
+    The default pair is Blue/IR (470/880); UV/IR is used only when Blue is absent.
+    Other pairs must be selected by their exact column names.
+
+    ``signal_basis='bcc'`` reconstructs an attenuation proxy using documented
+    MA350 firmware cross-sections or explicitly supplied per-column constants.
+    Its interpretation assumes a common scattering factor across the pair.
+    AE33 BC concentrations always require caller-supplied cross-sections.
+    For already corrected optical inputs use ``'absorption'``; for known
+    attenuation inputs use ``'attenuation'`` and acknowledge the same assumption.
     """
-    Analyzer for source apportionment of black carbon using aethalometer data
-    
-    This analyzer estimates contributions from different sources (biomass burning, 
-    fossil fuel combustion) based on multi-wavelength black carbon measurements.
-    """
-    
-    def __init__(self):
-        """Initialize the source apportionment analyzer"""
+
+    def __init__(
+        self,
+        *,
+        instrument: Optional[str] = None,
+        wavelength_pair: Optional[Tuple[str, str]] = None,
+        signal_basis: str = "bcc",
+        cross_sections: Optional[Mapping[str, float]] = None,
+        alpha_fossil: float = 1.0,
+        alpha_biomass: float = 2.0,
+        clip: bool = True,
+    ):
         try:
             super().__init__("SourceApportionmentAnalyzer")
         except TypeError:
-            # Fallback if BaseAnalyzer doesn't require name parameter
             super().__init__()
-        
-        # Common wavelength-dependent columns found in aethalometer data
+        if instrument is not None and instrument not in ("MA350", "AE33"):
+            raise ValueError("instrument must be MA350 or AE33")
+        if signal_basis not in ("bcc", "absorption", "attenuation"):
+            raise ValueError("signal_basis must be bcc, absorption or attenuation")
+        self.instrument = instrument
+        self.wavelength_pair = wavelength_pair
+        self.signal_basis = signal_basis
+        self.cross_sections = dict(cross_sections) if cross_sections is not None else None
+        self.aae_fossil = alpha_fossil
+        self.aae_biomass = alpha_biomass
+        self.clip = clip
         self.bc_columns = [
-            'UV BCc', 'IR BCc', 'Blue BCc', 'Green BCc', 'Red BCc',  # JPL format
-            'BC1', 'BC2', 'BC3', 'BC4', 'BC5', 'BC6', 'BC7',  # Raw format
-            'BC_370', 'BC_470', 'BC_520', 'BC_590', 'BC_660', 'BC_880', 'BC_950'  # Wavelength format
+            *(f"{name} BCc" for name in MA350_WAVELENGTHS_NM),
+            *AE33_WAVELENGTHS_NM,
+            *(f"BC_{nm}" for nm in sorted(set(MA350_WAVELENGTHS_NM.values())
+                                         | set(AE33_WAVELENGTHS_NM.values()))),
         ]
-        
-        # Standard Angstrom exponents for different sources
-        self.aae_biomass = 2.0  # Typical AAE for biomass burning
-        self.aae_fossil = 1.0   # Typical AAE for fossil fuel
-        
+
+    def _instrument_for(self, data):
+        if self.instrument is not None:
+            return self.instrument
+        named_ma350 = any(f"{c} BCc" in data for c in MA350_WAVELENGTHS_NM)
+        named_ae33 = any(c in data for c in AE33_WAVELENGTHS_NM)
+        if named_ma350 != named_ae33:
+            return "MA350" if named_ma350 else "AE33"
+        raise ValueError("Declare instrument explicitly for mixed or numeric-only channel names")
+
+    def _columns(self, data, instrument):
+        named = ({f"{c} BCc": nm for c, nm in MA350_WAVELENGTHS_NM.items()}
+                 if instrument == "MA350" else dict(AE33_WAVELENGTHS_NM))
+        aliases = {f"BC_{nm}": nm for nm in named.values()}
+        return {c: nm for c, nm in sorted({**named, **aliases}.items(), key=lambda x: (x[1], x[0]))
+                if c in data}
+
+    def _pair(self, columns, instrument):
+        if self.wavelength_pair is not None:
+            if len(self.wavelength_pair) != 2:
+                raise ValueError("wavelength_pair must contain exactly two column names")
+            pair = tuple(self.wavelength_pair)
+            if any(c not in columns for c in pair):
+                raise ValueError("Requested wavelength_pair is missing or belongs to another instrument")
+            if columns[pair[0]] >= columns[pair[1]]:
+                raise ValueError("wavelength_pair must be ordered short then long")
+            return pair, "explicit column pair"
+        uv_nm = 375 if instrument == "MA350" else 370
+        for short_nm in (470, uv_nm):
+            matches = [[c for c, nm in columns.items() if nm == target] for target in (short_nm, 880)]
+            if all(matches):
+                if any(len(m) != 1 for m in matches):
+                    raise ValueError("Ambiguous wavelength aliases; select wavelength_pair explicitly")
+                selection = "Blue/IR default" if short_nm == 470 else "UV/IR fallback (Blue absent)"
+                return (matches[0][0], matches[1][0]), selection
+        raise ValueError("No default Blue/IR or UV/IR pair; select wavelength_pair explicitly")
+
+    def _cross_sections(self, pair, columns, instrument):
+        if self.signal_basis != "bcc":
+            return {c: 1.0 for c in pair}
+        if self.cross_sections is not None:
+            missing = [c for c in pair if c not in self.cross_sections]
+            if missing:
+                raise ValueError(f"Missing declared cross-sections for: {missing}")
+            values = {c: float(self.cross_sections[c]) for c in pair}
+        elif instrument == "MA350":
+            by_nm = {MA350_WAVELENGTHS_NM[c]: v for c, v in MA350_ATTENUATION_CROSS_SECTIONS.items()}
+            values = {c: by_nm[columns[c]] for c in pair}
+        else:
+            raise ValueError("AE33 BC inputs require explicitly supplied cross_sections; MA350 constants do not apply")
+        if not all(np.isfinite(v) and v > 0 for v in values.values()):
+            raise ValueError("Cross-sections must be finite positive values")
+        return values
+
+    def _model(self, data, pair, columns, instrument):
+        if any(list(data.columns).count(c) != 1 for c in pair):
+            raise ValueError("Selected input columns must have unique names")
+        sigma = self._cross_sections(pair, columns, instrument)
+        short, long = (pd.to_numeric(data[c], errors="coerce").to_numpy(dtype=float) for c in pair)
+        with np.errstate(over="ignore", invalid="ignore"):
+            short_optical, long_optical = short * sigma[pair[0]], long * sigma[pair[1]]
+        model = two_source_absorption(
+            short_optical, long_optical,
+            wavelength_short_nm=columns[pair[0]], wavelength_long_nm=columns[pair[1]],
+            alpha_fossil=self.aae_fossil, alpha_biomass=self.aae_biomass, clip=self.clip,
+        )
+        return model, long, sigma
+
+    @staticmethod
+    def _stats(values, *, extrema=False, total=False):
+        finite = np.asarray(values, dtype=float)
+        finite = finite[np.isfinite(finite)]
+        result = {
+            "mean": float(finite.mean()) if len(finite) else None,
+            "std": float(finite.std(ddof=1)) if len(finite) > 1 else None,
+            "median": float(np.median(finite)) if len(finite) else None,
+        }
+        if extrema:
+            result.update(min=float(finite.min()) if len(finite) else None,
+                          max=float(finite.max()) if len(finite) else None)
+        if total:
+            result["total"] = float(finite.sum()) if len(finite) else None
+        return result
+
+    def _contributions(self, model, reference):
+        with np.errstate(invalid="ignore"):
+            bb = reference * model.biomass_fraction
+            ff = reference * model.fossil_fraction
+        total = float(reference[model.valid].sum())
+        result = {
+            "biomass_fraction": self._stats(model.biomass_fraction),
+            "fossil_fraction": self._stats(model.fossil_fraction),
+            "biomass_fraction_unbounded": self._stats(model.biomass_fraction_unbounded, extrema=True),
+            "valid_measurements": int(model.valid.sum()),
+            "reference_weighted_biomass_fraction": float(bb[model.valid].sum() / total) if total > 0 else None,
+        }
+        # Preserve legacy BC keys for BC inputs: optical amplitudes cannot
+        # silently acquire a BC mass label.
+        key = "bc" if self.signal_basis == "bcc" else "reference_optical"
+        result[f"biomass_{key}"] = self._stats(bb, total=True)
+        result[f"fossil_{key}"] = self._stats(ff, total=True)
+        result["totals_note"] = "Sums of retained input values, not time-integrated mass or exposure"
+        return result
+
     def analyze(self, data: pd.DataFrame) -> Dict[str, Any]:
-        """
-        Perform source apportionment analysis
-        
-        Args:
-            data: DataFrame with aethalometer measurements
-            
-        Returns:
-            Dictionary containing analysis results
-        """
-        results = {}
-        
+        """Return established summaries plus signal eligibility and model provenance."""
+        results = {"total_measurements": len(data)}
         try:
-            # Find available BC columns
-            available_bc_cols = [col for col in self.bc_columns if col in data.columns]
-            
-            if len(available_bc_cols) < 2:
-                results['error'] = f"Insufficient BC columns for source apportionment. Need at least 2, found {len(available_bc_cols)}"
-                return results
-            
-            results['available_columns'] = available_bc_cols
-            results['total_measurements'] = len(data)
-            
-            # Basic source apportionment using two-wavelength method
-            if len(available_bc_cols) >= 2:
-                bc1_col = available_bc_cols[0]  # Shorter wavelength (usually UV or Blue)
-                bc2_col = available_bc_cols[-1]  # Longer wavelength (usually IR or Red)
-                
-                # Calculate Angstrom exponent
-                aae_calculated = self._calculate_aae(data, bc1_col, bc2_col)
-                
-                # Estimate source contributions
-                source_contrib = self._estimate_source_contributions(data, bc1_col, bc2_col, aae_calculated)
-                
-                results['aae_statistics'] = {
-                    'mean': float(aae_calculated.mean()) if not aae_calculated.empty else 0,
-                    'std': float(aae_calculated.std()) if not aae_calculated.empty else 0,
-                    'median': float(aae_calculated.median()) if not aae_calculated.empty else 0,
-                    'min': float(aae_calculated.min()) if not aae_calculated.empty else 0,
-                    'max': float(aae_calculated.max()) if not aae_calculated.empty else 0
-                }
-                
-                results['source_contributions'] = source_contrib
-                results['wavelength_pair'] = {'bc1': bc1_col, 'bc2': bc2_col}
-            
-            # Advanced analysis if more wavelengths available
-            if len(available_bc_cols) >= 3:
-                multi_wavelength_results = self._multi_wavelength_analysis(data, available_bc_cols)
-                results['multi_wavelength'] = multi_wavelength_results
-            
-            # Summary statistics
-            results['summary'] = self._generate_summary(results)
-            
-        except Exception as e:
-            results['error'] = f"Analysis failed: {str(e)}"
-        
+            instrument = self._instrument_for(data)
+            columns = self._columns(data, instrument)
+            results["available_columns"] = list(columns)
+            pair, selection = self._pair(columns, instrument)
+            model, reference, sigma = self._model(data, pair, columns, instrument)
+            invalid = model.invalid_reason[~model.valid]
+            reasons, counts = np.unique(invalid, return_counts=True)
+            results.update(
+                wavelength_pair={"bc1": pair[0], "bc2": pair[1]},
+                aae_statistics=self._stats(model.aae, extrema=True),
+                source_contributions=self._contributions(model, reference),
+                signal_validity={
+                    "total": len(data), "valid": int(model.valid.sum()),
+                    "invalid": int((~model.valid).sum()),
+                    "invalid_reasons": {str(r): int(n) for r, n in zip(reasons, counts)},
+                    "clipped_low": int(model.clipped_low.sum()), "clipped_high": int(model.clipped_high.sum()),
+                    "note": "Numerical signal eligibility only; not instrument QA/QC or validated source identity",
+                },
+                source_model={
+                    "model": "two_component_power_law_absorption",
+                    "instrument": instrument, "instrument_selection": "declared" if self.instrument else "column-name family",
+                    "pair_selection": selection, "wavelengths_nm": [columns[c] for c in pair],
+                    "input_basis": self.signal_basis,
+                    "calculation_basis": "absorption" if self.signal_basis == "absorption" else "attenuation_proxy",
+                    "cross_sections": sigma if self.signal_basis == "bcc" else None,
+                    "cross_section_provenance": ("caller supplied" if self.cross_sections is not None else
+                                                  "MA350 firmware attenuation constants") if self.signal_basis == "bcc" else None,
+                    "scattering_assumption": None if self.signal_basis == "absorption" else "A common wavelength-independent scattering correction cancels in the ratio",
+                    "alpha_fossil": float(self.aae_fossil), "alpha_biomass": float(self.aae_biomass),
+                    "clip": self.clip, "fraction_reference": "long-wavelength optical absorption under the stated signal assumptions",
+                    "bc_partition_assumption": "A common reference-wavelength mass absorption cross-section for both components" if self.signal_basis == "bcc" else None,
+                    "component_labels": "Model end members; not unique chemical source identities",
+                    "uncertainty": "Not estimated; end-member and measurement uncertainties require a separate sensitivity analysis",
+                },
+            )
+            if len(columns) >= 3:
+                results["multi_wavelength"] = self._multi_wavelength_analysis(data, list(columns))
+            results["summary"] = self._generate_summary(results)
+        except (TypeError, ValueError, KeyError) as exc:
+            results["error"] = f"Analysis unavailable: {exc}"
         return results
-    
-    def _calculate_aae(self, data: pd.DataFrame, bc1_col: str, bc2_col: str) -> pd.Series:
-        """Calculate Angstrom Absorption Exponent"""
-        
-        # '<Name> BCc' columns come from a MA350/MA200 microAeth, so they take
-        # the microAeth channel centres (375/470/528/625/880) -- NOT the AE33
-        # set. These previously carried AE33 values (370/520/660), which
-        # inflates AAE(Red,IR) by ~16 % and roughly doubles the biomass
-        # fraction derived from it below. Canonical:
-        # research/ftir_hips_chem/scripts/config.py::WAVELENGTHS_NM
-        # BC1..BC7 are genuine AE33 columns and keep the AE33 values.
-        wavelength_map = {
-            'UV BCc': 375, 'Blue BCc': 470, 'Green BCc': 528,
-            'Red BCc': 625, 'IR BCc': 880,
-            'BC1': 370, 'BC2': 470, 'BC3': 520, 'BC4': 590,
-            'BC5': 660, 'BC6': 880, 'BC7': 950
-        }
-        
-        lambda1 = wavelength_map.get(bc1_col, 470)  # Default to blue
-        lambda2 = wavelength_map.get(bc2_col, 880)  # Default to IR
-        
-        # Calculate AAE: AAE = -ln(BC1/BC2) / ln(λ1/λ2)
-        bc_ratio = data[bc1_col] / data[bc2_col]
-        wavelength_ratio = lambda1 / lambda2
-        
-        # Avoid division by zero and negative values
-        valid_mask = (data[bc1_col] > 0) & (data[bc2_col] > 0) & (bc_ratio > 0)
-        
-        aae = pd.Series(index=data.index, dtype=float)
-        aae[valid_mask] = -np.log(bc_ratio[valid_mask]) / np.log(wavelength_ratio)
-        
-        return aae
-    
-    def _estimate_source_contributions(self, data: pd.DataFrame, bc1_col: str, bc2_col: str, aae: pd.Series) -> Dict[str, Any]:
-        """Estimate biomass and fossil fuel contributions"""
-        
-        # Use the longer wavelength (usually IR) as reference for total BC
-        bc_total = data[bc2_col]
-        
-        # Simple two-component model
-        # f_biomass = (AAE - AAE_fossil) / (AAE_biomass - AAE_fossil)
-        f_biomass = (aae - self.aae_fossil) / (self.aae_biomass - self.aae_fossil)
-        f_biomass = np.clip(f_biomass, 0, 1)  # Constrain between 0 and 1
-        f_fossil = 1 - f_biomass
-        
-        bc_biomass = bc_total * f_biomass
-        bc_fossil = bc_total * f_fossil
-        
-        # Calculate statistics
-        valid_mask = ~(np.isnan(f_biomass) | np.isnan(f_fossil))
-        
+
+    def _calculate_aae(self, data, bc1_col, bc2_col):
+        instrument = self._instrument_for(data)
+        columns = self._columns(data, instrument)
+        pair = tuple(sorted((bc1_col, bc2_col), key=columns.__getitem__))
+        model, _, _ = self._model(data, pair, columns, instrument)
+        return pd.Series(model.aae, index=data.index)
+
+    def _estimate_source_contributions(self, data, bc1_col, bc2_col, aae=None):
+        # Retain ``aae`` in the private compatibility signature, but always use
+        # the declared optical signals in the physical mixing equation.
+        instrument = self._instrument_for(data)
+        columns = self._columns(data, instrument)
+        pair = tuple(sorted((bc1_col, bc2_col), key=columns.__getitem__))
+        model, reference, _ = self._model(data, pair, columns, instrument)
+        return self._contributions(model, reference)
+
+    def _multi_wavelength_analysis(self, data, bc_cols):
+        instrument = self._instrument_for(data)
+        columns = self._columns(data, instrument)
+        pairs, skipped = [], []
+        for short, long in combinations(bc_cols, 2):
+            if columns[short] == columns[long]:
+                continue
+            try:
+                values = self._calculate_aae(data, short, long)
+                stats = self._stats(values)
+                pairs.append({"wavelength_pair": f"{short}-{long}", "aae_mean": stats["mean"],
+                              "aae_std": stats["std"], "valid_measurements": int(np.isfinite(values).sum())})
+            except (ValueError, KeyError) as exc:
+                skipped.append({"wavelength_pair": f"{short}-{long}", "reason": str(exc)})
+        means = [self._stats(pd.to_numeric(data[c], errors="coerce"))["mean"] for c in bc_cols]
+        reference = means[-1]
         return {
-            'biomass_fraction': {
-                'mean': float(f_biomass[valid_mask].mean()) if valid_mask.any() else 0,
-                'std': float(f_biomass[valid_mask].std()) if valid_mask.any() else 0,
-                'median': float(f_biomass[valid_mask].median()) if valid_mask.any() else 0
+            "aae_all_pairs": pairs, "unavailable_pairs": skipped,
+            "spectral_profile": {
+                "columns": bc_cols, "mean_concentrations": means,
+                "concentration_ratios": [v / reference if v is not None and reference is not None and reference > 0 else None for v in means],
+                "basis": self.signal_basis, "reference_column": bc_cols[-1],
             },
-            'fossil_fraction': {
-                'mean': float(f_fossil[valid_mask].mean()) if valid_mask.any() else 0,
-                'std': float(f_fossil[valid_mask].std()) if valid_mask.any() else 0,
-                'median': float(f_fossil[valid_mask].median()) if valid_mask.any() else 0
-            },
-            'biomass_bc': {
-                'mean': float(bc_biomass[valid_mask].mean()) if valid_mask.any() else 0,
-                'std': float(bc_biomass[valid_mask].std()) if valid_mask.any() else 0,
-                'total': float(bc_biomass[valid_mask].sum()) if valid_mask.any() else 0
-            },
-            'fossil_bc': {
-                'mean': float(bc_fossil[valid_mask].mean()) if valid_mask.any() else 0,
-                'std': float(bc_fossil[valid_mask].std()) if valid_mask.any() else 0,
-                'total': float(bc_fossil[valid_mask].sum()) if valid_mask.any() else 0
-            },
-            'valid_measurements': int(valid_mask.sum())
         }
-    
-    def _multi_wavelength_analysis(self, data: pd.DataFrame, bc_cols: List[str]) -> Dict[str, Any]:
-        """Perform multi-wavelength analysis for better source apportionment"""
-        
-        results = {}
-        
-        # Calculate AAE for all wavelength pairs
-        aae_pairs = []
-        for i in range(len(bc_cols)):
-            for j in range(i+1, len(bc_cols)):
-                col1, col2 = bc_cols[i], bc_cols[j]
-                aae_pair = self._calculate_aae(data, col1, col2)
-                aae_pairs.append({
-                    'wavelength_pair': f"{col1}-{col2}",
-                    'aae_mean': float(aae_pair.mean()) if not aae_pair.empty else 0,
-                    'aae_std': float(aae_pair.std()) if not aae_pair.empty else 0
-                })
-        
-        results['aae_all_pairs'] = aae_pairs
-        
-        # Spectral analysis
-        bc_means = [data[col].mean() for col in bc_cols]
-        results['spectral_profile'] = {
-            'columns': bc_cols,
-            'mean_concentrations': bc_means,
-            'concentration_ratios': [bc_means[i]/bc_means[-1] if bc_means[-1] > 0 else 0 
-                                   for i in range(len(bc_means))]
-        }
-        
-        return results
-    
-    def _generate_summary(self, results: Dict[str, Any]) -> str:
-        """Generate a summary of the source apportionment analysis"""
-        
-        if 'error' in results:
-            return f"Analysis failed: {results['error']}"
-        
-        summary_parts = []
-        
-        if 'source_contributions' in results:
-            contrib = results['source_contributions']
-            biomass_pct = contrib['biomass_fraction']['mean'] * 100
-            fossil_pct = contrib['fossil_fraction']['mean'] * 100
-            
-            summary_parts.append(f"Source contributions: {biomass_pct:.1f}% biomass, {fossil_pct:.1f}% fossil fuel")
-        
-        if 'aae_statistics' in results:
-            aae_mean = results['aae_statistics']['mean']
-            summary_parts.append(f"Average AAE: {aae_mean:.2f}")
-        
-        if 'available_columns' in results:
-            n_cols = len(results['available_columns'])
-            summary_parts.append(f"Analysis based on {n_cols} wavelength channels")
-        
-        return "; ".join(summary_parts) if summary_parts else "Source apportionment analysis completed"
+
+    def _generate_summary(self, results):
+        if "error" in results:
+            return results["error"]
+        contributions = results["source_contributions"]
+        if not contributions["valid_measurements"]:
+            return "No eligible paired optical signals; source fractions are unavailable"
+        bb = contributions["biomass_fraction"]["mean"]
+        ff = contributions["fossil_fraction"]["mean"]
+        return (f"Model fractions, mean over eligible observations: {bb:.1%} biomass-like, "
+                f"{ff:.1%} fossil-like; optical AAE {results['aae_statistics']['mean']:.2f}. "
+                "Conditional on the declared end members and optical signal assumptions.")
