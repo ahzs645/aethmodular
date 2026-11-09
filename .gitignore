@@ -241,6 +241,9 @@ gallery/app/public/data/experimental/*
 !gallery/app/public/data/experimental/vibes_background.json
 !gallery/app/public/data/experimental/vibes_background.bin
 
+# Derived publication receipts are packed with their data snapshot, not source-controlled.
+gallery/app/public/data/_verification/
+
 # full-gallery Pages build (gallery/share/publish_pages.py)
 gallery/share/pages-dist/
 

@@ -28,16 +28,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Read prebuilt source identity
+        id: source
+        run: |
+          SOURCE_SHA=$(jq -r .source_sha build-info.json)
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::prebuilt source_sha must be a full commit SHA'; exit 1; }
+          test -f verification-receipt.json
+          [[ "$(jq -r .source_sha verification-receipt.json)" == "$SOURCE_SHA" ]] || { echo '::error::prebuilt source receipts disagree'; exit 1; }
+          jq -e -s 'all(.[]; .source_worktree_dirty == false)' build-info.json verification-receipt.json > /dev/null
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: ahzs645/aethmodular
+          ref: ${{ steps.source.outputs.source_sha }}
+          path: verification-source
+          sparse-checkout: |
+            gallery/share
+            gallery/review
+            research/ftir_hips_chem/scripts
+            research/ftir_hips_chem/workflows
+          fetch-depth: 1
       - name: Prepare prebuilt site
         run: |
           test -f index.html
           test -f build-info.json
           mkdir -p "$RUNNER_TEMP/site"
-          rsync -a --exclude=.git --exclude=.github ./ "$RUNNER_TEMP/site/"
+          rsync -a --exclude=.git --exclude=.github --exclude=verification-source ./ "$RUNNER_TEMP/site/"
           touch "$RUNNER_TEMP/site/.nojekyll"
           if grep -rIlE '/Users/|GoogleDrive-|gh[op]_[A-Za-z0-9]{20,}' "$RUNNER_TEMP/site"; then
             echo "::error::machine paths or tokens in the build"; exit 1
           fi
+      - name: Verify prebuilt continuum against accepted source
+        run: |
+          python3 verification-source/gallery/share/continuum_publication.py verify-built \
+            --root verification-source --data-root "$RUNNER_TEMP/site/data" \
+            --receipt "$RUNNER_TEMP/site/data/_verification/continuum-source.json"
+          jq --slurpfile continuum "$RUNNER_TEMP/site/data/_verification/continuum-source.json" \
+            '.continuum_source = $continuum[0] | .prebuilt_deployment_checks = ["source-identity", "machine-path-scan", "accepted-continuum-built-bytes"]' \
+            "$RUNNER_TEMP/site/verification-receipt.json" > "$RUNNER_TEMP/site/verification-receipt.checked.json"
+          mv "$RUNNER_TEMP/site/verification-receipt.checked.json" "$RUNNER_TEMP/site/verification-receipt.json"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ${{ runner.temp }}/site
