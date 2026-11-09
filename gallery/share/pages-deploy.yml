@@ -69,9 +69,11 @@ jobs:
             gallery/packages
             gallery/data
             gallery/share
+            gallery/review
             tests
             docs
             research/ftir_hips_chem/scripts
+            research/ftir_hips_chem/workflows
           submodules: true
           fetch-depth: 1
       - uses: actions/setup-node@v4
@@ -105,6 +107,14 @@ jobs:
             rm -rf "gallery/app/public/data/$d"
           done
           du -sh gallery/app/public/data
+      - name: Verify and apply accepted continuum source scores
+        run: |
+          [[ "$(git rev-parse HEAD)" == "${{ steps.req.outputs.source_sha }}" ]] || { echo '::error::checked-out source differs from publication request'; exit 1; }
+          python3 gallery/share/continuum_publication.py apply \
+            --data-root gallery/app/public/data \
+            --archive "$RUNNER_TEMP/gallery-data.tar.gz" \
+            --data-tag "${{ steps.req.outputs.data_tag }}" \
+            --receipt "$RUNNER_TEMP/continuum-source-verification.json"
       - name: Source and public-data checks
         working-directory: gallery/app
         run: |
@@ -125,6 +135,12 @@ jobs:
             echo "::error::machine paths or tokens in the build"; exit 1
           fi
           du -sh "$RUNNER_TEMP/site"
+      - name: Verify exact built continuum bytes
+        run: |
+          python3 gallery/share/continuum_publication.py verify-built \
+            --data-root "$RUNNER_TEMP/site/data" \
+            --receipt "$RUNNER_TEMP/continuum-source-verification.json"
+          cp "$RUNNER_TEMP/continuum-source-verification.json" "$RUNNER_TEMP/site/data/_verification/continuum-source.json"
       - name: Record source and data verification
         env:
           SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
@@ -132,7 +148,8 @@ jobs:
         run: |
           jq -n --arg source "$SOURCE_SHA" --arg data_tag "$DATA_TAG" --arg data_sha256 "$GALLERY_DATA_SHA256" \
             --arg run "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            '{schema_version:1, source_sha:$source, data_tag:$data_tag, data_sha256:$data_sha256, workflow_run:$run, scope:"public gallery software and data integration", passed:["typecheck","node-source","node-data-public","production-build","machine-path-scan"], not_established:["independent target EC accuracy","research-only data reconciliation","fresh-context link and export acceptance"]}' \
+            --slurpfile continuum "$RUNNER_TEMP/continuum-source-verification.json" \
+            '{schema_version:2, source_sha:$source, data_tag:$data_tag, data_sha256:$data_sha256, workflow_run:$run, scope:"public gallery software, data integration and exact built continuum bytes", passed:["typecheck","node-source","node-data-public","production-build","machine-path-scan","accepted-continuum-built-bytes"], continuum_source:$continuum[0], not_established:["independent target EC accuracy","research-only data reconciliation","fresh-context link and export acceptance"]}' \
             > "$RUNNER_TEMP/site/verification-receipt.json"
       - uses: actions/upload-pages-artifact@v3
         with:

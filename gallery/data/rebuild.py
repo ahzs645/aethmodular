@@ -388,6 +388,8 @@ STEPS: tuple[Step, ...] = (
                                    "tests/test_aeth_quality_export.py", "tests/test_aeth_quality_minute.py", "tests/test_aeth_sources_export.py",
                                    "tests/test_aeth_diurnal_export.py", "tests/test_aeth_overview_export.py", "tests/test_gallery_research_hips_met.py",
                                    "tests/test_gallery_research_spectral.py", "tests/test_maia_catalog.py", "tests/test_gallery_publication.py",
+                                   "tests/test_gallery_continuum_publication.py", "tests/test_paper_comparison.py",
+                                   "tests/test_source_apportionment_model.py", "tests/test_aethalometer_model_clipping.py",
                                    "tests/test_spartan_update_check.py", "tests/test_candidate_metrics.py", "tests/test_epo_validation.py",
                                    "tests/test_vibes_continuum_regeneration.py", "tests/test_closeout_workflow_inputs.py",
                                    "tests/test_continuum_source_refresh.py",
