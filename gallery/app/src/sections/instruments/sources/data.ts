@@ -43,10 +43,21 @@ export function useDailySites(codes: readonly string[], meta: MetaFile): DailySi
  * the processed pickles' columns (`daily`) and the MAIA hourly exports averaged over the bin (`hourly`).
  */
 export interface InstrumentSeries { start: string[]; aae: (number | null)[]; bb_pct: (number | null)[] }
+export interface InstrumentHourly extends InstrumentSeries {
+  n: number; file: string; hours: number[]
+  /** Older exports have only `hours`, which did not establish independent split coverage. */
+  coverage_version?: number
+  timezone?: string; bin_hours?: number; min_hours?: number
+  start_utc?: string[]; end_utc?: string[]
+  aae_hours?: number[]; split_hours?: number[]; ir_hours?: number[]; observed_hours?: number[]
+  raw_rows?: number[]; duplicate_rows?: number[]; conflict_hours?: number[]
+  aae_conflict_hours?: number[]; split_conflict_hours?: number[]; ir_conflict_hours?: number[]
+  bb_status?: ('available' | 'insufficient_paired_hours' | 'nonpositive_split_total' | 'nonfinite_split_total' | 'nonfinite_split_fraction')[]
+}
 export interface InstrumentSite {
   site: string
   daily: InstrumentSeries & { n: number; aae_fossil: number | null; aae_biomass: number | null; bb_bcc: (number | null)[]; ff_bcc: (number | null)[] }
-  hourly?: InstrumentSeries & { n: number; file: string; hours: number[] }
+  hourly?: InstrumentHourly
 }
 export interface InstrumentFile { source: string; note: string; sites: Record<string, InstrumentSite> }
 export const useInstrument = () => useExport<InstrumentFile>('aethalometer/sources/instrument.json').data

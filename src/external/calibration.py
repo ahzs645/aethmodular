@@ -2303,7 +2303,8 @@ def sa_aethalometer_model(
                     if tag_data_snapped_to_0_and_100:
                         df_j_i['bb_forced_to_between_0_and_100'] = 0
                         df_j_i.loc[
-                                (df_j_i['bb'] < 0) | (df_j_i['bb'] > 100),
+                                # bb is still a fraction here; percent conversion follows clipping.
+                                (df_j_i['bb'] < 0) | (df_j_i['bb'] > 1),
                             'bb_forced_to_between_0_and_100'] = 1
                     # Snap data to 0 and 1
                     df_j_i.loc[df_j_i['bb'] < 0, 'bb'] =\
