@@ -561,13 +561,6 @@
    "file": "components/SimilaritySpectra.tsx"
   },
   {
-   "title": "VIBES signal-preservation check",
-   "id": "vibes-validation-scope",
-   "component": "ValidationFigures",
-   "tab": "baseline",
-   "file": "components/VibesValidation.tsx"
-  },
-  {
    "title": "Does the known signal survive?",
    "id": "vibes-validation-recovery",
    "component": "ValidationFigures",
