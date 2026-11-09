@@ -26,7 +26,8 @@ import { JACROS, useDailySites, useInstrument, usePmf } from '../sources/data'
  * dominant_source_threshold_analysis, threshold_by_source_analysis, source_apportionment_regression and
  * addis_ababa_source_analysis; the charts live in ../sources.
  *
- * Every AAE here is from absorption (BCc × the MA350 cross-section). The notebooks took it from BCc,
+ * Every AAE here uses BCc × the MA350 attenuation cross-section, assuming a common multiple-scattering factor.
+ * The notebooks took it directly from BCc,
  * which sits about 1 lower for every sample; the page says where that moves their numbers.
  */
 export function Sources({ rows, meta }: SectionPageProps) {
@@ -62,8 +63,8 @@ export function Sources({ rows, meta }: SectionPageProps) {
       </SidebarControls>
       {explain && <div className="panel">
         <p className="subtitle" style={{ margin: '0 0 4px' }}>
-          AAE {pair} = −ln(b<sub>{p.short}</sub> / b<sub>{p.long}</sub>) / ln({MA350_NM[p.short]} / {MA350_NM[p.long]}) from <b>absorption</b>, b = BCc × the MA350 cross-section
-          (research/ftir_hips_chem/scripts/optics.py). Classes follow config.AAE_REGIONS: fossil fuel ≤ {regions.fossil_max}, mixed, biomass ≥ {regions.biomass_min}.
+          AAE {pair} = −ln(b<sub>{p.short}</sub> / b<sub>{p.long}</sub>) / ln({MA350_NM[p.short]} / {MA350_NM[p.long]}) using b = BCc × the MA350 attenuation cross-section.
+          This proxy assumes a common multiple-scattering factor at both wavelengths. Classes follow config.AAE_REGIONS: fossil fuel ≤ {regions.fossil_max}, mixed, biomass ≥ {regions.biomass_min}.
           An AAE taken from BCc, as every source notebook did, is the same number {f2(offset)}: the instrument has already divided each channel by a cross-section that falls with wavelength.
         </p>
         <details>
@@ -77,6 +78,15 @@ export function Sources({ rows, meta }: SectionPageProps) {
           </ul>
         </details>
       </div>}
+      <div className="panel">
+        <p className="subtitle" style={{ margin: 0 }}>
+          <b>Comparing with the Addis study.</b> <a href="https://doi.org/10.1021/acsestair.6c00140" target="_blank" rel="noreferrer">Shlipak et al. (2026)</a> reports
+          Central and Jacros separately for April 2022–March 2025, using fossil/biomass exponents 1 and 2. Its roughly 94% fossil BC estimate
+          is a two-component optical-model result; the AAE class shares here count observations. They measure different quantities.
+          The Jacros toggle selects the longer record of the Addis MA350-0238; it does not add the paper’s Central deployment.
+          New paper comparisons use Belg February–May and keep the hourly coverage and instrument identities explicit.
+        </p>
+      </div>
       {daily === null ? <ExportState what="the aethalometer daily bins" /> : <>
         <AaeDistribution rows={rows} meta={meta} daily={daily} pair={pair} basis={basis} regions={regions} />
         <ClassShares rows={rows} meta={meta} daily={daily} pair={pair} basis={basis} regions={regions} />

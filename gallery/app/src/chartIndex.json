@@ -1645,7 +1645,7 @@
    "file": "meetings/process-20261110.meeting.ts"
   },
   {
-   "title": "EC is about a fifth of Addis PM2.5, against about 4 % across IMPROVE",
+   "title": "Addis optical BC share is higher than IMPROVE TOR EC share; the measurement bases differ",
    "id": "s1109-ec-share",
    "component": "bars",
    "tab": "meeting",
@@ -1661,7 +1661,7 @@
    "file": "meetings/status-20261109.meeting.ts"
   },
   {
-   "title": "The spline baseline moves the HIPS intercept from about −6 to about −1.4, the VIBES variants stay between −3.4 and −6.4; against the aethalometer most candidates are near zero",
+   "title": "Saved published and spline pipelines have HIPS intercepts near −6 and −1.4 on different populations; the VIBES variants sit between −3.4 and −6.4",
    "id": "s1109-addis-intercept",
    "component": "bars",
    "tab": "meeting",
@@ -1677,7 +1677,7 @@
    "file": "meetings/status-20261109.meeting.ts"
   },
   {
-   "title": "Season-specific look-alikes fix Kiremt’s slope; Dry and Belg stay between 0.3 and 0.75 whatever the calibration filters",
+   "title": "Historical dry_feb results: look-alikes bring Kiremt’s optical slope near one",
    "id": "s1109-seasons",
    "component": "intervals",
    "tab": "meeting",
@@ -1709,7 +1709,7 @@
    "file": "meetings/status-20261109.meeting.ts"
   },
   {
-   "title": "Analysis and tooling peaked in late October; no manuscript draft yet",
+   "title": "Repository activity peaked in late October; external writing progress is unknown",
    "id": "s1109-commits",
    "component": "bars",
    "tab": "meeting",

@@ -1,5 +1,12 @@
 # FTIR calibration transfer: current scientific position
 
+**9 November implementation follow-up.** The [paper integration](aethalometer-paper-comparison.md)
+adds a named MA350 comparison protocol, corrected optical mixing and hourly-coverage
+accounting. It does not add independent Addis thermal EC or rerun the accepted FTIR
+fits. The publication path now verifies and applies the accepted source overlay to
+normal release builds; a deployed release still needs its own exact source/data
+receipt. The dated verification below retains its original scientific scope.
+
 Updated **7 November 2026 after the completed existing-data research closeout**. Numerical acceptance, independent score arithmetic, the figure-population audit, exact-source public/browser checks and the seven-page visual review are complete. The actual corrected overlay passed at source `2341cbbbab41b9dfde143d36aac5ea84585aea31`; the preserved release remains a review candidate, with no deployment or absolute Addis EC validation implied. See the [final implementation receipt](gallery-closeout-implementation-2026-11-07.md#corrected-overlay-release-verification).
 
 The new source evaluation follows the [reproduction protocol](gallery-closeout-reproduction-2026-11-07.md) at scientific checkpoint `ee1c6adac64b773944ee3bbaea3aac07d60f2f13`. The review's saved target/optical figures retain the export generated **4 November 2026 at 03:44:59 UTC**, from public data release `data-82d701248232` and its earlier deployment source `cb2e1469ec222719c347b9b5f672765ede3ed7c7`. The [review manifest](../gallery/review/closeout_20261107/manifest.json) binds the base and source overlay separately. The [September synthesis](current-research-summary-2026-09-22.md) and its [numerical verification receipt](current-research-summary-checks.json) remain historical evidence; that receipt does not validate the November analyses.
