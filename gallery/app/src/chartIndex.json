@@ -404,6 +404,30 @@
    "file": "charts/ranking/SiteRank.tsx"
   },
   {
+   "title": "Site cards — the same numbers for every site, sorted",
+   "id": "sitecards",
+   "component": "SiteCards",
+   "tab": "aethalometer",
+   "page": "addis-study",
+   "file": "charts/summary/SiteCards.tsx"
+  },
+  {
+   "title": "Site — where, when, and what was measured",
+   "id": "sitesummary",
+   "component": "SiteSummary",
+   "tab": "aethalometer",
+   "page": "addis-study",
+   "file": "charts/summary/SiteSummary.tsx"
+  },
+  {
+   "title": "… — median over the filters in view, with the monthly medians",
+   "id": "stat",
+   "component": "StatTile",
+   "tab": "aethalometer",
+   "page": "addis-study",
+   "file": "charts/summary/StatTile.tsx"
+  },
+  {
    "title": "Humidity and method agreement — dry vs humid filters",
    "id": "weather-humidity",
    "component": "HumidityAgreement",
@@ -601,6 +625,14 @@
    "component": "ValidationFigures",
    "tab": "baseline",
    "file": "components/VibesValidation.tsx"
+  },
+  {
+   "title": "Research note",
+   "id": "research-note",
+   "component": "NoteTile",
+   "tab": "aethalometer",
+   "page": "addis-study",
+   "file": "components/dashboard/NoteTile.tsx"
   },
   {
    "title": "For every chart on this page",
@@ -1532,6 +1564,54 @@
    "component": "FilterTable",
    "tab": "similarity",
    "file": "pages/SimilarityPage.tsx"
+  },
+  {
+   "title": "Published study benchmarks",
+   "id": "aeth-addis-study-benchmarks",
+   "component": "AddisStudyBenchmarks",
+   "tab": "aethalometer",
+   "page": "addis-study",
+   "file": "sections/instruments/study/Context.tsx"
+  },
+  {
+   "title": "What is available and what is pending",
+   "id": "aeth-addis-study-readiness",
+   "component": "AddisStudyReadiness",
+   "tab": "aethalometer",
+   "page": "addis-study",
+   "file": "sections/instruments/study/Context.tsx"
+  },
+  {
+   "title": "Jacros through the local day",
+   "id": "aeth-addis-study-diurnal",
+   "component": "AddisStudyDiurnal",
+   "tab": "aethalometer",
+   "page": "addis-study",
+   "file": "sections/instruments/study/Diurnal.tsx"
+  },
+  {
+   "title": "Festival windows in the saved record",
+   "id": "aeth-addis-study-events",
+   "component": "AddisStudyEvents",
+   "tab": "aethalometer",
+   "page": "addis-study",
+   "file": "sections/instruments/study/Events.tsx"
+  },
+  {
+   "title": "Jacros by season",
+   "id": "aeth-addis-study-seasons",
+   "component": "AddisStudySeasons",
+   "tab": "aethalometer",
+   "page": "addis-study",
+   "file": "sections/instruments/study/Seasonal.tsx"
+  },
+  {
+   "title": "Jacros record and its gaps",
+   "id": "aeth-addis-study-timeline",
+   "component": "AddisStudyTimeline",
+   "tab": "aethalometer",
+   "page": "addis-study",
+   "file": "sections/instruments/study/Timeline.tsx"
   }
  ]
 }

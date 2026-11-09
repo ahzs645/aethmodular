@@ -38,7 +38,7 @@ import { FONT, INK } from '@/lib/theme'
  */
 
 export type StackX =
-  | { type: 'time'; domain: readonly [Date, Date] }
+  | { type: 'time'; domain: readonly [Date, Date]; /** Use UTC calendar ticks for a fixed-clock display. */ utc?: boolean }
   | { type: 'linear'; domain: readonly [number, number]; nice?: boolean }
   | { type: 'point'; domain: readonly string[]; padding?: number }
 export type StackScaleOf<X extends StackX> = X extends { type: 'time' } ? d3.ScaleTime<number, number>
@@ -135,7 +135,7 @@ export function StackedPanels<X extends StackX>({ x: xSpec, panels, margin = {},
   const innerW = Math.max(240, width - left - right)
 
   // the same scales until the data or the size change, so memoised marks inside (ScatterLayer dots) survive
-  const xSig = `${xSpec.type}|${xSpec.domain.map((v) => +v || String(v)).join('|')}|${'nice' in xSpec ? xSpec.nice : ''}|${'padding' in xSpec ? xSpec.padding : ''}`
+  const xSig = `${xSpec.type}|${xSpec.domain.map((v) => +v || String(v)).join('|')}|${'nice' in xSpec ? xSpec.nice : ''}|${'padding' in xSpec ? xSpec.padding : ''}|${'utc' in xSpec ? xSpec.utc : ''}`
   const x = useMemo(() => buildX(xSpec, innerW), [xSig, innerW]) as StackScaleOf<X> // eslint-disable-line react-hooks/exhaustive-deps
   const ySig = panels.map((p) => `${p.y.domain[0]},${p.y.domain[1]},${p.y.nice ? 1 : 0}`).join('|'), hSig = geo.heights.join('|')
   const ys = useMemo(() => panels.map((p, i) => {
@@ -197,7 +197,7 @@ const wrapAxis = (y: StackY, axis: ReactNode) => (y.around ? y.around(axis) : ax
 const MONTH_YEAR = d3.utcFormat('%b %Y') as (v: any) => string
 
 function buildX(spec: StackX, w: number): StackXScaleAny {
-  if (spec.type === 'time') return d3.scaleTime().domain(spec.domain as [Date, Date]).range([0, w])
+  if (spec.type === 'time') return (spec.utc ? d3.scaleUtc() : d3.scaleTime()).domain(spec.domain as [Date, Date]).range([0, w])
   if (spec.type === 'point') return d3.scalePoint<string>().domain(spec.domain as string[]).range([0, w]).padding(spec.padding ?? 0.4)
   const s = d3.scaleLinear().domain(spec.domain as [number, number]).range([0, w])
   return spec.nice ? s.nice() : s

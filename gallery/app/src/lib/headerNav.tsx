@@ -9,7 +9,7 @@ import { useSearchParam } from '@/lib/url'
  * - Navigation for the ⌘K search (components/CommandPalette): open a tab or meeting page and
  *   scroll to a chart once it has drawn (or, one chart at a time, show it: SHOW_CHART_EVENT).
  */
-export interface ChartTarget { tab: string; meeting?: string; id?: string; title?: string }
+export interface ChartTarget { tab: string; meeting?: string; page?: string; id?: string; title?: string }
 interface HeaderNav {
   tocShown: boolean
   setTocShown: (v: boolean) => void
@@ -27,7 +27,7 @@ export const useHeaderNav = () => useContext(Ctx)
 export function HeaderNavProvider({ tabs, meetings, open, children }: {
   tabs: HeaderNav['tabs']; meetings: HeaderNav['meetings']
   /** switch to a tab (and meeting page) */
-  open: (tab: string, meeting?: string) => void
+  open: (tab: string, meeting?: string, page?: string) => void
   children: ReactNode
 }) {
   const [toc, setToc] = useSearchParam<'shown' | 'hidden'>('toc', 'hidden', ['shown', 'hidden'])
@@ -38,7 +38,7 @@ export function HeaderNavProvider({ tabs, meetings, open, children }: {
     goTo: (t) => {
       // told before the tab switches, so the single-chart view (lib/singleView) can wait for the chart on the new page
       if (t.id || t.title) window.dispatchEvent(new CustomEvent<ChartTarget>(SHOW_CHART_EVENT, { detail: t }))
-      open(t.tab, t.meeting)
+      open(t.tab, t.meeting, t.page)
       if (t.id || t.title) scrollToChart(t)
     },
   }), [toc, setToc, tocPresent, tabs, meetings, open])

@@ -6,10 +6,13 @@ import type { Section } from '../types'
 import { AethalometerPage } from './AethalometerPage'
 import { AETH_PAGES } from './pages'
 import { useAethFields } from './lib'
+import { ADDIS_STUDY_HISTORY } from './study/history'
+import './study/dashboard'
 
 const instruments: Section = {
   key: 'instruments',
   label: 'Instruments',
+  history: ADDIS_STUDY_HISTORY,
   tabs: [{
     key: 'aethalometer',
     label: 'Aethalometer',

@@ -29,7 +29,7 @@ interface Item extends ChartTarget {
 }
 interface Section { name: string; items: Item[] }
 
-const CHARTS = (index as { charts: { title: string; id?: string; component?: string; tab: string; meeting?: string; file: string }[] }).charts
+const CHARTS = (index as { charts: { title: string; id?: string; component?: string; tab: string; meeting?: string; page?: string; file: string }[] }).charts
 // "DensityHexbin" → "density hexbin", so a search for the kind of chart finds it
 const spaced = (s?: string) => (s ?? '').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()
 /** a chart title's head (what ChartFrame shows as its heading) and the rest after ' — ' */
@@ -110,7 +110,7 @@ function Palette({ onClose }: { onClose: () => void }) {
       ...charts.map((c): Item => {
         const where = c.tab === 'meeting' ? meetingLabel(c.meeting) : tabLabel(c.tab)
         return { kind: 'chart', key: `chart:${c.tab}:${c.meeting ?? ''}:${c.id ?? ''}:${c.title}`, label: head(c.title), desc: rest(c.title), where,
-          tab: c.tab, meeting: c.meeting, id: c.id, title: c.title,
+          tab: c.tab, meeting: c.meeting, page: c.page, id: c.id, title: c.title,
           words: `${c.title} ${where} ${spaced(c.component)} ${c.id ?? ''}`.toLowerCase() }
       }),
     ].reduce<Item[]>((out, i) => {
