@@ -159,6 +159,39 @@ Filters → excluded: Include brings back the filters the data export excludes, 
 exclusion is a deliberate choice carried in the link, and Mark shows it without counting it. Revisit only if
 readers expect Include to mean "everything".
 
+### Run the merged PMF workflow on the private data before using its results (8 Nov 2026)
+
+PR #18 merged the recovered FTIR PMF workflow (`src/pmf`, `aeth pmf`) into main. The code and its CI are done:
+Linux Python 3.12/3.13 and the Windows native check passed. Three gates from its own record are still open. Until
+they close, no PMF output counts as a qualified source result:
+
+1. **Native EPA on the private data.** EPA PMF (ME-2) has only been run in CI on public and synthetic inputs. It
+   still has to run against the approved private ETAD/ETBI snapshots on a Windows machine with the EPA runtime.
+2. **ESAT on signed data.** Stock ESAT is not qualified for signed (partly negative) inputs. The opt-in repaired
+   semi-NMF path allows signed contributions, so it must not be reported as conventional PMF.
+3. **Scientific review.** Laboratory uncertainty provenance, baseline residuals, factor count and stability, and
+   source-specific mass calibration all need review. This overlaps with
+   [the negative-input item below](#fix-the-python-pmfs-negative-inputs-before-naming-sources).
+
+Details are in [`pmf-integration-2026-11-05.md`](pmf-integration-2026-11-05.md) and
+[`pmf-future-batch-engine-readiness.md`](pmf-future-batch-engine-readiness.md).
+
+### Decide whether to turn on the strict gallery deploy gate (8 Nov 2026)
+
+[aethmodular-gallery#1](https://github.com/ahzs645/aethmodular-gallery/pull/1) is the deployment half of PR #20
+(gallery closeout, merged 8 Nov). It is still a draft. Merging it changes the Pages deploy so that every publish
+must:
+
+- verify the downloaded data archive against its content-addressed release tag;
+- pass TypeScript, the strict source tests and the strict public-data tests before the normal build;
+- keep a receipt naming the exact source and data pair it checked.
+
+The test scripts it relies on (`npm run test:source`, `test:data:public`) are now on main, so nothing blocks the
+merge. The cost is that a publish fails if any of those checks fails, including a public-data test whose input is
+missing from the release. On 8 Nov its `deploy.yml` was byte-identical to `gallery/share/pages-deploy.yml` on main;
+recheck if either changes. The closeout data candidate `data-accc09aa8eea` is prepared but unpublished. Publishing it is
+the [data-release item below](#publish-a-new-data-release-from-a-machine-that-can-upload-release-assets).
+
 ## Unfinished migrations
 
 ### Migrate stored-output notebooks to the canonical site palette
