@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "data_scope": "research",
+  "datasets": {
+    "pasadena_minutes": {
+      "kind": "table",
+      "path": "${AETHMODULAR_MINUTE_CSV}",
+      "description": "Full supplied Pasadena minute record, all 471232 rows; 2023-06-23T15:46:59Z through 2024-05-31T01:48:59Z. Period declared before examining outcomes. Filename Cleaned does not verify observation provenance or processing history. No filtering by optical outcome or humidity event support.",
+      "columns": [
+        "Time (UTC)",
+        "Session ID",
+        "Tape position",
+        "Sample RH (%)",
+        "Sample temp (C)",
+        "IR ATN1",
+        "Flow1 (mL/min)",
+        "Flow2 (mL/min)",
+        "IR BC1",
+        "IR BC2",
+        "UV BCc",
+        "Blue BCc",
+        "Green BCc",
+        "Red BCc",
+        "IR BCc"
+      ]
+    },
+    "independent_episodes": {
+      "kind": "table",
+      "unavailable_reason": "An independent Pasadena episode catalog with UTC bounds and source evidence has not been supplied. No episode boundaries are inferred from the optical outcome."
+    }
+  },
+  "experiments": [
+    {
+      "id": "pasadena_humidity",
+      "kind": "humidity_memory",
+      "inputs": {
+        "data": "pasadena_minutes"
+      },
+      "parameters": {
+        "raw_ma350": {
+          "cross_sections": {
+            "UV": 24.069,
+            "Blue": 19.07,
+            "Green": 17.028,
+            "Red": 14.091,
+            "IR": 10.12
+          },
+          "bc_unit": "ng/m3",
+          "include_spots": true
+        },
+        "signal_columns": {
+          "UV": "UV b_ATN (Mm-1)",
+          "Blue": "Blue b_ATN (Mm-1)",
+          "Green": "Green b_ATN (Mm-1)",
+          "Red": "Red b_ATN (Mm-1)",
+          "IR": "IR b_ATN (Mm-1)",
+          "IR_spot1": "IR_spot1 b_ATN (Mm-1)",
+          "IR_spot2": "IR_spot2 b_ATN (Mm-1)"
+        },
+        "signal_quantity": "b_atn",
+        "timezone": "America/Los_Angeles",
+        "rh_provenance": "MA350 recorded Sample RH (%) field; physical sensor location and response time not independently verified",
+        "config": {
+          "time_col": "Time (UTC)",
+          "rh_col": "Sample RH (%)",
+          "temp_col": "Sample temp (C)",
+          "session_col": "Session ID",
+          "tape_col": "Tape position",
+          "atn_col": "IR ATN1",
+          "flow1_col": "Flow1 (mL/min)",
+          "flow2_col": "Flow2 (mL/min)",
+          "reference_signal": "IR",
+          "cadence_minutes": 1.0,
+          "max_gap_minutes": 2.0,
+          "lag_tolerance_minutes": 0.25,
+          "step_minutes": 10.0,
+          "baseline_minutes": 10.0,
+          "sustain_minutes": 5.0,
+          "recovery_minutes": 60.0,
+          "bin_minutes": 5.0,
+          "rh_change_pp": 5.0,
+          "stable_plateau_range_pp": 3.0,
+          "stability_pp_per_min": 0.1,
+          "min_coverage": 0.8,
+          "min_event_separation_minutes": 90.0,
+          "lag_minutes": [
+            5.0,
+            15.0,
+            30.0,
+            60.0
+          ],
+          "rh_match_pp": 2.0,
+          "temp_match_c": 2.0,
+          "atn_match": 5.0,
+          "flow_ratio_match": 0.15,
+          "total_flow_relative_match": 0.15,
+          "reference_relative_match": 0.25,
+          "hour_match": 2.0,
+          "model_stride_minutes": 5.0,
+          "test_fraction": 0.25,
+          "min_train_days": 3,
+          "min_test_days": 2,
+          "ridge_alpha": 10.0,
+          "n_bootstrap": 300,
+          "seed": 20261107
+        }
+      }
+    },
+    {
+      "id": "pasadena_episode_evolution",
+      "kind": "episode_evolution",
+      "inputs": {
+        "data": "pasadena_minutes",
+        "episodes": "independent_episodes"
+      },
+      "parameters": {
+        "raw_ma350": {
+          "cross_sections": {
+            "UV": 24.069,
+            "Blue": 19.07,
+            "Green": 17.028,
+            "Red": 14.091,
+            "IR": 10.12
+          },
+          "bc_unit": "ng/m3",
+          "include_spots": true
+        },
+        "signal_columns": {
+          "UV": "UV b_ATN (Mm-1)",
+          "Blue": "Blue b_ATN (Mm-1)",
+          "Green": "Green b_ATN (Mm-1)",
+          "Red": "Red b_ATN (Mm-1)",
+          "IR": "IR b_ATN (Mm-1)",
+          "IR_spot1": "IR_spot1 b_ATN (Mm-1)",
+          "IR_spot2": "IR_spot2 b_ATN (Mm-1)"
+        },
+        "signal_quantity": "b_atn",
+        "timezone": "America/Los_Angeles",
+        "rh_provenance": "MA350 recorded Sample RH (%) field; physical sensor location and response time not independently verified",
+        "config": {
+          "time_col": "Time (UTC)",
+          "rh_col": "Sample RH (%)",
+          "temp_col": "Sample temp (C)",
+          "session_col": "Session ID",
+          "tape_col": "Tape position",
+          "atn_col": "IR ATN1",
+          "flow1_col": "Flow1 (mL/min)",
+          "flow2_col": "Flow2 (mL/min)",
+          "reference_signal": "IR",
+          "short_signal": "UV",
+          "long_signal": "IR",
+          "cadence_minutes": 1.0,
+          "max_gap_minutes": 2.0,
+          "lag_tolerance_minutes": 0.25,
+          "min_coverage": 0.8,
+          "early_fraction": 0.25,
+          "late_fraction": 0.25,
+          "min_duration_minutes": 60.0,
+          "min_matched_pairs": 8,
+          "rh_match_pp": 2.0,
+          "temp_match_c": 2.0,
+          "atn_match": 5.0,
+          "flow_ratio_match": 0.15,
+          "total_flow_relative_match": 0.15,
+          "reference_relative_match": 0.25,
+          "model_stride_minutes": 5.0,
+          "test_fraction": 0.25,
+          "min_train_blocks": 3,
+          "min_test_blocks": 2,
+          "ridge_alpha": 10.0,
+          "n_bootstrap": 300,
+          "seed": 20261107
+        }
+      }
+    }
+  ]
+}

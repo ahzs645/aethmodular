@@ -48,6 +48,28 @@ Detailed methods and caveats come from the executed notebook into speaker notes.
 Keep reusable analysis functions in `../scripts/`. Move code from workflows
 into `../scripts/` only when more than one notebook or workflow needs it.
 
+## Conference-inspired experiments
+
+`run_conference_experiments.py` runs the seven scientific questions as explicit
+experiment manifests, with input/code hashes, physical-filter or event splits,
+retained exclusion ledgers, and distinct blocked/insufficient-data outcomes.
+
+```bash
+uv run python research/ftir_hips_chem/workflows/run_conference_experiments.py \
+  --demo --output research/ftir_hips_chem/output/tables/conference/demo
+
+uv run python research/ftir_hips_chem/workflows/prepare_conference_inputs.py \
+  --tracked --output research/ftir_hips_chem/output/tables/conference/tracked_inputs
+```
+
+The demonstration is entirely synthetic. The preparation command writes a
+reviewable manifest for the tracked Addis filter and weather snapshot; missing
+collection-window evidence stays unresolved. Source calibration preparation is
+available with `--source-dir` for a locally supplied historical FTIR archive.
+See [`docs/conference-experiments.md`](../../../docs/conference-experiments.md)
+for all seven hypotheses, commands, schemas, interpretation and measurement
+protocols. See the linked validation record for the actual source and field runs.
+
 `build_active_interval_matches.py` extends the audit into evidence-gated active
 sampling periods, EC provenance and timestamped instrument inputs:
 
