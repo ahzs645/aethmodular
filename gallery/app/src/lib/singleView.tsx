@@ -85,8 +85,11 @@ function sectionsOf(root: Element, frames: HTMLElement[]) {
   })
 }
 
-/** `page` is App's `${tab}/${meeting}/${experiment}`: the chart the search asked for is looked for on its own page only */
-const onPage = (t: ChartTarget, page: string) => { const [tab, meeting] = page.split('/'); return tab === t.tab && (!t.meeting || meeting === t.meeting) }
+/** The chart requested by search is looked for only on its tab and declared sub-page. */
+const onPage = (t: ChartTarget, page: string) => {
+  const [tab, meeting, , sectionPage] = page.split('/')
+  return tab === t.tab && (!t.meeting || meeting === t.meeting) && (!t.page || sectionPage === t.page)
+}
 /** how long a chart the search asked for is waited for (and held in view while the page above it loads) */
 const SEEK_MS = 8000
 

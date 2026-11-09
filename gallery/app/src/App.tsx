@@ -18,6 +18,7 @@ import { DEFAULT_RAIN_RULE, RAIN_SEASONS, parseRainRule, rainRuleParam, type Rai
 import { useRainCalendars } from '@/hooks/useRainCalendars'
 import { AVAILABILITY_VIEWS, AVAILABILITY_VIEW_PARAM, DataAvailabilityPage } from '@/pages/DataAvailabilityPage'
 import { InvestigationsPage, type InvestigationArea } from '@/pages/InvestigationsPage'
+import { combineInvestigationHistories } from '@/lib/investigationHistory'
 import { AreaHeader, HUB_TAB, type AreaPage } from '@/components/AreaHeader'
 import { SiteBubbleMap, SpartanCompositionMap } from '@/charts/map/lazy'
 import { SPEC_MEETINGS, meetingLabel } from '@/meetings'
@@ -159,6 +160,7 @@ type TabKey = (typeof TABS)[number]['key']
 const SHARE_TABS: string[] = (import.meta.env.VITE_SHARE_TABS ?? '').split(',').map((t: string) => t.trim()).filter(Boolean)
 /** the flagged sections compiled into this build, their tabs, and every tab a section owns (compiled or not) */
 const SECTIONS = [instruments, research, ml].filter((s) => s.tabs.length)
+const INVESTIGATION_HISTORY = combineInvestigationHistories(SECTIONS.flatMap(s => s.history ? [s.history] : []))
 const SECTION_TABS = new Map(SECTIONS.flatMap((s) => s.tabs.map((t) => [t.key, t] as const)))
 const SECTION_OWNED = new Set<string>(Object.values(SECTIONS_MANIFEST.sections).flatMap((s) => s.tabs))
 const shared = (key: string) => (!SECTION_OWNED.has(key) || SECTION_TABS.has(key)) && (SHARE_TABS.length === 0 || SHARE_TABS.includes(key))
@@ -219,8 +221,15 @@ const NAV_GROUPS: NavGroup[] = [
   { label: 'Sites', items: ['map', 'weather', 'aeronet'].flatMap(tabItem) },
   { label: 'Calibration', items: ['calibration', 'baseline', 'similarity', 'blanks'].flatMap(tabItem) },
 ].filter((g) => g.items.length)
-/** the Investigations cards: the areas this build lists */
-const HUB_AREAS = AREAS.filter((a) => !UNLISTED_TABS.has(a.tab))
+/** The listed areas plus a curated public study entry. Instruments stays unlisted;
+ * the study remains discoverable without listing the rest of that section. */
+const HUB_AREAS: InvestigationArea[] = AREAS.flatMap(a => {
+  if (!UNLISTED_TABS.has(a.tab)) return [a]
+  if (a.tab !== 'aethalometer') return []
+  const pages = a.pages.filter(p => p.key === 'addis-study')
+  return pages.length ? [{ ...a, label: 'Addis study', pages,
+    about: 'Published study context and the saved Jacros BC record: coverage, season calendars, hourly patterns and festival traces.' }] : []
+})
 const HUB_ITEM: NavItem[] = tabItem(HUB_TAB).map((i) => ({ ...i, label: 'All investigations', home: true }))
 /**
  * The Investigations group, which depends on where the reader is: inside an area, the cards and that
@@ -1540,7 +1549,7 @@ export default function App() {
     <HeaderNavProvider tabs={navTabs} meetings={MEETINGS} open={openTab}>
     <RegressionProvider methods={estimators} setMethods={setEstimators} showCI={showCI} setShowCI={setShowCI}>
     <PrefsProvider>
-    <SingleViewProvider on={singleOn} setOn={setSingleOn} available={tab !== 'dashboard' && tab !== 'builder'} page={`${tab}/${meeting}/${experiment}`}>
+    <SingleViewProvider on={singleOn} setOn={setSingleOn} available={tab !== 'dashboard' && tab !== 'builder'} page={`${tab}/${meeting}/${experiment}/${sectionPage}`}>
     {/* Panel axes for every multi-panel crossplot (lib/panelAxes): the sidebar's setting, offered on each chart too */}
     <PanelAxesProvider value={axes.panels ?? 'Shared'} onChange={(panels) => setAxes((a) => ({ ...a, panels }))}>
     <ExportSitesProvider seasons={meta.seasons} sites={[...new Map([...rawMeta.sites, ...meta.sites].map(s => [s.code, s])).values()]}>
@@ -1610,7 +1619,7 @@ export default function App() {
           <button className="btn" type="button" onClick={() => setNetwork('focus')}>Open bundled focus sites</button></div>}
         <LinkProblem />
         {tab === 'custom' && <SectionPage sec={sec} setSec={setSec} isTab={isOpenable} />}
-        {tab === HUB_TAB && <InvestigationsPage areas={HUB_AREAS} history={research.history} canOpen={isOpenable} onOpen={(t, p) => openTab(t, undefined, p ?? AREAS.find((a) => a.tab === t)?.pages[0]?.key)} />}
+        {tab === HUB_TAB && <InvestigationsPage areas={HUB_AREAS} history={INVESTIGATION_HISTORY} canOpen={isOpenable} onOpen={(t, p) => openTab(t, undefined, p ?? AREAS.find((a) => a.tab === t)?.pages[0]?.key)} />}
         {tab === 'availability' && <DataAvailabilityPage />}
         {tab === 'builder' && <ChartBuilderPage rows={rows} meta={meta} enabled={builderEnabled} />}
         {tab === 'census' && <><AreaHeader area="Census" pages={CENSUS_PAGES} value="census" onPage={() => {}} /><CensusPage census={census} /></>}

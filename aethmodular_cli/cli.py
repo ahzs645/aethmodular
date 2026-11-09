@@ -313,6 +313,10 @@ def command_gallery(args: argparse.Namespace) -> int:
     return _run_script(GALLERY_COMMANDS[args.workflow], [args.workflow, *args.script_args])
 
 
+def command_study(args: argparse.Namespace) -> int:
+    return _run_script("research/ftir_hips_chem/workflows/compare_shlipak_2026.py", args.script_args)
+
+
 def command_drive(args: argparse.Namespace) -> int:
     return _run_script(DRIVE_COMMANDS[args.workflow], args.script_args)
 
@@ -470,6 +474,11 @@ def build_parser() -> argparse.ArgumentParser:
     gallery.add_argument("workflow", choices=sorted(GALLERY_COMMANDS))
     gallery.add_argument("script_args", nargs=argparse.REMAINDER, help="Arguments passed to gallery/data/rebuild.py.")
     gallery.set_defaults(func=command_gallery)
+
+    study = subparsers.add_parser("study", help="Compare identified observations with a named published study.")
+    study.add_argument("workflow", choices=["shlipak-2026"])
+    study.add_argument("script_args", nargs=argparse.REMAINDER, help="Use --describe or provide hourly, metadata and output paths.")
+    study.set_defaults(func=command_study)
 
     drive = subparsers.add_parser("drive", help="Mirror the shared Davis Data Drive folder locally.")
     drive.add_argument("workflow", choices=sorted(DRIVE_COMMANDS))

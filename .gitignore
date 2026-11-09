@@ -236,6 +236,9 @@ gallery/app/public/data/satoshi/
 # Experimental tab exports (gallery/data/export_experimental.py, export_experiments.py): per-filter predictions
 gallery/app/public/data/experimental/
 
+# Derived publication receipts are packed with their data snapshot, not source-controlled.
+gallery/app/public/data/_verification/
+
 # full-gallery Pages build (gallery/share/publish_pages.py)
 gallery/share/pages-dist/
 

@@ -36,6 +36,20 @@ export interface InvestigationHistory {
   families: { id: string; title: string; purpose: string }[]
   records: HistoryRecord[]; edges: HistoryEdge[]
 }
+/** Only compiled sections contribute history. Public and private catalogs keep their
+ * declared evidence and edges; combining them never infers relationships. */
+export function combineInvestigationHistories(histories: readonly InvestigationHistory[]): InvestigationHistory | undefined {
+  if (!histories.length) return undefined
+  const unique = (values: string[]) => [...new Set(values)].join(' ')
+  return {
+    schema: Math.max(...histories.map(h => h.schema)),
+    coverage: unique(histories.map(h => h.coverage)),
+    chronology: unique(histories.map(h => h.chronology)),
+    families: [...new Map(histories.flatMap(h => h.families).map(f => [f.id, f])).values()],
+    records: histories.flatMap(h => h.records),
+    edges: histories.flatMap(h => h.edges),
+  }
+}
 export const EVIDENCE_LABELS: Record<EvidenceState, string> = {
   saved: 'Saved notebook outputs', source: 'Source only', documented: 'Documented record', missing: 'Missing source',
   verified: 'Reproduction verified', diagnostic: 'Diagnostic completed', blocked: 'Blocked',

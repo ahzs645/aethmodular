@@ -4,6 +4,21 @@ on:
   pull_request:
     paths:
       - 'gallery/**'
+      - 'src/analysis/bc/source_model.py'
+      - 'src/analysis/bc/source_apportionment.py'
+      - 'src/external/calibration.py'
+      - 'src/data/processors/site_corrections.py'
+      - 'aethmodular_cli/cli.py'
+      - 'research/ftir_hips_chem/scripts/paper_comparison.py'
+      - 'research/ftir_hips_chem/workflows/compare_shlipak_2026.py'
+      - 'research/ftir_hips_chem/workflows/profiles/shlipak_2026.json'
+      - 'research/ftir_hips_chem/workflows/profiles/ec_bc_jpl_review.json'
+      - 'tests/test_source_apportionment_model.py'
+      - 'tests/test_aethalometer_model_clipping.py'
+      - 'tests/test_paper_comparison.py'
+      - 'tests/test_aeth_sources_export.py'
+      - 'tests/test_addis_study_export.py'
+      - 'tests/test_site_corrections.py'
       - 'research/ftir_hips_chem/scripts/epo_validation.py'
       - 'research/ftir_hips_chem/scripts/candidate_metrics.py'
       - 'research/ftir_hips_chem/scripts/spectral_provenance.py'
@@ -53,7 +68,9 @@ jobs:
           tests/test_continuum_source_refresh.py
           tests/test_closeout_source_acceptance.py tests/test_source_qc.py tests/test_source_scores_control.py
           tests/test_closeout_figure_audit.py
-          tests/test_gallery_rebuild.py tests/test_gallery_sections.py tests/test_gallery_publication.py
+          tests/test_gallery_rebuild.py tests/test_gallery_sections.py tests/test_gallery_publication.py tests/test_gallery_continuum_publication.py
+          tests/test_source_apportionment_model.py tests/test_aethalometer_model_clipping.py
+          tests/test_aeth_sources_export.py tests/test_paper_comparison.py tests/test_addis_study_export.py tests/test_site_corrections.py
           --junitxml=tmp/closeout-scientific-regressions.xml
       - uses: actions/upload-artifact@v4
         if: always()
@@ -99,100 +116,14 @@ jobs:
             [[ "$d" =~ ^[A-Za-z0-9_-]+$ ]] || exit 1
             rm -rf "gallery/app/public/data/$d"
           done
-      - name: Verify and apply optional corrected source overlay
+      - name: Verify and apply accepted corrected source overlay
         run: |
-          node --input-type=module <<'JS'
-          import assert from 'node:assert/strict'
-          import { createHash } from 'node:crypto'
-          import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-          const sha = bytes => createHash('sha256').update(bytes).digest('hex')
-          const servedPath = 'gallery/app/public/data/experimental/continuum_baseline.json'
-          const manifestPath = 'gallery/review/closeout_20261107/manifest.json'
-          const overlayPath = 'gallery/review/closeout_20261107/continuum_baseline.json'
-          const originalBytes = readFileSync(process.env.CLOSEOUT_LEGACY_EXPORT)
-          const baseHash = sha(originalBytes)
-          assert.equal(sha(readFileSync(servedPath)), baseHash, 'restored continuum export changed before overlay verification')
-          const base = JSON.parse(originalBytes)
-          const receipt = {
-            schema: 1,
-            base_data_tag: process.env.DATA_TAG,
-            base_data_sha256: process.env.DATA_SHA256,
-            base_export_sha256: baseHash,
-            data_verification: 'verified_base',
-            overlay: null,
-            served_export: { path: servedPath, sha256: baseHash },
-            hash_scope: 'The base archive hash covers the pinned archive only. An applied source overlay and the served continuum export have separate hashes.',
-          }
-          const hasManifest = existsSync(manifestPath), hasOverlay = existsSync(overlayPath)
-          assert.equal(hasManifest, hasOverlay, 'the corrected source overlay and its manifest must be present together')
-          if (hasOverlay) {
-            const manifestBytes = readFileSync(manifestPath)
-            const manifest = JSON.parse(manifestBytes)
-            assert.equal(manifest.schema, 1, 'unsupported overlay manifest schema')
-            assert.equal(manifest.base_data_tag, process.env.DATA_TAG, 'overlay base data tag differs')
-            assert.equal(manifest.base_data_sha256, process.env.DATA_SHA256, 'overlay base archive hash differs')
-            assert.equal(manifest.base_export_sha256, baseHash, 'overlay original export hash differs')
-            assert.equal(manifest.overlay?.path, overlayPath, 'overlay path differs from the declared review artifact')
-            assert.equal(manifest.scientific_status, 'fold_local_source_verified', 'overlay source evaluation is not verified')
-            assert.match(manifest.source_scores_receipt_sha256, /^[a-f0-9]{64}$/, 'source-score receipt hash is missing')
-            const overlayBytes = readFileSync(overlayPath), overlayHash = sha(overlayBytes)
-            assert.equal(overlayHash, manifest.overlay.sha256, 'corrected source overlay hash differs')
-            const payload = JSON.parse(overlayBytes)
-            assert.equal(payload.schema_version, 2, 'corrected overlay must use the verified source schema')
-            const evaluation = payload.settings?.source_evaluation
-            const refresh = payload.settings?.source_refresh
-            const target = payload.settings?.target_predictions
-            assert.equal(evaluation?.status, 'corrected')
-            assert.equal(evaluation?.protocol, 'fixed_k_common_physical_filter_metrics_v1')
-            assert.equal(refresh?.protocol, 'verified_source_scores_on_frozen_export_v1')
-            assert.equal(refresh?.base_export_sha256, baseHash)
-            assert.equal(refresh?.base_generated, base.generated)
-            assert.equal(refresh?.source_score_receipt_sha256, manifest.source_scores_receipt_sha256)
-            const acceptancePath = 'gallery/review/closeout_20261107/source_acceptance.json'
-            assert.equal(manifest.source_acceptance?.path, acceptancePath, 'source acceptance artifact is missing')
-            const acceptanceBytes = readFileSync(acceptancePath)
-            assert.equal(sha(acceptanceBytes), manifest.source_acceptance.sha256, 'source acceptance receipt hash differs')
-            const acceptance = JSON.parse(acceptanceBytes)
-            assert.equal(acceptance.protocol, 'closeout_source_artifact_acceptance_v1')
-            assert.equal(acceptance.status, 'passed')
-            assert.equal(acceptance.on_disk_input_hashes_preserved, true)
-            assert.equal(acceptance.same_frozen_site_folds, true)
-            assert.equal(acceptance.input_hashes?.[`${acceptance.paths?.scores_output}/baseline_scoreboard_receipt.json`], manifest.source_scores_receipt_sha256, 'acceptance covers a different source-score receipt')
-            assert.equal(acceptance.population?.n_common, evaluation.population?.n_common)
-            assert.equal(acceptance.population?.source_qc_policy?.mask_sha256, evaluation.population?.source_qc_policy?.mask_sha256)
-            assert.equal(acceptance.heldout_perturbation?.spectra_unchanged, true)
-            assert.equal(acceptance.heldout_perturbation?.splits_exactly_unchanged, true)
-            assert.equal(acceptance.heldout_perturbation?.artificial_metric_check?.metrics_changed, true)
-            assert.ok(Object.keys(acceptance.source_code ?? {}).length > 0, 'acceptance source hashes are absent')
-            for (const [path, digest] of Object.entries(acceptance.source_code)) {
-              assert.match(path, /^research\/ftir_hips_chem\/(scripts|workflows)\/[A-Za-z0-9_]+\.py$/, 'unexpected acceptance source path')
-              assert.equal(sha(readFileSync(path)), digest, `scientific source differs from accepted fit artifacts: ${path}`)
-            }
-            assert.equal(target?.status, 'saved_full_source_comparisons')
-            assert.equal(target?.base_export_sha256, baseHash)
-            assert.equal(target?.generated, base.generated, 'historical target generation date changed')
-            // A source-score refresh may migrate old source metric labels and
-            // withhold stale EPO derivatives; it may not replace target tables.
-            const changedTables = new Set(['schema_version', 'generated', 'settings', 'scoreboard', 'sweep', 'rule_sim', 'mae'])
-            for (const [key, value] of Object.entries(base)) {
-              if (!changedTables.has(key)) assert.deepEqual(payload[key], value, `historical table changed: ${key}`)
-            }
-            const changedSettings = new Set(['source_evaluation', 'metric_definitions', 'legacy_metric_aliases', 'source_refresh', 'target_predictions'])
-            for (const [key, value] of Object.entries(base.settings)) {
-              if (!changedSettings.has(key)) assert.deepEqual(payload.settings[key], value, `historical setting changed: ${key}`)
-            }
-            writeFileSync(servedPath, overlayBytes)
-            receipt.data_verification = 'verified_base_and_overlay'
-            receipt.overlay = { path: overlayPath, sha256: overlayHash, manifest_path: manifestPath, manifest_sha256: sha(manifestBytes), scientific_status: manifest.scientific_status, source_scores_receipt_sha256: manifest.source_scores_receipt_sha256, source_acceptance: manifest.source_acceptance }
-            receipt.served_export.sha256 = overlayHash
-          }
-          assert.equal(sha(readFileSync(process.env.CLOSEOUT_LEGACY_EXPORT)), baseHash, 'legacy fixture was altered')
-          assert.equal(sha(readFileSync(servedPath)), receipt.served_export.sha256)
-          mkdirSync('tmp/closeout-receipt', { recursive: true })
-          writeFileSync('tmp/closeout-receipt/data-inputs.json', JSON.stringify(receipt, null, 2))
-          appendFileSync(process.env.GITHUB_ENV, `CLOSEOUT_OVERLAY_APPLIED=${hasOverlay ? '1' : '0'}\n`)
-          console.log(hasOverlay ? 'Verified source overlay applied; original export retained for the legacy browser fixture.' : 'Pinned historical export retained; no source overlay is present.')
-          JS
+          python3 gallery/share/continuum_publication.py apply \
+            --data-root gallery/app/public/data \
+            --archive "$RUNNER_TEMP/gallery-data.tar.gz" --data-tag "$DATA_TAG" \
+            --require-historical-base --legacy-fixture "$CLOSEOUT_LEGACY_EXPORT" \
+            --receipt tmp/closeout-receipt/data-inputs.json
+          echo 'CLOSEOUT_OVERLAY_APPLIED=1' >> "$GITHUB_ENV"
       - name: Source, public-data and type checks
         working-directory: gallery/app
         run: |
@@ -205,6 +136,11 @@ jobs:
           VITE_HIDE_EXPLAIN: '1'
           VITE_PUBLIC_BUILD: '1'
         run: npm run build
+      - name: Verify built continuum bytes
+        run: >-
+          python3 gallery/share/continuum_publication.py verify-built
+          --data-root gallery/app/dist/data
+          --receipt tmp/closeout-receipt/data-inputs.json
       - name: Browser acceptance
         working-directory: gallery/app
         run: |
@@ -222,12 +158,12 @@ jobs:
           import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
           const inputsPath = 'tmp/closeout-receipt/data-inputs.json'
           const receipt = existsSync(inputsPath) ? JSON.parse(readFileSync(inputsPath)) : {
-            schema: 1, base_data_tag: process.env.DATA_TAG, base_data_sha256: process.env.DATA_SHA256,
-            data_verification: 'not_completed', overlay: null,
+            schema_version: 1, input_snapshot: { data_tag: process.env.DATA_TAG, archive_sha256: process.env.DATA_SHA256 },
+            status: 'not_completed', overlay: null,
           }
           receipt.source_sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
           receipt.public_review_status = process.env.CHECK_STATUS
-          receipt.scope = 'software, pinned base data, separately verified source overlay when present, and browser acceptance'
+          receipt.scope = 'software, exact historical base archive, accepted corrected source overlay, built bytes and browser acceptance'
           receipt.not_established = [
             ...(receipt.overlay ? [] : ['corrected real-data EPO scores']),
             'reproduction of the scientific fits by this public-review job',

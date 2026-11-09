@@ -39,12 +39,18 @@ import sys
 import tarfile
 import tempfile
 import time
+import urllib.request
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
 # sections.py sits beside this script; put its folder on the path so an importer (tests) finds it too
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sections import PUBLIC_BUILD_ENV, is_private, private_data_dirs
+from continuum_publication import (
+    DATA_RECEIPT_PATH, EXPORT_PATH, SCIENTIFIC_PATHS, PublicationError, apply_overlay, json_bytes,
+    prepare_overlay, require, verify_archive, verify_built,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 APP = ROOT / "gallery/app"
@@ -111,6 +117,7 @@ WORKFLOW = Path(__file__).with_name("pages-deploy.yml")
 STATIC_WORKFLOW = Path(__file__).with_name("pages-static-deploy.yml")
 WORKFLOW_PATH = ".github/workflows/deploy.yml"
 DATA_ASSET = "gallery-data.tar.gz"
+DATA_VERIFICATION_ASSET = "gallery-data-verification.json"
 DATA = APP / "public/data"
 
 
@@ -179,17 +186,22 @@ def data_files(root: Path):
     yield from walk(root, set())
 
 
-def pack_data(dest: Path) -> tuple[str, int, int]:
-    """public/data as a deterministic, scrubbed tar.gz (same data, same bytes); sha256, files, scrubbed."""
+def pack_data(dest: Path, replacements: dict[str, bytes] | None = None) -> tuple[str, int, int]:
+    """Low-level deterministic archive helper; publication uses pack_verified_data."""
     # a section marked private (gallery/app/src/sections/sections.json) keeps its data out of the release
     private = private_data_dirs()
-    files = sorted(p for p in data_files(DATA) if not is_private(p.relative_to(DATA), private))
+    files = {p.relative_to(DATA).as_posix(): p for p in data_files(DATA)
+             if not is_private(p.relative_to(DATA), private)}
+    replacements = replacements or {}
+    if any(is_private(rel, private) for rel in replacements):
+        raise SystemExit("refusing to publish: a verified replacement belongs to a private section")
+    members = sorted(set(files) | set(replacements))
     left, scrubbed = [], 0
     with dest.open("wb") as raw, gzip.GzipFile(filename="", fileobj=raw, mode="wb", mtime=0, compresslevel=6) as gz, \
             tarfile.open(fileobj=gz, mode="w", format=tarfile.PAX_FORMAT) as tar:
-        for path in files:
-            rel = path.relative_to(DATA).as_posix()
-            body = path.read_bytes()
+        for rel in members:
+            path = DATA / rel
+            body = replacements[rel] if rel in replacements else files[rel].read_bytes()
             if is_text_asset(path):
                 text = asset_text(path, body)
                 new = text
@@ -205,7 +217,26 @@ def pack_data(dest: Path) -> tuple[str, int, int]:
             tar.addfile(info, io.BytesIO(body))
     if left:
         raise SystemExit(f"refusing to publish: machine paths or account names remain in {left}")
-    return hashlib.sha256(dest.read_bytes()).hexdigest(), len(files), scrubbed
+    return hashlib.sha256(dest.read_bytes()).hexdigest(), len(members), scrubbed
+
+
+def pack_verified_data(dest: Path) -> tuple[str, int, int]:
+    """Pack the accepted continuum and its evidence without changing local exports.
+
+    The new archive gets its own content-addressed tag. Neither the historical
+    review archive nor an existing publication release is relabelled or changed.
+    """
+    overlay, receipt = prepare_overlay(ROOT, DATA)
+    digest, count, scrubbed = pack_data(dest, {
+        EXPORT_PATH: overlay,
+        DATA_RECEIPT_PATH: json_bytes(receipt),
+    })
+    snapshot = verify_archive(dest, f"data-{digest[:12]}", overlay)
+    # This sidecar can name the final archive hash; the embedded per-file receipt
+    # cannot include the hash of its own containing archive.
+    sidecar = {**receipt, "publication_snapshot": snapshot}
+    dest.with_name(DATA_VERIFICATION_ASSET).write_bytes(json_bytes(sidecar))
+    return digest, count, scrubbed
 
 
 def put_file(path: str, content: str, message: str) -> bool:
@@ -223,18 +254,56 @@ def put_file(path: str, content: str, message: str) -> bool:
     return True
 
 
-def publish_release(dry_run: bool) -> None:
+def publication_source_dirty() -> str:
+    return run("git", "status", "--porcelain", "--", "gallery", *sorted(SCIENTIFIC_PATHS),
+               ":!gallery/app/public/data").stdout.strip()
+
+
+def require_published_source() -> str:
+    """Remote builds and prebuilt receipts must identify the source actually used."""
     run("git", "fetch", "-q", "origin", "main")
     sha = run("git", "rev-parse", "HEAD").stdout.strip()
-    # GitHub builds the committed source, so what is drawn must be what is pushed
-    dirty = run("git", "status", "--porcelain", "--", "gallery/app", ":!gallery/app/public/data").stdout.strip()
+    dirty = publication_source_dirty()
     if dirty:
         raise SystemExit(f"commit the gallery source first (GitHub builds the pushed commit):\n{dirty}")
     if run("git", "merge-base", "--is-ancestor", "HEAD", "origin/main", check=False).returncode != 0:
         raise SystemExit(f"push first: {sha[:7]} is not on origin/main, and GitHub builds from GitHub")
+    return sha
+
+
+def fetch_public_bytes(url: str) -> bytes:
+    with urllib.request.urlopen(url, timeout=5) as response:
+        return response.read()
+
+
+def verify_served_publication(url: str, source_sha: str, data_tag: str, data_sha256: str,
+                              continuum_sha256: str, fetch=None) -> None:
+    """Read back both the receipt and scientific JSON from the successful site."""
+    fetch = fetch or fetch_public_bytes
+    suffix = f"?source={source_sha}&data={data_tag}"
+    root = url.rstrip("/") + "/"
+    receipt = json.loads(fetch(root + "verification-receipt.json" + suffix))
+    require(isinstance(receipt, dict), "served publication receipt must be an object")
+    require(receipt.get("source_sha") == source_sha and receipt.get("data_tag") == data_tag and
+            receipt.get("data_sha256") == data_sha256, "served source/data receipt differs from this publication")
+    continuum = receipt.get("continuum_source", {})
+    require(isinstance(continuum, dict), "served continuum receipt is missing")
+    require(continuum.get("status") == "verified" and
+            continuum.get("served_export", {}).get("sha256") == continuum_sha256 and
+            continuum.get("built_export", {}).get("sha256") == continuum_sha256,
+            "served receipt does not attest to the accepted corrected continuum")
+    body = fetch(root + "data/" + EXPORT_PATH + suffix)
+    require(hashlib.sha256(body).hexdigest() == continuum_sha256, "live continuum bytes differ from this publication")
+
+
+def publish_release(dry_run: bool) -> None:
+    # A candidate can be packed/reviewed locally before it is committed or pushed.
+    # Only the publishing path requires the immutable source on origin/main.
+    sha = run("git", "rev-parse", "HEAD").stdout.strip() if dry_run else require_published_source()
     with tempfile.TemporaryDirectory() as tmp:
         archive = Path(tmp) / DATA_ASSET
-        digest, n, scrubbed = pack_data(archive)
+        digest, n, scrubbed = pack_verified_data(archive)
+        continuum_sha256 = json.loads(archive.with_name(DATA_VERIFICATION_ASSET).read_text())["served_export"]["sha256"]
         tag = f"data-{digest[:12]}"
         size = archive.stat().st_size
         print(f"data: {n} files, {scrubbed} scrubbed, {size / 1e6:.0f} MB packed, {tag}")
@@ -243,7 +312,8 @@ def publish_release(dry_run: bool) -> None:
         if run("gh", "release", "view", tag, "--repo", REPO, check=False).returncode == 0:
             print(f"{tag} is already a release: the data is unchanged, nothing uploaded")
         else:
-            run("gh", "release", "create", tag, str(archive), "--repo", REPO, "--target", "main",
+            run("gh", "release", "create", tag, str(archive), str(archive.with_name(DATA_VERIFICATION_ASSET)),
+                "--repo", REPO, "--target", "main",
                 "--title", f"Gallery data {digest[:12]}",
                 "--notes", f"gallery/app/public/data from ahzs645/aethmodular {sha[:7]}, machine paths scrubbed. "
                            f"sha256 {digest}. Deployed by {WORKFLOW_PATH}.")
@@ -262,8 +332,9 @@ def publish_release(dry_run: bool) -> None:
     for _ in range(30):  # the dispatched run appears after a moment
         time.sleep(3)
         runs = json.loads(run("gh", "run", "list", "--repo", REPO, "--workflow", "deploy.yml", "--limit", "5",
-                              "--json", "databaseId,createdAt,event").stdout)
+                              "--json", "databaseId,createdAt,event,displayTitle").stdout)
         fresh = [r for r in runs if r["event"] == "workflow_dispatch"
+                 and r["displayTitle"] == f"Deploy gallery · {sha} · {tag}"
                  and calendar.timegm(time.strptime(r["createdAt"], "%Y-%m-%dT%H:%M:%SZ")) >= started - 60]
         if fresh:
             run_id = fresh[0]["databaseId"]
@@ -278,16 +349,43 @@ def publish_release(dry_run: bool) -> None:
             run("gh", "api", "-X", "PUT", f"repos/{REPO}/pages", "-f", "build_type=legacy", "-f", "source[branch]=main", "-f", "source[path]=/")
             print("deploy failed: Pages is back on the main branch")
         raise SystemExit(f"deploy failed: https://github.com/{REPO}/actions/runs/{run_id}")
+    url = run("gh", "api", f"repos/{REPO}/pages", "-q", ".html_url").stdout.strip()
+    for attempt in range(3):
+        try:
+            verify_served_publication(url, sha, tag, digest, continuum_sha256)
+            break
+        except (OSError, ValueError, KeyError) as exc:
+            if attempt == 2:
+                raise SystemExit(f"deployment workflow succeeded, but the live source/data readback is unverified: {exc}") from exc
+            time.sleep(2)
     put_file("README.md", README_RELEASE.format(sha=sha, tag=tag, run_id=run_id),
              f"Record successful gallery deployment from aethmodular {sha[:7]}")
-    url = run("gh", "api", f"repos/{REPO}/pages", "-q", ".html_url").stdout.strip()
     print(f"deployed {sha[:7]} with {tag}: {url}")
 
 
 # ---------------------------------------------------------------- branch (fallback)
+@contextmanager
+def staged_verified_continuum():
+    """Validate/build the exact served bytes, then restore the local data inputs."""
+    export, evidence = DATA / EXPORT_PATH, DATA / DATA_RECEIPT_PATH
+    original = export.read_bytes()
+    original_evidence = evidence.read_bytes() if evidence.exists() else None
+    try:
+        yield apply_overlay(ROOT, DATA)
+    finally:
+        export.write_bytes(original)
+        if original_evidence is None:
+            evidence.unlink(missing_ok=True)
+        else:
+            evidence.write_bytes(original_evidence)
+
+
 def build():
-    subprocess.run(["npx", "vite", "build", "--base", "./", "--outDir", str(BUILD), "--emptyOutDir"],
-                   cwd=APP, env={**{k: v for k, v in os.environ.items() if k != "VITE_SHARE_TABS"}, "VITE_HIDE_EXPLAIN": "1", **PUBLIC_BUILD_ENV}, check=True)
+    with staged_verified_continuum() as continuum_receipt:
+        for check in ("typecheck", "test:source", "test:data:public"):
+            subprocess.run(["npm", "run", check], cwd=APP, check=True)
+        subprocess.run(["npx", "vite", "build", "--base", "./", "--outDir", str(BUILD), "--emptyOutDir"],
+                       cwd=APP, env={**{k: v for k, v in os.environ.items() if k != "VITE_SHARE_TABS"}, "VITE_HIDE_EXPLAIN": "1", **PUBLIC_BUILD_ENV}, check=True)
     # vite copies all of public/: drop the private sections' data, whose code the public build already left out
     for rel in private_data_dirs():
         shutil.rmtree(BUILD / "data" / rel, ignore_errors=True)
@@ -305,10 +403,23 @@ def build():
             if p.is_file() and is_text_asset(p) and FORBIDDEN.search(asset_text(p, p.read_bytes()))]
     if left:
         raise SystemExit(f"refusing to publish: machine paths or account names remain in {left}")
+    continuum_receipt = verify_built(ROOT, BUILD / "data", continuum_receipt)
+    (BUILD / "data" / DATA_RECEIPT_PATH).write_bytes(json_bytes(continuum_receipt))
+    source_sha = run("git", "rev-parse", "HEAD").stdout.strip()
+    source_worktree_dirty = bool(publication_source_dirty())
+    (BUILD / "verification-receipt.json").write_bytes(json_bytes({
+        "schema_version": 2, "source_sha": source_sha, "publication": "static branch",
+        "source_worktree_dirty": source_worktree_dirty,
+        "scope": "local public gallery software, data integration and exact built continuum bytes",
+        "passed": ["typecheck", "node-source", "node-data-public", "production-build", "machine-path-scan", "accepted-continuum-built-bytes"],
+        "continuum_source": continuum_receipt,
+        "not_established": ["independent target EC accuracy", "research-only data reconciliation", "fresh-context link and export acceptance"],
+    }))
     (BUILD / ".nojekyll").write_text("")
     (BUILD / "build-info.json").write_text(json.dumps({
         "source_repository": "ahzs645/aethmodular",
-        "source_sha": run("git", "rev-parse", "HEAD").stdout.strip(),
+        "source_sha": source_sha,
+        "source_worktree_dirty": source_worktree_dirty,
         "publication": "static branch",
     }, indent=2) + "\n")
     size = sum(p.stat().st_size for p in BUILD.rglob("*") if p.is_file())
@@ -319,8 +430,20 @@ def build():
 
 
 def publish():
-    sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
-    dirty = subprocess.run(["git", "status", "--porcelain", "gallery/app/src"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
+    full_sha = require_published_source()
+    build_info = json.loads((BUILD / "build-info.json").read_text())
+    if build_info.get("source_sha") != full_sha or build_info.get("source_worktree_dirty") is not False:
+        raise SystemExit("rebuild the prebuilt site from this committed, pushed source before publishing")
+    verification = json.loads((BUILD / "verification-receipt.json").read_text())
+    if verification.get("source_sha") != full_sha or verification.get("source_worktree_dirty") is not False:
+        raise SystemExit("prebuilt source and verification receipts disagree")
+    try:
+        verify_built(ROOT, BUILD / "data", verification["continuum_source"])
+        if json.loads((BUILD / "data" / DATA_RECEIPT_PATH).read_text()) != verification["continuum_source"]:
+            raise PublicationError("prebuilt continuum receipts disagree")
+    except (OSError, ValueError, KeyError) as exc:
+        raise SystemExit(f"prebuilt publication blocked: {exc}") from exc
+    sha = full_sha[:7]
     exists = subprocess.run(["gh", "repo", "view", REPO], capture_output=True).returncode == 0
     if not exists:
         subprocess.run(["gh", "repo", "create", REPO, "--public", "--description",
@@ -345,7 +468,7 @@ def publish():
     static_workflow.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(STATIC_WORKFLOW, static_workflow)
     built = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    (CLONE / "README.md").write_text(README.format(built=built, sha=sha + (" + uncommitted gallery changes" if dirty else "")))
+    (CLONE / "README.md").write_text(README.format(built=built, sha=sha))
     subprocess.run(["git", "add", "-A"], cwd=CLONE, check=True)
     if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=CLONE).returncode == 0:
         print("nothing changed since the last publish")
