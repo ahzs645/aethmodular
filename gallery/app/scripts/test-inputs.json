@@ -330,6 +330,14 @@
         "research/ftir_ec_calibration_2026_06_25/tables/etad_variant_ratio_vs_cal0.csv"
       ],
       "reason": "Reproduce spectral summaries and repeated-scan accounting against saved tables."
+    },
+    "src/lib/investigationHistoryCatalog.test.mjs": {
+      "scope": "research",
+      "inputs": [
+        "research/ftir_hips_chem/*.ipynb",
+        "research/ftir_ec_phase3/*.ipynb"
+      ],
+      "reason": "Regenerates the investigation-history catalog from the research notebooks and their git history (scripts/build-investigation-history.mjs --check); a gallery-only deploy checkout has neither."
     }
   }
 }

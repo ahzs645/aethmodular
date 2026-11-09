@@ -1,7 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-import { execFileSync } from 'node:child_process'
 import { EVIDENCE_LABELS, filterHistory, historyMermaid, historyNeighborhood, inspectHistoryExports } from './investigationHistory.ts'
 
 const history = JSON.parse(fs.readFileSync(new URL('../sections/research/history.generated.json', import.meta.url), 'utf8'))
@@ -52,16 +51,6 @@ test('Mermaid exports preserve relationship types, escape source labels and omit
   assert.match(output, /n1 -->\|"Qualifies claim"\| n0/)
   assert.match(output, /#34;quote#34;/)
   assert.ok(!output.includes('<html>') && !output.includes('undefined'))
-})
-
-// The catalog is built from the research notebooks and their git history. The Pages deploy checks out gallery/
-// only, at depth 1, so it cannot regenerate the catalog; freshness is checked where the sources are
-// (.github/workflows/investigation-history.yml, full history) and in any full local checkout.
-const RESEARCH_SOURCES = ['research/ftir_hips_chem', 'research/ftir_ec_phase3'].every(d => fs.existsSync(new URL(`../../../../${d}`, import.meta.url)))
-test('the checked-in catalog can be regenerated without executing research', {
-  skip: !RESEARCH_SOURCES && 'research notebooks are not in this checkout (gallery-only deploy)',
-}, () => {
-  execFileSync(process.execPath, ['scripts/build-investigation-history.mjs', '--check'], { cwd: new URL('../../', import.meta.url), stdio: 'pipe' })
 })
 
 test('primary-export availability follows the supplied host or snapshot loader and can recover after restoration', async () => {
