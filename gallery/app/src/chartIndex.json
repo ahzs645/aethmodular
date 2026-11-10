@@ -877,6 +877,94 @@
    "file": "meetings/meeting-20261028.meeting.ts"
   },
   {
+   "title": "EC is about a fifth of Addis PM2.5, against about 4 % across IMPROVE",
+   "id": "s1109-ec-share",
+   "component": "bars",
+   "tab": "meeting",
+   "meeting": "status-20261109",
+   "file": "meetings/status-20261109.meeting.ts"
+  },
+  {
+   "title": "Where the Addis median sits in the IMPROVE distribution",
+   "id": "s1109-loading",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "status-20261109",
+   "file": "meetings/status-20261109.meeting.ts"
+  },
+  {
+   "title": "Baselining moves the HIPS intercept from about −6 to about −1.4; against the aethalometer most candidates are near zero",
+   "id": "s1109-addis-intercept",
+   "component": "bars",
+   "tab": "meeting",
+   "meeting": "status-20261109",
+   "file": "meetings/status-20261109.meeting.ts"
+  },
+  {
+   "title": "No candidate gives a 1:1 slope against HIPS",
+   "id": "s1109-addis-slope",
+   "component": "bars",
+   "tab": "meeting",
+   "meeting": "status-20261109",
+   "file": "meetings/status-20261109.meeting.ts"
+  },
+  {
+   "title": "Season-specific look-alikes fix Kiremt’s slope; Dry and Belg stay between 0.3 and 0.75 whatever the calibration filters",
+   "id": "s1109-seasons",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "status-20261109",
+   "file": "meetings/status-20261109.meeting.ts"
+  },
+  {
+   "title": "No universal winner: each error metric names a different best pipeline",
+   "id": "s1109-scores",
+   "component": "bars",
+   "tab": "meeting",
+   "meeting": "status-20261109",
+   "file": "meetings/status-20261109.meeting.ts"
+  },
+  {
+   "title": "EPO brings the heavy, low-OC/EC filters nearest 1:1",
+   "id": "s1109-heavy",
+   "component": "bars",
+   "tab": "meeting",
+   "meeting": "status-20261109",
+   "file": "meetings/status-20261109.meeting.ts"
+  },
+  {
+   "title": "The scoreboard as a table",
+   "id": "s1109-scores-table",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "status-20261109",
+   "file": "meetings/status-20261109.meeting.ts"
+  },
+  {
+   "title": "Analysis and tooling peaked in late October; no manuscript draft yet",
+   "id": "s1109-commits",
+   "component": "bars",
+   "tab": "meeting",
+   "meeting": "status-20261109",
+   "file": "meetings/status-20261109.meeting.ts"
+  },
+  {
+   "title": "Milestones",
+   "id": "s1109-milestones",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "status-20261109",
+   "file": "meetings/status-20261109.meeting.ts"
+  },
+  {
+   "title": "Claims the paper should not make",
+   "id": "s1109-claims",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "status-20261109",
+   "file": "meetings/status-20261109.meeting.ts"
+  },
+  {
    "title": "Baseline versions",
    "component": "BaselineComparisonPage",
    "tab": "baseline",

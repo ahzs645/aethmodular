@@ -50,7 +50,7 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Catalog, loader and shared-chart regressions
         working-directory: gallery/app
-        run: node --test src/lib/investigationHistory.test.mjs src/lib/data.test.mjs src/lib/pointLayers.test.mjs src/lib/tooltips.test.mjs
+        run: node --test src/lib/investigationHistory.test.mjs src/lib/investigationHistoryCatalog.test.mjs src/lib/data.test.mjs src/lib/pointLayers.test.mjs src/lib/tooltips.test.mjs
       - name: Research production build
         working-directory: gallery/app
         run: npm run build
