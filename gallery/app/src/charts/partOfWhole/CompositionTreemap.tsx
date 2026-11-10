@@ -426,7 +426,8 @@ export function CompositionTreemap({ rows: allRows, meta, initialGrouping = 'per
         {reconOn && recon === null ? <Empty>Loading SPARTAN's mass reconstruction…</Empty>
           : composition.sites.length === 0 ? <Empty>{reconOn ? "No filter in this subset has SPARTAN's mass balance: choose Measured species." : 'No sites in this subset.'}</Empty>
           : speciesFields.length === 0 && <Empty>No components chosen: pick some under Components.</Empty>}
-        {overTime ? (
+        {/* the message above stands alone: no empty axes under it */}
+        {(reconOn && recon === null) || composition.sites.length === 0 || speciesFields.length === 0 ? null : overTime ? (
           <div style={{ width: '100%' }}>
             <CompositionTimeline rows={rows} sites={composition.sites} species={timeSpecies} color={color} dim={(f) => dimK({ name: f, family: familyOf(f) })}
               pct={pct} share={share} shape={shape} timeAxis={o.values.axis as TimeAxis} seasonOrder={o.values.seasonOrder as SeasonOrder} completeOnly={o.values.missing === 'Complete filters only'} sharedAxes={collapsePanelAxes(panelAxes, 'site') === 'Shared'}

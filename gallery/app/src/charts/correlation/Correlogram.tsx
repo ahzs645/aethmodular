@@ -30,7 +30,7 @@ import { XIcon } from '@/components/Icons'
 import { createPortal } from 'react-dom'
 import { Dialog, NESTED_POPOVERS } from '@/components/Dialog'
 import { chemText } from '@/lib/format'
-import { labelGutter } from '@/lib/fitLabel'
+import { clipText, labelGutter } from '@/lib/fitLabel'
 import { ExcludedNote } from '@/lib/markedRows'
 import { seasonColor, siteColor } from '@/lib/siteColours'
 
@@ -130,11 +130,17 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
     return () => el.removeEventListener(MENU_ACTION, open)
   }, [])
 
-  const labelPad = 128
+  // the gutters are measured from the names: rows in a left column (never more than ~40% of a phone's
+  // width, longer names cut with an ellipsis), columns rotated -52° above the matrix
+  const nameRoom = labelGutter(block.fields, { size: 10.5, pad: 12, min: 60, max: 240 })
+  const leftPad = Math.min(nameRoom, Math.max(100, Math.round(width * 0.4)))
+  const topPad = Math.max(48, Math.round(Math.min(nameRoom, 200) * Math.sin((52 * Math.PI) / 180)) + 12)
+  const rowName = (f: string) => clipText(f, leftPad - 12, { size: 10.5 })
+  const colName = (f: string) => clipText(f, Math.min(nameRoom, 200) - 12, { size: 10.5 })
   const fit = useFitHeight()
   // a readable size on the page; fitted (a tile, the single-chart view) as large as the room allows
-  const size = fit === null ? Math.min(Math.max(320, width - labelPad - 40), 660)
-    : Math.max(120, Math.min(width - labelPad - 40, fit - labelPad - 20))
+  const size = fit === null ? Math.min(Math.max(320, width - leftPad - 40), 660)
+    : Math.max(120, Math.min(width - leftPad - 40, fit - topPad - 20))
   const cell = size / Math.max(1, block.fields.length)
 
   const color = useMemo(
@@ -160,8 +166,8 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
             <ScatterMatrix grouping={matrixGrouping} meta={meta} rows={splomRows} fields={splomFields} width={fit === null ? Math.min(width, Math.max(760, 160 + 100 * splomFields.length)) : width} tip={tip} hl={hl} units={meta.field_units} dim={lg.dim} dimKey={dimKey} />
           )
         ) : (
-          <svg width={size + labelPad + 30} height={size + labelPad + 20} className="animated">
-            <g transform={`translate(${labelPad},${labelPad})`}>
+          <svg width={size + leftPad + 30} height={size + topPad + 20} className="animated">
+            <g transform={`translate(${leftPad},${topPad})`}>
               {block.fields.map((fa, i) =>
                 block.fields.map((fb, j) => {
                   const r = block.matrix[i][j]
@@ -181,12 +187,12 @@ export function Correlogram({ rows, meta }: { rows: FilterRow[]; meta: MetaFile 
               )}
               {block.fields.map((f, i) => (
                 <text key={`r${i}`} x={-8} y={i * cell + cell / 2} dy="0.32em" textAnchor="end" fontSize={10.5} fill={INK.text} fontFamily={FONT.family}>
-                  {f}
+                  {rowName(f)}<title>{f}</title>
                 </text>
               ))}
               {block.fields.map((f, j) => (
                 <text key={`c${j}`} transform={`translate(${j * cell + cell / 2},-8) rotate(-52)`} fontSize={10.5} fill={INK.text} fontFamily={FONT.family}>
-                  {f}
+                  {colName(f)}<title>{f}</title>
                 </text>
               ))}
             </g>

@@ -72,6 +72,9 @@ export function NavMenu({ groups, tab, meeting, sub, onPick, extra }: {
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
   const shown = groups.slice(0, fit), folded = groups.slice(fit)
+  // with every group folded (a phone) the one button names the open page, as the group buttons do on a
+  // wider screen; it reads Menu only where no listed page is open
+  const current = fit === 0 ? folded.flatMap((g) => g.items).find((i) => !i.home && isActive(i, tab, meeting, sub)) : undefined
   return (
     <div className="navmenu" ref={box}>
       {/* the same buttons, invisible, to measure */}
@@ -85,7 +88,7 @@ export function NavMenu({ groups, tab, meeting, sub, onPick, extra }: {
         </Dropdown>
       ))}
       {(folded.length > 0 || (phone && extra)) && (
-        <Dropdown {...menu('__more')} label={fit === 0 ? 'Menu' : 'More'} active={folded.some((g) => g.items.some((i) => isActive(i, tab, meeting, sub)))}>
+        <Dropdown {...menu('__more')} label={fit === 0 ? current?.label ?? 'Menu' : 'More'} active={folded.some((g) => g.items.some((i) => isActive(i, tab, meeting, sub)))}>
           {(close) => <>
             {folded.map((g) => <div key={g.label} className="navmenu-section">
               <div className="navmenu-heading">{g.label}</div>

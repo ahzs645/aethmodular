@@ -12,7 +12,7 @@ import { useFitHeight } from '@/lib/chartFit'
 import { useColourScheme } from '@/lib/colourSchemes'
 import { ExcludedNote } from '@/lib/markedRows'
 import { seasonColor, siteColor } from '@/lib/siteColours'
-import { labelGutter } from '@/lib/fitLabel'
+import { clipText, labelGutter } from '@/lib/fitLabel'
 
 const ROWS = ['Season', 'Site', 'Year'] as const
 const OVERLAPS = ['None', 'Some', 'Ridge'] as const
@@ -73,7 +73,10 @@ export function Ridgeline({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
 
   // Row labels can be long ("Belg (Feb-May, short rains)"), so the gutter is
   // sized from the actual text rather than a fixed margin that clips them.
-  const labelPad = useMemo(() => labelGutter(groups.map((g) => g.name), { size: 11.5, pad: 26, min: 77, max: 210 }), [groups])
+  // …but on a narrow card (a phone) the gutter stops at ~55% of the width, so the ridges keep room and the
+  // chart fits the card; names longer than that are cut with an ellipsis and keep their full text on hover
+  const measured = useMemo(() => labelGutter(groups.map((g) => g.name), { size: 11.5, pad: 26, min: 77, max: 210 }), [groups])
+  const labelPad = width ? Math.min(measured, Math.max(90, Math.round(width * 0.55))) : measured
 
   const fit = useFitHeight()
   // how far a row's peak may rise into the row above: the ridgeline's defining
@@ -82,7 +85,7 @@ export function Ridgeline({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
   // in a fitted tile the rows share the height: top margin + rows + bottom = rowH × (n + overlap − 1) + 82
   const rowH = fit === null ? 62 : Math.max(18, Math.min(62, (fit - 82) / Math.max(1, groups.length + overlap - 1)))
   const margin = { top: Math.ceil(rowH * (overlap - 1)) + 16, right: 26, bottom: 66, left: labelPad }
-  const innerW = Math.max(240, width - margin.left - margin.right)
+  const innerW = Math.max(110, width - margin.left - margin.right)
   const innerH = groups.length * rowH
   const height = innerH + margin.top + margin.bottom
 
@@ -135,7 +138,7 @@ export function Ridgeline({ rows, meta, field }: { rows: FilterRow[]; meta: Meta
                     <line x1={0} x2={innerW} y1={yBase} y2={yBase} stroke={INK.grid} strokeWidth={1} />
                     {/* short rows (a fitted dashboard tile) keep the name only; the count is in the tooltip */}
                     <text x={-10} y={rowH < 30 ? yBase - 2 : yBase - 5} textAnchor="end" fontSize={rowH < 30 ? 10.5 : 11.5} fill={INK.text} fontFamily={FONT.family}>
-                      {g.name}</text>
+                      {clipText(g.name, labelPad - 22, { size: rowH < 30 ? 10.5 : 11.5 })}<title>{g.name}</title></text>
                     {rowH >= 30 && <text x={-10} y={yBase + 9} textAnchor="end" fontSize={10} fill={INK.muted} fontFamily={FONT.mono}>n={g.values.length}</text>}
                   </g>
                 )

@@ -217,9 +217,10 @@ export function DensityHexbin({ rows, meta, xField, yField, axes }: { rows: Filt
             </g>
           </svg>
         )}
-        <div className="legend">
+        {/* no hexes, no key: an empty chart shows its message alone, as the other charts do */}
+        {points.length >= 3 && <div className="legend">
           <ColorLegend scale={color} scheme={colours.scheme} label="filters per hex" format={(v) => String(Math.round(v))} />
-        </div>
+        </div>}
         {domain.dropped > 0 && <Note>{domain.dropped} points below zero are outside the axes and not binned; they are still in the fit.</Note>}
         {perBand && missingNote('in the hexes but left out of the per-band fits')}
         <ExcludedNote fields={[xField, yField]} />

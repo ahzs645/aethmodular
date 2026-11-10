@@ -122,14 +122,14 @@ export function MonthlyBand({ rows, meta, field }: { rows: FilterRow[]; meta: Me
             </g>
           </svg>
         )}
-        <Legend
+        {series.length > 0 && <Legend
           items={[
             ...allSeries.map((s) => ({ label: s.name, color: s.color, shape: 'line' as const })),
             ...(mixed ? [] : meta.seasons.map((s) => ({ label: s.name, color: s.color, shape: 'band' as const }))),
           ]}
           {...lg.props}
           note={emphasizeFebruary ? 'hollow marker = February (convention-dependent)' : calendarLabel(meta)}
-        />
+        />}
         <ExcludedNote fields={[field]} />
         {tip.node}
       </div>

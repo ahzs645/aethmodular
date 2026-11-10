@@ -4,6 +4,8 @@ import App from './App'
 import { isEmbed, isEmbedChart, restoreSharedView, watchSharedViews } from './lib/views'
 import { watchEmbedChart } from './lib/embedChart'
 import { installUndo } from './lib/undo'
+import { watchScrollDirection } from './lib/scrollDirection'
+import { watchScrollEdges } from './lib/scrollEdges'
 import './lib/colorTheme'
 import './lib/themeCss'
 import './styles.css'
@@ -13,6 +15,8 @@ if (isEmbed()) document.documentElement.dataset.embed = '1'
 if (isEmbedChart()) watchEmbedChart()
 
 watchSharedViews()
+watchScrollDirection()
+watchScrollEdges()
 // a shared `#v=<token>` link is expanded into the plain URL the app reads before it renders
 restoreSharedView().finally(() => {
   // ⌘Z / Ctrl+Z over every setting in the URL, from the view the link opened on

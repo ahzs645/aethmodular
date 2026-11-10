@@ -348,14 +348,14 @@ export function CorrelationRanking({ rows, meta, target }: { rows: FilterRow[]; 
     >
       <div ref={wrapRef} className="chart-wrap">
         {plot}
-        <Legend
+        {count > 0 && <Legend
           items={[
             { label: 'positive r', color: INK.positive },
             { label: 'negative r', color: INK.negative },
             { label: SAME, color: INK.identity },
           ]}
           {...lg.props}
-        />
+        />}
         {tip.node}
       </div>
       <ExcludedNote fields={[target]} />

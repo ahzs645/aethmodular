@@ -1597,7 +1597,7 @@ export default function App() {
       {/* the address is set in the click, not after an await: a window opened later counts as a popup and is blocked */}
       {isEmbed() && !isEmbedChart() && <a className="embed-open" href="#" target="_blank" rel="noopener" onClick={(e) => { e.currentTarget.href = viewHref(currentView()) }}>Open in the gallery ↗</a>}
       {(NETWORK_TABS as readonly string[]).includes(tab) && <BrushBar onKeep={keepFilters} onDrop={dropFilters} />}
-      <Shell nav={nav} dash={tab === 'dashboard'} onDash={toggleDash} wide={tab === 'builder' || tab === 'custom' || tab === 'baseline' || tab === 'calibration' || tab === 'similarity' || tab === 'meeting' || tab === 'blanks' || tab === 'experimental'} editsBadge={!subset}>
+      <Shell nav={nav} dash={tab === 'dashboard'} onDash={toggleDash} editsBadge={!subset}>
         {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
         {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting' || tab === 'experimental' || tab === 'similarity' || tab === 'ml')
           && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} label={tab === 'similarity' ? 'Target' : 'Samples'}
@@ -1711,12 +1711,13 @@ export default function App() {
   )
 }
 
-/** `wide` gives the long research tabs room for the table-of-contents column. */
 /** `editsBadge`: show the hand edits in the header, for tabs without the Filters panel that lists them */
 /** `dash`: the Dashboard, full width, its options in the header (pages/DashboardPage portals them into #dash-bar) */
 /** `onDash`: the header's Dashboard button, which opens it and, clicked again, returns to the page before */
-function Shell({ children, nav, wide = false, editsBadge = false, dash = false, onDash }: { children: React.ReactNode; nav?: React.ReactNode; wide?: boolean; editsBadge?: boolean; dash?: boolean; onDash?: () => void }) {
-  const container = dash ? 'container dash' : wide ? 'container wide' : 'container'
+function Shell({ children, nav, editsBadge = false, dash = false, onDash }: { children: React.ReactNode; nav?: React.ReactNode; editsBadge?: boolean; dash?: boolean; onDash?: () => void }) {
+  // every tab shares one width (styles.css .container), so the header and the cards line up and nothing
+  // shifts between tabs; the long research tabs keep room for their table-of-contents column
+  const container = dash ? 'container dash' : 'container'
   // the sticky header's height, for what sticks under it (a chart's options column, styles.css --header-h)
   const headerH = useHeaderHeight()
   useEffect(() => { document.documentElement.style.setProperty('--header-h', `${headerH}px`) }, [headerH])

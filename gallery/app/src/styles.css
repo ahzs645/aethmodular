@@ -98,8 +98,9 @@ body {
 
 code { font-family: var(--mono); font-size: 0.92em; }
 
-.container { max-width: 1180px; margin: 0 auto; padding: 0 22px 60px; }
-.container.wide { max-width: 1420px; }
+/* one width for every tab: the header lines up with the cards and nothing moves between tabs; wide enough
+   for the research tabs' table-of-contents column beside their charts */
+.container { max-width: 1420px; margin: 0 auto; padding: 0 22px 60px; }
 .chart-builder-intro { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 20px; line-height: 1.5; }
 .chart-builder-intro > p { margin: 0; font-size: calc(13px * var(--text-scale)); }
 .chart-builder-help { font-size: calc(12px * var(--text-scale)); color: var(--ink-muted); }
@@ -751,8 +752,10 @@ html:not([data-explain="1"]) .drawer-section .chart-note:first-of-type { display
   .side-dock { top: auto; bottom: 0; width: 100%; height: 90vh; height: 90dvh; transform: translateY(100%); }
   .side-dock.open { transform: none; }
   .subset-panel { border-radius: 16px 16px 0 0; border: 0; border-top: 1px solid var(--ink-border); box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.16); }
-  .side-dock-tab { top: auto !important; left: 50%; bottom: calc(100% + 18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); transition: opacity 0.15s; }
+  .side-dock-tab { top: auto !important; left: 50%; bottom: calc(100% + 18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); transition: opacity 0.15s, transform 0.15s; }
   .side-dock.open .side-dock-tab { opacity: 0; pointer-events: none; }
+  /* while the reader scrolls down they step aside, so they never sit on the chart being read (lib/scrollDirection) */
+  html[data-scroll="down"] .side-dock:not(.open) .side-dock-tab { opacity: 0; transform: translate(-50%, 24px); pointer-events: none; }
   .side-dock-tabs { flex-direction: row; gap: 8px; }
   .subset-tab { flex-direction: row; padding: 9px 16px; border: 1px solid var(--ink-border); border-radius: 22px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16); }
   .subset-tab-label, .subset-tab-count { writing-mode: horizontal-tb; transform: none; }
@@ -1308,6 +1311,9 @@ svg [font-size="16"] { font-size: calc(16px * var(--chart-text-scale)); }
   .header-display { display: none; }
   .navmenu-extra { display: block; }
   .app-title { font-size: calc(18px * var(--text-scale)); }
+  /* the single page button names the open page (components/NavMenu); a long name ellipsises */
+  .navmenu, .navmenu-group { min-width: 0; }
+  .navmenu-group > .nav-btn { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 .navmenu-section { display: flex; flex-direction: column; }
 .navmenu-extra { display: none; }
@@ -1396,7 +1402,8 @@ html.dash-mode .side-dock-tab { display: none; }
 html.dash-mode .app-header { padding: 7px 0 2px; margin-bottom: 7px; }
 html.dash-mode .app-header .app-title-row { margin-bottom: 5px; flex-wrap: nowrap; align-items: center; gap: 10px; }
 /* the page menu names the app; the display toggles live in the dashboard's Aa menu: one header line */
-html.dash-mode .app-title, html.dash-mode .header-tools .header-display { display: none; }
+html.dash-mode .header-tools .header-display { display: none; }
+@media (max-width: 640px) { html.dash-mode .app-title { display: none; } }
 html.dash-mode .header-tools { gap: 6px; }
 /* the page menu folds to one Menu button; the room goes to the dashboard's options */
 html.dash-mode .app-title-row > .nav { flex: 0 0 auto; width: 84px; }
@@ -1605,6 +1612,9 @@ html.dash-present .container.dash { padding-top: 10px; }
   .combobox-trigger { max-width: 100%; }
   /* long unbroken text (notebook paths, field ids) wraps instead of widening the card */
   .panel { overflow-wrap: anywhere; }
+  /* …but not inside a table: "anywhere" lets a cell shrink to one character, so headers and numbers
+     stack letter by letter. Cells break between words only; a table wider than the card scrolls. */
+  .panel table th, .panel table td { overflow-wrap: normal; }
   /* the last resort: a card whose figure is drawn outside .chart-wrap (Meeting, Blanks) scrolls
      sideways inside itself; its dropdowns, pickers and tooltips are portalled, so none is clipped */
   .panel:not(.compact) { overflow-x: auto; }
@@ -1853,6 +1863,10 @@ html.dash-present .container.dash { padding-top: 10px; }
 /* Dense categorical charts keep readable labels and scroll within their own frame. */
 .chart-scroll { width: 100%; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; }
 .chart-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* a region that scrolls sideways fades on the side with more to see (lib/scrollEdges), the same cue on every chart and table */
+[data-more="right"] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); }
+[data-more="left"] { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 36px), transparent); }
+[data-more="both"] { -webkit-mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent); }
 /* components/ScrubField: geo-toolkit's drag-or-type number in the gallery's ink, dressed as a
    .combobox-trigger (same panel, border, radius, font and height) so the two sit as a pair; the number is bold */
 .gt-scrub-field.scrub-field {
@@ -1897,7 +1911,14 @@ html.dash-present .container.dash { padding-top: 10px; }
   .panel { padding: 14px 10px 10px; }
   .frame-controls, .grouping-picker, .control { max-width: 100%; }
   .frame-controls .control, .frame-controls .grouping-picker { flex-wrap: wrap; }
-  .frame-controls .seg { flex-wrap: wrap; max-width: 100%; }
+  /* a segmented control keeps its label on the left, as every other control does; the choices wrap
+     beside it instead of dropping the label onto a line of its own */
+  .frame-controls .control:has(> .seg) { flex-wrap: nowrap; align-items: baseline; overflow-wrap: normal; }
+  /* wrapped choices form a filled grid: each row stretches to the full width and every button draws its
+     own right and bottom edge, so a second row is boxed like the first instead of hanging open */
+  .frame-controls .seg { flex-wrap: wrap; max-width: 100%; min-width: 0; border-width: 1px 0 0 1px; }
+  .frame-controls .seg > button { flex: 1 0 auto; border-right: 1px solid var(--ink-border); border-bottom: 1px solid var(--ink-border); }
+  .frame-controls .seg > button + button { border-left: 0; }
   .frame-controls .combobox-control { min-width: 0; max-width: 100%; flex-wrap: wrap; }
   .legend-group { justify-content: center; }
   .legend-group-name { flex-basis: 100%; text-align: center; }
