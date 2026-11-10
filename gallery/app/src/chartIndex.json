@@ -941,6 +941,38 @@
    "file": "meetings/closure-20261110.meeting.ts"
   },
   {
+   "title": "Recalibrating on other sites brings heavy and urban filters to 1; the training variants move the gain less",
+   "id": "c1110-gain-variants",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "Every variant, with the cost on light filters and the blank reading",
+   "id": "c1110-gain-table",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "More components do not close the gain",
+   "id": "c1110-gain-k",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "The baseline changes the gain only a little, on the closeout’s saved predictions",
+   "id": "c1110-gain-closeout",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
    "title": "Earlier readings that used HIPS / 10 as the yardstick",
    "id": "c1110-rereads",
    "component": "table",

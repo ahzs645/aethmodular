@@ -39,7 +39,8 @@ COLORS = {**SEASON_COLORS, "all sites": "#22252A", "sites with median OC/EC < 4"
           "predicted from IMPROVE thermal EC": "#8a8f98", "HIPS as measured": "#B23327", "HIPS linearised": "#2C6E9E",
           "this filter's own TOR (selects on its error)": "#B23327", "the previous sample at the site": "#2C6E9E", "the site": "#22252A",
           "IMPROVE (FTIR EC ≥ 5 µg per filter)": "#8a8f98", "assumed": "#8a8f98", "measured with thermal EC": "#2C6E9E", "needed at Addis": "#B23327",
-          "Raw spectra + EPO": "#7A4FA3", "Adama, Ethiopia (5 filters with TOR)": "#C49442",
+          "Raw spectra + EPO": "#7A4FA3", "as trained": "#22252A", "recalibrated on other sites": "#2C6E9E",
+          "As fitted": "#22252A", "Weighted toward heavy filters": "#B23327", "Blanks added at zero": "#2C6E9E", "Weighted, and blanks at zero": "#7A4FA3", "Adama, Ethiopia (5 filters with TOR)": "#C49442",
           "urban IMPROVE site": "#B23327", "other IMPROVE site": "#8a8f98", "TOR's own OC/EC on this filter": "#B23327",
           "FTIR's own OC/EC on this filter": "#7A4FA3", "TOR OC/EC of the previous sample at the site": "#2C6E9E",
           "By site: the six urban IMPROVE sites": "#22252A", "By the filter's own TOR (heavy, low OC/EC)": "#B23327", "Addis Ababa": "#C49442", "2005–2014": "#8F8C84", "2015–2025": "#7A4FA3", "optical pyrolysis > 0": "#27AE60",
@@ -305,6 +306,52 @@ calibrations on three clean pairs). What Adama does show: per unit of thermal EC
 {pilot.fabs_over_tor.max():.0f} m²/g there, above IMPROVE's curve at the same optical depth. Ethiopian aerosol absorbs more per unit EC than
 MAC 10 assumes, which is the other half of the 0.55 slope."""
 
+# ---------------------------------------------------------------- 5d. can the calibration be fixed from IMPROVE alone
+gain_file = json.loads((ROOT / "docs/calibration-gain-2026-11-10.json").read_text())
+gv = pd.DataFrame(gain_file["variants"])
+gv["calibration"] = np.where(gv.recalibrated.eq("no"), gv.variant, gv.variant + ", then offset removed and divided by the gain")
+gv["step"] = np.where(gv.recalibrated.eq("no"), "as trained", "recalibrated on other sites")
+gain_rows = gv[["preprocessing", "calibration", "variant", "step", "gain", "gain_lo", "gain_hi", "offset", "blank_reading", "heavy_level", "heavy_sum_ratio",
+                "urban_level", "light_level", "light_median_abs_error", "overall_median_abs_error", "overall_rmse"]]
+gain_k = pd.DataFrame(gain_file["components"])[["preprocessing", "variant", "k", "gain", "offset"]]
+gain_closeout = pd.DataFrame(gain_file["closeout_calibrations"])[["calibration", "filters", "sites", "gain", "gain_lo", "gain_hi", "offset", "urban_level", "heavy_level"]]
+g = gv[gv.preprocessing.eq("Raw spectra")].set_index(["variant", "recalibrated"])
+base, fixed = g.loc[("As fitted", "no")], g.loc[("As fitted", "offset removed, divided by the gain")]
+weighted, with_blanks = g.loc[("Weighted toward heavy filters", "no")], g.loc[("Blanks added at zero", "no")]
+kk = gain_k[(gain_k.preprocessing.eq("Raw spectra")) & (gain_k.variant.eq("As fitted"))].set_index("k").gain
+cl = gain_closeout.set_index("calibration")
+best = g.loc[("Blanks added at zero", "offset removed, divided by the gain")]
+refit_addis = tables["addis_refit"].set_index("filter_id")
+volume_addis = table.volume_m3.reindex(refit_addis.index)
+recal_addis = ((refit_addis.ftir_ec_ugm3 * volume_addis - base.offset) / base.gain) / volume_addis
+addis_factor_raw = float((recal_addis / refit_addis.ftir_ec_ugm3).median())
+addis_factor_published = float((recal_addis / table[closure.PUBLISHED].reindex(refit_addis.index)).median())
+text_gain = f"""**Recalibrating from the offset and gain works on sites it has not seen.** Removing the offset and dividing by the gain, both
+fitted on other IMPROVE sites, takes the gain from {base.gain:.2f} to {fixed.gain:.2f} ({fixed.gain_lo:.2f}–{fixed.gain_hi:.2f}), the level on IMPROVE's six
+urban sites from {base.urban_level:.2f} to {fixed.urban_level:.2f}, and on heavy filters from {base.heavy_level:.2f} to {fixed.heavy_level:.2f}. Light filters are
+not harmed: their level goes from {base.light_level:.2f} to {fixed.light_level:.2f} and their median error from {base.light_median_abs_error:.2f} to
+{fixed.light_median_abs_error:.2f} µg per filter. The cost is in the largest errors, which are scaled up with everything else (RMSE
+{base.overall_rmse:.2f} to {fixed.overall_rmse:.2f}); the overall median error is unchanged ({base.overall_median_abs_error:.2f}, {fixed.overall_median_abs_error:.2f}).
+
+**Why the gain is low: more components raise it only slowly, and how the training is weighted does not move it.** The gain rises with the number of components and
+levels off below 1: {kk.loc[6]:.2f} at 6, {kk.loc[12]:.2f} at 12, {kk.loc[18]:.2f} at 18, {kk.loc[25]:.2f} at 25. Weighting the training toward heavy filters
+leaves it at {weighted.gain:.2f} and only raises the offset (a blank then reads {weighted.blank_reading:.1f} µg and the light-filter error nearly
+doubles, {weighted.light_median_abs_error:.2f}). Adding blank filters at zero is a small free gain at the low end: the blank reading falls from
+{base.blank_reading:.1f} to {with_blanks.blank_reading:.1f} µg and the overall median error from {base.overall_median_abs_error:.2f} to
+{with_blanks.overall_median_abs_error:.2f}, with the gain at {with_blanks.gain:.2f}. Blanks at zero and the recalibration together give gain
+{best.gain:.2f}, urban sites {best.urban_level:.2f}, light filters {best.light_level:.2f}, and a blank reading of {best.blank_reading:.1f} µg.
+
+**The baseline does not change the gain much.** On the 1,821 heavier filters the closeout exported, the gain is {cl.loc['Raw spectra', 'gain']:.2f} for
+raw spectra, {cl.loc['Spline baseline', 'gain']:.2f} for the spline baseline, {cl.loc['Production VIBES', 'gain']:.2f} for production VIBES and
+{cl.loc['PTFE-anchored VIBES', 'gain']:.2f} for PTFE-anchored VIBES; deflated VIBES is lower ({cl.loc['Deflated VIBES', 'gain']:.2f}) and the OC/EC-balanced
+weighting higher ({cl.loc['Anchored, OC/EC-balanced weights', 'gain']:.2f}). That subset leaves out the light filters, which lowers every gain, so
+compare the rows with each other and not with the full refit. `run_calibration_gain_20261110.py --bundle` repeats the full test on the
+baseline-corrected spectra where they are stored.
+
+**At Addis** the same recalibration raises the raw calibration by × {addis_factor_raw:.2f} at the median filter, which is × {addis_factor_published:.2f}
+on the published product. It is fitted on IMPROVE and checked on IMPROVE: it corrects the loading part of the bias, and says nothing about
+whether Addis composition adds to it."""
+
 # ---------------------------------------------------------------- 6. what changes, what is open
 spline_level = float((table["spline k18"] / table.hips_bc).median())
 published_level = float((table[closure.PUBLISHED] / table.hips_bc).median())
@@ -324,8 +371,10 @@ pathways = pd.DataFrame([
     ("A composition-aware level factor learned on IMPROVE", "tested here: not possible, Addis is outside IMPROVE's composition range", ""),
     ("Spectral augmentation by co-adding IMPROVE spectra", "run here: shows only the blank offset; cannot reach Addis composition", ""),
     ("EPO re-scored with fair grouping (refitted on raw spectra; no saved predictions exist)", "run here: 0.93 against 0.91 on the urban sites", ""),
-    ("A recalibration from the offset and EC gain measured on IMPROVE site means, checked on held-out sites and on blanks", "new, data in hand", "4"),
-    ("Why the EC gain is 0.78: weight heavy filters in training, or fit through the blanks, and re-score fairly", "new, data in hand", "5"),
+    ("A recalibration from the offset and EC gain, fitted on other IMPROVE sites", "run here: urban sites 0.91 to 1.02, light filters unharmed", ""),
+    ("Why the EC gain is 0.78: weighting, blanks at zero, more components", "run here: it is the spectra, not the training", ""),
+    ("The same gain test on spline, VIBES and anchored spectra (run_calibration_gain_20261110.py --bundle)", "script committed; needs the saved bundle", "4"),
+    ("Whether to carry the IMPROVE recalibration to Addis as the stated correction (about × 1.1 on the published product)", "a decision, with Ann", "5"),
     ("FTIR proportional to thermal EC on held-out IMPROVE sites (exponent 0.94 to 1.04)", "done here", ""),
     ("The exponent and the linearised fit at every SPARTAN site, with potassium as a second instrument", "done here", ""),
     ("PLS on the masked regions; raw model without 3600–4000 and below 1425 cm⁻¹", "open, lower priority", "7"),
@@ -350,11 +399,12 @@ write_bundle(
                    "and the unified filter dataset via research/ftir_hips_chem/workflows/run_addis_reference_closure_20261110.py",
     colors=COLORS,
     text={"intro": intro, "improve": text_improve, "addis": text_addis, "response": text_response, "season": text_season,
-          "level": text_level, "network": text_network, "candidates": text_candidates, "source": text_source, "mac": text_mac, "steps": text_steps, "next": text_next},
+          "level": text_level, "network": text_network, "candidates": text_candidates, "source": text_source, "mac": text_mac, "steps": text_steps, "gain": text_gain, "next": text_next},
     tables={"strata": pd.concat([strata[["population", "n", "TOR EC (µg per filter)", "HIPS optical depth", "Fabs ÷ TOR EC (m²/g)"]], adama_points], ignore_index=True),
             "adama_filters": adama_filters, "adama_ftir": adama_ftir, "ftir_by_site": ftir_by_site, "ftir_selection": tables["ftir_selection"],
             "ftir_candidates_long": candidates_long, "mac_bars": mac_bars, "mac_levels": mac_levels, "ftir_epo": ftir_epo,
             "ftir_sensitivity": sensitivity_table, "ftir_blanks": tables["ftir_blanks"],
+            "gain_rows": gain_rows, "gain_k": gain_k, "gain_closeout": gain_closeout,
             "ceilings": ceilings, "exponents": exponents, "against_hips": against_hips, "fits": fits,
             "season": season_rows[["group", "season", "lot", "n", "median_optical_depth", "published_over_hips",
                                    "published_over_linearised_hips", "published_over_pm25"]],

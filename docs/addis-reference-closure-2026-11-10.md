@@ -260,6 +260,44 @@ linear calibration that number is exactly the sum of the three predictions minus
 (checked: the two agree to rounding). Co-adding shows the offset and nothing else, and a sum can never have a
 lower OC/EC than its parts. It cannot test Addis composition. Withdrawn as a next step.
 
+### Can the calibration be fixed from IMPROVE alone
+
+`workflows/run_calibration_gain_20261110.py` (helpers in `scripts/calibration_gain.py`, numbers in
+[calibration-gain-2026-11-10.json](calibration-gain-2026-11-10.json)). Raw spectra, 18 components, whole IMPROVE
+sites held out, 12,953 filters, 338 field blanks. Heavy and light filters are chosen by the previous sample at
+the site (TOR EC ≥ 15 µg, and below 3 µg), never by their own TOR.
+
+| Calibration | Gain | Blank reads (µg) | Heavy | Urban | Light | Light error (µg) | Overall median error (µg) | RMSE (µg) |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| As trained | 0.78 [0.70, 0.84] | 2.2 | 0.95 | 0.91 | 1.27 | 1.16 | 1.27 | 6.56 |
+| As trained, then offset removed and divided by the gain | 0.96 [0.85, 1.04] | 1.3 | 1.03 | 1.02 | 0.98 | 1.08 | 1.29 | 7.72 |
+| Weighted toward heavy filters | 0.78 [0.62, 0.87] | 4.3 | 1.03 | 0.99 | 1.77 | 2.11 | 2.01 | 8.55 |
+| Blanks added at zero | 0.81 [0.73, 0.88] | 1.3 | 0.94 | 0.91 | 1.13 | 0.96 | 1.15 | 6.34 |
+| Blanks at zero, then recalibrated | 0.97 [0.86, 1.07] | 0.7 | 1.02 | 1.02 | 0.93 | 1.01 | 1.24 | 7.32 |
+
+**The recalibration works on sites it has not seen.** With the offset and gain fitted on other sites, the urban
+sites go from 0.91 to 1.02 and heavy filters from 0.95 to 1.03, and light filters are not harmed (level 1.27 to
+0.98, median error 1.16 to 1.08 µg). The cost is in the largest errors, which are scaled up with everything
+else (RMSE 6.56 to 7.72).
+
+**Why the gain is low.** It rises with the number of components and levels off below 1: 0.33 at 6 components,
+0.64 at 12, 0.78 at 18, 0.81 at 25. Weighting the training toward heavy filters does not move it; it only
+raises the offset, so a blank reads 4.3 µg and the light-filter error nearly doubles. Adding blanks at zero is a
+small free improvement at the low end and leaves the gain at 0.81. So the gain is not a training choice that
+can be tuned away: a linear calibration on these spectra under-responds to EC, and a correction after the fact
+is the available fix.
+
+**The baseline does not change it much.** On the 1,821 heavier filters the closeout exported (which lowers every
+gain, so compare rows with each other): raw spectra 0.63, spline baseline 0.66, production VIBES 0.63,
+PTFE-anchored VIBES 0.64, deflated VIBES 0.46, OC/EC-balanced weights 0.78. Intervals are wide (about ±0.2).
+Neither the spline nor VIBES baselining looks like a fix for the gain. The full test on the baseline-corrected
+spectra needs the saved bundle: `run_calibration_gain_20261110.py --bundle <dir> --models raw spline vibes
+vibes_anchorhp` (PLS only; it runs on Colab or a laptop).
+
+**At Addis** the same recalibration raises the raw calibration by × 1.25 at the median filter, which is × 1.13 on
+the published product. It is fitted and checked on IMPROVE: it corrects the loading part of the bias and says
+nothing about whether Addis composition adds to it.
+
 ### The MAC and the FTIR level have to be read together
 
 After linearising HIPS, the published FTIR EC agrees with HIPS only if the MAC is 18.7 m²/g (16.1 to 24.2
@@ -368,13 +406,14 @@ Ranked by how likely each is to change what is carried forward.
    are the candidates; the spartan_reference chemistry is in hand.
 3a. **Lot 248 at Addis.** IMPROVE shows no lot effect (section 5), so it is the SPARTAN lot-248 blanks or the
    2022–23 aerosol. The lot's blanks can referee.
-4. **A recalibration from the offset and gain.** Section 5 measures both on IMPROVE site means. Check on
-   held-out sites and on blanks whether removing the offset and dividing by the gain brings the urban sites and
-   the heavy filters to 1 without harming the light ones. This is the only FTIR-side correction the existing
-   data can support, and it is a source-domain one.
-5. **Why the gain is 0.78.** Weight heavy filters in training, or constrain the calibration through the blanks,
-   and re-score with the fair grouping. EPO already moves it to 0.89.
-5a. **Done here (section 5):** EPO re-scored fairly; co-added spectra (uninformative for a linear calibration).
+4. **The gain test on spline, VIBES and anchored spectra.** `run_calibration_gain_20261110.py --bundle` on the
+   machine that holds the decision bundle. The closeout's saved predictions suggest the baseline changes the
+   gain little; this would confirm it on every filter.
+5. **Decide whether the IMPROVE recalibration is the stated Addis correction** (about × 1.1 on the published
+   product, section 5). It works on unseen IMPROVE sites and is untested at Addis composition. A decision for
+   Ann, not an analysis.
+5a. **Done here (section 5):** EPO re-scored fairly; co-added spectra (uninformative for a linear calibration);
+   the recalibration from offset and gain on held-out sites; weighting, blanks at zero and component count.
 6. **Done here (section 5):** FTIR against thermal EC on held-out IMPROVE sites; the exponent and the
    linearised fit at every SPARTAN site with potassium as a second instrument; every saved calibration by season.
 7. **PLS on the masked regions** (Ann, 10 Sep) and the raw model without 3600–4000 and below 1425 cm⁻¹ (28 Oct
