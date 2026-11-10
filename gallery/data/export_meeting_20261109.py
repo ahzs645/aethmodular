@@ -200,8 +200,9 @@ cohort choice recover, the seasonal structure, and the compositional explanation
 limit. The incoming Addis TOR filters then become the validation step, not a prerequisite. Agree what agreement would count as
 evidence before they arrive.
 
-Open analysis from the AAAR list (OC/EC-selected cohorts for Dry and Belg, the dust band, a season-specific MAC, optical pyrolysis
-on dark IMPROVE filters) waits until the draft exists or goes to future work. The next objective (Brian's glacier black carbon
+The analysis items of the AAAR list (OC/EC-selected cohorts for Dry and Belg, the dust band, a season-specific MAC, optical pyrolysis
+on dark IMPROVE filters) were run on 28 Oct and are on that meeting's page; they used HIPS as the comparator, so they are re-read
+against the aethalometer in docs/addis-reference-closure-2026-11-10.md rather than rerun. The next objective (Brian's glacier black carbon
 project, international collaborations across SPARTAN/MAIA, or the PurpleAir objective the committee still expects) is chosen in January."""
 
 intro = f"""Where the existing-data FTIR EC investigation stands on 9 Nov 2026, after the 7 Nov closeout, for the end-of-December

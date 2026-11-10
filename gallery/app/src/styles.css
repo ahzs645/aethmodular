@@ -1112,7 +1112,7 @@ html.ctx-open .tooltip { visibility: hidden; }
 .weather-head .btn.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 
 /* two figures side by side in a declared meeting section (pages/MeetingSpecPage), stacked on narrow screens */
-.figure-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 0 16px; }
+.figure-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 0 16px; }
 .figure-pair > .panel:last-child:nth-child(odd) { grid-column: 1 / -1; }
 /* hand edits in the header, on tabs without the Filters panel (lib/filterEdits HandEditsBadge) */
 .hand-edits-badge { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; margin-right: 12px; background: var(--accent-soft); color: var(--accent); border-radius: 12px; padding: 2px 6px 2px 10px; font-family: var(--mono); font-size: calc(11.5px * var(--text-scale)); }

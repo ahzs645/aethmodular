@@ -717,6 +717,110 @@
    "file": "meetings/ann-20261009.meeting.ts"
   },
   {
+   "title": "HIPS rises as about the square root of every other measurement; FTIR EC is proportional to the aethalometer",
+   "id": "c1110-exponents",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "Against the aethalometer, HIPS flattens and FTIR EC runs straight through the origin",
+   "id": "c1110-against-aeth",
+   "component": "scatter",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "The bend is inside every season, so it is not a between-season composition effect",
+   "id": "c1110-by-season",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "The same filters: 2.31x − 6.17 as measured, 0.44x + 0.58 once HIPS is linearised",
+   "id": "c1110-against-hips",
+   "component": "crossplot",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "The fits, across the ceiling’s interval",
+   "id": "c1110-fits",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "FTIR EC is about as precise as the aethalometer; HIPS is somewhat noisier once its compressed range is allowed for",
+   "id": "c1110-errors",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "Within lot 251 the published FTIR EC ÷ aethalometer is the same in every season",
+   "id": "c1110-season",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "On held-out IMPROVE sites, FTIR reads thermal EC lower the lower the OC/EC",
+   "id": "c1110-ocec",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "PM2.5 mass closure caps the level: a factor near 2 over-fills the mass",
+   "id": "c1110-mass",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "Every anchor on the level, and what limits it",
+   "id": "c1110-anchors",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "Addis has the highest optical depth in the network and the lowest exponent",
+   "id": "c1110-network",
+   "component": "scatter",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "Earlier readings that used HIPS / 10 as the yardstick",
+   "id": "c1110-rereads",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "Pathways: done, open with data in hand, blocked",
+   "id": "c1110-pathways",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
    "title": "Addis slope and intercept by season, for five ways of choosing the IMPROVE calibration filters",
    "id": "m1028-cals",
    "component": "intervals",
@@ -893,7 +997,7 @@
    "file": "meetings/status-20261109.meeting.ts"
   },
   {
-   "title": "Baselining moves the HIPS intercept from about −6 to about −1.4; against the aethalometer most candidates are near zero",
+   "title": "The spline baseline moves the HIPS intercept from about −6 to about −1.4, the VIBES variants stay between −3.4 and −6.4; against the aethalometer most candidates are near zero",
    "id": "s1109-addis-intercept",
    "component": "bars",
    "tab": "meeting",

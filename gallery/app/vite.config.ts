@@ -25,12 +25,21 @@ function omittedSections(mode: string): string[] {
   return Object.entries(manifest.sections).filter(([, s]) => !s.public).map(([key]) => key)
 }
 
+/** the commit being built; outside a git checkout (an unpacked archive) the CI's GITHUB_SHA, else "unknown", instead of a crash */
+function sourceRevision(): string {
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+  } catch {
+    return process.env.GITHUB_SHA ?? 'unknown'
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const omitted = omittedSections(mode)
   if (omitted.length) console.log(`public build: leaving out section(s) ${omitted.join(', ')}`)
   return {
     plugins: [react()],
-    define: { 'import.meta.env.VITE_SOURCE_REVISION': JSON.stringify(execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()), 'import.meta.env.VITE_SOURCE_FINGERPRINT': JSON.stringify(fingerprint()) },
+    define: { 'import.meta.env.VITE_SOURCE_REVISION': JSON.stringify(sourceRevision()), 'import.meta.env.VITE_SOURCE_FINGERPRINT': JSON.stringify(fingerprint()) },
     resolve: {
       alias: [
         ...omitted.map((key) => ({ find: new RegExp(`^@/sections/${key}$`), replacement: src('sections/omitted.ts') })),
