@@ -27,6 +27,29 @@ those periods. One network-wide ceiling also over-corrects several SPARTAN sites
 correction for the network. Account, limits and the ranked open pathways:
 [addis-reference-closure-2026-11-10.md](addis-reference-closure-2026-11-10.md); gallery Meeting tab, Nov 10.
 
+### Decide whether the converged VIBES run becomes the default (10 Nov 2026)
+
+The 3 Nov adoption tests recommended solving the VIBES noise level to convergence (Newton) for new work and built
+`network_baselines_v2_20261103` next to the frozen 19 Oct run. The gallery's SPARTAN pages and `export_baseline_ftir_ec.py`
+still read the 19 Oct run, and no one has signed off the switch. A 10 Nov check adds two things. The rank-70 background
+does not absorb narrow aerosol bands at any rank tested, so the 155 flagged fits are an optimiser matter, not a reason
+to lower the rank. And the converged solver now also runs in a browser as WebAssembly, matching Python to 1e-9, so the
+method no longer depends on one software stack. Decisions for Ann and Satoshi: make v2 the default and cut a data
+release; describe it in the methods as the same objective solved to convergence; tell the VIBES authors about the
+early stops. Still to rerun on v2 before conclusions that read corrected spectra are promoted: season composition and
+fingerprint grouping. See [vibes-newton-adoption-tests-2026-11-03.md](vibes-newton-adoption-tests-2026-11-03.md) and
+[vibes-rank-and-wasm-2026-11-10.md](vibes-rank-and-wasm-2026-11-10.md).
+
+### Check three flat network scans that carry the normal QC code (10 Nov 2026)
+
+Eleven of the 4,452 network scans span under 0.05 in absorbance, against 0.17 for the next smallest. Eight carry QC
+code 0 or 2 in the 19 Oct bundle. Three carry code 1, like normal scans: ETAD-0037-5 (analysis 406, the item below),
+PRFJ-0073-1 (530; a second scan exists) and KRSE-0136-8 (PM10, 470). The bundle does not define the codes, so first
+confirm what 0, 1, 2 and 6 mean, then decide whether flat scans are dropped before any network EC is read. Separately,
+98 intact sample scans look like blanks in runs of consecutive cartridge positions (for example ZAJB-0075 to 0080);
+ask whether those cartridges were sampled. List: `flat_scans` in
+[vibes-rank-check-2026-11-10.json](vibes-rank-check-2026-11-10.json).
+
 ### Confirm the pass rule for the Addis city TOR filters
 
 The rule for reading the Addis city TOR filters is proposed, not agreed, and it

@@ -1,0 +1,39 @@
+<!doctype html><meta charset="utf-8"><title>VIBES in WebAssembly</title><pre id="log">starting</pre>
+<script type="module">
+// Fit the prepared spectra on a pool of Web Workers and compare with the Python float64 results.
+// ?n=64 limits the spectra, ?workers=4 sets the pool (default: the machine's logical cores).
+const q = new URLSearchParams(location.search), log = (m) => { document.getElementById("log").textContent = m; };
+const f64 = async (u) => new Float64Array(await (await fetch(u)).arrayBuffer());
+async function main() {
+  const meta = await (await fetch("meta.json")).json(), { p, c, tau, ref } = meta;
+  const [W, mean, Y, B, wasm] = await Promise.all([f64("W.f64"), f64("mu.f64"), f64("Y.f64"), f64("B.f64"), fetch("vibes_wasm.wasm").then((r) => r.arrayBuffer())]);
+  const rows = Math.min(+(q.get("n") || meta.rows), meta.rows), n = Math.min(+(q.get("workers") || navigator.hardwareConcurrency || 2), rows);
+  const out = new Array(rows); let next = 0, done = 0;
+  const t0 = performance.now();
+  const pool = await Promise.all(Array.from({ length: n }, () => new Promise((ready) => {
+    const w = new Worker("./worker.js", { type: "module" });
+    w.onmessage = () => ready(w);
+    w.postMessage({ type: "init", wasm, W, mean, p, c, tau });
+  })));
+  const setup = (performance.now() - t0) / 1e3, t1 = performance.now();
+  await new Promise((finish) => pool.forEach((w) => {
+    const send = () => { if (next < rows) { const row = next++; w.postMessage({ type: "fit", row, y: Y.slice(row * p, (row + 1) * p) }); } };
+    w.onmessage = ({ data }) => { out[data.row] = data; done++; log(`${done} of ${rows} fitted`); if (done === rows) finish(); else send(); };
+    send();
+  }));
+  const wall = (performance.now() - t1) / 1e3;
+  let sigma = 0, elbo = 0, base = 0, cpu = 0;
+  out.forEach((r, i) => {
+    cpu += r.ms / 1e3;
+    sigma = Math.max(sigma, Math.abs(r.sigma / ref.sigma[i] - 1));
+    elbo = Math.max(elbo, Math.abs(r.elbo - ref.elbo[i]) / Math.max(1, Math.abs(ref.elbo[i])));
+    let d = 0; for (let j = 0; j < p; j++) d = Math.max(d, Math.abs(r.baseline[j] - B[i * p + j]));
+    base = Math.max(base, d);
+  });
+  window.__result = { rows, workers: n, setup_s: setup, wall_s: wall, wall_s_per_spectrum: wall / rows, worker_s_per_spectrum: cpu / rows,
+    converged: out.filter((r) => r.status === "converged").length, certified: out.filter((r) => r.certified).length,
+    sigma_rel_max: sigma, elbo_rel_max: elbo, baseline_abs_max: base, cores: navigator.hardwareConcurrency, ua: navigator.userAgent };
+  log(JSON.stringify(window.__result, null, 1));
+}
+main().catch((e) => { window.__result = { error: String(e), stack: e.stack }; log(String(e)); });
+</script>
