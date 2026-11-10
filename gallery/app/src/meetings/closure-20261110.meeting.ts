@@ -100,18 +100,10 @@ export default {
     },
     {
       id: 'level',
-      title: '5. What is left for FTIR: mainly one level factor',
+      title: '5. What is left: the slope is the FTIR level times the MAC',
       text: '@level',
       columns: 2,
       figures: [
-        {
-          kind: 'table', id: 'c1110-ocec', table: 'ocec',
-          title: 'On held-out IMPROVE sites, FTIR reads thermal EC lower the lower the OC/EC',
-          subtitle: 'Median FTIR ÷ TOR EC at TOR ≥ 15 µg per filter, by TOR OC/EC (cross-validation by site, 7 Nov closeout). Addis FTIR OC/EC has a median of 1.34.',
-          columns: [{ key: 'tor_oc_over_ec', label: 'TOR OC/EC' }, { key: 'n', format: 'int' }, { key: 'sites', format: 'int' },
-            { key: 'Raw spectra', format: 'f2' }, { key: 'PTFE-anchored VIBES', format: 'f2' }, { key: 'Spline baseline', format: 'f2' },
-            { key: 'Anchored, OC/EC-balanced weights', format: 'f2' }],
-        },
         {
           kind: 'table', id: 'c1110-mass', table: 'mass',
           title: 'PM2.5 mass closure caps the level: a factor near 2 over-fills the mass',
@@ -124,7 +116,7 @@ export default {
           kind: 'table', id: 'c1110-anchors', table: 'anchors', title: 'Every anchor on the level, and what limits it',
           columns: [{ key: 'anchor', label: 'Anchor' }, { key: 'published ÷ true', format: 'f2' }, { key: 'value', format: 'f2' }, { key: 'note', label: 'Limit' }],
           noteAlways: true,
-          note: 'Working statement: Addis EC is the published value × 1.0 to 1.5, most likely about × 1.2. A range from soft anchors, not a validated correction.',
+          note: 'Working statement: Addis EC is the published value × 1.0 to 1.4, most likely about × 1.1. A range from soft anchors, not a validated correction.',
         },
       ],
     },
@@ -196,17 +188,41 @@ export default {
     },
     {
       id: 'source',
-      title: '8. Inside the calibration set, where thermal EC exists',
+      title: '8. The FTIR side, tested against thermal EC',
       text: '@source',
-      columns: 2,
       figures: [
+        {
+          kind: 'intervals', id: 'c1110-ftir-level', table: 'ftir_level', row: 'filters', series: 'grouping',
+          title: 'FTIR reads about a tenth low on the most Addis-like IMPROVE filters; the larger figure came from how the filters were chosen',
+          subtitle: 'Median FTIR EC ÷ TOR EC on held-out IMPROVE sites (raw spectra, 18 components, refitted with whole sites held out), for three ways of choosing the filters. Bars: 95 %, resampling sites.',
+          panels: [{ value: 'ftir_over_tor', label: 'FTIR EC ÷ TOR EC', reference: 1, lo: 'lo', hi: 'hi' }],
+          labelWidth: 330,
+          noteAlways: true,
+          note: 'Choosing filters by their own TOR EC or OC/EC selects on TOR’s measurement error and biases the ratio low. Choosing by site, or by the previous sample at the site, cannot. Even these groups have TOR OC/EC near 3, far above Addis.',
+        },
+        {
+          kind: 'histogram', id: 'c1110-ftir-ocec', table: 'ftir_values', value: 'ftir_ocec', series: 'population', bins: 40, medians: true,
+          xLabel: 'FTIR OC ÷ FTIR EC (both from IMPROVE-trained calibrations)',
+          title: 'Addis is outside IMPROVE’s composition range: 99 % of Addis filters are below IMPROVE’s 5th percentile',
+          subtitle: 'OC and EC predicted by calibrations fitted the same way on both networks, so the ratio means the same thing. IMPROVE values are held-out predictions, clipped to −1…15.',
+          noteAlways: true,
+          note: 'This is why IMPROVE cannot give the FTIR bias at Addis: no IMPROVE population has Addis’s composition.',
+        },
+        {
+          kind: 'table', id: 'c1110-ftir-candidates', table: 'ftir_candidates',
+          title: 'The saved calibrations differ little once the filters are chosen fairly',
+          subtitle: 'Median held-out FTIR ÷ TOR EC per calibration (7 Nov closeout predictions): the six urban sites, and the closeout’s heavy low-OC/EC subset.',
+          columns: [{ key: 'calibration', label: 'Calibration' }, { key: 'urban_n', label: 'urban n', format: 'int' }, { key: 'urban_sites', label: 'urban sites', format: 'f2' },
+            { key: 'urban_sum_ratio', label: 'urban, sum ÷ sum', format: 'f2' }, { key: 'selected_n', label: 'subset n', format: 'int' },
+            { key: 'selected_on_own_tor', label: 'chosen by own TOR', format: 'f2' }],
+          note: 'The per-filter EPO predictions are not in the closeout export, so EPO is not re-scored here; its 0.90 was on the selected subset.',
+        },
         {
           kind: 'intervals', id: 'c1110-source', table: 'source', row: 'filters', series: 'calibration',
           title: 'On held-out IMPROVE sites FTIR EC is proportional to thermal EC',
           subtitle: 'Exponent of the held-out FTIR prediction against TOR EC, instrument HIPS (cross-validation by site, 7 Nov closeout). 1 = proportional. Bars: 95 % bootstrap.',
           panels: [{ value: 'exponent', label: 'Exponent of FTIR EC against TOR EC', reference: 1, lo: 'lo', hi: 'hi' }],
           labelWidth: 170,
-          note: 'The calibration set, not Addis: it says FTIR does not rise faster than EC where EC is known.',
         },
         {
           kind: 'table', id: 'c1110-lots', table: 'lots', title: 'IMPROVE filters of lot 248 read thermal EC no lower than lot 251',

@@ -27,7 +27,10 @@ Stages (default: all)
 * ``linearity``  response exponent of each Addis measurement against each other one, with a third as the instrument
 * ``response``   the shape of the HIPS response at Addis, and FTIR against HIPS linearised with the IMPROVE ceiling
 * ``season``     FTIR / linearised HIPS and FTIR / PM2.5 by season and filter lot
-* ``level``      what bounds the absolute FTIR level: held-out IMPROVE filters by OC/EC, mass closure, MAC anchors
+* ``ftir``       the FTIR side against thermal EC: a raw-spectra EC and OC calibration refitted with whole sites held
+                 out, the level bias under groupings that do not select on a filter's own error, and how far
+                 Addis sits outside IMPROVE's composition (needs the Drive spectra; reuses the summary otherwise)
+* ``level``      what bounds the absolute FTIR level: the fair IMPROVE groupings, mass closure, MAC anchors
 * ``product``    per-filter table: FTIR EC with a level range, and HIPS before and after linearising
 * ``network``    every SPARTAN site: the exponent, and FTIR against HIPS before and after linearising, per filter
 * ``candidates`` every saved Addis calibration by season, against HIPS as measured and linearised
@@ -72,7 +75,9 @@ LABEL = {
     "fabs": "HIPS Fabs", PUBLISHED: "FTIR EC, SPARTAN published", ANCHORED: "FTIR EC, PTFE-anchored VIBES",
     "aeth_ir": "Aethalometer IR BCc (side check)", "pm25": "PM2.5 mass (gravimetric)", "potassium": "Potassium (XRF)",
 }
-STAGES = ("improve", "linearity", "response", "season", "level", "product", "network", "candidates", "source")
+STAGES = ("improve", "linearity", "response", "season", "ftir", "level", "product", "network", "candidates", "source")
+PLS_COMPONENTS = 18              # as the closeout's fixed-k comparison
+FTIR_MIN_EC_UG = 5.0             # FTIR OC/EC is only read where predicted EC is clear of zero
 NETWORK_MIN_FILTERS = 40
 # IMPROVE strata: the previous sample's TOR EC loading at the same site (µg per filter)
 IMPROVE_EDGES = (0, 0.5, 1, 1.5, 2, 3, 4, 6, 8, 11, 15, 20, 27, 36, 50, 70, 100, 1e4)
@@ -310,11 +315,140 @@ def stage_season(table, closeout, n_boot, tables, aethalometer):
     return {"season_lot": pd.DataFrame(rows)}
 
 
+def _ftir_refit() -> tuple[pd.DataFrame, pd.DataFrame] | None:
+    """Raw-spectra PLS for TOR EC and TOR OC (µg per filter), whole IMPROVE sites held out, and the same models on Addis.
+
+    Fitting OC beside EC gives an FTIR OC/EC that means the same thing on IMPROVE and on Addis. One row per
+    physical filter. TOR EC below 150 µg per filter, as in the closeout; no other exclusion is applied here.
+    """
+    from sklearn.cross_decomposition import PLSRegression
+    from sklearn.model_selection import GroupKFold
+
+    local = data_paths.ftir_local_db()
+    etad = data_paths.etad_dir()
+    spectra_path = local / "spectra_248_251.csv"
+    if not spectra_path.is_file() or not (etad / "ETAD_FTIR_spectra.csv").is_file():
+        return None
+    spectra = pd.read_csv(spectra_path, dtype={"Site": str, "SampleDate": str})
+    channels = [c for c in spectra.columns if c not in ("AnalysisId", "FilterId", "SampleDate", "Site")]
+    tor = pd.read_csv(local / "tables/results_tor.csv", encoding="utf-8-sig", low_memory=False,
+                      usecols=["Site", "SampleDate", "Parameter", "Value", "AverageFlowRate", "ElapsedTime"])
+    tor = tor[tor["Parameter"].isin(["EC", "OC"])].copy()
+    tor["Value"] = pd.to_numeric(tor["Value"], errors="coerce")
+    tor["day"] = pd.to_datetime(tor["SampleDate"], format="%m/%d/%Y %I:%M:%S %p", errors="coerce").dt.strftime("%Y-%m-%d")
+    wide = tor.pivot_table(index=["Site", "day"], columns="Parameter", values="Value", aggfunc="first")
+    flow = tor.groupby(["Site", "day"])[["AverageFlowRate", "ElapsedTime"]].first()
+    volume = flow["AverageFlowRate"] * flow["ElapsedTime"] / 1000.0
+    wide["ec_ug"], wide["oc_ug"] = wide["EC"] / 1000.0 * volume, wide["OC"] / 1000.0 * volume    # TOR values are ng/m3
+    spectra["day"] = pd.to_datetime(spectra["SampleDate"], format="%m/%d/%Y %I:%M:%S %p", errors="coerce").dt.strftime("%Y-%m-%d")
+    pool = spectra[["FilterId", "Site", "day"]].join(wide[["ec_ug", "oc_ug"]], on=["Site", "day"])
+    keep = pool["ec_ug"].between(0, 150, inclusive="neither") & (pool["oc_ug"] > 0) & np.isfinite(spectra[channels]).all(axis=1)
+    pool = pool[keep].drop_duplicates("FilterId")
+    x = spectra.loc[pool.index, channels].to_numpy(float)
+    pool = pool.reset_index(drop=True)
+
+    raw = pd.read_csv(etad / "ETAD_FTIR_spectra.csv")
+    etad_channels = [c for c in raw.columns if c not in ("SampleAnalysisId", "MediaId")]
+    if not np.allclose(np.array(etad_channels, float), np.array(channels, float)):
+        raise ValueError("Addis and IMPROVE spectra are on different wavenumber grids")
+    per_filter = raw.groupby("MediaId")[etad_channels].mean()                 # repeat scans of one filter averaged
+    meta = pd.read_csv(etad / "ETAD_metadata.csv").set_index("MediaId").loc[per_filter.index]
+    addis = pd.DataFrame({"filter_id": meta["ExternalFilterId"].str.replace(BASE_FILTER_ID_PATTERN, BASE_FILTER_ID_REPL, regex=True).to_numpy(),
+                          "type": meta["ExternalFilterType"].to_numpy(), "volume_m3": meta["SampleVolume_m3"].to_numpy()})
+    folds = list(GroupKFold(5).split(x, groups=pool["Site"]))
+    for target in ("ec_ug", "oc_ug"):
+        y = pool[target].to_numpy()
+        held_out = np.full(y.size, np.nan)
+        for train, test in folds:
+            held_out[test] = PLSRegression(PLS_COMPONENTS, scale=False).fit(x[train], y[train]).predict(x[test]).ravel()
+        pool[f"ftir_{target}"] = held_out
+        addis[f"ftir_{target}"] = PLSRegression(PLS_COMPONENTS, scale=False).fit(x, y).predict(per_filter.to_numpy(float)).ravel()
+    return pool, addis[addis["type"].eq("PM2.5")].drop(columns="type")
+
+
+def stage_ftir(table, closeout, n_boot, tables, aethalometer):
+    """The FTIR side, against thermal EC, and how much of it IMPROVE can say anything about.
+
+    The trap this stage exists for: grouping IMPROVE filters by their own TOR EC or TOR OC/EC selects on TOR's
+    measurement error, so "FTIR ÷ TOR on heavy, low-OC/EC filters" reads lower than the truth (and grouping by
+    FTIR's own OC/EC reads higher). Two groupings cannot do that: by site, and by the previous sample at the
+    site. All three are reported so the size of the artefact is visible.
+    """
+    names = ("ftir_level", "ftir_candidates", "ftir_composition", "ftir_ocec_values", "addis_refit")
+    refit = _ftir_refit()
+    if refit is None:
+        if not SUMMARY.is_file():
+            raise FileNotFoundError("IMPROVE spectra not found and no saved summary: set AETHMODULAR_FTIR_LOCAL_DB and AETHMODULAR_ETAD_DIR")
+        saved = json.loads(SUMMARY.read_text())
+        print("ftir: spectra not found; reusing the tables saved in the summary")
+        return {name: pd.DataFrame(saved[name]) for name in names}
+    pool, addis = refit
+    pool["date"] = pd.to_datetime(pool["day"])
+    pool = pool.sort_values(["Site", "date"]).reset_index(drop=True)
+    pool["ocec"], pool["ratio"] = pool["oc_ug"] / pool["ec_ug"], pool["ftir_ec_ug"] / pool["ec_ug"]
+    gap = (pool["date"] - pool.groupby("Site")["date"].shift(1)).dt.days
+    for column in ("ocec", "ec_ug"):
+        pool[f"previous_{column}"] = pool.groupby("Site")[column].shift(1).where(gap.between(1, 7))
+    pool["site_ocec"] = pool["Site"].map(pool.groupby("Site")["ocec"].median())
+    rng = np.random.default_rng(20261110)
+
+    def level(part, grouping, label, fair):
+        by_site = {site: frame["ratio"].to_numpy() for site, frame in part.groupby("Site")}
+        sites = np.array(list(by_site))
+        boot = [np.median(np.concatenate([by_site[s] for s in rng.choice(sites, sites.size)])) for _ in range(min(n_boot, 400))]
+        lo, hi = np.percentile(boot, [2.5, 97.5])
+        return {"grouping": grouping, "filters": label, "fair": fair, "n": len(part), "sites": int(sites.size),
+                "ftir_over_tor": float(part["ratio"].median()), "lo": lo, "hi": hi,
+                "sum_ratio": float(part["ftir_ec_ug"].sum() / part["ec_ug"].sum()),
+                "median_tor_ocec": float(part["ocec"].median()), "median_tor_ec_ug": float(part["ec_ug"].median())}
+
+    own, previous, site = "this filter's own TOR (selects on its error)", "the previous sample at the site", "the site"
+    heavy = pool["ec_ug"] >= 15
+    rows = [
+        level(pool[heavy & (pool["ocec"] < 2.5)], own, "TOR EC ≥ 15 µg and OC/EC < 2.5", False),
+        level(pool[heavy & pool["ocec"].between(2.5, 4)], own, "TOR EC ≥ 15 µg and OC/EC 2.5–4", False),
+        level(pool[(pool["previous_ec_ug"] >= 15) & (pool["previous_ocec"] < 2.5)], previous, "previous EC ≥ 15 µg and OC/EC < 2.5", True),
+        level(pool[(pool["previous_ec_ug"] >= 15) & pool["previous_ocec"].between(2.5, 4)], previous, "previous EC ≥ 15 µg and OC/EC 2.5–4", True),
+        level(pool[pool["Site"].isin(URBAN)], site, "six urban sites", True),
+        level(pool[pool["site_ocec"].between(2.5, 3.5)], site, "sites with median OC/EC 2.5–3.5", True),
+        level(pool[pool["site_ocec"].between(3.5, 5)], site, "sites with median OC/EC 3.5–5", True),
+        level(pool[pool["site_ocec"] > 5], site, "sites with median OC/EC above 5", True),
+    ]
+    improve = pd.DataFrame(closeout["improve_filters"])
+    urban, selected = improve[improve["site"].isin(URBAN)], improve.query("tor_ug >= 15 and ocec < 2.5")
+    labels = {"raw k18": "Raw spectra", "spline k18": "Spline baseline", "vibes k18": "Production VIBES", "vibes_deflate k18": "Deflated VIBES",
+              ANCHORED: "PTFE-anchored VIBES", "anchored_noCH k18": "Anchored, C–H masked", "anchored_balanced k12": "Anchored, OC/EC-balanced weights"}
+    candidates = pd.DataFrame([{"calibration": label, "urban_n": len(urban), "urban_sites": float(np.median(urban[key] / urban["tor_ug"])),
+                                "urban_sum_ratio": float(urban[key].sum() / urban["tor_ug"].sum()), "selected_n": len(selected),
+                                "selected_on_own_tor": float(np.median(selected[key] / selected["tor_ug"]))} for key, label in labels.items()])
+
+    clear = pool[pool["ftir_ec_ug"] >= FTIR_MIN_EC_UG]
+    improve_ocec = clear["ftir_oc_ug"] / clear["ftir_ec_ug"]
+    addis = addis.assign(ftir_ec_ugm3=addis["ftir_ec_ug"] / addis["volume_m3"], ftir_oc_ugm3=addis["ftir_oc_ug"] / addis["volume_m3"],
+                         ftir_ocec=addis["ftir_oc_ug"] / addis["ftir_ec_ug"])
+    addis = addis[addis["filter_id"].isin(table.index)].merge(table[[PUBLISHED, "season", "lot"]], left_on="filter_id", right_index=True)
+    fifth = float(improve_ocec.quantile(0.05))
+    both = addis.dropna(subset=[PUBLISHED])
+    composition = pd.DataFrame([{
+        "improve_filters": len(clear), "improve_p05": fifth, "improve_median": float(improve_ocec.median()),
+        "improve_urban_median": float(improve_ocec[clear["Site"].isin(URBAN)].median()),
+        "addis_filters": len(addis), "addis_median": float(addis["ftir_ocec"].median()), "addis_p95": float(addis["ftir_ocec"].quantile(0.95)),
+        "addis_share_below_improve_p05": float((addis["ftir_ocec"] < fifth).mean()),
+        "refit_vs_published_r": float(np.corrcoef(both["ftir_ec_ugm3"], both[PUBLISHED])[0, 1]),
+        "published_over_refit": float((both[PUBLISHED] / both["ftir_ec_ugm3"]).median())}])
+    values = pd.concat([pd.DataFrame({"population": "IMPROVE (FTIR EC ≥ 5 µg per filter)", "ftir_ocec": improve_ocec.clip(-1, 15).round(2)}),
+                        pd.DataFrame({"population": "Addis Ababa", "ftir_ocec": addis["ftir_ocec"].round(2)})], ignore_index=True)
+    return {"ftir_level": pd.DataFrame(rows), "ftir_candidates": candidates, "ftir_composition": composition, "ftir_ocec_values": values,
+            "addis_refit": addis[["filter_id", "season", "lot", "ftir_ec_ugm3", "ftir_oc_ugm3", "ftir_ocec"]].round(4)}
+
+
 def stage_level(table, closeout, n_boot, tables, aethalometer):
     """Evidence on the absolute FTIR level. None of it is thermal EC measured at Addis, and none uses an aethalometer."""
     improve = pd.DataFrame(closeout["improve_filters"])
     models = {"raw k18": "Raw spectra", ANCHORED: "PTFE-anchored VIBES", "spline k18": "Spline baseline",
               "anchored_balanced k12": "Anchored, OC/EC-balanced weights"}
+    # Kept only for comparison with the closeout: binning on a filter's own TOR OC/EC selects on TOR's error and reads
+    # low. The fair groupings are in stage ``ftir``; this table is not used for the level.
     improve["ocec_bin"] = pd.cut(improve["ocec"], [0, 1.5, 2.5, 4.0, 100.0], labels=["< 1.5", "1.5-2.5", "2.5-4", "> 4"])
     by_ocec = []
     for name, part in improve[improve["tor_ug"] >= 15].groupby("ocec_bin", observed=True):
@@ -334,14 +468,15 @@ def stage_level(table, closeout, n_boot, tables, aethalometer):
         closure.append({"ec_multiplier": multiplier, "n": len(ratio), "reconstructed_over_gravimetric": float(ratio.median()),
                         "ec_share_of_pm25": float((multiplier * table[PUBLISHED] / table["pm25"]).median())})
 
-    anchors = [
-        {"anchor": "Held-out IMPROVE sites, TOR ≥ 15 µg and OC/EC < 2.5 (FTIR ÷ TOR, raw spectra, 18 components)",
-         "published_over_true": np.nan, "value": float(np.median(improve.query("tor_ug >= 15 and ocec < 2.5").eval("`raw k18` / tor_ug"))),
-         "note": "calibration set, not Addis; Addis FTIR OC/EC is lower still"},
-        {"anchor": "Same, OC/EC < 1.8", "published_over_true": np.nan,
-         "value": float(np.median(improve.query("tor_ug >= 15 and ocec < 1.8").eval("`raw k18` / tor_ug"))),
-         "note": f"n {len(improve.query('tor_ug >= 15 and ocec < 1.8'))}"},
-    ]
+    # FTIR ÷ TOR on the IMPROVE groupings that do not select on a filter's own error (stage ``ftir``). The refit reads
+    # Addis lower than the published product by a fixed factor, so the same bias is carried to the published scale.
+    fair = tables["ftir_level"][tables["ftir_level"]["fair"].astype(bool)].set_index("filters")
+    over_refit = float(tables["ftir_composition"]["published_over_refit"].iloc[0])
+    anchors = []
+    for label in ("six urban sites", "previous EC ≥ 15 µg and OC/EC < 2.5"):
+        anchors.append({"anchor": f"Held-out IMPROVE, {label} (FTIR ÷ TOR, raw spectra, 18 components)",
+                        "published_over_true": float(fair.loc[label, "ftir_over_tor"]) * over_refit, "value": float(fair.loc[label, "ftir_over_tor"]),
+                        "note": f"published reads {over_refit:.2f}× this refit at Addis; TOR OC/EC {fair.loc[label, 'median_tor_ocec']:.1f} there, far above Addis"})
     # MAC closures: the MAC that Addis FTIR EC needs once HIPS is linearised, against a MAC measured with thermal EC.
     # Both sides use the same ceiling, so each row pairs them.
     ceiling = thermal_ceiling(tables)
@@ -366,7 +501,7 @@ def stage_level(table, closeout, n_boot, tables, aethalometer):
                                          "p05": addis_ocec.quantile(0.05), "p95": addis_ocec.quantile(0.95)}])}
 
 
-def stage_product(table, closeout, n_boot, tables, aethalometer, *, level=(1.0, 1.2, 1.5)):
+def stage_product(table, closeout, n_boot, tables, aethalometer, *, level=(1.0, 1.1, 1.4)):
     """Per-filter values to carry forward: FTIR EC unchanged with a level range, and HIPS before and after linearising.
 
     The level range is the span the stage ``level`` anchors allow, not a fitted correction: ``ftir_ec_low`` is
@@ -503,10 +638,11 @@ def stage_aethalometer(table, closeout, n_boot, tables, aethalometer):
 
 
 RUN = {"improve": stage_improve, "linearity": stage_linearity, "response": stage_response, "season": stage_season,
-       "level": stage_level, "product": stage_product, "network": stage_network, "candidates": stage_candidates, "source": stage_source}
+       "ftir": stage_ftir, "level": stage_level, "product": stage_product, "network": stage_network, "candidates": stage_candidates, "source": stage_source}
 SUMMARY_TABLES = ("improve_ceiling", "improve_strata", "linearity", "frisch_bounds", "hips_response_fits", "linearised_hips",
                   "raw_hips", "season_lot", "improve_ratio_by_ocec", "mass_closure", "level_anchors", "addis_ocec",
-                  "network_exponents", "candidates_by_season", "improve_ftir_linearity", "improve_lot")
+                  "network_exponents", "candidates_by_season", "improve_ftir_linearity", "improve_lot",
+                  "ftir_level", "ftir_candidates", "ftir_composition", "ftir_ocec_values", "addis_refit")
 
 
 def run(stages=STAGES, *, n_boot=2000, aethalometer=False, known_volume_only=False):
@@ -515,7 +651,8 @@ def run(stages=STAGES, *, n_boot=2000, aethalometer=False, known_volume_only=Fal
     if known_volume_only:
         table = table[table["volume_known"]]
     tables: dict[str, pd.DataFrame] = {}
-    for stage in dict.fromkeys(("improve", *stages)):
+    needed = ("improve", "ftir") if "level" in stages else ("improve",)
+    for stage in dict.fromkeys((*needed, *[s for s in STAGES if s in stages])):
         tables |= RUN[stage](table, closeout, n_boot, tables, aethalometer)
     if aethalometer:
         tables |= stage_aethalometer(table, closeout, n_boot, tables, aethalometer)

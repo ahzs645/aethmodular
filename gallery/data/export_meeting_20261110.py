@@ -37,7 +37,8 @@ COLORS = {**SEASON_COLORS, "all sites": "#22252A", "sites with median OC/EC < 4"
           "PM2.5 mass (gravimetric)": "#27AE60", "Potassium (XRF)": "#2C6E9E", "FTIR EC, SPARTAN published": "#B23327",
           "HIPS Fabs": "#5B5852", "measured (instrument: PM2.5 mass)": "#C49442", "measured (instrument: potassium)": "#2C6E9E",
           "predicted from IMPROVE thermal EC": "#8a8f98", "HIPS as measured": "#B23327", "HIPS linearised": "#2C6E9E",
-          "2005–2014": "#8F8C84", "2015–2025": "#7A4FA3", "optical pyrolysis > 0": "#27AE60",
+          "this filter's own TOR (selects on its error)": "#B23327", "the previous sample at the site": "#2C6E9E", "the site": "#22252A",
+          "IMPROVE (FTIR EC ≥ 5 µg per filter)": "#8a8f98", "Addis Ababa": "#C49442", "2005–2014": "#8F8C84", "2015–2025": "#7A4FA3", "optical pyrolysis > 0": "#27AE60",
           "Raw spectra": "#22252A", "PTFE-anchored VIBES": "#C49442", "Spline baseline": "#2C6E9E"}
 
 
@@ -128,19 +129,23 @@ against linearised HIPS ({s248.loc['Bega', 'published_over_linearised_hips']:.2f
 against PM2.5 mass ({s248.loc['Bega', 'published_over_pm25']:.2f} vs {s251.loc['Bega', 'published_over_pm25']:.2f}), so that offset is not a HIPS effect."""
 
 # ---------------------------------------------------------------- 4. the level
-ocec = tables["improve_ratio_by_ocec"]
 anchors = tables["level_anchors"].rename(columns={"published_over_true": "published ÷ true"})
 mass = tables["mass_closure"].rename(columns={"ec_multiplier": "EC multiplier", "reconstructed_over_gravimetric": "reconstructed ÷ gravimetric PM2.5",
                                               "ec_share_of_pm25": "EC share of PM2.5"})
-addis_ocec = tables["addis_ocec"].iloc[0]
 ratios = anchors["published ÷ true"].dropna()
-text_level = f"""**What is left for FTIR is mainly one level factor, bracketed at about × 1.0 to 1.5.** Linearised HIPS needs
-{row['central'].mac_for_agreement:.1f} m²/g to agree with the published EC. MACs measured with thermal EC are lower: {primary.unsaturated_fabs_over_ec:.1f} m²/g
-across IMPROVE on light filters, {ceilings.set_index('population').loc['six urban sites', 'unsaturated_fabs_over_ec']:.1f} at the urban sites, about 19 on the
-five Adama filters. Those put published ÷ true between {ratios.min():.2f} and {ratios.max():.2f}. On held-out IMPROVE sites the calibration also reads
-thermal EC lower the lower the OC/EC ({ocec.iloc[-1]['Raw spectra']:.2f} above OC/EC 4, {ocec.iloc[0]['Raw spectra']:.2f} below 1.5; Addis FTIR OC/EC is
-{addis_ocec['median']:.2f}). Mass closure caps it: published EC reconstructs {mass.iloc[0, 2] * 100:.0f} % of gravimetric PM2.5, × 1.5 reaches
-{mass.iloc[3, 2] * 100:.0f} % and × 1.9 gives {mass.iloc[5, 2] * 100:.0f} %. None of this is thermal EC measured at Addis."""
+flevel = tables["ftir_level"].set_index("filters")
+comp = tables["ftir_composition"].iloc[0]
+urban_level = flevel.loc["six urban sites"]
+urban_mac = float(ceilings.set_index("population").loc["six urban sites", "unsaturated_fabs_over_ec"])
+implied_mac = closure.MAC_VALUE * urban_level.ftir_over_tor * comp.published_over_refit / row["central"].slope_vs_linearised_hips
+text_level = f"""**The slope that is left has two parts, and they fit together.** After linearising, FTIR EC is {row['central'].slope_vs_linearised_hips:.2f} of
+HIPS BC at MAC 10. That is the FTIR level times 10 ÷ the real MAC. On the urban IMPROVE sites the raw-spectra calibration reads
+{urban_level.ftir_over_tor:.2f} of thermal EC, and the published product reads {comp.published_over_refit:.2f}× that calibration at Addis. If the same bias
+holds at Addis, the slope implies a MAC of about {implied_mac:.0f} m²/g; IMPROVE's urban sites give {urban_mac:.1f} on light filters and the five
+Adama filters about 19. **Working range: published EC × 1.0 to 1.4, most likely about × 1.1.** The anchors put published ÷ true between
+{ratios.min():.2f} and {ratios.max():.2f}. Mass closure caps it: published EC reconstructs {mass.iloc[0, 2] * 100:.0f} % of gravimetric PM2.5, × 1.5 reaches
+{mass.iloc[3, 2] * 100:.0f} % and × 1.9 gives {mass.iloc[5, 2] * 100:.0f} %. None of this is thermal EC measured at Addis, and section 8 shows why IMPROVE
+cannot settle it."""
 
 # ---------------------------------------------------------------- 5. the network, site by site
 net = tables["network_exponents"].copy()
@@ -193,17 +198,30 @@ calibrations the Addis intercept runs from {inter['HIPS as measured'].min():.1f}
 baseline keeps {spline_swing['HIPS linearised']:.2f}×, the full-spectrum calibrations about 1.3×. That is consistent with a composition-linked part in
 FTIR (more organic signal in Kiremt), but season and loading still cannot be separated at Addis."""
 
-# ---------------------------------------------------------------- 5c. inside the calibration set
+# ---------------------------------------------------------------- 5c. the FTIR side, against thermal EC
 source = tables["improve_ftir_linearity"]
 lots = tables["improve_lot"]
+ftir_level = tables["ftir_level"].copy()
+ftir_candidates = tables["ftir_candidates"]
+ftir_values = tables["ftir_ocec_values"]
 raw_low = source[(source.calibration.eq("Raw spectra")) & (source.filters.eq("TOR OC/EC < 2.5"))].iloc[0]
 raw_all = source[(source.calibration.eq("Raw spectra")) & (source.filters.eq("all held-out filters"))].iloc[0]
-text_source = f"""**On held-out IMPROVE sites FTIR EC is proportional to thermal EC, and filter lot does not matter there.** The exponent of the
-held-out FTIR prediction against TOR EC (instrument: HIPS) is {raw_all.exponent:.2f} ({raw_all.lo:.2f}–{raw_all.hi:.2f}) over all filters and
-{raw_low.exponent:.2f} ({raw_low.lo:.2f}–{raw_low.hi:.2f}) at TOR OC/EC below 2.5. So the calibration does not rise faster than EC where EC is known, and
-the small leftover at Addis points at the HIPS ceiling there rather than at FTIR. IMPROVE filters of lot 248 read thermal EC no lower than lot
-251, so the low Addis lot-248 readings are not a general property of that filter lot. This is the calibration set: it does not show how FTIR
-behaves on Addis aerosol."""
+own = flevel.loc["TOR EC ≥ 15 µg and OC/EC < 2.5"]
+prev = flevel.loc["previous EC ≥ 15 µg and OC/EC < 2.5"]
+cand_urban = ftir_candidates.set_index("calibration")
+text_source = f"""**FTIR does read thermal EC low on Addis-like IMPROVE filters, by about a tenth, not a quarter.** The closeout's heavy low-OC/EC
+subset (TOR EC ≥ 15 µg, TOR OC/EC < 2.5) gives FTIR ÷ TOR of {own.ftir_over_tor:.2f}. But that subset is chosen by each filter's own TOR
+values, so it collects filters whose TOR EC happened to read high, and the ratio comes out too low. Choosing by the previous sample at the
+site gives {prev.ftir_over_tor:.2f} ({prev.lo:.2f}–{prev.hi:.2f}); the six urban sites give {urban_level.ftir_over_tor:.2f} ({urban_level.lo:.2f}–{urban_level.hi:.2f}).
+The saved calibrations then differ little: {cand_urban.urban_sites.min():.2f} to {cand_urban.urban_sites.max():.2f} on the urban sites, against
+{cand_urban.selected_on_own_tor.min():.2f} to {cand_urban.selected_on_own_tor.max():.2f} on the selected subset. FTIR EC is proportional to thermal EC there
+(exponent {raw_all.exponent:.2f}, {raw_all.lo:.2f}–{raw_all.hi:.2f}), and lot 248 reads no lower than lot 251.
+
+**IMPROVE cannot say what the bias is at Addis.** With EC and OC calibrations fitted the same way on both, Addis FTIR OC/EC has a median of
+{comp.addis_median:.2f}; {comp.addis_share_below_improve_p05 * 100:.0f} % of Addis filters are below IMPROVE's 5th percentile ({comp.improve_p05:.2f}), and the
+urban IMPROVE median is {comp.improve_urban_median:.2f}. The bias grows as OC/EC falls across IMPROVE sites
+({flevel.loc['sites with median OC/EC 3.5–5', 'ftir_over_tor']:.2f} at site OC/EC 3.5–5, {flevel.loc['sites with median OC/EC 2.5–3.5', 'ftir_over_tor']:.2f} at 2.5–3.5),
+so it is probably larger at Addis, by an amount no IMPROVE filter can show."""
 
 # ---------------------------------------------------------------- 6. what changes, what is open
 spline_level = float((table["spline k18"] / table.hips_bc).median())
@@ -213,6 +231,7 @@ rereads = pd.DataFrame([
     ("Baseline correction is the largest single improvement", f"The spline calibration reads Addis at {spline_level:.2f} of HIPS / 10 against {published_level:.2f} for the published product. It lowers the whole response, which narrows the gap to a compressed HIPS. Judge baselines on IMPROVE thermal EC, not on the Addis HIPS intercept."),
     ("The seasons fail differently", f"Within lot 251, FTIR ÷ HIPS swings {s251.loc['Bega', 'published_over_hips']:.2f} to {s251.loc['Kiremt', 'published_over_hips']:.2f} as measured and {s251.loc['Bega', 'published_over_linearised_hips']:.2f} to {s251.loc['Kiremt', 'published_over_linearised_hips']:.2f} once HIPS is linearised. A smaller season or loading effect remains."),
     ("A MAC of 28 to 32 would be needed in Dry and Belg", f"Those are slopes against compressed HIPS. Against linearised HIPS it is about {row['central'].mac_for_agreement:.0f} m²/g."),
+    ("FTIR reads a quarter low on heavy, low-OC/EC IMPROVE filters (closeout heavy subset, 0.72 to 0.78)", f"That subset selects on TOR's own error. Grouped by site or by the previous sample, FTIR ÷ TOR is {urban_level.ftir_over_tor:.2f} ({urban_level.lo:.2f}–{urban_level.hi:.2f}), and the calibrations differ by {cand_urban.urban_sites.min():.2f} to {cand_urban.urban_sites.max():.2f}, not {cand_urban.selected_on_own_tor.min():.2f} to {cand_urban.selected_on_own_tor.max():.2f}."),
     ("Organic deficit: partial correlation with HIPS held fixed", "Holding a compressed variable fixed leaves real EC variation in the residual. Redo with linearised HIPS held fixed."),
 ], columns=["earlier reading", "with HIPS linearised"])
 pathways = pd.DataFrame([
@@ -220,8 +239,9 @@ pathways = pd.DataFrame([
     ("Lot 248 reads 15 to 20 % low at Addis; IMPROVE shows no lot effect, so it is the SPARTAN lot-248 blanks or the 2022–23 aerosol", "narrowed here", "2"),
     ("Why the HIPS ceiling differs between 2005–2014 and 2015–2025 in IMPROVE (instrument history), and which applies to SPARTAN", "new, data in hand", "3"),
     ("Site-specific HIPS response: why South Africa, Jaipur and Mexico City stay near-proportional and Chile does not", "new, data in hand", "3"),
-    ("A composition-aware level factor learned on held-out IMPROVE sites", "open, data in hand", "4"),
-    ("Spectral augmentation: co-added IMPROVE spectra at Addis-like loading and OC/EC", "never run", "5"),
+    ("A composition-aware level factor learned on IMPROVE", "tested here: not possible, Addis is outside IMPROVE's composition range", ""),
+    ("Spectral augmentation: co-added IMPROVE spectra at Addis-like loading and OC/EC, to reach the composition IMPROVE lacks", "never run; now the main FTIR-side step", "4"),
+    ("Re-score every calibration, EPO included, with site or previous-sample grouping instead of the heavy low-OC/EC subset", "open, needs the saved prediction archives", "5"),
     ("FTIR proportional to thermal EC on held-out IMPROVE sites (exponent 0.94 to 1.04)", "done here", ""),
     ("The exponent and the linearised fit at every SPARTAN site, with potassium as a second instrument", "done here", ""),
     ("PLS on the masked regions; raw model without 3600–4000 and below 1425 cm⁻¹", "open, lower priority", "7"),
@@ -230,9 +250,9 @@ pathways = pd.DataFrame([
 ], columns=["pathway", "status", "rank"])
 text_next = """**Proposed position.** Carry the published FTIR EC forward with no intercept correction and a stated level range. Stop using
 Fabs / 10 as the Addis yardstick without linearising. A modest season or loading effect and a lot-248 offset remain open. The proposed TOR
-pass band (0.8 to 1.25) sits where the existing evidence predicts the answer (about 0.65 to 1.0), so ten filters would most likely read
-"inconclusive": decide before they arrive whether the deliverable is pass or fail, or an estimated level factor, and ask for HIPS on the
-same filters with a few loaded to Addis optical depth. Optical agreement is still not thermal EC."""
+pass band (0.8 to 1.25) now contains the most likely answer (about 0.9 to 1.0), with the lower edge still inside the plausible range
+(0.7 to 1.15). Ten pairs fix a mean bias only to about ±27 % (3 Nov simulation), which is wider than the question that is left, so decide before they
+arrive whether the deliverable is pass or fail, or an estimated level factor, and ask for HIPS on the same filters with a few loaded to Addis optical depth. Optical agreement is still not thermal EC."""
 
 intro = f"""Which measurement carries the Addis offset: an answer to the question the 9 Nov status page left open, from data already in
 hand ({len(table)} Addis filters of the 7 Nov closeout, and the IMPROVE record of thermal EC and HIPS). **The aethalometer is not used**: the
@@ -250,7 +270,7 @@ write_bundle(
             "ceilings": ceilings, "exponents": exponents, "against_hips": against_hips, "fits": fits,
             "season": season_rows[["group", "season", "lot", "n", "median_optical_depth", "published_over_hips",
                                    "published_over_linearised_hips", "published_over_pm25"]],
-            "ocec": ocec, "anchors": anchors, "mass": mass, "network": network, "site_fits": site_fits, "site_points": site_points,
+            "anchors": anchors, "ftir_level": ftir_level, "ftir_candidates": ftir_candidates, "ftir_values": ftir_values, "mass": mass, "network": network, "site_fits": site_fits, "site_points": site_points,
             "site_table": site_table, "cand_season": by_season, "cand_overall": overall, "source": source, "lots": lots,
             "rereads": rereads, "pathways": pathways},
 )

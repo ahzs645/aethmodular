@@ -127,22 +127,21 @@ a near-proportional response into a steep slope and a large negative intercept.
 1. **No intercept correction.** Once HIPS is linearised there is none to correct.
 2. **No seasonal correction yet.** The effect that remains is 18 %, tangled with loading, and not attributable.
    Flag the lot-248 filters.
-3. **A level range, stated as uncertainty and not applied silently.** Linearised HIPS needs 18.7 m²/g to agree
-   with the published EC. The evidence on published ÷ true:
+3. **A level range, stated as uncertainty and not applied silently.** After linearising, FTIR EC is 0.55 of HIPS BC
+   at MAC 10. That slope is the FTIR level times 10 ÷ the real MAC, so the two sides have to be read together.
 
 | Anchor | Published ÷ true | Limits |
 |---|---|---|
+| Held-out IMPROVE, six urban sites: raw-spectra FTIR ÷ TOR 0.91 [0.88, 0.94]; the published product reads 1.11× that calibration at Addis | 1.01 | Assumes the bias seen at TOR OC/EC near 3 holds at Addis, where OC/EC is near 1. It probably grows (section 5). |
 | Linearised HIPS at the IMPROVE MAC on light filters: 13.1 (all sites), 15.1 (low OC/EC sites), 16.4 (urban) m²/g | 0.70, 0.81, 0.88 | Assumes Addis soot absorbs like IMPROVE's per unit of thermal EC. |
 | Linearised HIPS at the Adama MAC (Fabs ÷ TOR 18.9 m²/g after the same linearisation) | 1.01 (0.81 to 1.15) | Five Adama filters, another site and sampler. |
-| Held-out IMPROVE sites, TOR ≥ 15 µg and TOR OC/EC < 2.5 (raw spectra, 18 components; FTIR ÷ TOR) | 0.75 (0.65 at OC/EC < 1.8, n 25) | Calibration set, not Addis. Addis FTIR OC/EC is lower than nearly all of it. |
 | PM2.5 mass closure | ≥ 0.67 | Published EC reconstructs 89 % of gravimetric mass; × 1.5 reaches 100 %, × 1.9 gives 108 %. FTIR OM is below FTIR OC at Addis (median OM/OC 0.91), so OM is probably low and the real room for EC is smaller. |
 
-The source-domain bias is monotone in composition. On held-out IMPROVE sites at TOR ≥ 15 µg per filter, median
-FTIR ÷ TOR is 0.99 above OC/EC 4, 0.83 at 2.5 to 4, 0.76 at 1.5 to 2.5 and 0.64 below 1.5 (n 10). Addis sits
-below 1.5.
+The pieces are consistent: an FTIR level near 0.9 to 1.0 with a MAC of 16 to 19 m²/g gives the 0.55 slope.
 
-**Working statement: Addis FTIR EC is the published value × 1.0 to 1.5, most likely about × 1.2.** The anchors
-are soft and share assumptions, but they agree in direction and mass closure rules out a factor near 2.
+**Working statement: Addis FTIR EC is the published value × 1.0 to 1.4, most likely about × 1.1.** An earlier
+version of this note said × 1.0 to 1.5, most likely × 1.2, on the strength of "FTIR ÷ TOR is 0.65 to 0.75 on heavy,
+low-OC/EC IMPROVE filters". That figure selected on TOR's own error and is withdrawn (section 5).
 
 ### HIPS optical BC
 
@@ -157,10 +156,11 @@ Fabs linearised with the IMPROVE ceiling and both ends of its interval. Two caut
 
 ### What the incoming Addis TOR filters can and cannot settle
 
-- The proposed pass band is 0.8 to 1.25 for median FTIR ÷ TOR ([open-items.md](open-items.md)). The existing
-  evidence predicts about 0.65 to 1.0, **straddling the lower edge**, so ten filters will most likely land on
-  "inconclusive". Decide before they arrive whether the deliverable is pass or fail, or an estimated level
-  factor with an interval.
+- The proposed pass band is 0.8 to 1.25 for median FTIR ÷ TOR ([open-items.md](open-items.md)). The most likely
+  answer (about 0.9 to 1.0) is now inside it, with the lower edge still inside the plausible range (0.7 to
+  1.15). Ten pairs fix a mean bias only to about ±27 % (3 Nov simulation), which is wider than the question that
+  is left. Decide before they arrive whether the deliverable is pass or fail, or an estimated level factor with
+  an interval.
 - Ask for **HIPS on the same TOR filters, with some loaded to Addis SPARTAN optical depth (0.5 to 1.5)**. The
   city filters come from a lower-flow sampler and will sit low on the curve, where HIPS is still nearly linear.
   A few heavy pairs would test the IMPROVE ceiling at Addis, separate the two readings of the leftover in
@@ -186,6 +186,40 @@ measured (0.41 to 0.46) and leaves a positive intercept. So the ceiling decides 
 after linearising is slightly negative, zero or positive. It does not decide whether the −6 goes away: every
 row removes it. Why IMPROVE's HIPS response changed between the two periods (instrument history, filter
 supply) is now the most useful thing to find out, and it is a question for the HIPS operators at Davis.
+
+### The FTIR side, tested against thermal EC
+
+A raw-spectra calibration (18 components) was refitted for TOR EC and TOR OC with whole IMPROVE sites held out:
+12,953 filters, 158 sites. It reproduces the closeout (FTIR ÷ TOR 0.78 on the heavy low-OC/EC subset) and the
+published Addis values (r 0.99; the published product reads 1.11× the refit).
+
+**The level bias is real and about a tenth, not a quarter.** The closeout's "heavy, low-OC/EC" subset is chosen
+by each filter's own TOR EC and TOR OC/EC. That collects filters whose TOR EC happened to read high, so
+FTIR ÷ TOR on it comes out too low. Two groupings cannot do that:
+
+| How the IMPROVE filters are chosen | n | Sites | FTIR ÷ TOR | TOR OC/EC there |
+|---|---:|---:|---:|---:|
+| By the filter's own TOR: EC ≥ 15 µg, OC/EC < 2.5 | 175 | 30 | 0.78 [0.72, 0.84] | 2.2 |
+| By the previous sample at the site: EC ≥ 15 µg, OC/EC < 2.5 | 155 | 30 | 0.91 [0.87, 0.94] | 2.9 |
+| By site: six urban sites | 645 | 6 | 0.91 [0.88, 0.94] | 3.2 |
+| By site: median OC/EC 2.5–3.5 | 763 | 10 | 0.93 [0.89, 1.02] | 3.1 |
+| By site: median OC/EC 3.5–5 | 3,379 | 35 | 0.96 [0.93, 1.00] | 4.3 |
+| By site: median OC/EC above 5 | 8,799 | 112 | 1.16 [1.12, 1.20] | 6.6 |
+
+The same artefact runs the other way if filters are chosen by FTIR's own OC/EC (FTIR ÷ TOR 1.54 below 1.5), so
+a level factor cannot be learned by conditioning on either instrument's own ratio.
+
+**The saved calibrations differ little once the filters are chosen fairly.** On the urban sites: raw spectra
+0.88, spline baseline 0.92, production VIBES 0.87, PTFE-anchored VIBES 0.88, OC/EC-balanced weights 0.90,
+deflated VIBES 0.82. On the selected subset the same calibrations ran from 0.65 to 0.85, which made the
+composition-aware variants look like a larger fix than they are. The per-filter EPO predictions are not in the
+closeout export, so EPO's 0.90 is not re-scored here; it was measured on the selected subset.
+
+**IMPROVE cannot say what the bias is at Addis.** With OC and EC calibrations fitted the same way on both
+networks, Addis FTIR OC/EC has a median of 0.98 (Bega 0.97, Belg 0.73, Kiremt 1.15). IMPROVE's 5th percentile
+is 1.94 and its urban median 3.65: 99 % of Addis filters are below IMPROVE's 5th percentile. The bias grows as
+OC/EC falls across IMPROVE sites (1.16, 0.96, 0.93, 0.91), so it is probably larger at Addis, by an amount no
+IMPROVE filter can show. This is the honest limit of the FTIR side with existing data.
 
 ### On held-out IMPROVE sites FTIR EC is proportional to thermal EC
 
@@ -269,11 +303,13 @@ Ranked by how likely each is to change what is carried forward.
    are the candidates; the spartan_reference chemistry is in hand.
 3a. **Lot 248 at Addis.** IMPROVE shows no lot effect (section 5), so it is the SPARTAN lot-248 blanks or the
    2022–23 aerosol. The lot's blanks can referee.
-4. **A composition-aware level factor from the calibration set.** Predict EC and OC together, learn the
-   FTIR ÷ TOR bias as a function of predicted OC/EC on held-out sites (nested by site), and read it at Addis
-   with an interval. This would replace the × 1.0 to 1.5 range with a source-domain estimate.
-5. **Spectral augmentation, never run.** Only 10 IMPROVE filters at ≥ 15 µg have OC/EC below 1.5. Co-adding
-   blank-corrected IMPROVE spectra can build Addis-like loadings and compositions with known TOR sums.
+4. **Spectral augmentation, never run, and now the main FTIR-side step.** A level factor cannot be learned from
+   IMPROVE as it is (section 5: Addis is outside its composition range, and conditioning on either
+   instrument's OC/EC selects on error). Co-adding blank-corrected IMPROVE spectra with known TOR sums can
+   build filters at Addis-like loading and OC/EC, which is the only way to put that composition under a
+   thermal reference before Addis TOR arrives.
+5. **Re-score every calibration, EPO included, with site or previous-sample grouping.** The closeout's
+   heavy-subset ratio selects on TOR's own error. This needs the saved prediction archives, not new fitting.
 6. **Done here (section 5):** FTIR against thermal EC on held-out IMPROVE sites; the exponent and the
    linearised fit at every SPARTAN site with potassium as a second instrument; every saved calibration by season.
 7. **PLS on the masked regions** (Ann, 10 Sep) and the raw model without 3600–4000 and below 1425 cm⁻¹ (28 Oct
@@ -298,8 +334,8 @@ functional groups after October 2024.
 - **The result is more publishable than "the calibration does not transfer".** With existing data and no
   aethalometer: (a) IMPROVE's thermal EC shows HIPS compressing at the optical depths Addis filters reach;
   (b) that curve predicts most of the Addis disagreement and the pattern across SPARTAN; (c) linearising HIPS
-  takes the −6 intercept to about zero; (d) the main FTIR question left is one level factor, bracketed at 1.0
-  to 1.5.
+  takes the −6 intercept to about zero; (d) the FTIR side is a level question: about a tenth low on the most
+  Addis-like IMPROVE filters, probably more at Addis, bracketed at 1.0 to 1.4 overall.
 - **It is a change of headline, so it should go to Ann before it goes into a draft.** It revises the poster's
   framing (baselining as the main win, seasonal calibrations as the next step).
 - **It does not reopen the analysis freeze.** Items 1 and 2 above are re-reads of saved results.
@@ -311,7 +347,8 @@ functional groups after October 2024.
 - That FTIR EC is exactly proportional to EC at Addis, or free of a seasonal effect. Section 2.
 - That linearised HIPS is the true Addis EC. It is optical; the MAC at Addis is not known.
 - That the saturation mechanism is established. The curve is empirical, from another network.
-- That × 1.2 is a validated correction. It is the centre of a range from soft anchors.
+- That × 1.1 is a validated correction. It is the centre of a range from soft anchors.
+- That FTIR reads a quarter low on Addis-like IMPROVE filters. That figure selected on TOR's own error.
 - That the 3–4 Nov volume test was wrong. It did not find the loading effect where volume is independent of
   concentration; that tension is unresolved and belongs in the paper.
 - That the Chilean or other network exponents are findings. They are a first pass.

@@ -16,11 +16,11 @@ Without using the aethalometer (the Addis MA350 is not a reference): IMPROVE's t
 filters darken (ceiling 2.26 [1.82, 2.70] in optical depth, from 347,936 samples), and Addis filters sit on that bend.
 The curve predicts most of the Addis disagreement between HIPS and FTIR EC, and linearising HIPS with it moves the
 published fit from 2.31x − 6.17 to 0.55x + 0.01. What is left for FTIR is mainly one level factor, bracketed at about
-× 1.0 to 1.5, with a smaller season or loading effect and a lot-248 offset still open. Decisions for Ann and the
+× 1.0 to 1.4 (FTIR reads about a tenth low on urban IMPROVE sites once filters are not chosen by their own TOR), with a smaller season or loading effect and a lot-248 offset still open. Decisions for Ann and the
 committee: whether this becomes the paper's headline; whether the 28 Oct season, cohort and MAC results are re-read
 against linearised HIPS before the draft; and whether Fabs / 10 stays the Addis yardstick anywhere in the gallery. It
-also bears on the TOR rule below: the existing evidence predicts FTIR ÷ TOR of about 0.65 to 1.0, straddling the proposed
-band's lower edge, and the request should include HIPS on the same filters with a few loaded to Addis optical depth.
+also bears on the TOR rule below: the existing evidence predicts FTIR ÷ TOR of about 0.9 to 1.0 (range 0.7 to 1.15), mostly inside the proposed
+band, and the request should include HIPS on the same filters with a few loaded to Addis optical depth.
 The ceiling is the main uncertainty: IMPROVE gives 2.53 for 2005–2014 and 1.71 for 2015–2025, which leaves the Addis
 intercept slightly negative or clearly positive after linearising. Ask the Davis HIPS operators what changed between
 those periods. One network-wide ceiling also over-corrects several SPARTAN sites, so it is evidence about Addis, not a

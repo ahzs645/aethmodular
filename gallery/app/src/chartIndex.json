@@ -765,14 +765,6 @@
    "file": "meetings/closure-20261110.meeting.ts"
   },
   {
-   "title": "On held-out IMPROVE sites, FTIR reads thermal EC lower the lower the OC/EC",
-   "id": "c1110-ocec",
-   "component": "table",
-   "tab": "meeting",
-   "meeting": "closure-20261110",
-   "file": "meetings/closure-20261110.meeting.ts"
-  },
-  {
    "title": "PM2.5 mass closure caps the level: a factor near 2 over-fills the mass",
    "id": "c1110-mass",
    "component": "table",
@@ -831,6 +823,30 @@
   {
    "title": "All seasons together",
    "id": "c1110-cand-overall",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "FTIR reads about a tenth low on the most Addis-like IMPROVE filters; the larger figure came from how the filters were chosen",
+   "id": "c1110-ftir-level",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "Addis is outside IMPROVE’s composition range: 99 % of Addis filters are below IMPROVE’s 5th percentile",
+   "id": "c1110-ftir-ocec",
+   "component": "histogram",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "The saved calibrations differ little once the filters are chosen fairly",
+   "id": "c1110-ftir-candidates",
    "component": "table",
    "tab": "meeting",
    "meeting": "closure-20261110",
