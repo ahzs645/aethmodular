@@ -132,6 +132,8 @@ def from_bundle(bundle: Path, models, continuum: Path | None, n_boot):
         if len(x) != len(meta):
             raise ValueError(f"{path.name} has {len(x)} rows, improve_meta.csv has {len(meta)}: they must be aligned")
         keep = np.isfinite(ec) & (ec > 0) & (ec < 150) & np.isfinite(oc) & np.isfinite(np.asarray(x[:, 0], float))
+        if "raw_qc_ok" in meta.columns:                      # the closeout's one recorded raw-spectrum QC exclusion
+            keep &= meta["raw_qc_ok"].astype(bool).to_numpy()
         print(f"bundle {model}: {int(keep.sum())} of {len(meta)} filters, {x.shape[1]} channels")
         table, sweep = evaluate(PREP_NAMES.get(model, model), np.asarray(x[keep], float), ec[keep], oc[keep], sites[keep], dates[keep], n_boot=n_boot)
         tables.append(table)
