@@ -315,15 +315,12 @@ def stage_season(table, closeout, n_boot, tables, aethalometer):
     return {"season_lot": pd.DataFrame(rows)}
 
 
-def _ftir_refit() -> tuple[pd.DataFrame, pd.DataFrame, dict] | None:
-    """Raw-spectra PLS for TOR EC and TOR OC (µg per filter), whole IMPROVE sites held out, and the same models on Addis.
+def improve_pool() -> dict | None:
+    """IMPROVE spectra matched to TOR EC and OC (µg per filter), and the Addis spectra, on one wavenumber grid.
 
-    Fitting OC beside EC gives an FTIR OC/EC that means the same thing on IMPROVE and on Addis. One row per
-    physical filter. TOR EC below 150 µg per filter, as in the closeout; no other exclusion is applied here.
+    One row per physical filter; TOR EC below 150 µg per filter, as in the closeout. ``None`` where the Drive
+    files are absent. Shared by the ``ftir`` stage here and by run_calibration_gain_20261110.py.
     """
-    from sklearn.cross_decomposition import PLSRegression
-    from sklearn.model_selection import GroupKFold
-
     local = data_paths.ftir_local_db()
     etad = data_paths.etad_dir()
     spectra_path = local / "spectra_248_251.csv"
@@ -355,6 +352,24 @@ def _ftir_refit() -> tuple[pd.DataFrame, pd.DataFrame, dict] | None:
     meta = pd.read_csv(etad / "ETAD_metadata.csv").set_index("MediaId").loc[per_filter.index]
     addis = pd.DataFrame({"filter_id": meta["ExternalFilterId"].str.replace(BASE_FILTER_ID_PATTERN, BASE_FILTER_ID_REPL, regex=True).to_numpy(),
                           "type": meta["ExternalFilterType"].to_numpy(), "volume_m3": meta["SampleVolume_m3"].to_numpy()})
+    return {"local": local, "etad": etad, "spectra": spectra, "channels": channels, "volume": volume, "pool": pool, "x": x, "raw": raw,
+            "etad_channels": etad_channels, "per_filter": per_filter, "meta": meta, "addis": addis}
+
+
+def _ftir_refit() -> tuple[pd.DataFrame, pd.DataFrame, dict] | None:
+    """Raw-spectra PLS for TOR EC and TOR OC (µg per filter), whole IMPROVE sites held out, and the same models on Addis.
+
+    Fitting OC beside EC gives an FTIR OC/EC that means the same thing on IMPROVE and on Addis. One row per
+    physical filter. TOR EC below 150 µg per filter, as in the closeout; no other exclusion is applied here.
+    """
+    from sklearn.cross_decomposition import PLSRegression
+    from sklearn.model_selection import GroupKFold
+
+    loaded = improve_pool()
+    if loaded is None:
+        return None
+    local, etad, spectra, channels, volume, pool, x, raw, etad_channels, per_filter, meta, addis = (loaded[k] for k in (
+        "local", "etad", "spectra", "channels", "volume", "pool", "x", "raw", "etad_channels", "per_filter", "meta", "addis"))
     folds = list(GroupKFold(5).split(x, groups=pool["Site"]))
     for target in ("ec_ug", "oc_ug"):
         y = pool[target].to_numpy()
