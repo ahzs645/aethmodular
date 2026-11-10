@@ -287,12 +287,26 @@ small free improvement at the low end and leaves the gain at 0.81. So the gain i
 can be tuned away: a linear calibration on these spectra under-responds to EC, and a correction after the fact
 is the available fix.
 
-**The baseline does not change it much.** On the 1,821 heavier filters the closeout exported (which lowers every
-gain, so compare rows with each other): raw spectra 0.63, spline baseline 0.66, production VIBES 0.63,
-PTFE-anchored VIBES 0.64, deflated VIBES 0.46, OC/EC-balanced weights 0.78. Intervals are wide (about ±0.2).
-Neither the spline nor VIBES baselining looks like a fix for the gain. The full test on the baseline-corrected
-spectra needs the saved bundle: `run_calibration_gain_20261110.py --bundle <dir> --models raw spline vibes
-vibes_anchorhp` (PLS only; it runs on Colab or a laptop).
+**No baseline changes the gain.** Run on the decision bundle and the closeout's continuum arrays (12,386
+filters, 157 sites, the same folds for each; `run_calibration_gain_20261110.py --bundle`):
+
+| Baseline | Gain | Urban, as trained | Urban, recalibrated | Light error (µg) | Median error (µg) | RMSE (µg) |
+|---|---:|---:|---:|---:|---:|---:|
+| Raw spectra | 0.77 [0.69, 0.85] | 0.90 | 0.97 | 1.00 | 1.14 | 3.73 |
+| Spline baseline | 0.75 [0.58, 0.95] | 0.94 | 1.01 | 0.91 | 1.08 | 4.46 |
+| Production VIBES | 0.73 [0.64, 0.82] | 0.88 | 0.96 | 0.93 | 1.14 | 4.18 |
+| PTFE-anchored VIBES | 0.76 [0.68, 0.86] | 0.88 | 0.95 | 0.93 | 1.08 | 3.78 |
+| Deflated VIBES | 0.60 [0.51, 0.71] | 0.83 | 0.94 | 1.14 | 1.34 | 4.07 |
+
+Raw, spline, production VIBES and PTFE-anchored VIBES respond to thermal EC alike (0.73 to 0.77) and the same
+recalibration works on each. Deflated VIBES, which removes smooth directions, lowers the gain. The baselines
+differ a little in median error and not in what limits Addis. The spline baseline looked like the largest single
+improvement only because HIPS was the yardstick: its Addis intercept against HIPS / 10 is −1.4 against −4.7 for
+raw spectra, and against linearised HIPS the two are +0.26 and +0.18.
+
+**Components and cross-validation.** On raw spectra the whole-site RMSE is lowest at 17 components (3.73 µg at 18)
+and the interleaved one keeps falling to 22 (3.57 at 18). On this broad set the two schemes differ by a few per
+cent. The step-by-step account of every choice is the gallery page "Nov 10 · the calibration, step by step".
 
 **At Addis** the same recalibration raises the raw calibration by × 1.25 at the median filter, which is × 1.13 on
 the published product. It is fitted and checked on IMPROVE: it corrects the loading part of the bias and says

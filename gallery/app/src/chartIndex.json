@@ -1149,6 +1149,142 @@
    "file": "meetings/meeting-20261028.meeting.ts"
   },
   {
+   "title": "Six steps: what was done before, what is done now, and why",
+   "id": "p1110-choices",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "process-20261110",
+   "file": "meetings/process-20261110.meeting.ts"
+  },
+  {
+   "title": "What the calibration is built on",
+   "id": "p1110-population",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "process-20261110",
+   "file": "meetings/process-20261110.meeting.ts"
+  },
+  {
+   "title": "Where the calibration filters sit: mostly light and organic-rich, with six urban sites at the other end",
+   "id": "p1110-sites",
+   "component": "scatter",
+   "tab": "meeting",
+   "meeting": "process-20261110",
+   "file": "meetings/process-20261110.meeting.ts"
+  },
+  {
+   "title": "Addis is outside the calibration set’s composition: 99 % of Addis filters are below IMPROVE’s 5th percentile",
+   "id": "p1110-composition",
+   "component": "histogram",
+   "tab": "meeting",
+   "meeting": "process-20261110",
+   "file": "meetings/process-20261110.meeting.ts"
+  },
+  {
+   "title": "Whole sites held out against interleaved folds: the error by number of components",
+   "id": "p1110-cv",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "process-20261110",
+   "file": "meetings/process-20261110.meeting.ts"
+  },
+  {
+   "title": "The response to EC rises with the component count and levels off below 1",
+   "id": "p1110-gain-k",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "process-20261110",
+   "file": "meetings/process-20261110.meeting.ts"
+  },
+  {
+   "title": "The same filters, opposite answers: it depends on whose OC/EC you bin on",
+   "id": "p1110-selection",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "process-20261110",
+   "file": "meetings/process-20261110.meeting.ts"
+  },
+  {
+   "title": "Chosen fairly, FTIR reads about a tenth low on the most Addis-like IMPROVE filters, not a quarter",
+   "id": "p1110-level",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "process-20261110",
+   "file": "meetings/process-20261110.meeting.ts"
+  },
+  {
+   "title": "Scored the old way the saved calibrations spread from 0.65 to 0.85; scored fairly, 0.82 to 0.92",
+   "id": "p1110-candidates",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "process-20261110",
+   "file": "meetings/process-20261110.meeting.ts"
+  },
+  {
+   "title": "Training variants do not move the response to EC; a recalibration fitted on other sites does",
+   "id": "p1110-variants",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "process-20261110",
+   "file": "meetings/process-20261110.meeting.ts"
+  },
+  {
+   "title": "Every variant, with the blank reading and the cost",
+   "id": "p1110-variants-table",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "process-20261110",
+   "file": "meetings/process-20261110.meeting.ts"
+  },
+  {
+   "title": "Addis, filter by filter: published, as trained, and recalibrated, against HIPS as measured and linearised",
+   "id": "p1110-addis",
+   "component": "crossplot",
+   "tab": "meeting",
+   "meeting": "process-20261110",
+   "file": "meetings/process-20261110.meeting.ts"
+  },
+  {
+   "title": "The fits",
+   "id": "p1110-addis-fits",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "process-20261110",
+   "file": "meetings/process-20261110.meeting.ts"
+  },
+  {
+   "title": "No baseline changes the calibration’s response to thermal EC; the same recalibration works on each",
+   "id": "p1110-baselines",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "process-20261110",
+   "file": "meetings/process-20261110.meeting.ts"
+  },
+  {
+   "title": "Every baseline follows the same curve with components",
+   "id": "p1110-baseline-k",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "process-20261110",
+   "file": "meetings/process-20261110.meeting.ts"
+  },
+  {
+   "title": "At Addis the baselines only looked different because HIPS was the yardstick",
+   "id": "p1110-baseline-addis",
+   "component": "bars",
+   "tab": "meeting",
+   "meeting": "process-20261110",
+   "file": "meetings/process-20261110.meeting.ts"
+  },
+  {
+   "title": "The baselines, in numbers",
+   "id": "p1110-baselines-table",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "process-20261110",
+   "file": "meetings/process-20261110.meeting.ts"
+  },
+  {
    "title": "EC is about a fifth of Addis PM2.5, against about 4 % across IMPROVE",
    "id": "s1109-ec-share",
    "component": "bars",

@@ -10,6 +10,7 @@ export default {
   id: 'closure-20261110',
   label: 'Nov 10, 2026',
   date: '2026-11-10',
+  short: 'the Addis offset',
   title: 'Which measurement carries the Addis offset: most of it is HIPS compression, shown with IMPROVE thermal EC',
   command: 'uv run python gallery/data/export_meeting_20261110.py',
   intro: '@intro',

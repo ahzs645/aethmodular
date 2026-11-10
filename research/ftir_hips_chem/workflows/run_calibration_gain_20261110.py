@@ -59,10 +59,32 @@ CLOSEOUT_NAMES = {"raw k18": "Raw spectra", "spline k18": "Spline baseline", "vi
                   "vibes_anchorhp k18": "PTFE-anchored VIBES", "anchored_noCH k18": "Anchored, C–H masked",
                   "anchored_balanced k12": "Anchored, OC/EC-balanced weights"}
 CONTINUUM = {"vibes_deflate": "deflate", "vibes_anchorhp": "anchorhp"}
+POPULATION: dict = {}            # filled by from_bundle: what the calibration set is
 
 
 # --------------------------------------------------------------------------- one preprocessing, every variant
-def evaluate(name, x, ec, oc, sites, dates, *, blanks=None, n_boot=500):
+def selection_curves(name, x, ec, sites, dates, grouped):
+    """Cross-validation error for every component count, under the two ways of making folds.
+
+    ``Whole sites held out`` is what every result here uses: a site is never in training and test together.
+    ``Interleaved`` is the calibration app's protocol: filters ordered by site and date and dealt into ten folds,
+    so each test filter has neighbours from its own site in training. Its error is lower for that reason alone.
+    """
+    order = np.lexsort((pd.to_datetime(dates).to_numpy(), np.asarray(sites)))
+    fold = np.empty(len(ec), int)
+    fold[order] = np.arange(len(ec)) % 10
+    interleaved, _ = cg.held_out_predictions(x, ec, [(np.flatnonzero(fold != f), np.flatnonzero(fold == f)) for f in range(10)], KMAX)
+    rows = []
+    for scheme, held_out in (("Whole sites held out (5 folds)", grouped), ("Interleaved (10 folds, the app's protocol)", interleaved)):
+        for k in range(1, KMAX + 1):
+            error = held_out[:, k - 1] - ec
+            rows.append({"preprocessing": name, "scheme": scheme, "k": k, "rmse": float(np.sqrt((error ** 2).mean())),
+                         "median_abs_error": float(np.median(np.abs(error))),
+                         "gain": cg.response(held_out[:, k - 1], ec, ec, sites, with_oc=False, n_boot=0)["gain"]})
+    return pd.DataFrame(rows)
+
+
+def evaluate(name, x, ec, oc, sites, dates, *, blanks=None, n_boot=500, selection=False):
     """Variants of one calibration on one set of spectra: response, fair scores, and the recalibration test."""
     folds = cg.site_folds(sites)
     weights = cg.loading_weights(ec)
@@ -76,6 +98,8 @@ def evaluate(name, x, ec, oc, sites, dates, *, blanks=None, n_boot=500):
         held_out, extra = cg.held_out_predictions(x, ec, folds, KMAX, predict=None if blanks is None else {"blanks": blanks}, **options)
         for k in K_SWEEP:
             sweep.append({"preprocessing": name, "variant": variant, "k": k, **cg.response(held_out[:, k - 1], ec, oc, sites, n_boot=0)})
+        if selection and variant == "As fitted":
+            curves = selection_curves(name, x, ec, sites, dates, held_out)
         prediction = held_out[:, K - 1]
         fitted = cg.response(prediction, ec, oc, sites, n_boot=n_boot)
         blank = float(np.median(extra["blanks"][:, K - 1])) if blanks is not None else float("nan")
@@ -88,11 +112,11 @@ def evaluate(name, x, ec, oc, sites, dates, *, blanks=None, n_boot=500):
         rows.append({"preprocessing": name, "variant": variant, "recalibrated": "offset removed, divided by the gain",
                      "blank_reading": (blank - simple["offset"]) / simple["gain"], **cg.response(corrected, ec, oc, sites, n_boot=n_boot),
                      **cg.fair_scores(corrected, ec, sites, dates, URBAN)})
-    return pd.DataFrame(rows), pd.DataFrame(sweep)
+    return pd.DataFrame(rows), pd.DataFrame(sweep), (curves if selection else pd.DataFrame())
 
 
 # --------------------------------------------------------------------------- sources
-def from_drive(n_boot):
+def from_drive(n_boot, selection=False):
     import run_addis_reference_closure_20261110 as closure
 
     loaded = closure.improve_pool()
@@ -105,7 +129,7 @@ def from_drive(n_boot):
     blanks = blanks[np.isfinite(blanks).all(axis=1)]
     print(f"drive: {len(pool)} filters, {pool['Site'].nunique()} sites, {len(blanks)} blanks")
     return evaluate("Raw spectra", x, pool["ec_ug"].to_numpy(), pool["oc_ug"].to_numpy(), pool["Site"].to_numpy(), pool["day"].to_numpy(),
-                    blanks=blanks, n_boot=n_boot)
+                    blanks=blanks, n_boot=n_boot, selection=selection)
 
 
 def _column(meta, names, what):
@@ -115,12 +139,18 @@ def _column(meta, names, what):
     raise KeyError(f"bundle improve_meta.csv has no {what} column (looked for {', '.join(names)}); it has {', '.join(meta.columns)}")
 
 
-def from_bundle(bundle: Path, models, continuum: Path | None, n_boot):
+def from_bundle(bundle: Path, models, continuum: Path | None, n_boot, selection=False):
     meta = pd.read_csv(bundle / "improve_meta.csv")
     sites, dates = _column(meta, ("site", "Site"), "site").to_numpy(), _column(meta, ("date", "SampleDate", "day"), "date").to_numpy()
     ec = _column(meta, ("ec_ug", "tor_ug"), "TOR EC per filter").to_numpy(float)
     oc = (meta["oc_ug"] if "oc_ug" in meta.columns else _column(meta, ("tor_oc_ugm3",), "TOR OC") * _column(meta, ("volume_m3",), "volume")).to_numpy(float)
-    tables, sweeps = [], []
+    lots = meta["lot"].value_counts().to_dict() if "lot" in meta.columns else {}
+    POPULATION.update({"filters": int(len(meta)), "sites": int(pd.Series(sites).nunique()), "first_date": str(pd.to_datetime(dates).min().date()),
+                       "last_date": str(pd.to_datetime(dates).max().date()), "lots": {str(k): int(v) for k, v in lots.items()},
+                       "urban_filters": int(pd.Series(sites).isin(URBAN).sum()), "tor_ec_150_or_more": int((ec >= 150).sum()),
+                       "raw_qc_excluded": int((~meta["raw_qc_ok"].astype(bool)).sum()) if "raw_qc_ok" in meta.columns else 0,
+                       "median_tor_ec_ug": float(np.nanmedian(ec)), "median_tor_ocec": float(np.nanmedian(oc / ec))})
+    tables, sweeps, curves = [], [], []
     for model in models:
         if model in CONTINUUM:
             if continuum is None:
@@ -135,10 +165,12 @@ def from_bundle(bundle: Path, models, continuum: Path | None, n_boot):
         if "raw_qc_ok" in meta.columns:                      # the closeout's one recorded raw-spectrum QC exclusion
             keep &= meta["raw_qc_ok"].astype(bool).to_numpy()
         print(f"bundle {model}: {int(keep.sum())} of {len(meta)} filters, {x.shape[1]} channels")
-        table, sweep = evaluate(PREP_NAMES.get(model, model), np.asarray(x[keep], float), ec[keep], oc[keep], sites[keep], dates[keep], n_boot=n_boot)
+        table, sweep, curve = evaluate(PREP_NAMES.get(model, model), np.asarray(x[keep], float), ec[keep], oc[keep], sites[keep], dates[keep],
+                                       n_boot=n_boot, selection=selection)
         tables.append(table)
         sweeps.append(sweep)
-    return pd.concat(tables, ignore_index=True), pd.concat(sweeps, ignore_index=True)
+        curves.append(curve)
+    return pd.concat(tables, ignore_index=True), pd.concat(sweeps, ignore_index=True), pd.concat(curves, ignore_index=True)
 
 
 def from_closeout(n_boot):
@@ -155,6 +187,23 @@ def from_closeout(n_boot):
     return pd.DataFrame(rows)
 
 
+def merge_summary(path: Path, payload: dict, *, bundle: bool) -> None:
+    """Add one run to the committed summary. Bundle runs go under ``bundle_*`` keys and accumulate by preprocessing,
+    so the raw, spline and VIBES runs and the anchored runs can be made separately; a --drive run replaces its own keys."""
+    merged = json.loads(path.read_text()) if path.is_file() else {}
+    merged.update({k: payload[k] for k in ("generated_from", "settings")})
+    for key in ("variants", "components", "selection", "closeout_calibrations", "population"):
+        if key not in payload:
+            continue
+        target = f"bundle_{key}" if bundle and key in ("variants", "components", "selection") else key
+        if bundle and isinstance(payload[key], list) and target in merged:
+            fresh = {row["preprocessing"] for row in payload[key]}
+            merged[target] = [row for row in merged[target] if row["preprocessing"] not in fresh] + payload[key]
+        else:
+            merged[target] = payload[key]
+    path.write_text(json.dumps(merged, indent=1) + "\n")
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--drive", action="store_true", help="raw spectra from the IMPROVE tables on the Drive")
@@ -162,6 +211,7 @@ def main(argv=None) -> int:
     parser.add_argument("--bundle", type=Path, help="decision bundle directory with improve_meta.csv and improve_<prep>.npy")
     parser.add_argument("--continuum-output", type=Path, help="directory with corrected_<variant>_improve.npy")
     parser.add_argument("--models", nargs="+", default=["raw", "spline", "vibes"], help="preprocessings to read from the bundle")
+    parser.add_argument("--selection", action="store_true", help="also compare whole-site and interleaved cross-validation for every component count")
     parser.add_argument("--output", type=Path, default=OUT)
     parser.add_argument("--bootstrap", type=int, default=500)
     parser.add_argument("--summary", nargs="?", const=SUMMARY, type=Path, help="also write the tables as one JSON file")
@@ -171,12 +221,17 @@ def main(argv=None) -> int:
 
     args.output.mkdir(parents=True, exist_ok=True)
     tables: dict[str, pd.DataFrame] = {}
-    variants, sweeps = [], []
-    for source in ([from_drive(args.bootstrap)] if args.drive else []) + ([from_bundle(args.bundle, args.models, args.continuum_output, args.bootstrap)] if args.bundle else []):
+    variants, sweeps, curves = [], [], []
+    sources = ([from_drive(args.bootstrap, args.selection)] if args.drive else [])
+    sources += [from_bundle(args.bundle, args.models, args.continuum_output, args.bootstrap, args.selection)] if args.bundle else []
+    for source in sources:
         variants.append(source[0])
         sweeps.append(source[1])
+        curves.append(source[2])
     if variants:
         tables |= {"variants": pd.concat(variants, ignore_index=True), "components": pd.concat(sweeps, ignore_index=True)}
+        if args.selection:
+            tables["selection"] = pd.concat(curves, ignore_index=True)
     if args.closeout:
         tables["closeout_calibrations"] = from_closeout(args.bootstrap)
     for name, frame in tables.items():
@@ -187,8 +242,11 @@ def main(argv=None) -> int:
                             "light_ug": cg.LIGHT_UG, "heavy_ug": cg.HEAVY_UG},
                **{name: json.loads(frame.to_json(orient="records", double_precision=4)) for name, frame in tables.items()}}
     (args.output / "calibration_gain.json").write_text(json.dumps(payload, indent=1) + "\n")
+    if POPULATION:
+        payload["population"] = POPULATION
+    (args.output / "calibration_gain.json").write_text(json.dumps(payload, indent=1) + "\n")
     if args.summary:
-        args.summary.write_text(json.dumps(payload, indent=1) + "\n")
+        merge_summary(args.summary, payload, bundle=bool(args.bundle) and not args.drive)
         print(f"summary: {args.summary}")
     return 0
 

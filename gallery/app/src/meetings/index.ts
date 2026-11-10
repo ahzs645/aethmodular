@@ -9,5 +9,5 @@ export const meetingLabel = (iso: string) => {
 
 /** Every `*.meeting.ts` in this folder, newest first, each named by its date (meetingLabel). */
 const modules = import.meta.glob<{ default: MeetingSpec }>('./*.meeting.ts', { eager: true })
-export const SPEC_MEETINGS: MeetingSpec[] = Object.values(modules).map((m) => ({ ...m.default, label: meetingLabel(m.default.date) }))
+export const SPEC_MEETINGS: MeetingSpec[] = Object.values(modules).map((m) => ({ ...m.default, label: meetingLabel(m.default.date) + (m.default.short ? ` · ${m.default.short}` : '') }))
   .sort((a, b) => b.date.localeCompare(a.date))

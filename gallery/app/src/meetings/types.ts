@@ -18,6 +18,8 @@ export interface MeetingSpec {
   label: string
   /** ISO date of the meeting; the picker lists newest first */
   date: string
+  /** a few words after the date in the picker, for when two pages share a date */
+  short?: string
   title: string
   /** command that rebuilds the bundle, shown if it cannot be loaded */
   command: string
