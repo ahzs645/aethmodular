@@ -765,6 +765,22 @@
    "file": "meetings/closure-20261110.meeting.ts"
   },
   {
+   "title": "Every MAC measured against thermal EC is above 10; Adama, the only Ethiopian one, is about what Addis needs",
+   "id": "c1110-mac-bars",
+   "component": "bars",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "The MAC you believe decides the FTIR level: 0.53 at MAC 10, 0.88 at the urban IMPROVE value, 1.0 at the Adama value",
+   "id": "c1110-mac-levels",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
    "title": "PM2.5 mass closure caps the level: a factor near 2 over-fills the mass",
    "id": "c1110-mass",
    "component": "table",
@@ -879,6 +895,30 @@
   {
    "title": "At Adama the calibrations disagree by more than a factor of two, so Adama cannot pick one for Addis",
    "id": "c1110-adama-ftir",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "EPO, re-scored fairly: a small real gain on the urban IMPROVE sites (0.93 against 0.91)",
+   "id": "c1110-ftir-epo",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "What the calibration responds to: about 0.78 µg per µg of thermal EC, plus a fixed offset",
+   "id": "c1110-ftir-sensitivity",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "Blank filters read about 2 µg of EC, and co-adding spectra shows only that offset",
+   "id": "c1110-ftir-blanks",
    "component": "table",
    "tab": "meeting",
    "meeting": "closure-20261110",

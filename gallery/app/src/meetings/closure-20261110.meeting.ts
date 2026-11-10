@@ -101,9 +101,25 @@ export default {
     {
       id: 'level',
       title: '5. What is left: the slope is the FTIR level times the MAC',
-      text: '@level',
-      columns: 2,
+      text: '@level\n\n@mac',
       figures: [
+        {
+          kind: 'bars', id: 'c1110-mac-bars', table: 'mac_bars', label: 'source', value: 'mac', color: 'kind', sort: 'none', format: 'f2', reference: 10,
+          xLabel: 'HIPS Fabs ÷ EC (m²/g)',
+          title: 'Every MAC measured against thermal EC is above 10; Adama, the only Ethiopian one, is about what Addis needs',
+          subtitle: 'HIPS absorption per unit of thermal EC on light filters, where HIPS is still linear, beside the MAC at which the published Addis FTIR EC would agree with linearised HIPS.',
+          noteAlways: true,
+          note: 'Adama is five filters at another site and on another sampler. The Addis value is not a measured MAC: it is what the FTIR level implies.',
+        },
+        {
+          kind: 'sweep', id: 'c1110-mac-levels', table: 'mac_levels', x: 'mac', y: 'published_over_true', series: 'ceiling', reference: 1,
+          xLabel: 'MAC assumed at Addis (m²/g)', yLabel: 'Published FTIR EC ÷ true EC implied',
+          xMarkers: [{ at: 10, label: 'convention' }, { at: 13.1, label: 'IMPROVE' }, { at: 16.4, label: 'urban IMPROVE' }, { at: 18.9, label: 'Adama' }],
+          title: 'The MAC you believe decides the FTIR level: 0.53 at MAC 10, 0.88 at the urban IMPROVE value, 1.0 at the Adama value',
+          subtitle: 'After linearising HIPS, the published FTIR EC ÷ true EC that each MAC implies, for the central HIPS ceiling and both ends of its interval.',
+          noteAlways: true,
+          note: 'This is the "both sides" picture: the 0.55 slope is the FTIR level times 10 ÷ the real MAC, so neither can be read without the other.',
+        },
         {
           kind: 'table', id: 'c1110-mass', table: 'mass',
           title: 'PM2.5 mass closure caps the level: a factor near 2 over-fills the mass',
@@ -189,7 +205,7 @@ export default {
     {
       id: 'source',
       title: '8. The FTIR side, tested against thermal EC',
-      text: '@source',
+      text: '@source\n\n@steps',
       figures: [
         {
           kind: 'intervals', id: 'c1110-ftir-level', table: 'ftir_level', row: 'filters', series: 'grouping',
@@ -247,6 +263,34 @@ export default {
           subtitle: 'Median FTIR EC ÷ TOR EC on the Adama pairs (7 Nov closeout). "Unflagged" is the three pairs without a sampling flag; low and high are the range over the provisional spectrum map.',
           columns: [{ key: 'calibration', label: 'Calibration' }, { key: 'median_unflagged', label: 'unflagged (3)', format: 'f2' },
             { key: 'median_all', label: 'all (5)', format: 'f2' }, { key: 'mapped_lo', label: 'low', format: 'f2' }, { key: 'mapped_hi', label: 'high', format: 'f2' }],
+        },
+        {
+          kind: 'intervals', id: 'c1110-ftir-epo', table: 'ftir_epo', row: 'filters', series: 'calibration',
+          title: 'EPO, re-scored fairly: a small real gain on the urban IMPROVE sites (0.93 against 0.91)',
+          subtitle: 'Median held-out FTIR EC ÷ TOR EC for the raw-spectra calibration with and without EPO, refitted here with the projection fitted inside each training fold. Bars: 95 %, resampling sites.',
+          panels: [{ value: 'ftir_over_tor', label: 'FTIR EC ÷ TOR EC', reference: 1, lo: 'lo', hi: 'hi' }],
+          labelWidth: 330,
+          note: 'EPO on raw spectra with silicon in place of potassium (not in this XRF pull): not the closeout’s anchored + EPO pipeline, whose per-filter predictions were not saved.',
+        },
+        {
+          kind: 'table', id: 'c1110-ftir-sensitivity', table: 'ftir_sensitivity',
+          title: 'What the calibration responds to: about 0.78 µg per µg of thermal EC, plus a fixed offset',
+          subtitle: 'Prediction = offset + gain × TOR EC + response × TOR OC, fitted across IMPROVE site means (bootstrap over sites), and the level that implies for an urban IMPROVE filter and at Addis loading and OC/EC 1.',
+          columns: [{ key: 'calibration', label: 'Calibration' }, { key: 'offset_ug', label: 'offset (µg per filter)', format: 'f2' },
+            { key: 'gain', label: 'gain per µg EC', format: 'f2' }, { key: 'gain_lo', label: 'low', format: 'f2' }, { key: 'gain_hi', label: 'high', format: 'f2' },
+            { key: 'oc_response', label: 'per µg OC', format: 'f3' }, { key: 'level_urban', label: 'level, urban IMPROVE', format: 'f2' },
+            { key: 'level_addis', label: 'level at Addis loading', format: 'f2' }, { key: 'level_addis_lo', label: 'low', format: 'f2' }, { key: 'level_addis_hi', label: 'high', format: 'f2' }],
+          noteAlways: true,
+          note: 'The Addis column is a linear extrapolation from IMPROVE, not a measurement.',
+        },
+        {
+          kind: 'table', id: 'c1110-ftir-blanks', table: 'ftir_blanks',
+          title: 'Blank filters read about 2 µg of EC, and co-adding spectra shows only that offset',
+          subtitle: 'The raw-spectra calibration on field blanks, and on three urban IMPROVE filters added together on one blank (2,000 random triples).',
+          columns: [{ key: 'what', label: '' }, { key: 'n', format: 'int' }, { key: 'tor_ec_ug', label: 'TOR EC (µg per filter)', format: 'f2' },
+            { key: 'predicted_ec_ug', label: 'FTIR EC predicted (µg per filter)', format: 'f2' }, { key: 'p25', label: '25th', format: 'f2' }, { key: 'p75', label: '75th', format: 'f2' },
+            { key: 'ftir_over_tor', label: 'FTIR ÷ TOR', format: 'f2' }],
+          note: 'For a linear calibration the co-added prediction equals the sum of the three predictions minus twice the blank reading, so co-adding cannot test a composition none of its parts has.',
         },
         {
           kind: 'intervals', id: 'c1110-source', table: 'source', row: 'filters', series: 'calibration',

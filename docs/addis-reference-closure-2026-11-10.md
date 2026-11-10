@@ -133,6 +133,7 @@ a near-proportional response into a steep slope and a large negative intercept.
 | Anchor | Published ÷ true | Limits |
 |---|---|---|
 | Held-out IMPROVE, six urban IMPROVE sites: raw-spectra FTIR ÷ TOR 0.91 [0.88, 0.94]; the published product reads 1.11× that calibration at Addis | 1.01 | Assumes the bias seen at TOR OC/EC near 3 holds at Addis, where OC/EC is near 1. It probably grows (section 5). |
+| The raw calibration's offset, EC gain (0.78) and OC response from IMPROVE site means, read at Addis loading and OC/EC 1: 0.82 [0.75, 0.87] | 0.91 | A linear extrapolation beyond IMPROVE's composition (section 5). |
 | Linearised HIPS at the IMPROVE MAC on light filters: 13.1 (all sites), 15.1 (low OC/EC sites), 16.4 (urban) m²/g | 0.70, 0.81, 0.88 | Assumes Addis soot absorbs like IMPROVE's per unit of thermal EC. |
 | Linearised HIPS at the Adama MAC (Fabs ÷ TOR 18.9 m²/g after the same linearisation) | 1.01 (0.81 to 1.15) | Five Adama filters, another site and sampler. |
 | PM2.5 mass closure | ≥ 0.67 | Published EC reconstructs 89 % of gravimetric mass; × 1.5 reaches 100 %, × 1.9 gives 108 %. FTIR OM is below FTIR OC at Addis (median OM/OC 0.91), so OM is probably low and the real room for EC is smaller. |
@@ -228,6 +229,44 @@ Fresno, Phoenix, Pittsburgh, Seattle), which are its low-OC/EC end, near 3.
 thermal EC when binned by TOR's own OC/EC and 1.54 when binned by FTIR's own; binned by the previous sample at
 the site they read 0.86 to 1.01. Each ratio contains the error of the EC it is built from, so a low bin collects
 that error.
+
+### The two next steps, run
+
+**EPO, re-scored fairly.** No saved EPO predictions exist in the repository or the Drive folder, so EPO was
+refitted on the raw spectra with `scripts/epo_validation.py`, the projection fitted inside each training fold
+(silicon stands in for potassium, which is not in this XRF pull; this is not the closeout's anchored + EPO
+pipeline). On the six urban IMPROVE sites it reads 0.93 [0.88, 0.98] of thermal EC against 0.91 [0.88, 0.93]
+for the plain calibration, and 0.94 against 0.91 with previous-sample grouping. A small real gain, at the cost
+of a higher overall median error (1.42 against 1.27 µg per filter; RMSE improves, 5.88 against 6.56).
+
+**What the calibration responds to.** Across IMPROVE site means (which average out TOR's per-filter error):
+
+| Calibration | Offset (µg per filter) | Gain per µg of thermal EC | Per µg of OC | Level at Addis loading, OC/EC 1 |
+|---|---:|---:|---:|---:|
+| Raw spectra | 0.88 [0.48, 1.23] | 0.78 [0.69, 0.84] | 0.015 [0.00, 0.04] | 0.82 [0.75, 0.87] |
+| Raw spectra + EPO | 0.97 [0.42, 1.40] | 0.89 [0.76, 0.99] | −0.008 [−0.02, 0.01] | 0.91 [0.81, 1.00] |
+
+The calibration under-responds to EC and makes up the difference with a fixed offset. That works at IMPROVE's
+loadings (4 to 15 µg) and not at Addis's (about 30 µg), where the offset no longer matters and the level falls
+toward the gain. Blank filters show an offset too, a larger one: the calibration reads 2.2 µg of EC on 338
+IMPROVE field blanks and 2.7 µg on 37 Addis field blanks (0.38 µg/m³ at the Addis volume). EPO raises the gain
+and removes the small OC response. The last column is a linear extrapolation, not a measurement, and it is the
+best existing-data estimate of the FTIR level at Addis: about 0.8 for the raw calibration, so about 0.9 for the
+published product, which reads 1.11× higher.
+
+**Spectral augmentation does not do what I proposed.** Co-adding three urban IMPROVE filters on one blank gives
+53 µg of EC, an Addis-like loading, and FTIR reads 0.83 of it against 0.89 for the single filters. But for a
+linear calibration that number is exactly the sum of the three predictions minus twice the blank reading
+(checked: the two agree to rounding). Co-adding shows the offset and nothing else, and a sum can never have a
+lower OC/EC than its parts. It cannot test Addis composition. Withdrawn as a next step.
+
+### The MAC and the FTIR level have to be read together
+
+After linearising HIPS, the published FTIR EC agrees with HIPS only if the MAC is 18.7 m²/g (16.1 to 24.2
+across the ceiling's interval). At the conventional MAC of 10 FTIR would be reading 0.53 of true EC. Every MAC
+measured against thermal EC is above 10: 13.1 on light IMPROVE filters, 16.4 at IMPROVE's six urban sites, 15.9
+on the five Adama filters (18.9 after the same linearisation). At the urban IMPROVE value FTIR reads 0.88 of
+true EC; at the Adama value, 1.01. The FTIR-side extrapolation above (0.91) sits between them.
 
 ### What the Adama TOR filters do and do not help with
 
@@ -329,13 +368,13 @@ Ranked by how likely each is to change what is carried forward.
    are the candidates; the spartan_reference chemistry is in hand.
 3a. **Lot 248 at Addis.** IMPROVE shows no lot effect (section 5), so it is the SPARTAN lot-248 blanks or the
    2022–23 aerosol. The lot's blanks can referee.
-4. **Spectral augmentation, never run, and now the main FTIR-side step.** A level factor cannot be learned from
-   IMPROVE as it is (section 5: Addis is outside its composition range, and conditioning on either
-   instrument's OC/EC selects on error). Co-adding blank-corrected IMPROVE spectra with known TOR sums can
-   build filters at Addis-like loading and OC/EC, which is the only way to put that composition under a
-   thermal reference before Addis TOR arrives.
-5. **Re-score every calibration, EPO included, with site or previous-sample grouping.** The closeout's
-   heavy-subset ratio selects on TOR's own error. This needs the saved prediction archives, not new fitting.
+4. **A recalibration from the offset and gain.** Section 5 measures both on IMPROVE site means. Check on
+   held-out sites and on blanks whether removing the offset and dividing by the gain brings the urban sites and
+   the heavy filters to 1 without harming the light ones. This is the only FTIR-side correction the existing
+   data can support, and it is a source-domain one.
+5. **Why the gain is 0.78.** Weight heavy filters in training, or constrain the calibration through the blanks,
+   and re-score with the fair grouping. EPO already moves it to 0.89.
+5a. **Done here (section 5):** EPO re-scored fairly; co-added spectra (uninformative for a linear calibration).
 6. **Done here (section 5):** FTIR against thermal EC on held-out IMPROVE sites; the exponent and the
    linearised fit at every SPARTAN site with potassium as a second instrument; every saved calibration by season.
 7. **PLS on the masked regions** (Ann, 10 Sep) and the raw model without 3600–4000 and below 1425 cm⁻¹ (28 Oct

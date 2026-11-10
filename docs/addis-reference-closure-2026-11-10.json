@@ -1449,6 +1449,12 @@
    "note": "published reads 1.11\u00d7 this refit at Addis; TOR OC/EC 2.9 there, far above Addis"
   },
   {
+   "anchor": "Raw calibration's offset, EC gain and OC response, read at Addis loading and OC/EC 1",
+   "published_over_true": 0.9097,
+   "value": 0.8198,
+   "note": "gain 0.78 per \u00b5g EC and offset 0.9 \u00b5g per filter from IMPROVE site means; a linear extrapolation"
+  },
+  {
    "anchor": "Linearised HIPS at the Adama MAC (m\u00b2/g), ceiling 2.26",
    "published_over_true": 1.0089,
    "value": 18.9078,
@@ -26856,6 +26862,154 @@
    "ocec": 7.8058,
    "ftir_over_tor": 1.0687,
    "n": 1442
+  }
+ ],
+ "ftir_epo": [
+  {
+   "filters": "own TOR: EC \u2265 15 \u00b5g, OC/EC < 2.5 (selects on error)",
+   "calibration": "Raw spectra",
+   "n": 175,
+   "ftir_over_tor": 0.7761,
+   "lo": 0.73,
+   "hi": 0.8298,
+   "overall_median_abs_error": 1.2657,
+   "overall_rmse": 6.5574
+  },
+  {
+   "filters": "own TOR: EC \u2265 15 \u00b5g, OC/EC < 2.5 (selects on error)",
+   "calibration": "Raw spectra + EPO",
+   "n": 175,
+   "ftir_over_tor": 0.8399,
+   "lo": 0.7707,
+   "hi": 0.9141,
+   "overall_median_abs_error": 1.4162,
+   "overall_rmse": 5.8815
+  },
+  {
+   "filters": "previous sample: EC \u2265 15 \u00b5g, OC/EC < 2.5",
+   "calibration": "Raw spectra",
+   "n": 155,
+   "ftir_over_tor": 0.9119,
+   "lo": 0.8722,
+   "hi": 0.946,
+   "overall_median_abs_error": 1.2657,
+   "overall_rmse": 6.5574
+  },
+  {
+   "filters": "previous sample: EC \u2265 15 \u00b5g, OC/EC < 2.5",
+   "calibration": "Raw spectra + EPO",
+   "n": 155,
+   "ftir_over_tor": 0.9393,
+   "lo": 0.8547,
+   "hi": 1.0269,
+   "overall_median_abs_error": 1.4162,
+   "overall_rmse": 5.8815
+  },
+  {
+   "filters": "six urban IMPROVE sites",
+   "calibration": "Raw spectra",
+   "n": 645,
+   "ftir_over_tor": 0.9106,
+   "lo": 0.8822,
+   "hi": 0.934,
+   "overall_median_abs_error": 1.2657,
+   "overall_rmse": 6.5574
+  },
+  {
+   "filters": "six urban IMPROVE sites",
+   "calibration": "Raw spectra + EPO",
+   "n": 645,
+   "ftir_over_tor": 0.9337,
+   "lo": 0.8812,
+   "hi": 0.9838,
+   "overall_median_abs_error": 1.4162,
+   "overall_rmse": 5.8815
+  }
+ ],
+ "ftir_sensitivity": [
+  {
+   "calibration": "Raw spectra",
+   "sites": 150,
+   "offset_ug": 0.8764,
+   "offset_lo": 0.477,
+   "offset_hi": 1.2307,
+   "gain": 0.7762,
+   "gain_lo": 0.6919,
+   "gain_hi": 0.8395,
+   "oc_response": 0.0146,
+   "oc_lo": 0.0007,
+   "oc_hi": 0.0376,
+   "level_urban": 0.8815,
+   "level_urban_lo": 0.841,
+   "level_urban_hi": 0.9137,
+   "condition_urban": "urban IMPROVE (OC/EC 3.2, 15 \u00b5g EC)",
+   "level_addis": 0.8198,
+   "level_addis_lo": 0.751,
+   "level_addis_hi": 0.8736,
+   "condition_addis": "Addis (OC/EC 1, 30 \u00b5g EC)"
+  },
+  {
+   "calibration": "Raw spectra + EPO",
+   "sites": 150,
+   "offset_ug": 0.9686,
+   "offset_lo": 0.4246,
+   "offset_hi": 1.4033,
+   "gain": 0.8894,
+   "gain_lo": 0.7642,
+   "gain_hi": 0.987,
+   "oc_response": -0.0083,
+   "oc_lo": -0.0241,
+   "oc_hi": 0.0136,
+   "level_urban": 0.9274,
+   "level_urban_lo": 0.8596,
+   "level_urban_hi": 0.9841,
+   "condition_urban": "urban IMPROVE (OC/EC 3.2, 15 \u00b5g EC)",
+   "level_addis": 0.9131,
+   "level_addis_lo": 0.806,
+   "level_addis_hi": 0.9956,
+   "condition_addis": "Addis (OC/EC 1, 30 \u00b5g EC)"
+  }
+ ],
+ "ftir_blanks": [
+  {
+   "what": "IMPROVE field blanks",
+   "n": 338,
+   "predicted_ec_ug": 2.172,
+   "p25": 1.7242,
+   "p75": 2.5651,
+   "ftir_over_tor": null,
+   "tor_ec_ug": 0.0,
+   "addis_blank_ugm3": null
+  },
+  {
+   "what": "Addis field blanks",
+   "n": 37,
+   "predicted_ec_ug": 2.7366,
+   "p25": 2.1022,
+   "p75": 3.4954,
+   "ftir_over_tor": null,
+   "tor_ec_ug": 0.0,
+   "addis_blank_ugm3": 0.3805
+  },
+  {
+   "what": "Single urban IMPROVE filters (fitted)",
+   "n": 645,
+   "predicted_ec_ug": null,
+   "p25": null,
+   "p75": null,
+   "ftir_over_tor": 0.8911,
+   "tor_ec_ug": 14.793,
+   "addis_blank_ugm3": null
+  },
+  {
+   "what": "Three urban IMPROVE filters co-added on one blank",
+   "n": 2000,
+   "predicted_ec_ug": 44.1466,
+   "p25": null,
+   "p75": null,
+   "ftir_over_tor": 0.8257,
+   "tor_ec_ug": 53.1999,
+   "addis_blank_ugm3": null
   }
  ]
 }

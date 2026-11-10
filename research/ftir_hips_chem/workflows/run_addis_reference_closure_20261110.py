@@ -315,7 +315,7 @@ def stage_season(table, closeout, n_boot, tables, aethalometer):
     return {"season_lot": pd.DataFrame(rows)}
 
 
-def _ftir_refit() -> tuple[pd.DataFrame, pd.DataFrame] | None:
+def _ftir_refit() -> tuple[pd.DataFrame, pd.DataFrame, dict] | None:
     """Raw-spectra PLS for TOR EC and TOR OC (µg per filter), whole IMPROVE sites held out, and the same models on Addis.
 
     Fitting OC beside EC gives an FTIR OC/EC that means the same thing on IMPROVE and on Addis. One row per
@@ -363,7 +363,52 @@ def _ftir_refit() -> tuple[pd.DataFrame, pd.DataFrame] | None:
             held_out[test] = PLSRegression(PLS_COMPONENTS, scale=False).fit(x[train], y[train]).predict(x[test]).ravel()
         pool[f"ftir_{target}"] = held_out
         addis[f"ftir_{target}"] = PLSRegression(PLS_COMPONENTS, scale=False).fit(x, y).predict(per_filter.to_numpy(float)).ravel()
-    return pool, addis[addis["type"].eq("PM2.5")].drop(columns="type")
+    # EPO on the same raw spectra with the repo's own implementation (scripts/epo_validation.py): the spectral
+    # signatures of OC, other PM, Fe and soil are projected out, fitted inside each training fold only. Potassium is
+    # not in this XRF pull, so silicon stands in the fifth column; this is not the closeout's anchored + EPO pipeline.
+    import epo_validation as ev
+
+    def species(name, parameters):
+        frame = pd.read_csv(local / "tables" / name, encoding="utf-8-sig", low_memory=False, usecols=["Site", "SampleDate", "Parameter", "Value"])
+        frame = frame[frame["Parameter"].isin(parameters)].copy()
+        frame["Value"] = pd.to_numeric(frame["Value"], errors="coerce")
+        frame["day"] = pd.to_datetime(frame["SampleDate"], format="%m/%d/%Y %I:%M:%S %p", errors="coerce").dt.strftime("%Y-%m-%d")
+        return frame.pivot_table(index=["Site", "day"], columns="Parameter", values="Value", aggfunc="first")
+
+    chem = pool[["Site", "day"]].join(species("results_grav.csv", ["PM2.5"]), on=["Site", "day"]).join(species("results_xrf.csv", ["Fe", "Si"]), on=["Site", "day"])
+    per_filter_volume = pool.set_index(["Site", "day"]).index.map(volume).to_numpy(float)
+    pm, fe, si = (chem[c].to_numpy(float) / 1000.0 * per_filter_volume for c in ("PM2.5", "Fe", "Si"))
+    chemistry = np.column_stack([pool["ec_ug"], pool["oc_ug"], pm - 1.8 * pool["oc_ug"] - pool["ec_ug"], fe, si])
+    epo_predictions, *_ = ev.fit_site_cv(x, pool["ec_ug"].to_numpy(), chemistry, pool["FilterId"].to_numpy(), pool["Site"].to_numpy(), PLS_COMPONENTS, splits=folds)
+    pool["epo_ec_ug"] = epo_predictions[:, -1]
+
+    # Blank filters, and three urban filters co-added on one blank. For a linear calibration the co-added
+    # prediction is exactly the sum of the three predictions minus twice the blank prediction, so co-adding can
+    # only show the offset: it cannot reach a composition none of its parts has.
+    full_ec = PLSRegression(PLS_COMPONENTS, scale=False).fit(x, pool["ec_ug"].to_numpy())
+    catalogue = pd.read_csv(local / "tables/ftir_catalog.csv", encoding="utf-8-sig", dtype=str)
+    blank_ids = set(catalogue.loc[catalogue["FilterPurposeId"].eq("2"), "AnalysisId"])
+    blanks = spectra.loc[spectra["AnalysisId"].astype(str).isin(blank_ids), channels].to_numpy(float)
+    blanks = blanks[np.isfinite(blanks).all(axis=1)]
+    all_meta = pd.read_csv(etad / "ETAD_metadata.csv")
+    addis_blanks = raw[raw["MediaId"].isin(all_meta.loc[all_meta["ExternalFilterType"].eq("FB"), "MediaId"])].groupby("MediaId")[etad_channels].mean()
+    mean_blank = blanks.mean(axis=0)
+    urban_rows = np.flatnonzero(pool["Site"].isin(URBAN).to_numpy())
+    rng = np.random.default_rng(20261110)
+    ec = pool["ec_ug"].to_numpy()
+    triples = [rng.choice(urban_rows, 3, replace=False) for _ in range(2000)]
+    coadded = np.array([[full_ec.predict((mean_blank + (x[i] - mean_blank).sum(axis=0))[None]).ravel()[0], ec[i].sum()] for i in triples])
+    extras = {"improve_blanks": full_ec.predict(blanks).ravel(), "addis_blanks": full_ec.predict(addis_blanks.to_numpy(float)).ravel(),
+              "addis_blank_volume": float(meta["SampleVolume_m3"].median()), "coadded": coadded,
+              "urban_in_sample": float(full_ec.predict(x[urban_rows]).sum() / ec[urban_rows].sum())}
+    return pool, addis[addis["type"].eq("PM2.5")].drop(columns="type"), extras
+
+
+def tables_published_over_refit(addis: pd.DataFrame, table: pd.DataFrame) -> float:
+    """How much higher the published product reads than this refit on the Addis filters (median ratio)."""
+    unique = addis.drop_duplicates("filter_id").set_index("filter_id")
+    refit = (unique["ftir_ec_ug"] / unique["volume_m3"]).reindex(table.index)
+    return float((table[PUBLISHED] / refit).median())
 
 
 def stage_ftir(table, closeout, n_boot, tables, aethalometer):
@@ -374,7 +419,8 @@ def stage_ftir(table, closeout, n_boot, tables, aethalometer):
     FTIR's own OC/EC reads higher). Two groupings cannot do that: by site, and by the previous sample at the
     site. All three are reported so the size of the artefact is visible.
     """
-    names = ("ftir_level", "ftir_candidates", "ftir_composition", "ftir_ocec_values", "addis_refit", "ftir_by_site", "ftir_selection")
+    names = ("ftir_level", "ftir_candidates", "ftir_composition", "ftir_ocec_values", "addis_refit", "ftir_by_site", "ftir_selection",
+             "ftir_epo", "ftir_sensitivity", "ftir_blanks")
     refit = _ftir_refit()
     if refit is None:
         if not SUMMARY.is_file():
@@ -382,7 +428,7 @@ def stage_ftir(table, closeout, n_boot, tables, aethalometer):
         saved = json.loads(SUMMARY.read_text())
         print("ftir: spectra not found; reusing the tables saved in the summary")
         return {name: pd.DataFrame(saved[name]) for name in names}
-    pool, addis = refit
+    pool, addis, extras = refit
     pool["date"] = pd.to_datetime(pool["day"])
     pool = pool.sort_values(["Site", "date"]).reset_index(drop=True)
     pool["ocec"], pool["ratio"] = pool["oc_ug"] / pool["ec_ug"], pool["ftir_ec_ug"] / pool["ec_ug"]
@@ -392,13 +438,13 @@ def stage_ftir(table, closeout, n_boot, tables, aethalometer):
     pool["site_ocec"] = pool["Site"].map(pool.groupby("Site")["ocec"].median())
     rng = np.random.default_rng(20261110)
 
-    def level(part, grouping, label, fair):
-        by_site = {site: frame["ratio"].to_numpy() for site, frame in part.groupby("Site")}
+    def level(part, grouping, label, fair, column="ratio"):
+        by_site = {site: frame[column].to_numpy() for site, frame in part.groupby("Site")}
         sites = np.array(list(by_site))
         boot = [np.median(np.concatenate([by_site[s] for s in rng.choice(sites, sites.size)])) for _ in range(min(n_boot, 400))]
         lo, hi = np.percentile(boot, [2.5, 97.5])
         return {"grouping": grouping, "filters": label, "fair": fair, "n": len(part), "sites": int(sites.size),
-                "ftir_over_tor": float(part["ratio"].median()), "lo": lo, "hi": hi,
+                "ftir_over_tor": float(part[column].median()), "lo": lo, "hi": hi,
                 "sum_ratio": float(part["ftir_ec_ug"].sum() / part["ec_ug"].sum()),
                 "median_tor_ocec": float(part["ocec"].median()), "median_tor_ec_ug": float(part["ec_ug"].median())}
 
@@ -414,6 +460,54 @@ def stage_ftir(table, closeout, n_boot, tables, aethalometer):
         level(pool[pool["site_ocec"].between(3.5, 5)], site, "sites with median OC/EC 3.5–5", True),
         level(pool[pool["site_ocec"] > 5], site, "sites with median OC/EC above 5", True),
     ]
+    # EPO against the raw calibration, on the same three ways of choosing filters, with the overall errors beside it.
+    pool["epo_ratio"] = pool["epo_ec_ug"] / pool["ec_ug"]
+    chosen = {"own TOR: EC ≥ 15 µg, OC/EC < 2.5 (selects on error)": pool[heavy & (pool["ocec"] < 2.5)],
+              "previous sample: EC ≥ 15 µg, OC/EC < 2.5": pool[(pool["previous_ec_ug"] >= 15) & (pool["previous_ocec"] < 2.5)],
+              "six urban IMPROVE sites": pool[pool["Site"].isin(URBAN)]}
+    epo_rows = []
+    for label, part in chosen.items():
+        for name, column, prediction in (("Raw spectra", "ratio", "ftir_ec_ug"), ("Raw spectra + EPO", "epo_ratio", "epo_ec_ug")):
+            entry = level(part, label, name, True, column)
+            error = pool[prediction] - pool["ec_ug"]
+            epo_rows.append({"filters": label, "calibration": name, "n": entry["n"], "ftir_over_tor": entry["ftir_over_tor"], "lo": entry["lo"], "hi": entry["hi"],
+                             "overall_median_abs_error": float(error.abs().median()), "overall_rmse": float(np.sqrt((error ** 2).mean()))})
+
+    # What each calibration responds to. Site means average out the per-filter errors of TOR, so the fit
+    # prediction = offset + gain x TOR EC + leak x TOR OC is not flattened by them. Bootstrap over sites.
+    sums = pool.groupby("Site").agg(n=("ec_ug", "size"), ec=("ec_ug", "mean"), oc=("oc_ug", "mean"), raw=("ftir_ec_ug", "mean"), epo=("epo_ec_ug", "mean"))
+    sums = sums[sums["n"] >= 30]
+    addis_loading = float((table[PUBLISHED] * table["volume_m3"]).median() / tables_published_over_refit(addis, table))
+    conditions = {"urban IMPROVE (OC/EC 3.2, 15 µg EC)": (3.2, 15.0), f"Addis (OC/EC 1, {addis_loading:.0f} µg EC)": (1.0, addis_loading)}
+    sensitivity = []
+    for name, column in (("Raw spectra", "raw"), ("Raw spectra + EPO", "epo")):
+        def solve(frame):
+            return np.linalg.lstsq(np.column_stack([np.ones(len(frame)), frame["ec"], frame["oc"]]), frame[column], rcond=None)[0]
+        centre = solve(sums)
+        boot = np.array([solve(sums.iloc[rng.integers(0, len(sums), len(sums))]) for _ in range(min(n_boot, 1000))])
+        (o_lo, g_lo, l_lo), (o_hi, g_hi, l_hi) = np.percentile(boot, [2.5, 97.5], axis=0)
+        row = {"calibration": name, "sites": len(sums), "offset_ug": centre[0], "offset_lo": o_lo, "offset_hi": o_hi, "gain": centre[1], "gain_lo": g_lo,
+               "gain_hi": g_hi, "oc_response": centre[2], "oc_lo": l_lo, "oc_hi": l_hi}
+        for label, (ratio, loading) in conditions.items():
+            values = boot[:, 1] + boot[:, 2] * ratio + boot[:, 0] / loading
+            key = "urban" if label.startswith("urban") else "addis"
+            row |= {f"level_{key}": centre[1] + centre[2] * ratio + centre[0] / loading, f"level_{key}_lo": float(np.percentile(values, 2.5)),
+                    f"level_{key}_hi": float(np.percentile(values, 97.5)), f"condition_{key}": label}
+        sensitivity.append(row)
+
+    co = extras["coadded"]
+    blanks = pd.DataFrame([
+        {"what": "IMPROVE field blanks", "n": len(extras["improve_blanks"]), "predicted_ec_ug": float(np.median(extras["improve_blanks"])),
+         "p25": float(np.percentile(extras["improve_blanks"], 25)), "p75": float(np.percentile(extras["improve_blanks"], 75)), "ftir_over_tor": np.nan, "tor_ec_ug": 0.0},
+        {"what": "Addis field blanks", "n": len(extras["addis_blanks"]), "predicted_ec_ug": float(np.median(extras["addis_blanks"])),
+         "p25": float(np.percentile(extras["addis_blanks"], 25)), "p75": float(np.percentile(extras["addis_blanks"], 75)), "ftir_over_tor": np.nan, "tor_ec_ug": 0.0},
+        {"what": "Single urban IMPROVE filters (fitted)", "n": int(pool["Site"].isin(URBAN).sum()), "predicted_ec_ug": np.nan, "p25": np.nan, "p75": np.nan,
+         "ftir_over_tor": extras["urban_in_sample"], "tor_ec_ug": float(pool.loc[pool["Site"].isin(URBAN), "ec_ug"].median())},
+        {"what": "Three urban IMPROVE filters co-added on one blank", "n": len(co), "predicted_ec_ug": float(np.median(co[:, 0])), "p25": np.nan, "p75": np.nan,
+         "ftir_over_tor": float(np.median(co[:, 0] / co[:, 1])), "tor_ec_ug": float(np.median(co[:, 1]))},
+    ])
+    blanks["addis_blank_ugm3"] = np.where(blanks["what"].eq("Addis field blanks"), blanks["predicted_ec_ug"] / extras["addis_blank_volume"], np.nan)
+
     # One point per IMPROVE site: the level against the site's own composition. IMPROVE is mostly rural and remote;
     # its few urban sites are the low-OC/EC end, and still far from Addis.
     by_site = pool.groupby("Site").agg(n=("ratio", "size"), median_tor_ocec=("ocec", "median"), median_tor_ec_ug=("ec_ug", "median"),
@@ -462,7 +556,8 @@ def stage_ftir(table, closeout, n_boot, tables, aethalometer):
                         pd.DataFrame({"population": "Addis Ababa", "ftir_ocec": addis["ftir_ocec"].round(2)})], ignore_index=True)
     return {"ftir_level": pd.DataFrame(rows), "ftir_candidates": candidates, "ftir_composition": composition, "ftir_ocec_values": values,
             "addis_refit": addis[["filter_id", "season", "lot", "ftir_ec_ugm3", "ftir_oc_ugm3", "ftir_ocec"]].round(4),
-            "ftir_by_site": by_site.round(4), "ftir_selection": selection.round(4)}
+            "ftir_by_site": by_site.round(4), "ftir_selection": selection.round(4),
+            "ftir_epo": pd.DataFrame(epo_rows), "ftir_sensitivity": pd.DataFrame(sensitivity), "ftir_blanks": blanks}
 
 
 def stage_level(table, closeout, n_boot, tables, aethalometer):
@@ -500,6 +595,10 @@ def stage_level(table, closeout, n_boot, tables, aethalometer):
         anchors.append({"anchor": f"Held-out IMPROVE, {label} (FTIR ÷ TOR, raw spectra, 18 components)",
                         "published_over_true": float(fair.loc[label, "ftir_over_tor"]) * over_refit, "value": float(fair.loc[label, "ftir_over_tor"]),
                         "note": f"published reads {over_refit:.2f}× this refit at Addis; TOR OC/EC {fair.loc[label, 'median_tor_ocec']:.1f} there, far above Addis"})
+    extrapolated = tables["ftir_sensitivity"].set_index("calibration").loc["Raw spectra"]
+    anchors.append({"anchor": "Raw calibration's offset, EC gain and OC response, read at Addis loading and OC/EC 1",
+                    "published_over_true": float(extrapolated["level_addis"]) * over_refit, "value": float(extrapolated["level_addis"]),
+                    "note": f"gain {extrapolated['gain']:.2f} per µg EC and offset {extrapolated['offset_ug']:.1f} µg per filter from IMPROVE site means; a linear extrapolation"})
     # MAC closures: the MAC that Addis FTIR EC needs once HIPS is linearised, against a MAC measured with thermal EC.
     # Both sides use the same ceiling, so each row pairs them.
     ceiling = thermal_ceiling(tables)
@@ -665,7 +764,8 @@ RUN = {"improve": stage_improve, "linearity": stage_linearity, "response": stage
 SUMMARY_TABLES = ("improve_ceiling", "improve_strata", "linearity", "frisch_bounds", "hips_response_fits", "linearised_hips",
                   "raw_hips", "season_lot", "improve_ratio_by_ocec", "mass_closure", "level_anchors", "addis_ocec",
                   "network_exponents", "candidates_by_season", "improve_ftir_linearity", "improve_lot",
-                  "ftir_level", "ftir_candidates", "ftir_composition", "ftir_ocec_values", "addis_refit", "ftir_by_site", "ftir_selection")
+                  "ftir_level", "ftir_candidates", "ftir_composition", "ftir_ocec_values", "addis_refit", "ftir_by_site", "ftir_selection",
+                  "ftir_epo", "ftir_sensitivity", "ftir_blanks")
 
 
 def run(stages=STAGES, *, n_boot=2000, aethalometer=False, known_volume_only=False):

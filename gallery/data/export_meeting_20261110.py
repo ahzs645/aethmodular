@@ -38,7 +38,8 @@ COLORS = {**SEASON_COLORS, "all sites": "#22252A", "sites with median OC/EC < 4"
           "HIPS Fabs": "#5B5852", "measured (instrument: PM2.5 mass)": "#C49442", "measured (instrument: potassium)": "#2C6E9E",
           "predicted from IMPROVE thermal EC": "#8a8f98", "HIPS as measured": "#B23327", "HIPS linearised": "#2C6E9E",
           "this filter's own TOR (selects on its error)": "#B23327", "the previous sample at the site": "#2C6E9E", "the site": "#22252A",
-          "IMPROVE (FTIR EC ≥ 5 µg per filter)": "#8a8f98", "Adama, Ethiopia (5 filters with TOR)": "#C49442",
+          "IMPROVE (FTIR EC ≥ 5 µg per filter)": "#8a8f98", "assumed": "#8a8f98", "measured with thermal EC": "#2C6E9E", "needed at Addis": "#B23327",
+          "Raw spectra + EPO": "#7A4FA3", "Adama, Ethiopia (5 filters with TOR)": "#C49442",
           "urban IMPROVE site": "#B23327", "other IMPROVE site": "#8a8f98", "TOR's own OC/EC on this filter": "#B23327",
           "FTIR's own OC/EC on this filter": "#7A4FA3", "TOR OC/EC of the previous sample at the site": "#2C6E9E",
           "By site: the six urban IMPROVE sites": "#22252A", "By the filter's own TOR (heavy, low OC/EC)": "#B23327", "Addis Ababa": "#C49442", "2005–2014": "#8F8C84", "2015–2025": "#7A4FA3", "optical pyrolysis > 0": "#27AE60",
@@ -161,6 +162,29 @@ Adama filters about 19. **Working range: published EC × 1.0 to 1.4, most likely
 {mass.iloc[3, 2] * 100:.0f} % and × 1.9 gives {mass.iloc[5, 2] * 100:.0f} %. None of this is thermal EC measured at Addis, and section 8 shows why IMPROVE
 cannot settle it."""
 
+# the MAC argument, drawn: which MAC you believe decides the FTIR level
+cset = ceilings.set_index("population")
+adama_linearised = float(np.median(pilot.fabs_over_tor * rc.linearise(pilot.tau, ceiling["central"]) / pilot.tau))
+needed = {which: float(row[which].mac_for_agreement) for which in ("central", "lo", "hi")}
+mac_bars = pd.DataFrame([
+    ("MAC 10 (the convention behind HIPS BC)", closure.MAC_VALUE, "assumed"),
+    ("IMPROVE, all sites, light filters", float(cset.loc["all sites", "unsaturated_fabs_over_ec"]), "measured with thermal EC"),
+    ("IMPROVE, sites with median OC/EC < 4, light filters", float(cset.loc["sites with median OC/EC < 4", "unsaturated_fabs_over_ec"]), "measured with thermal EC"),
+    ("IMPROVE's six urban sites, light filters", float(cset.loc["six urban IMPROVE sites", "unsaturated_fabs_over_ec"]), "measured with thermal EC"),
+    ("Adama, five filters, as measured", float(pilot.fabs_over_tor.median()), "measured with thermal EC"),
+    ("Adama, five filters, HIPS linearised", adama_linearised, "measured with thermal EC"),
+    ("What Addis needs for the published FTIR EC to be right", needed["central"], "needed at Addis"),
+], columns=["source", "mac", "kind"])
+grid = np.arange(8.0, 26.5, 0.5)
+mac_levels = pd.concat([pd.DataFrame({"ceiling": f"HIPS ceiling {ceiling[which]:.2f}", "mac": grid, "published_over_true": grid / needed[which]})
+                        for which in ("lo", "central", "hi")], ignore_index=True)
+text_mac = f"""**The MAC you believe decides the FTIR level.** Once HIPS is linearised, the published FTIR EC agrees with HIPS only if the MAC is
+{needed['central']:.1f} m²/g (between {needed['hi']:.1f} and {needed['lo']:.1f} across the ceiling's interval). At the conventional MAC of 10, FTIR would be
+reading {closure.MAC_VALUE / needed['central']:.2f} of true EC. But every MAC measured against thermal EC is above 10: {mac_bars.mac[1]:.1f} m²/g on light IMPROVE
+filters, {mac_bars.mac[3]:.1f} at IMPROVE's six urban sites, and {mac_bars.mac[4]:.1f} on the five Adama filters ({adama_linearised:.1f} after the same
+linearisation). At the urban IMPROVE value FTIR reads {mac_bars.mac[3] / needed['central']:.2f} of true EC; at the Adama value, {adama_linearised / needed['central']:.2f}.
+Adama is the only thermal EC in Ethiopia, so it is the most relevant MAC and the least certain: five filters, another site and sampler."""
+
 # ---------------------------------------------------------------- 5. the network, site by site
 net = tables["network_exponents"].copy()
 net["readable"] = (net.hi - net.lo) < 0.6
@@ -218,6 +242,28 @@ lots = tables["improve_lot"]
 ftir_level = tables["ftir_level"].copy()
 ftir_candidates = tables["ftir_candidates"]
 ftir_values = tables["ftir_ocec_values"]
+ftir_epo, sens, blank_table = tables["ftir_epo"], tables["ftir_sensitivity"].set_index("calibration"), tables["ftir_blanks"].set_index("what")
+epo_urban = ftir_epo[ftir_epo.filters.eq("six urban IMPROVE sites")].set_index("calibration")
+raw_s, epo_s = sens.loc["Raw spectra"], sens.loc["Raw spectra + EPO"]
+sensitivity_table = tables["ftir_sensitivity"][["calibration", "offset_ug", "gain", "gain_lo", "gain_hi", "oc_response", "level_urban", "level_addis", "level_addis_lo", "level_addis_hi"]]
+co = blank_table.loc["Three urban IMPROVE filters co-added on one blank"]
+text_steps = f"""**Both next steps are now run.** *EPO, re-scored.* No saved EPO predictions exist, so EPO was refitted on the raw spectra with the
+repository's own implementation, inside each training fold. On IMPROVE's six urban sites it reads {epo_urban.loc['Raw spectra + EPO', 'ftir_over_tor']:.2f}
+({epo_urban.loc['Raw spectra + EPO', 'lo']:.2f}–{epo_urban.loc['Raw spectra + EPO', 'hi']:.2f}) of thermal EC against {epo_urban.loc['Raw spectra', 'ftir_over_tor']:.2f} for
+the plain calibration: a small real gain, at the cost of a higher median error overall ({epo_urban.loc['Raw spectra + EPO', 'overall_median_abs_error']:.2f} against
+{epo_urban.loc['Raw spectra', 'overall_median_abs_error']:.2f} µg per filter).
+
+*What the calibration responds to.* Across IMPROVE site means, the raw calibration's prediction is {raw_s.offset_ug:.1f} µg per filter plus
+**{raw_s.gain:.2f} × thermal EC** ({raw_s.gain_lo:.2f}–{raw_s.gain_hi:.2f}) plus {raw_s.oc_response:.3f} × OC. It under-responds to EC and makes up the
+difference with a fixed offset, which works at IMPROVE's loadings and not at Addis's. Blank filters show an offset too, a larger one: the calibration reads
+{blank_table.loc['IMPROVE field blanks', 'predicted_ec_ug']:.1f} µg of EC on IMPROVE field blanks and {blank_table.loc['Addis field blanks', 'predicted_ec_ug']:.1f} µg on
+Addis field blanks. EPO raises the gain to {epo_s.gain:.2f} and removes the OC response. Read at Addis loading and an OC/EC of 1, the raw
+calibration gives {raw_s.level_addis:.2f} ({raw_s.level_addis_lo:.2f}–{raw_s.level_addis_hi:.2f}) of true EC and EPO {epo_s.level_addis:.2f}
+({epo_s.level_addis_lo:.2f}–{epo_s.level_addis_hi:.2f}). That is a linear extrapolation, not a measurement.
+
+*Spectral augmentation.* Co-adding three urban IMPROVE filters on one blank gives {co.tor_ec_ug:.0f} µg of EC, an Addis-like loading, and FTIR reads
+{co.ftir_over_tor:.2f} of it. But for a linear calibration that number is exactly the sum of the three predictions minus twice the blank reading, so
+co-adding shows the offset and nothing else, and a sum can never have a lower OC/EC than its parts. Augmentation cannot test Addis composition."""
 ftir_by_site = tables["ftir_by_site"]
 ftir_by_site = ftir_by_site[ftir_by_site.median_tor_ec_ug >= 1.5]    # below this a site median ratio is mostly noise
 candidates_long = pd.concat([
@@ -276,8 +322,10 @@ pathways = pd.DataFrame([
     ("Why the HIPS ceiling differs between 2005–2014 and 2015–2025 in IMPROVE (instrument history), and which applies to SPARTAN", "new, data in hand", "3"),
     ("Site-specific HIPS response: why South Africa, Jaipur and Mexico City stay near-proportional and Chile does not", "new, data in hand", "3"),
     ("A composition-aware level factor learned on IMPROVE", "tested here: not possible, Addis is outside IMPROVE's composition range", ""),
-    ("Spectral augmentation: co-added IMPROVE spectra at Addis-like loading and OC/EC, to reach the composition IMPROVE lacks", "never run; now the main FTIR-side step", "4"),
-    ("Re-score every calibration, EPO included, with site or previous-sample grouping instead of the heavy low-OC/EC subset", "open, needs the saved prediction archives", "5"),
+    ("Spectral augmentation by co-adding IMPROVE spectra", "run here: shows only the blank offset; cannot reach Addis composition", ""),
+    ("EPO re-scored with fair grouping (refitted on raw spectra; no saved predictions exist)", "run here: 0.93 against 0.91 on the urban sites", ""),
+    ("A recalibration from the offset and EC gain measured on IMPROVE site means, checked on held-out sites and on blanks", "new, data in hand", "4"),
+    ("Why the EC gain is 0.78: weight heavy filters in training, or fit through the blanks, and re-score fairly", "new, data in hand", "5"),
     ("FTIR proportional to thermal EC on held-out IMPROVE sites (exponent 0.94 to 1.04)", "done here", ""),
     ("The exponent and the linearised fit at every SPARTAN site, with potassium as a second instrument", "done here", ""),
     ("PLS on the masked regions; raw model without 3600–4000 and below 1425 cm⁻¹", "open, lower priority", "7"),
@@ -302,10 +350,11 @@ write_bundle(
                    "and the unified filter dataset via research/ftir_hips_chem/workflows/run_addis_reference_closure_20261110.py",
     colors=COLORS,
     text={"intro": intro, "improve": text_improve, "addis": text_addis, "response": text_response, "season": text_season,
-          "level": text_level, "network": text_network, "candidates": text_candidates, "source": text_source, "next": text_next},
+          "level": text_level, "network": text_network, "candidates": text_candidates, "source": text_source, "mac": text_mac, "steps": text_steps, "next": text_next},
     tables={"strata": pd.concat([strata[["population", "n", "TOR EC (µg per filter)", "HIPS optical depth", "Fabs ÷ TOR EC (m²/g)"]], adama_points], ignore_index=True),
             "adama_filters": adama_filters, "adama_ftir": adama_ftir, "ftir_by_site": ftir_by_site, "ftir_selection": tables["ftir_selection"],
-            "ftir_candidates_long": candidates_long,
+            "ftir_candidates_long": candidates_long, "mac_bars": mac_bars, "mac_levels": mac_levels, "ftir_epo": ftir_epo,
+            "ftir_sensitivity": sensitivity_table, "ftir_blanks": tables["ftir_blanks"],
             "ceilings": ceilings, "exponents": exponents, "against_hips": against_hips, "fits": fits,
             "season": season_rows[["group", "season", "lot", "n", "median_optical_depth", "published_over_hips",
                                    "published_over_linearised_hips", "published_over_pm25"]],
