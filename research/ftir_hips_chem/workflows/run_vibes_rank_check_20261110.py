@@ -81,6 +81,10 @@ def stage_noise(model, spectra, cases, out):
     sigma, baseline, ok = network_fit(model, spectra, out)
     corrected = spectra - baseline
     table = cases[["analysis_id", "code", "filter_id", "filter_type", "qc"]].copy()
+    # The bank names its blanks "improve:<id>" or "etad:<media id>"; the second kind are Addis field blanks.
+    bank = pd.Series(model["blank_ids"]).str.split(":", expand=True)
+    addis_media = set(bank.loc[bank[0] == "etad", 1])
+    table["in_bank"] = ((cases["code"] == "ETAD") & (cases["filter_type"] == "FB") & cases["media_id"].isin(addis_media)).to_numpy()
     table["sigma"] = sigma
     table["corrected_rms"] = np.sqrt((corrected ** 2).mean(1))
     table["raw_range"] = np.ptp(spectra, axis=1)
@@ -119,9 +123,10 @@ def stage_noise(model, spectra, cases, out):
     components_rms = np.linalg.norm(components, axis=0) / np.sqrt(len(wn))
     return {
         "scans": int(len(table)), "fitted": int(ok.sum()),
-        "background_blanks": int(len(model["blank_ids"])),
-        "background_blanks_in_this_network": int(cases["filter_id"].isin(model["blank_ids"]).sum()),
-        "background_blank_sources": sorted({str(b).split(":")[0] for b in model["blank_ids"]}),
+        "background_blanks": bank[0].value_counts().to_dict(),
+        "field_blank_scans_in_bank": int(table["in_bank"].sum()),
+        "field_blank_sigma_median": {"in_bank": float(table.loc[table["in_bank"], "sigma"].median()),
+                                     "not_in_bank": float(table.loc[blank & ~table["in_bank"], "sigma"].median())},
         "component_rms": {str(k + 1): float(components_rms[k]) for k in (0, 9, 19, 39, 69)},
         "by_type": by_type,
         "blank_sigma_p95": float(limit),

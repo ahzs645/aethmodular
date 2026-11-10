@@ -4,12 +4,15 @@
  "noise": {
   "scans": 4452,
   "fitted": 4452,
-  "background_blanks": 87,
-  "background_blanks_in_this_network": 0,
-  "background_blank_sources": [
-   "etad",
-   "improve"
-  ],
+  "background_blanks": {
+   "improve": 59,
+   "etad": 28
+  },
+  "field_blank_scans_in_bank": 30,
+  "field_blank_sigma_median": {
+   "in_bank": 9.202543804244692e-07,
+   "not_in_bank": 1.6063278176107368e-06
+  },
   "component_rms": {
    "1": 0.026730556751218677,
    "10": 8.330911937639058e-05,
@@ -22,22 +25,22 @@
     "filter_type": "FB",
     "n": 545,
     "sigma_median": 1.5647681726704471e-06,
-    "corrected_rms_median": 2.8549167918562343e-05,
-    "high_order_share_median": 0.3935851619118854
+    "corrected_rms_median": 2.854911553775232e-05,
+    "high_order_share_median": 0.3935828500713487
    },
    {
     "filter_type": "PM10",
     "n": 222,
     "sigma_median": 0.00019287800220196998,
-    "corrected_rms_median": 0.003141763208639796,
-    "high_order_share_median": 0.0007647071356221843
+    "corrected_rms_median": 0.0031417632082127722,
+    "high_order_share_median": 0.0007647171632242511
    },
    {
     "filter_type": "PM2.5",
     "n": 3685,
     "sigma_median": 0.0006091134395231973,
-    "corrected_rms_median": 0.00959502608295273,
-    "high_order_share_median": 8.416258607438835e-05
+    "corrected_rms_median": 0.009595026051635447,
+    "high_order_share_median": 8.415977051306267e-05
    }
   ],
   "blank_sigma_p95": 8.425541242260928e-06,
@@ -75,16 +78,16 @@
    {
     "band": "Ammonium 1420",
     "n": 1287,
-    "p05": 0.9180989401668945,
-    "p50": 0.9584190688661087,
-    "p95": 0.9801507585713184
+    "p05": 0.9180989415770515,
+    "p50": 0.958419068947798,
+    "p95": 0.9801507598556992
    },
    {
     "band": "C-H 2920",
     "n": 1244,
-    "p05": 0.7103796412607161,
-    "p50": 0.8739033576936472,
-    "p95": 0.948663588081568
+    "p05": 0.7103799913732469,
+    "p50": 0.873903058111851,
+    "p95": 0.948663586574114
    }
   ],
   "flat_scans": [

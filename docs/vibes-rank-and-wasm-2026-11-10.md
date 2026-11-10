@@ -13,7 +13,7 @@ the 87-blank rank-70 background, tau 0.1), every scan solved to convergence.
 | Does the background absorb the aerosol on light filters? | **No case found.** 108 sample scans have a noise level as low as a field blank's. All 108 have raw spectra with no aerosol bands, measured without any baseline model. 10 of them are flat scans. |
 | Does the rank matter? | **Not on loaded filters.** An injected band is recovered the same at ranks 20, 40 and 70 on typical and Addis filters. It matters only for a faint, wide band on a blank. |
 | What does the background absorb? | **Breadth, at every rank.** A 1,500 cm⁻¹ wide feature keeps 0 to 14 % of its height. This is the continuum loss again, and lowering the rank does not fix it. |
-| Were the SPARTAN field blanks used to build the background? | **No.** All 87 blanks in the bank are IMPROVE blanks. |
+| Were the SPARTAN field blanks used to build the background? | **Only Addis ones.** The bank is 59 IMPROVE blanks and 28 Addis field blanks (30 of the 545 field-blank scans). The other 515 fit almost as tightly: median noise level 1.6e-6 against 0.9e-6. |
 | Can the converged solver run in a browser as WebAssembly? | **Yes.** A Rust port, 82 KB with no dependencies, matches the Python solver to 9e-10 in noise level and 8e-14 in baseline. In Chromium it takes 0.33 s per spectrum on one worker, 3.8 times faster than the existing JavaScript path on the same machine. |
 
 ## 1. A correction
@@ -36,6 +36,10 @@ median is 1.6e-6, against 6.1e-4 for PM2.5 scans.
 | Field blank | 545 | 1.6e-6 | 2.9e-5 | 39 % |
 | PM10 | 222 | 1.9e-4 | 3.1e-3 | 0.08 % |
 | PM2.5 | 3,685 | 6.1e-4 | 9.6e-3 | 0.008 % |
+
+Being in the bank is not what makes a blank fit tightly. The bank holds 59 IMPROVE blanks and 28 Addis field blanks, which
+are 30 of the 545 field-blank scans here. Their median noise level is 0.9e-6; the 515 scans outside the bank have 1.6e-6.
+An earlier version of this note said all 87 were IMPROVE blanks. That check compared the wrong identifiers.
 
 Components 41 to 70 are tiny (2e-6 to 5e-7 in absorbance at unit weight, against 0.027 for the first). On sample scans
 they carry under a hundredth of a percent of the corrected signal. They only do work on blanks.
@@ -135,6 +139,7 @@ no server. It is not the way to run the network: Python does all 4,452 scans in 
 ## Limits
 
 - The bundle has no sampled volumes, so "not sampled" for the 98 intact blank-like scans is inferred from their spectra.
+- About 2 of the 40 field blanks in the injection test are expected to be bank members; they were not separated.
 - Injection used Gaussian bands at two positions. Real aerosol bands overlap and sit on PTFE structure.
 - The rank was lowered by truncating the rank-70 background, not by refitting a bank at each rank.
 - Browser timing is from one machine and one browser, headless. Firefox and Safari were not tested.
