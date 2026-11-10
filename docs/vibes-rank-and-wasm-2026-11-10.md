@@ -150,13 +150,32 @@ Experimental → VIBES on one spectrum (`#tab=experimental&xp=vibes-tool`).
   wavenumber then absorbance. A file is read in the browser and is not uploaded.
 - **Preparation.** The spectrum is averaged onto the background's 2,722 channels by the rule the network run used
   (`resample` in `network_baselines_20261019.py`, ported and tested against it).
-- **Settings.** Rank 10, 20, 40 or 70 (the first components of the 87-blank background) and tau 0.05, 0.1 or 0.2. The
-  network run used 70 and 0.1.
+- **Settings.** Rank 10, 20, 40 or 70 (the first components of the 87-blank background), tau 0.05, 0.1 or 0.2, and the
+  noise level: solved to convergence here, or the value the saved run stopped at for that scan.
+- **Presets.** *Converged* is rank 70, tau 0.1 and the noise level solved here (the 3 Nov method). *19 Oct run* is the
+  same rank and tau with the saved run's noise level, which repeats the saved trace. Changing a setting shows *Custom*.
+  The 19 Oct preset is offered for network scans saved under the 87-blank background (4,373 of 4,452); the 76 lot 241
+  and 241a scans used their own blank banks and the 3 failed fits have no noise level.
 - **Result.** The corrected spectrum beside the saved 19 Oct trace, or the raw spectrum with its baseline; the noise
   level, steps, certificate and solver time; a CSV download.
-- **Check against the saved run.** At rank 70 and tau 0.1, ETAD-0001 differs from the saved trace by 2.6e-6 in absorbance
-  (under 0.1 % of its corrected RMS). ETAD-0053, one of the 10 Addis early stops, differs by 0.015 (216 %): the saved
-  trace carries the broad hump the 3 Nov notes describe, and the page's does not.
+- **What each line was made with.** A table under the plot gives the background, rank, tau and noise level of both
+  lines, how each noise level was set, and puts what differs in bold.
+
+**Why a line solved here can differ from the saved one.** The background, rank and tau are the same. The noise level is
+not: it is fitted per scan, and the saved run's optimiser stopped early on 155 scans. A noise level that is too high
+holds the baseline close to the average blank, so the filter's own broad slope is left in the corrected spectrum.
+
+| Check | ETAD-0053 (early stop) | ETAD-0001 (typical) |
+|---|---|---|
+| Saved noise level, optimiser steps | 4.9e-3, 13 | 7.9e-4, 1,142 |
+| Noise level solved here | 4.2e-4 | 7.9e-4 |
+| Converged preset against the saved trace | 0.015 (216 % of corrected RMS) | 2.6e-6 (under 0.1 %) |
+| 19 Oct run preset against the saved trace | 4.2e-8 | — |
+| Original pyvibes rerun here against the saved trace | 0.0 | 0.0 |
+
+Solving the baseline at the saved noise level reproduces the gallery's saved trace on 361 scans checked in Python (300
+random, 61 early stops): median difference 2e-8 in absorbance, largest 5e-6. The noise level solved here equals the
+3 Nov converged run's on every 87-blank scan, to 4e-8 relative.
 
 Where the pieces are:
 
@@ -166,14 +185,14 @@ Where the pieces are:
 | Built module and its build record | `gallery/app/src/lib/vibes/vibes_wasm.wasm`, `vibes_wasm.build.json` |
 | Wrapper, worker, resampler, file parser, tests | `gallery/app/src/lib/vibes/` |
 | Page | `gallery/app/src/pages/experimental/VibesTool.tsx` |
-| Background export | `gallery/data/export_vibes_background.py` → `public/data/experimental/vibes_background.json`, `.bin` |
+| Background and saved-run export | `gallery/data/export_vibes_background.py` → `public/data/experimental/vibes_background.json`, `.bin`, `vibes_saved_fits.json` |
 
 The built module is committed, so the gallery builds without Rust. `tests/test_vibes_wasm.py` fails if the Rust source
 changes without a rebuild (`wasm_demo.py build --gallery`).
 
 The background is 1.5 MB at full precision and is git-ignored like the other Experimental exports. The page shows the
 usual "run the exporter" panel until `export_vibes_background.py` has run, and the public site needs a data release that
-includes it.
+includes it. Without `vibes_saved_fits.json` the page still solves, but offers no 19 Oct preset and no settings table.
 
 ## Limits
 

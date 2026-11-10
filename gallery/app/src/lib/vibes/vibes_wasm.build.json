@@ -1,8 +1,8 @@
 {
  "source": "research/ftir_hips_chem/wasm_demo",
- "source_sha256": "ba640ce3b41930b95d38d5201bf8d10aee76392a293a197cef0a90db3353b512",
- "wasm_sha256": "549ac41f669653e7e354a2f6bb7b526573abb95de2f39df2d708d239bfab9071",
- "bytes": 80235,
+ "source_sha256": "839244fad036af6b0979e8dfd5407187b0cc46f30bb20cfe4f54853911d18ba6",
+ "wasm_sha256": "71cd61f311236c443ab8028dea47c148daa8109a99d29429e675ed0c19e44c73",
+ "bytes": 80787,
  "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
  "flags": "-C target-feature=+simd128"
 }

@@ -3,7 +3,7 @@ import wasmUrl from './vibes_wasm.wasm?url'
 import { VibesSolver, truncate } from './solver.ts'
 
 interface Init { type: 'init'; p: number; c: number; mean: Float64Array; components: Float64Array }
-interface Fit { type: 'fit'; id: number; y: Float64Array; rank: number; tau: number }
+interface Fit { type: 'fit'; id: number; y: Float64Array; rank: number; tau: number; sigma?: number }
 
 // the worker's own global, typed here so the page's DOM types stay the project's only globals
 const scope = self as unknown as { onmessage: ((e: MessageEvent<Init | Fit>) => void) | null; postMessage(message: unknown, transfer?: Transferable[]): void }
@@ -30,7 +30,7 @@ scope.onmessage = async ({ data }) => {
   try {
     const s = await solver(data.rank)
     const started = performance.now()
-    const fit = s.fit(data.y, data.tau)
+    const fit = s.fit(data.y, data.tau, data.sigma)
     scope.postMessage({ id: data.id, fit: { ...fit, ms: performance.now() - started } }, [fit.baseline.buffer])
   } catch (e) {
     scope.postMessage({ id: data.id, error: String(e instanceof Error ? e.message : e) })

@@ -43,6 +43,19 @@ test('noise level and baseline match the Python solver', async () => {
   near(wider.sigma, 0.00011104182482171719, 1e-7); near(wider.baseline[96], 0.2273130827553038, 1e-9)
 })
 
+test('a given noise level skips the fit and gives the baseline Python gives at that level', async () => {
+  const solver = await VibesSolver.create(wasm, W, mean, p, c)
+  const at = solver.fit(spectrum(0.01), 0.1, 0.002)
+  assert.equal(at.fitted, false); assert.equal(at.sigma, 0.002); assert.equal(at.iterations, 0); assert.ok(at.certified); assert.ok(Number.isNaN(at.elbo))
+  near(at.baseline[0], 0.20487372222504724, 1e-9); near(at.baseline[96], 0.2272858486596068, 1e-9); near(at.baseline[239], 0.28184852640158276, 1e-9)
+  // at its own fitted level it is the fitted baseline again
+  const own = solver.fit(spectrum(0.01), 0.1)
+  assert.ok(own.fitted)
+  const again = solver.fit(spectrum(0.01), 0.1, own.sigma)
+  for (const i of [0, 96, 239]) near(again.baseline[i], own.baseline[i], 1e-10)
+  assert.throws(() => solver.fit(spectrum(0), 0.1, 0), /noise level/)
+})
+
 test('a lower rank is the first columns of the background', async () => {
   const W3 = truncate(W, p, c, 3)
   assert.equal(W3.length, p * 3); assert.equal(W3[3 * 5 + 2], W[c * 5 + 2])

@@ -547,8 +547,39 @@ pub unsafe extern "C" fn vibes_fit(
     out[3] = e.status as f64;
     out[7] = e.hessians as f64;
     let ok = e.status == 0 && e.sigma.is_finite() && e.sigma > 0.0;
-    let m = if ok {
-        solve_map(w, &v, p, c, tau, e.sigma, 100, baseline)
+    baseline_into(w, mean, &v, p, c, tau, if ok { e.sigma } else { f64::NAN }, baseline, out);
+}
+
+/// The baseline at a noise level given by the caller, with no fit of the noise level: the way to
+/// repeat a saved run from its recorded sigma. `out` as in `vibes_fit`, with sigma echoed, the ELBO
+/// NaN and the Newton fields zero.
+///
+/// # Safety
+/// Every pointer must reference a live buffer of the stated length.
+#[no_mangle]
+pub unsafe extern "C" fn vibes_baseline_at(
+    w: *const f64, mean: *const f64, y: *const f64, p: usize, c: usize, tau: f64, sigma: f64,
+    baseline: *mut f64, out: *mut f64,
+) {
+    let w = core::slice::from_raw_parts(w, p * c);
+    let mean = core::slice::from_raw_parts(mean, p);
+    let y = core::slice::from_raw_parts(y, p);
+    let baseline = core::slice::from_raw_parts_mut(baseline, p);
+    let out = core::slice::from_raw_parts_mut(out, 8);
+    let v: Vec<f64> = y.iter().zip(mean).map(|(a, b)| a - b).collect();
+    out[0] = sigma;
+    out[1] = f64::NAN;
+    out[2] = 0.0;
+    out[3] = 0.0;
+    out[7] = 0.0;
+    baseline_into(w, mean, &v, p, c, tau, sigma, baseline, out);
+}
+
+/// Solve the baseline at `sigma` (skipped unless it is finite and positive) and fill out[4..7].
+#[allow(clippy::too_many_arguments)]
+fn baseline_into(w: &[f64], mean: &[f64], v: &[f64], p: usize, c: usize, tau: f64, sigma: f64, baseline: &mut [f64], out: &mut [f64]) {
+    let m = if sigma.is_finite() && sigma > 0.0 {
+        solve_map(w, v, p, c, tau, sigma, 100, baseline)
     } else {
         MapFit { iterations: 0, certified: false, gap: f64::NAN, tolerance: f64::NAN }
     };

@@ -48,13 +48,37 @@ function start(background: VibesBackground): Worker {
   return w
 }
 
-/** The baseline of one spectrum on the background's grid, at this rank (the first `rank` components) and tau. */
-export async function fitVibes(y: Float64Array, rank: number, tau: number): Promise<TimedFit> {
+/**
+ * The baseline of one spectrum on the background's grid, at this rank (the first `rank` components) and tau.
+ * The noise level is fitted to convergence unless `sigma` gives it (a saved run's recorded value).
+ */
+export async function fitVibes(y: Float64Array, rank: number, tau: number, sigma?: number): Promise<TimedFit> {
   const background = await loadVibesBackground()
   worker ??= start(background)
   const id = next++
   return new Promise<TimedFit>((resolve, reject) => {
     waiting.set(id, { resolve, reject })
-    worker!.postMessage({ type: 'fit', id, y, rank, tau })
+    worker!.postMessage({ type: 'fit', id, y, rank, tau, sigma })
   })
 }
+
+/** public/data/experimental/vibes_saved_fits.json: what the saved network run recorded for each scan */
+export interface SavedFit {
+  /** which blank background the saved trace used; the page's own is b87 */
+  model: string
+  /** the saved run's noise level; null where its fit failed */
+  sigma: number | null
+  /** steps its optimiser took, and whether that counts as an early stop (under 30) */
+  iterations: number
+  early: boolean
+  /** the noise level of the 3 Nov converged run, for the same background */
+  converged: number | null
+}
+interface SavedFitsFile { schema_version: number; run: string; columns: { analysis_id: string[]; model: string[]; sigma: (number | null)[]; iterations: number[]; early_stop: boolean[]; sigma_converged: (number | null)[] } }
+
+export const loadSavedFits = () => loadDerived<Map<string, SavedFit>>('vibes-saved-fits', async () => {
+  const file = await loadJson<SavedFitsFile>('experimental/vibes_saved_fits.json')
+  if (file.schema_version !== 1) throw new Error('unsupported data version')
+  const c = file.columns
+  return new Map(c.analysis_id.map((id, i) => [String(id), { model: c.model[i], sigma: c.sigma[i], iterations: c.iterations[i], early: c.early_stop[i], converged: c.sigma_converged[i] }]))
+})
