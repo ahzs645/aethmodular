@@ -132,7 +132,7 @@ a near-proportional response into a steep slope and a large negative intercept.
 
 | Anchor | Published ÷ true | Limits |
 |---|---|---|
-| Held-out IMPROVE, six urban sites: raw-spectra FTIR ÷ TOR 0.91 [0.88, 0.94]; the published product reads 1.11× that calibration at Addis | 1.01 | Assumes the bias seen at TOR OC/EC near 3 holds at Addis, where OC/EC is near 1. It probably grows (section 5). |
+| Held-out IMPROVE, six urban IMPROVE sites: raw-spectra FTIR ÷ TOR 0.91 [0.88, 0.94]; the published product reads 1.11× that calibration at Addis | 1.01 | Assumes the bias seen at TOR OC/EC near 3 holds at Addis, where OC/EC is near 1. It probably grows (section 5). |
 | Linearised HIPS at the IMPROVE MAC on light filters: 13.1 (all sites), 15.1 (low OC/EC sites), 16.4 (urban) m²/g | 0.70, 0.81, 0.88 | Assumes Addis soot absorbs like IMPROVE's per unit of thermal EC. |
 | Linearised HIPS at the Adama MAC (Fabs ÷ TOR 18.9 m²/g after the same linearisation) | 1.01 (0.81 to 1.15) | Five Adama filters, another site and sampler. |
 | PM2.5 mass closure | ≥ 0.67 | Published EC reconstructs 89 % of gravimetric mass; × 1.5 reaches 100 %, × 1.9 gives 108 %. FTIR OM is below FTIR OC at Addis (median OM/OC 0.91), so OM is probably low and the real room for EC is smaller. |
@@ -201,7 +201,7 @@ FTIR ÷ TOR on it comes out too low. Two groupings cannot do that:
 |---|---:|---:|---:|---:|
 | By the filter's own TOR: EC ≥ 15 µg, OC/EC < 2.5 | 175 | 30 | 0.78 [0.72, 0.84] | 2.2 |
 | By the previous sample at the site: EC ≥ 15 µg, OC/EC < 2.5 | 155 | 30 | 0.91 [0.87, 0.94] | 2.9 |
-| By site: six urban sites | 645 | 6 | 0.91 [0.88, 0.94] | 3.2 |
+| By site: six urban IMPROVE sites | 645 | 6 | 0.91 [0.88, 0.94] | 3.2 |
 | By site: median OC/EC 2.5–3.5 | 763 | 10 | 0.93 [0.89, 1.02] | 3.1 |
 | By site: median OC/EC 3.5–5 | 3,379 | 35 | 0.96 [0.93, 1.00] | 4.3 |
 | By site: median OC/EC above 5 | 8,799 | 112 | 1.16 [1.12, 1.20] | 6.6 |
@@ -220,6 +220,32 @@ networks, Addis FTIR OC/EC has a median of 0.98 (Bega 0.97, Belg 0.73, Kiremt 1.
 is 1.94 and its urban median 3.65: 99 % of Addis filters are below IMPROVE's 5th percentile. The bias grows as
 OC/EC falls across IMPROVE sites (1.16, 0.96, 0.93, 0.91), so it is probably larger at Addis, by an amount no
 IMPROVE filter can show. This is the honest limit of the FTIR side with existing data.
+
+IMPROVE is a mostly rural and remote network. "Urban" above means its six city sites (Atlanta, Birmingham,
+Fresno, Phoenix, Pittsburgh, Seattle), which are its low-OC/EC end, near 3.
+
+**A correction cannot be learned by binning on OC/EC.** In the lowest bin the same IMPROVE filters read 0.62 of
+thermal EC when binned by TOR's own OC/EC and 1.54 when binned by FTIR's own; binned by the previous sample at
+the site they read 0.86 to 1.01. Each ratio contains the error of the EC it is built from, so a low bin collects
+that error.
+
+### What the Adama TOR filters do and do not help with
+
+The five Adama pairs (July 2024) are the only thermal EC in Ethiopia. They carry 3.5 to 9.7 µg of EC per filter
+at TOR OC/EC 4.6 to 7.2 and optical depth 0.15 to 0.44. Addis SPARTAN filters carry about 34 µg at an OC/EC
+near 1 and optical depth near 1. Adama is the opposite end from Addis.
+
+- **They do not test the FTIR level at Addis.** At Adama's light loading the calibrations disagree by more than
+  a factor of two (median FTIR ÷ TOR on the three clean pairs: production VIBES 0.96, EPO 1.02, PTFE-anchored
+  VIBES 1.31, raw spectra 2.23). That is a baseline question, which is not what limits Addis.
+- **They do help with the MAC.** Per unit of thermal EC, HIPS reads 14.8 to 16.8 m²/g at Adama, above IMPROVE's
+  curve at the same optical depth (10 to 12.5 across all sites; about 14 at the urban sites). Ethiopian aerosol
+  absorbs more per unit EC than MAC 10 assumes. That is the other half of the 0.55 slope: with a MAC near 19
+  after linearising, the published FTIR level comes out near 1.0.
+- **They cannot test HIPS saturation**, because they sit low on the curve.
+
+So Adama narrows the optical side and leaves the FTIR side at Addis composition untested. Heavier pairs from
+Addis itself are what would test it.
 
 ### On held-out IMPROVE sites FTIR EC is proportional to thermal EC
 

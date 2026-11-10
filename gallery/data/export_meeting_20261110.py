@@ -33,12 +33,15 @@ from meeting_bundle import write_bundle  # noqa: E402
 
 MEETING_ID = "closure-20261110"
 SEASON_COLORS = {"Bega": "#E67E22", "Belg": "#27AE60", "Kiremt": "#3498DB"}   # config.ETHIOPIA_SEASONS colours
-COLORS = {**SEASON_COLORS, "all sites": "#22252A", "sites with median OC/EC < 4": "#2C6E9E", "six urban sites": "#B23327",
+COLORS = {**SEASON_COLORS, "all sites": "#22252A", "sites with median OC/EC < 4": "#2C6E9E", "six urban IMPROVE sites": "#B23327",
           "PM2.5 mass (gravimetric)": "#27AE60", "Potassium (XRF)": "#2C6E9E", "FTIR EC, SPARTAN published": "#B23327",
           "HIPS Fabs": "#5B5852", "measured (instrument: PM2.5 mass)": "#C49442", "measured (instrument: potassium)": "#2C6E9E",
           "predicted from IMPROVE thermal EC": "#8a8f98", "HIPS as measured": "#B23327", "HIPS linearised": "#2C6E9E",
           "this filter's own TOR (selects on its error)": "#B23327", "the previous sample at the site": "#2C6E9E", "the site": "#22252A",
-          "IMPROVE (FTIR EC ≥ 5 µg per filter)": "#8a8f98", "Addis Ababa": "#C49442", "2005–2014": "#8F8C84", "2015–2025": "#7A4FA3", "optical pyrolysis > 0": "#27AE60",
+          "IMPROVE (FTIR EC ≥ 5 µg per filter)": "#8a8f98", "Adama, Ethiopia (5 filters with TOR)": "#C49442",
+          "urban IMPROVE site": "#B23327", "other IMPROVE site": "#8a8f98", "TOR's own OC/EC on this filter": "#B23327",
+          "FTIR's own OC/EC on this filter": "#7A4FA3", "TOR OC/EC of the previous sample at the site": "#2C6E9E",
+          "By site: the six urban IMPROVE sites": "#22252A", "By the filter's own TOR (heavy, low OC/EC)": "#B23327", "Addis Ababa": "#C49442", "2005–2014": "#8F8C84", "2015–2025": "#7A4FA3", "optical pyrolysis > 0": "#27AE60",
           "Raw spectra": "#22252A", "PTFE-anchored VIBES": "#C49442", "Spline baseline": "#2C6E9E"}
 
 
@@ -51,6 +54,17 @@ strata = tables["improve_strata"].rename(columns={"loading_ug": "TOR EC (µg per
                                                   "fabs_over_ec": "Fabs ÷ TOR EC (m²/g)"})
 from pls_transfer import deming_regression  # noqa: E402
 
+import json  # noqa: E402
+
+closeout = json.loads(closure.CLOSEOUT.read_text())
+pilot = pd.DataFrame(closeout["adama"])
+adama_points = pd.DataFrame({"population": "Adama, Ethiopia (5 filters with TOR)", "n": 1, "TOR EC (µg per filter)": pilot.tor_ug,
+                             "HIPS optical depth": pilot.tau, "Fabs ÷ TOR EC (m²/g)": pilot.fabs_over_tor}).sort_values("HIPS optical depth")
+adama_filters = pilot[["date", "flag", "tor_ug", "ocec", "tau", "fabs_over_tor"]].assign(flag=pilot.flag.fillna("none"))
+summary = pd.DataFrame(closeout["adama_summary"])
+adama_ftir = summary.assign(calibration=summary.model.map({"VIBES k18 (before)": "Production VIBES", "VIBES anchored k18 (after)": "PTFE-anchored VIBES",
+                                                         "raw k18": "Raw spectra", "EPO k18": "Anchored + EPO (historical)"}))[
+    ["calibration", "median_unflagged", "median_all", "mapped_lo", "mapped_hi"]]
 ceilings = tables["improve_ceiling"].copy()
 LAMBDA = 2.96   # closeout LAMBDA_ADDIS, as in the workflow
 implied = []
@@ -71,7 +85,7 @@ text_improve = f"""**IMPROVE's own thermal EC shows HIPS falling behind as the f
 so that neither instrument's error decides the group, HIPS Fabs ÷ TOR EC falls from {light['Fabs ÷ TOR EC (m²/g)']:.1f} m²/g on the
 lightest filters to {heavy['Fabs ÷ TOR EC (m²/g)']:.1f} at optical depth {heavy['HIPS optical depth']:.2f}. A saturating curve through the group
 medians has a **ceiling of {primary.tau_inf:.2f}** ({primary.tau_inf_lo:.2f}–{primary.tau_inf_hi:.2f}, resampling sites); the low-OC/EC sites and
-the six urban sites give the same. Addis optical depth has a median of {table.tau.median():.2f} and reaches {table.tau.max():.2f}, so
+the six urban IMPROVE sites give the same. Addis optical depth has a median of {table.tau.median():.2f} and reaches {table.tau.max():.2f}, so
 Addis sits on the bend. No FTIR and no aethalometer enter this. **The ceiling is not the same in every period:** {era.loc['2005–2014', 'tau_inf']:.2f}
 for 2005–2014 and {era.loc['2015–2025', 'tau_inf']:.2f} ({era.loc['2015–2025', 'tau_inf_lo']:.2f}–{era.loc['2015–2025', 'tau_inf_hi']:.2f}) for 2015–2025, the years
 that include the Addis record. The later value predicts an Addis exponent of {era.loc['2015–2025', 'addis_predicted_exponent']:.2f}, which is what Addis
@@ -135,8 +149,8 @@ mass = tables["mass_closure"].rename(columns={"ec_multiplier": "EC multiplier", 
 ratios = anchors["published ÷ true"].dropna()
 flevel = tables["ftir_level"].set_index("filters")
 comp = tables["ftir_composition"].iloc[0]
-urban_level = flevel.loc["six urban sites"]
-urban_mac = float(ceilings.set_index("population").loc["six urban sites", "unsaturated_fabs_over_ec"])
+urban_level = flevel.loc["six urban IMPROVE sites"]
+urban_mac = float(ceilings.set_index("population").loc["six urban IMPROVE sites", "unsaturated_fabs_over_ec"])
 implied_mac = closure.MAC_VALUE * urban_level.ftir_over_tor * comp.published_over_refit / row["central"].slope_vs_linearised_hips
 text_level = f"""**The slope that is left has two parts, and they fit together.** After linearising, FTIR EC is {row['central'].slope_vs_linearised_hips:.2f} of
 HIPS BC at MAC 10. That is the FTIR level times 10 ÷ the real MAC. On the urban IMPROVE sites the raw-spectra calibration reads
@@ -204,6 +218,16 @@ lots = tables["improve_lot"]
 ftir_level = tables["ftir_level"].copy()
 ftir_candidates = tables["ftir_candidates"]
 ftir_values = tables["ftir_ocec_values"]
+ftir_by_site = tables["ftir_by_site"]
+ftir_by_site = ftir_by_site[ftir_by_site.median_tor_ec_ug >= 1.5]    # below this a site median ratio is mostly noise
+candidates_long = pd.concat([
+    ftir_candidates.assign(chosen="By site: the six urban IMPROVE sites", ftir_over_tor=ftir_candidates.urban_sites),
+    ftir_candidates.assign(chosen="By the filter's own TOR (heavy, low OC/EC)", ftir_over_tor=ftir_candidates.selected_on_own_tor),
+])[["calibration", "chosen", "ftir_over_tor"]]
+sel = tables["ftir_selection"]
+low_bin = sel[sel.ocec < 2].groupby("chosen_by").ftir_over_tor.first()
+pilot_ocec, pilot_ec = float(pilot.ocec.median()), float(pilot.tor_ug.median())
+pilot_ftir = adama_ftir.set_index("calibration").median_unflagged
 raw_low = source[(source.calibration.eq("Raw spectra")) & (source.filters.eq("TOR OC/EC < 2.5"))].iloc[0]
 raw_all = source[(source.calibration.eq("Raw spectra")) & (source.filters.eq("all held-out filters"))].iloc[0]
 own = flevel.loc["TOR EC ≥ 15 µg and OC/EC < 2.5"]
@@ -212,7 +236,7 @@ cand_urban = ftir_candidates.set_index("calibration")
 text_source = f"""**FTIR does read thermal EC low on Addis-like IMPROVE filters, by about a tenth, not a quarter.** The closeout's heavy low-OC/EC
 subset (TOR EC ≥ 15 µg, TOR OC/EC < 2.5) gives FTIR ÷ TOR of {own.ftir_over_tor:.2f}. But that subset is chosen by each filter's own TOR
 values, so it collects filters whose TOR EC happened to read high, and the ratio comes out too low. Choosing by the previous sample at the
-site gives {prev.ftir_over_tor:.2f} ({prev.lo:.2f}–{prev.hi:.2f}); the six urban sites give {urban_level.ftir_over_tor:.2f} ({urban_level.lo:.2f}–{urban_level.hi:.2f}).
+site gives {prev.ftir_over_tor:.2f} ({prev.lo:.2f}–{prev.hi:.2f}); the six urban IMPROVE sites give {urban_level.ftir_over_tor:.2f} ({urban_level.lo:.2f}–{urban_level.hi:.2f}).
 The saved calibrations then differ little: {cand_urban.urban_sites.min():.2f} to {cand_urban.urban_sites.max():.2f} on the urban sites, against
 {cand_urban.selected_on_own_tor.min():.2f} to {cand_urban.selected_on_own_tor.max():.2f} on the selected subset. FTIR EC is proportional to thermal EC there
 (exponent {raw_all.exponent:.2f}, {raw_all.lo:.2f}–{raw_all.hi:.2f}), and lot 248 reads no lower than lot 251.
@@ -221,7 +245,19 @@ The saved calibrations then differ little: {cand_urban.urban_sites.min():.2f} to
 {comp.addis_median:.2f}; {comp.addis_share_below_improve_p05 * 100:.0f} % of Addis filters are below IMPROVE's 5th percentile ({comp.improve_p05:.2f}), and the
 urban IMPROVE median is {comp.improve_urban_median:.2f}. The bias grows as OC/EC falls across IMPROVE sites
 ({flevel.loc['sites with median OC/EC 3.5–5', 'ftir_over_tor']:.2f} at site OC/EC 3.5–5, {flevel.loc['sites with median OC/EC 2.5–3.5', 'ftir_over_tor']:.2f} at 2.5–3.5),
-so it is probably larger at Addis, by an amount no IMPROVE filter can show."""
+so it is probably larger at Addis, by an amount no IMPROVE filter can show. IMPROVE is a mostly rural and remote network; "urban" here means
+its six city sites (Atlanta, Birmingham, Fresno, Phoenix, Pittsburgh, Seattle), which are its low-OC/EC end.
+
+**A correction cannot be learned by binning on OC/EC.** In the lowest bin the same IMPROVE filters read
+{low_bin["TOR's own OC/EC on this filter"]:.2f} of thermal EC when binned by TOR's own OC/EC and {low_bin["FTIR's own OC/EC on this filter"]:.2f} when binned by
+FTIR's own. Each ratio contains the error of the EC it is built from, so the bin collects that error.
+
+**The Adama TOR filters help with the MAC, not with the FTIR level at Addis.** The five Adama pairs are the only thermal EC in Ethiopia.
+They carry {pilot_ec:.0f} µg of EC per filter at TOR OC/EC {pilot_ocec:.1f}; Addis filters carry about 34 µg at an OC/EC near 1. So Adama sits at
+the opposite end from Addis, where the calibrations disagree most (FTIR ÷ TOR from {pilot_ftir.min():.2f} to {pilot_ftir.max():.2f} across four
+calibrations on three clean pairs). What Adama does show: per unit of thermal EC, HIPS reads {pilot.fabs_over_tor.min():.0f} to
+{pilot.fabs_over_tor.max():.0f} m²/g there, above IMPROVE's curve at the same optical depth. Ethiopian aerosol absorbs more per unit EC than
+MAC 10 assumes, which is the other half of the 0.55 slope."""
 
 # ---------------------------------------------------------------- 6. what changes, what is open
 spline_level = float((table["spline k18"] / table.hips_bc).median())
@@ -246,6 +282,7 @@ pathways = pd.DataFrame([
     ("The exponent and the linearised fit at every SPARTAN site, with potassium as a second instrument", "done here", ""),
     ("PLS on the masked regions; raw model without 3600–4000 and below 1425 cm⁻¹", "open, lower priority", "7"),
     ("OC/EC-selected cohorts, organic deficit, dust, season-specific MAC, OP = 0, urban sites", "done 28 Oct (HIPS / 10 on x)", ""),
+    ("Adama TOR pairs (the only Ethiopian thermal EC): used for the MAC; too light and too organic to test the Addis FTIR level", "used here", ""),
     ("Addis quartz + PTFE pairs, with HIPS and some heavy loadings", "blocked: filters not in hand", ""),
 ], columns=["pathway", "status", "rank"])
 text_next = """**Proposed position.** Carry the published FTIR EC forward with no intercept correction and a stated level range. Stop using
@@ -266,7 +303,9 @@ write_bundle(
     colors=COLORS,
     text={"intro": intro, "improve": text_improve, "addis": text_addis, "response": text_response, "season": text_season,
           "level": text_level, "network": text_network, "candidates": text_candidates, "source": text_source, "next": text_next},
-    tables={"strata": strata[["population", "n", "TOR EC (µg per filter)", "HIPS optical depth", "Fabs ÷ TOR EC (m²/g)"]],
+    tables={"strata": pd.concat([strata[["population", "n", "TOR EC (µg per filter)", "HIPS optical depth", "Fabs ÷ TOR EC (m²/g)"]], adama_points], ignore_index=True),
+            "adama_filters": adama_filters, "adama_ftir": adama_ftir, "ftir_by_site": ftir_by_site, "ftir_selection": tables["ftir_selection"],
+            "ftir_candidates_long": candidates_long,
             "ceilings": ceilings, "exponents": exponents, "against_hips": against_hips, "fits": fits,
             "season": season_rows[["group", "season", "lot", "n", "median_optical_depth", "published_over_hips",
                                    "published_over_linearised_hips", "published_over_pm25"]],

@@ -845,8 +845,40 @@
    "file": "meetings/closure-20261110.meeting.ts"
   },
   {
-   "title": "The saved calibrations differ little once the filters are chosen fairly",
+   "title": "The saved calibrations differ little once the filters are chosen fairly: 0.82 to 0.92, not 0.65 to 0.85",
    "id": "c1110-ftir-candidates",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "Site by site, FTIR reads lower as OC/EC falls, and no IMPROVE site is near Addis",
+   "id": "c1110-ftir-by-site",
+   "component": "scatter",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "Why a correction cannot be learned by binning on OC/EC: the answer depends on whose OC/EC you bin on",
+   "id": "c1110-ftir-selection",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "The five Adama filters with thermal EC are light and organic-rich: the opposite end from Addis",
+   "id": "c1110-adama-filters",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "At Adama the calibrations disagree by more than a factor of two, so Adama cannot pick one for Addis",
+   "id": "c1110-adama-ftir",
    "component": "table",
    "tab": "meeting",
    "meeting": "closure-20261110",

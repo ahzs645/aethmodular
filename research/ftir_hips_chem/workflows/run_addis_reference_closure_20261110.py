@@ -82,7 +82,7 @@ NETWORK_MIN_FILTERS = 40
 # IMPROVE strata: the previous sample's TOR EC loading at the same site (µg per filter)
 IMPROVE_EDGES = (0, 0.5, 1, 1.5, 2, 3, 4, 6, 8, 11, 15, 20, 27, 36, 50, 70, 100, 1e4)
 IMPROVE_MIN_STRATUM = 150
-IMPROVE_POPULATIONS = ("all sites", "sites with median OC/EC < 4", "six urban sites")
+IMPROVE_POPULATIONS = ("all sites", "sites with median OC/EC < 4", "six urban IMPROVE sites")
 IMPROVE_CHECKS = ("2005–2014", "2015–2025", "optical pyrolysis > 0")   # robustness, all sites
 SITE_MAP = ROOT / "gallery/app/public/data/spartan_map.json"
 IMPROVE_PRIMARY = "all sites"
@@ -189,7 +189,7 @@ def stage_improve(table, closeout, n_boot, tables, aethalometer):
     site_ocec = samples.groupby("Site")["ocec"].median()
     year = samples["date"].dt.year
     populations = {"all sites": samples, "sites with median OC/EC < 4": samples[samples["Site"].map(site_ocec) < 4],
-                   "six urban sites": samples[samples["Site"].isin(URBAN)],
+                   "six urban IMPROVE sites": samples[samples["Site"].isin(URBAN)],
                    "2005–2014": samples[year <= 2014], "2015–2025": samples[year >= 2015],
                    "optical pyrolysis > 0": samples[samples["OPTR"] > 0]}
     rng = np.random.default_rng(20261110)
@@ -374,7 +374,7 @@ def stage_ftir(table, closeout, n_boot, tables, aethalometer):
     FTIR's own OC/EC reads higher). Two groupings cannot do that: by site, and by the previous sample at the
     site. All three are reported so the size of the artefact is visible.
     """
-    names = ("ftir_level", "ftir_candidates", "ftir_composition", "ftir_ocec_values", "addis_refit")
+    names = ("ftir_level", "ftir_candidates", "ftir_composition", "ftir_ocec_values", "addis_refit", "ftir_by_site", "ftir_selection")
     refit = _ftir_refit()
     if refit is None:
         if not SUMMARY.is_file():
@@ -409,11 +409,33 @@ def stage_ftir(table, closeout, n_boot, tables, aethalometer):
         level(pool[heavy & pool["ocec"].between(2.5, 4)], own, "TOR EC ≥ 15 µg and OC/EC 2.5–4", False),
         level(pool[(pool["previous_ec_ug"] >= 15) & (pool["previous_ocec"] < 2.5)], previous, "previous EC ≥ 15 µg and OC/EC < 2.5", True),
         level(pool[(pool["previous_ec_ug"] >= 15) & pool["previous_ocec"].between(2.5, 4)], previous, "previous EC ≥ 15 µg and OC/EC 2.5–4", True),
-        level(pool[pool["Site"].isin(URBAN)], site, "six urban sites", True),
+        level(pool[pool["Site"].isin(URBAN)], site, "six urban IMPROVE sites", True),
         level(pool[pool["site_ocec"].between(2.5, 3.5)], site, "sites with median OC/EC 2.5–3.5", True),
         level(pool[pool["site_ocec"].between(3.5, 5)], site, "sites with median OC/EC 3.5–5", True),
         level(pool[pool["site_ocec"] > 5], site, "sites with median OC/EC above 5", True),
     ]
+    # One point per IMPROVE site: the level against the site's own composition. IMPROVE is mostly rural and remote;
+    # its few urban sites are the low-OC/EC end, and still far from Addis.
+    by_site = pool.groupby("Site").agg(n=("ratio", "size"), median_tor_ocec=("ocec", "median"), median_tor_ec_ug=("ec_ug", "median"),
+                                       ftir_over_tor=("ratio", "median")).reset_index().rename(columns={"Site": "site"})
+    by_site = by_site[by_site["n"] >= 30]
+    by_site["kind"] = np.where(by_site["site"].isin(URBAN), "urban IMPROVE site", "other IMPROVE site")
+
+    # The artefact, drawn: the same filters binned by three different OC/EC ratios.
+    pool["ftir_ocec"] = pool["ftir_oc_ug"] / pool["ftir_ec_ug"]
+    edges = [0, 1.5, 2, 2.5, 3, 4, 6, 100]
+
+    def curve(frame, column, label):
+        groups = frame.groupby(pd.cut(frame[column], edges), observed=True)
+        out = pd.DataFrame({"chosen_by": label, "ocec": groups[column].median(), "ftir_over_tor": groups["ratio"].median(), "n": groups.size()})
+        return out[out["n"] >= 30].reset_index(drop=True)
+
+    selection = pd.concat([
+        curve(pool[pool["ec_ug"] >= FTIR_MIN_EC_UG], "ocec", "TOR's own OC/EC on this filter"),
+        curve(pool[pool["ftir_ec_ug"] >= FTIR_MIN_EC_UG], "ftir_ocec", "FTIR's own OC/EC on this filter"),
+        curve(pool[pool["previous_ec_ug"] >= FTIR_MIN_EC_UG], "previous_ocec", "TOR OC/EC of the previous sample at the site"),
+    ], ignore_index=True)
+
     improve = pd.DataFrame(closeout["improve_filters"])
     urban, selected = improve[improve["site"].isin(URBAN)], improve.query("tor_ug >= 15 and ocec < 2.5")
     labels = {"raw k18": "Raw spectra", "spline k18": "Spline baseline", "vibes k18": "Production VIBES", "vibes_deflate k18": "Deflated VIBES",
@@ -439,7 +461,8 @@ def stage_ftir(table, closeout, n_boot, tables, aethalometer):
     values = pd.concat([pd.DataFrame({"population": "IMPROVE (FTIR EC ≥ 5 µg per filter)", "ftir_ocec": improve_ocec.clip(-1, 15).round(2)}),
                         pd.DataFrame({"population": "Addis Ababa", "ftir_ocec": addis["ftir_ocec"].round(2)})], ignore_index=True)
     return {"ftir_level": pd.DataFrame(rows), "ftir_candidates": candidates, "ftir_composition": composition, "ftir_ocec_values": values,
-            "addis_refit": addis[["filter_id", "season", "lot", "ftir_ec_ugm3", "ftir_oc_ugm3", "ftir_ocec"]].round(4)}
+            "addis_refit": addis[["filter_id", "season", "lot", "ftir_ec_ugm3", "ftir_oc_ugm3", "ftir_ocec"]].round(4),
+            "ftir_by_site": by_site.round(4), "ftir_selection": selection.round(4)}
 
 
 def stage_level(table, closeout, n_boot, tables, aethalometer):
@@ -473,7 +496,7 @@ def stage_level(table, closeout, n_boot, tables, aethalometer):
     fair = tables["ftir_level"][tables["ftir_level"]["fair"].astype(bool)].set_index("filters")
     over_refit = float(tables["ftir_composition"]["published_over_refit"].iloc[0])
     anchors = []
-    for label in ("six urban sites", "previous EC ≥ 15 µg and OC/EC < 2.5"):
+    for label in ("six urban IMPROVE sites", "previous EC ≥ 15 µg and OC/EC < 2.5"):
         anchors.append({"anchor": f"Held-out IMPROVE, {label} (FTIR ÷ TOR, raw spectra, 18 components)",
                         "published_over_true": float(fair.loc[label, "ftir_over_tor"]) * over_refit, "value": float(fair.loc[label, "ftir_over_tor"]),
                         "note": f"published reads {over_refit:.2f}× this refit at Addis; TOR OC/EC {fair.loc[label, 'median_tor_ocec']:.1f} there, far above Addis"})
@@ -642,7 +665,7 @@ RUN = {"improve": stage_improve, "linearity": stage_linearity, "response": stage
 SUMMARY_TABLES = ("improve_ceiling", "improve_strata", "linearity", "frisch_bounds", "hips_response_fits", "linearised_hips",
                   "raw_hips", "season_lot", "improve_ratio_by_ocec", "mass_closure", "level_anchors", "addis_ocec",
                   "network_exponents", "candidates_by_season", "improve_ftir_linearity", "improve_lot",
-                  "ftir_level", "ftir_candidates", "ftir_composition", "ftir_ocec_values", "addis_refit")
+                  "ftir_level", "ftir_candidates", "ftir_composition", "ftir_ocec_values", "addis_refit", "ftir_by_site", "ftir_selection")
 
 
 def run(stages=STAGES, *, n_boot=2000, aethalometer=False, known_volume_only=False):

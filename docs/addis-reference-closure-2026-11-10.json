@@ -44,7 +44,7 @@
    "max_stratum_tau": 1.179
   },
   {
-   "population": "six urban sites",
+   "population": "six urban IMPROVE sites",
    "samples": 11020,
    "sites": 6,
    "strata": 12,
@@ -377,7 +377,7 @@
    "n": 196,
    "loading_ug": 9.4627,
    "tau": 0.3724,
-   "population": "six urban sites",
+   "population": "six urban IMPROVE sites",
    "fabs_over_ec": 13.891,
    "fitted_tau": 0.3672
   },
@@ -385,7 +385,7 @@
    "n": 633,
    "loading_ug": 10.812,
    "tau": 0.4203,
-   "population": "six urban sites",
+   "population": "six urban IMPROVE sites",
    "fabs_over_ec": 13.7235,
    "fitted_tau": 0.4099
   },
@@ -393,7 +393,7 @@
    "n": 914,
    "loading_ug": 11.5907,
    "tau": 0.456,
-   "population": "six urban sites",
+   "population": "six urban IMPROVE sites",
    "fabs_over_ec": 13.8873,
    "fitted_tau": 0.4337
   },
@@ -401,7 +401,7 @@
    "n": 1349,
    "loading_ug": 12.768,
    "tau": 0.4742,
-   "population": "six urban sites",
+   "population": "six urban IMPROVE sites",
    "fabs_over_ec": 13.1109,
    "fitted_tau": 0.4685
   },
@@ -409,7 +409,7 @@
    "n": 1551,
    "loading_ug": 13.8167,
    "tau": 0.5031,
-   "population": "six urban sites",
+   "population": "six urban IMPROVE sites",
    "fabs_over_ec": 12.8532,
    "fitted_tau": 0.4984
   },
@@ -417,7 +417,7 @@
    "n": 1484,
    "loading_ug": 16.1383,
    "tau": 0.5507,
-   "population": "six urban sites",
+   "population": "six urban IMPROVE sites",
    "fabs_over_ec": 12.0468,
    "fitted_tau": 0.561
   },
@@ -425,7 +425,7 @@
    "n": 1355,
    "loading_ug": 19.3213,
    "tau": 0.6071,
-   "population": "six urban sites",
+   "population": "six urban IMPROVE sites",
    "fabs_over_ec": 11.0909,
    "fitted_tau": 0.6399
   },
@@ -433,7 +433,7 @@
    "n": 1152,
    "loading_ug": 22.6605,
    "tau": 0.6672,
-   "population": "six urban sites",
+   "population": "six urban IMPROVE sites",
    "fabs_over_ec": 10.3929,
    "fitted_tau": 0.7151
   },
@@ -441,7 +441,7 @@
    "n": 1013,
    "loading_ug": 28.2769,
    "tau": 0.7828,
-   "population": "six urban sites",
+   "population": "six urban IMPROVE sites",
    "fabs_over_ec": 9.7717,
    "fitted_tau": 0.8266
   },
@@ -449,7 +449,7 @@
    "n": 652,
    "loading_ug": 37.5265,
    "tau": 0.9921,
-   "population": "six urban sites",
+   "population": "six urban IMPROVE sites",
    "fabs_over_ec": 9.3325,
    "fitted_tau": 0.9783
   },
@@ -457,7 +457,7 @@
    "n": 396,
    "loading_ug": 45.0534,
    "tau": 1.0839,
-   "population": "six urban sites",
+   "population": "six urban IMPROVE sites",
    "fabs_over_ec": 8.4922,
    "fitted_tau": 1.0795
   },
@@ -465,7 +465,7 @@
    "n": 187,
    "loading_ug": 47.0099,
    "tau": 1.179,
-   "population": "six urban sites",
+   "population": "six urban IMPROVE sites",
    "fabs_over_ec": 8.8529,
    "fitted_tau": 1.1032
   },
@@ -1437,7 +1437,7 @@
  ],
  "level_anchors": [
   {
-   "anchor": "Held-out IMPROVE, six urban sites (FTIR \u00f7 TOR, raw spectra, 18 components)",
+   "anchor": "Held-out IMPROVE, six urban IMPROVE sites (FTIR \u00f7 TOR, raw spectra, 18 components)",
    "published_over_true": 1.0103,
    "value": 0.9106,
    "note": "published reads 1.11\u00d7 this refit at Addis; TOR OC/EC 3.2 there, far above Addis"
@@ -1467,7 +1467,7 @@
    "note": "Addis needs 18.7 m\u00b2/g; assumes Addis soot absorbs like IMPROVE's per unit EC"
   },
   {
-   "anchor": "Linearised HIPS at the IMPROVE unsaturated MAC (m\u00b2/g), six urban sites",
+   "anchor": "Linearised HIPS at the IMPROVE unsaturated MAC (m\u00b2/g), six urban IMPROVE sites",
    "published_over_true": 0.875,
    "value": 16.3986,
    "note": "Addis needs 18.7 m\u00b2/g; assumes Addis soot absorbs like IMPROVE's per unit EC"
@@ -3173,7 +3173,7 @@
   },
   {
    "grouping": "the site",
-   "filters": "six urban sites",
+   "filters": "six urban IMPROVE sites",
    "fair": true,
    "n": 645,
    "sites": 6,
@@ -25526,6 +25526,1336 @@
    "ftir_ec_ugm3": 2.6005,
    "ftir_oc_ugm3": 3.2504,
    "ftir_ocec": 1.2499
+  }
+ ],
+ "ftir_by_site": [
+  {
+   "site": "ACAD1",
+   "n": 112,
+   "median_tor_ocec": 5.6519,
+   "median_tor_ec_ug": 2.897,
+   "ftir_over_tor": 1.097,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "AGTI1",
+   "n": 51,
+   "median_tor_ocec": 4.2178,
+   "median_tor_ec_ug": 5.9089,
+   "ftir_over_tor": 0.7412,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "ATLA1",
+   "n": 109,
+   "median_tor_ocec": 3.1744,
+   "median_tor_ec_ug": 18.0249,
+   "ftir_over_tor": 0.8783,
+   "kind": "urban IMPROVE site"
+  },
+  {
+   "site": "BADL1",
+   "n": 107,
+   "median_tor_ocec": 7.4404,
+   "median_tor_ec_ug": 2.6469,
+   "ftir_over_tor": 1.2112,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "BALD1",
+   "n": 60,
+   "median_tor_ocec": 6.9982,
+   "median_tor_ec_ug": 2.2161,
+   "ftir_over_tor": 1.2128,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "BAND1",
+   "n": 62,
+   "median_tor_ocec": 6.287,
+   "median_tor_ec_ug": 3.0964,
+   "ftir_over_tor": 0.9799,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "BIBE1",
+   "n": 111,
+   "median_tor_ocec": 4.6821,
+   "median_tor_ec_ug": 3.194,
+   "ftir_over_tor": 1.0091,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "BIRM1",
+   "n": 115,
+   "median_tor_ocec": 3.0565,
+   "median_tor_ec_ug": 17.602,
+   "ftir_over_tor": 0.9211,
+   "kind": "urban IMPROVE site"
+  },
+  {
+   "site": "BLIS2",
+   "n": 91,
+   "median_tor_ocec": 7.1581,
+   "median_tor_ec_ug": 2.1619,
+   "ftir_over_tor": 1.3224,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "BOAP1",
+   "n": 115,
+   "median_tor_ocec": 4.3755,
+   "median_tor_ec_ug": 3.1041,
+   "ftir_over_tor": 0.9884,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "BOLA1",
+   "n": 115,
+   "median_tor_ocec": 6.7682,
+   "median_tor_ec_ug": 1.7011,
+   "ftir_over_tor": 1.7367,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "BOND1",
+   "n": 107,
+   "median_tor_ocec": 3.7322,
+   "median_tor_ec_ug": 8.322,
+   "ftir_over_tor": 1.0292,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "BOWA1",
+   "n": 58,
+   "median_tor_ocec": 7.5133,
+   "median_tor_ec_ug": 3.2905,
+   "ftir_over_tor": 1.0292,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "BRCA1",
+   "n": 64,
+   "median_tor_ocec": 6.9111,
+   "median_tor_ec_ug": 1.8975,
+   "ftir_over_tor": 1.4444,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "BRID1",
+   "n": 118,
+   "median_tor_ocec": 6.8079,
+   "median_tor_ec_ug": 1.3702,
+   "ftir_over_tor": 1.806,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "BRIG1",
+   "n": 63,
+   "median_tor_ocec": 5.6458,
+   "median_tor_ec_ug": 7.1642,
+   "ftir_over_tor": 1.0947,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "BRIS1",
+   "n": 108,
+   "median_tor_ocec": 3.7867,
+   "median_tor_ec_ug": 7.3676,
+   "ftir_over_tor": 0.9518,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "CABA1",
+   "n": 57,
+   "median_tor_ocec": 5.7009,
+   "median_tor_ec_ug": 6.0126,
+   "ftir_over_tor": 0.9041,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "CABI1",
+   "n": 95,
+   "median_tor_ocec": 7.8939,
+   "median_tor_ec_ug": 2.599,
+   "ftir_over_tor": 1.3494,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "CACO1",
+   "n": 56,
+   "median_tor_ocec": 7.0006,
+   "median_tor_ec_ug": 3.5776,
+   "ftir_over_tor": 1.1229,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "CACR1",
+   "n": 56,
+   "median_tor_ocec": 7.8554,
+   "median_tor_ec_ug": 6.2382,
+   "ftir_over_tor": 1.1768,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "CANY1",
+   "n": 60,
+   "median_tor_ocec": 6.9281,
+   "median_tor_ec_ug": 2.2769,
+   "ftir_over_tor": 1.1361,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "CAPI1",
+   "n": 120,
+   "median_tor_ocec": 6.1181,
+   "median_tor_ec_ug": 1.8199,
+   "ftir_over_tor": 1.3595,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "CAVE1",
+   "n": 53,
+   "median_tor_ocec": 4.7725,
+   "median_tor_ec_ug": 5.5471,
+   "ftir_over_tor": 1.0757,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "CEBL1",
+   "n": 123,
+   "median_tor_ocec": 5.1244,
+   "median_tor_ec_ug": 3.2719,
+   "ftir_over_tor": 1.1421,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "CHAS1",
+   "n": 122,
+   "median_tor_ocec": 4.2478,
+   "median_tor_ec_ug": 8.7369,
+   "ftir_over_tor": 0.8613,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "CHIR1",
+   "n": 120,
+   "median_tor_ocec": 5.3098,
+   "median_tor_ec_ug": 1.9155,
+   "ftir_over_tor": 1.2023,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "COHU1",
+   "n": 109,
+   "median_tor_ocec": 5.1588,
+   "median_tor_ec_ug": 6.089,
+   "ftir_over_tor": 0.94,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "CORI1",
+   "n": 67,
+   "median_tor_ocec": 6.1103,
+   "median_tor_ec_ug": 6.9411,
+   "ftir_over_tor": 0.9355,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "CRLA1",
+   "n": 57,
+   "median_tor_ocec": 7.5366,
+   "median_tor_ec_ug": 2.909,
+   "ftir_over_tor": 1.3507,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "CRMO1",
+   "n": 56,
+   "median_tor_ocec": 10.6276,
+   "median_tor_ec_ug": 2.862,
+   "ftir_over_tor": 1.2473,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "DENA1",
+   "n": 95,
+   "median_tor_ocec": 6.2593,
+   "median_tor_ec_ug": 0.7621,
+   "ftir_over_tor": 2.7757,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "DINO1",
+   "n": 56,
+   "median_tor_ocec": 6.6439,
+   "median_tor_ec_ug": 4.0334,
+   "ftir_over_tor": 1.0957,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "DOME1",
+   "n": 116,
+   "median_tor_ocec": 6.2717,
+   "median_tor_ec_ug": 3.2055,
+   "ftir_over_tor": 1.1543,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "DOSO1",
+   "n": 113,
+   "median_tor_ocec": 4.5359,
+   "median_tor_ec_ug": 4.3942,
+   "ftir_over_tor": 1.132,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "EGBE1",
+   "n": 111,
+   "median_tor_ocec": 4.0266,
+   "median_tor_ec_ug": 6.5459,
+   "ftir_over_tor": 0.9299,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "EVER1",
+   "n": 114,
+   "median_tor_ocec": 4.6394,
+   "median_tor_ec_ug": 4.1224,
+   "ftir_over_tor": 0.97,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "FCPC1",
+   "n": 56,
+   "median_tor_ocec": 6.0213,
+   "median_tor_ec_ug": 4.3046,
+   "ftir_over_tor": 1.0277,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "FLAT1",
+   "n": 82,
+   "median_tor_ocec": 7.5535,
+   "median_tor_ec_ug": 2.5156,
+   "ftir_over_tor": 1.2285,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "FOCO1",
+   "n": 63,
+   "median_tor_ocec": 4.5633,
+   "median_tor_ec_ug": 6.3698,
+   "ftir_over_tor": 0.9378,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "FOPE1",
+   "n": 47,
+   "median_tor_ocec": 7.6867,
+   "median_tor_ec_ug": 3.827,
+   "ftir_over_tor": 1.2646,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "FRES1",
+   "n": 105,
+   "median_tor_ocec": 4.7535,
+   "median_tor_ec_ug": 11.934,
+   "ftir_over_tor": 0.9569,
+   "kind": "urban IMPROVE site"
+  },
+  {
+   "site": "FRRE1",
+   "n": 119,
+   "median_tor_ocec": 3.7842,
+   "median_tor_ec_ug": 6.918,
+   "ftir_over_tor": 0.9201,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "GAMO1",
+   "n": 50,
+   "median_tor_ocec": 9.8924,
+   "median_tor_ec_ug": 2.7725,
+   "ftir_over_tor": 1.3221,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "GICL1",
+   "n": 61,
+   "median_tor_ocec": 7.353,
+   "median_tor_ec_ug": 2.4129,
+   "ftir_over_tor": 1.1255,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "GLAC1",
+   "n": 94,
+   "median_tor_ocec": 4.8776,
+   "median_tor_ec_ug": 7.0165,
+   "ftir_over_tor": 0.9229,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "GRBA1",
+   "n": 118,
+   "median_tor_ocec": 6.0048,
+   "median_tor_ec_ug": 1.207,
+   "ftir_over_tor": 1.6981,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "GRCA2",
+   "n": 61,
+   "median_tor_ocec": 6.2632,
+   "median_tor_ec_ug": 1.9571,
+   "ftir_over_tor": 1.2018,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "GRGU1",
+   "n": 66,
+   "median_tor_ocec": 5.7872,
+   "median_tor_ec_ug": 3.2764,
+   "ftir_over_tor": 1.0767,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "GRRI1",
+   "n": 121,
+   "median_tor_ocec": 4.0749,
+   "median_tor_ec_ug": 6.296,
+   "ftir_over_tor": 1.0036,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "GRSA1",
+   "n": 53,
+   "median_tor_ocec": 9.2845,
+   "median_tor_ec_ug": 1.7539,
+   "ftir_over_tor": 1.6098,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "GRSM1",
+   "n": 126,
+   "median_tor_ocec": 5.207,
+   "median_tor_ec_ug": 6.7768,
+   "ftir_over_tor": 1.0293,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "GUMO1",
+   "n": 101,
+   "median_tor_ocec": 4.2761,
+   "median_tor_ec_ug": 3.5438,
+   "ftir_over_tor": 0.9014,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "HACR1",
+   "n": 63,
+   "median_tor_ocec": 3.3703,
+   "median_tor_ec_ug": 0.646,
+   "ftir_over_tor": 1.7999,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "HAVO1",
+   "n": 102,
+   "median_tor_ocec": 3.7205,
+   "median_tor_ec_ug": 0.771,
+   "ftir_over_tor": 1.4904,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "HECA1",
+   "n": 90,
+   "median_tor_ocec": 7.6888,
+   "median_tor_ec_ug": 3.2209,
+   "ftir_over_tor": 1.2445,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "HEGL1",
+   "n": 57,
+   "median_tor_ocec": 6.5933,
+   "median_tor_ec_ug": 6.7971,
+   "ftir_over_tor": 1.1251,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "HOOV1",
+   "n": 81,
+   "median_tor_ocec": 7.9312,
+   "median_tor_ec_ug": 1.5322,
+   "ftir_over_tor": 1.5545,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "ISLE1",
+   "n": 59,
+   "median_tor_ocec": 6.8861,
+   "median_tor_ec_ug": 3.8184,
+   "ftir_over_tor": 1.1183,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "JARB1",
+   "n": 96,
+   "median_tor_ocec": 6.3847,
+   "median_tor_ec_ug": 1.3834,
+   "ftir_over_tor": 2.5042,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "JARI1",
+   "n": 106,
+   "median_tor_ocec": 4.4897,
+   "median_tor_ec_ug": 9.1652,
+   "ftir_over_tor": 0.8887,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "JOSH1",
+   "n": 112,
+   "median_tor_ocec": 5.0129,
+   "median_tor_ec_ug": 2.9039,
+   "ftir_over_tor": 0.9679,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "KAIS1",
+   "n": 72,
+   "median_tor_ocec": 8.0288,
+   "median_tor_ec_ug": 2.3511,
+   "ftir_over_tor": 1.2249,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "KALM1",
+   "n": 118,
+   "median_tor_ocec": 7.4004,
+   "median_tor_ec_ug": 3.1948,
+   "ftir_over_tor": 0.8393,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "KPBO1",
+   "n": 53,
+   "median_tor_ocec": 6.74,
+   "median_tor_ec_ug": 1.8051,
+   "ftir_over_tor": 1.3313,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "LABE1",
+   "n": 46,
+   "median_tor_ocec": 10.1836,
+   "median_tor_ec_ug": 3.4403,
+   "ftir_over_tor": 1.2871,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "LASU2",
+   "n": 118,
+   "median_tor_ocec": 4.1519,
+   "median_tor_ec_ug": 7.9583,
+   "ftir_over_tor": 1.0174,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "LAVO1",
+   "n": 96,
+   "median_tor_ocec": 6.2139,
+   "median_tor_ec_ug": 2.4994,
+   "ftir_over_tor": 1.2517,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "LIGO1",
+   "n": 60,
+   "median_tor_ocec": 6.4853,
+   "median_tor_ec_ug": 7.1625,
+   "ftir_over_tor": 0.9373,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "LOND1",
+   "n": 57,
+   "median_tor_ocec": 4.771,
+   "median_tor_ec_ug": 7.143,
+   "ftir_over_tor": 0.8981,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "LOST1",
+   "n": 55,
+   "median_tor_ocec": 5.3009,
+   "median_tor_ec_ug": 5.767,
+   "ftir_over_tor": 1.0045,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "LTCC1",
+   "n": 112,
+   "median_tor_ocec": 3.8755,
+   "median_tor_ec_ug": 6.549,
+   "ftir_over_tor": 0.8382,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "LYEB1",
+   "n": 74,
+   "median_tor_ocec": 3.8876,
+   "median_tor_ec_ug": 3.0676,
+   "ftir_over_tor": 1.216,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "MACA1",
+   "n": 58,
+   "median_tor_ocec": 5.261,
+   "median_tor_ec_ug": 8.4487,
+   "ftir_over_tor": 1.0549,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "MAKA2",
+   "n": 88,
+   "median_tor_ocec": 6.3726,
+   "median_tor_ec_ug": 1.2431,
+   "ftir_over_tor": 1.6523,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "MAVI1",
+   "n": 117,
+   "median_tor_ocec": 5.6905,
+   "median_tor_ec_ug": 3.396,
+   "ftir_over_tor": 1.2477,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "MELA1",
+   "n": 98,
+   "median_tor_ocec": 4.8535,
+   "median_tor_ec_ug": 2.9616,
+   "ftir_over_tor": 1.3365,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "MEVE1",
+   "n": 111,
+   "median_tor_ocec": 6.8328,
+   "median_tor_ec_ug": 2.052,
+   "ftir_over_tor": 1.1019,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "MING1",
+   "n": 54,
+   "median_tor_ocec": 5.749,
+   "median_tor_ec_ug": 9.2425,
+   "ftir_over_tor": 1.134,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "MOHO1",
+   "n": 99,
+   "median_tor_ocec": 7.3505,
+   "median_tor_ec_ug": 2.2759,
+   "ftir_over_tor": 1.5421,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "MOMO1",
+   "n": 106,
+   "median_tor_ocec": 4.2078,
+   "median_tor_ec_ug": 4.7825,
+   "ftir_over_tor": 0.9222,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "MONT1",
+   "n": 107,
+   "median_tor_ocec": 7.732,
+   "median_tor_ec_ug": 3.205,
+   "ftir_over_tor": 1.2944,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "MOOS1",
+   "n": 56,
+   "median_tor_ocec": 8.7516,
+   "median_tor_ec_ug": 3.0782,
+   "ftir_over_tor": 1.0962,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "MORA1",
+   "n": 120,
+   "median_tor_ocec": 5.1388,
+   "median_tor_ec_ug": 3.8026,
+   "ftir_over_tor": 1.128,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "MOZI1",
+   "n": 94,
+   "median_tor_ocec": 6.6008,
+   "median_tor_ec_ug": 1.6159,
+   "ftir_over_tor": 1.7809,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "NEBR1",
+   "n": 47,
+   "median_tor_ocec": 7.1837,
+   "median_tor_ec_ug": 4.2101,
+   "ftir_over_tor": 1.3643,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "NOAB1",
+   "n": 54,
+   "median_tor_ocec": 8.9676,
+   "median_tor_ec_ug": 2.726,
+   "ftir_over_tor": 1.3357,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "NOCA1",
+   "n": 45,
+   "median_tor_ocec": 8.3007,
+   "median_tor_ec_ug": 3.3095,
+   "ftir_over_tor": 1.2106,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "NOGA1",
+   "n": 50,
+   "median_tor_ocec": 3.0551,
+   "median_tor_ec_ug": 11.8719,
+   "ftir_over_tor": 0.8538,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "OKEF1",
+   "n": 115,
+   "median_tor_ocec": 5.8568,
+   "median_tor_ec_ug": 6.4571,
+   "ftir_over_tor": 0.9753,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "OLYM1",
+   "n": 107,
+   "median_tor_ocec": 6.0431,
+   "median_tor_ec_ug": 2.4104,
+   "ftir_over_tor": 1.2351,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "ORPI1",
+   "n": 121,
+   "median_tor_ocec": 5.0193,
+   "median_tor_ec_ug": 2.475,
+   "ftir_over_tor": 0.7242,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "OWVL1",
+   "n": 105,
+   "median_tor_ocec": 6.1382,
+   "median_tor_ec_ug": 2.3339,
+   "ftir_over_tor": 1.1136,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "PACK1",
+   "n": 67,
+   "median_tor_ocec": 6.1112,
+   "median_tor_ec_ug": 3.7945,
+   "ftir_over_tor": 1.004,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "PASA1",
+   "n": 50,
+   "median_tor_ocec": 10.5361,
+   "median_tor_ec_ug": 2.473,
+   "ftir_over_tor": 1.5686,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "PEFO1",
+   "n": 61,
+   "median_tor_ocec": 5.1358,
+   "median_tor_ec_ug": 3.428,
+   "ftir_over_tor": 0.9315,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "PENO1",
+   "n": 57,
+   "median_tor_ocec": 5.7226,
+   "median_tor_ec_ug": 4.6879,
+   "ftir_over_tor": 0.9431,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "PHOE1",
+   "n": 102,
+   "median_tor_ocec": 3.1743,
+   "median_tor_ec_ug": 11.9711,
+   "ftir_over_tor": 0.926,
+   "kind": "urban IMPROVE site"
+  },
+  {
+   "site": "PINN1",
+   "n": 114,
+   "median_tor_ocec": 5.3904,
+   "median_tor_ec_ug": 3.595,
+   "ftir_over_tor": 0.7801,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "PITT1",
+   "n": 110,
+   "median_tor_ocec": 2.8209,
+   "median_tor_ec_ug": 14.74,
+   "ftir_over_tor": 0.8765,
+   "kind": "urban IMPROVE site"
+  },
+  {
+   "site": "PMRF1",
+   "n": 130,
+   "median_tor_ocec": 6.41,
+   "median_tor_ec_ug": 4.3738,
+   "ftir_over_tor": 1.0085,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "PORE1",
+   "n": 91,
+   "median_tor_ocec": 8.6266,
+   "median_tor_ec_ug": 0.9391,
+   "ftir_over_tor": 2.9517,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "PRIS1",
+   "n": 61,
+   "median_tor_ocec": 5.6787,
+   "median_tor_ec_ug": 4.7652,
+   "ftir_over_tor": 0.7999,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "PUSO1",
+   "n": 104,
+   "median_tor_ocec": 3.1541,
+   "median_tor_ec_ug": 11.8605,
+   "ftir_over_tor": 0.8845,
+   "kind": "urban IMPROVE site"
+  },
+  {
+   "site": "QUCI1",
+   "n": 101,
+   "median_tor_ocec": 3.5204,
+   "median_tor_ec_ug": 8.272,
+   "ftir_over_tor": 0.9624,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "RAFA1",
+   "n": 54,
+   "median_tor_ocec": 7.7518,
+   "median_tor_ec_ug": 3.0111,
+   "ftir_over_tor": 0.8782,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "REDW1",
+   "n": 108,
+   "median_tor_ocec": 7.4655,
+   "median_tor_ec_ug": 1.5286,
+   "ftir_over_tor": 1.3275,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "ROMA1",
+   "n": 55,
+   "median_tor_ocec": 7.3569,
+   "median_tor_ec_ug": 5.461,
+   "ftir_over_tor": 1.0714,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "ROMO1",
+   "n": 56,
+   "median_tor_ocec": 6.1614,
+   "median_tor_ec_ug": 3.4074,
+   "ftir_over_tor": 1.0186,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SACR1",
+   "n": 64,
+   "median_tor_ocec": 5.2693,
+   "median_tor_ec_ug": 4.9125,
+   "ftir_over_tor": 0.8455,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SAGO1",
+   "n": 50,
+   "median_tor_ocec": 5.6432,
+   "median_tor_ec_ug": 5.2677,
+   "ftir_over_tor": 1.1135,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SAGU1",
+   "n": 61,
+   "median_tor_ocec": 4.8974,
+   "median_tor_ec_ug": 3.7461,
+   "ftir_over_tor": 0.7199,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SAMA1",
+   "n": 132,
+   "median_tor_ocec": 7.3417,
+   "median_tor_ec_ug": 6.0617,
+   "ftir_over_tor": 1.0431,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SAPE1",
+   "n": 65,
+   "median_tor_ocec": 7.0864,
+   "median_tor_ec_ug": 1.5009,
+   "ftir_over_tor": 1.4903,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SAWE1",
+   "n": 108,
+   "median_tor_ocec": 3.989,
+   "median_tor_ec_ug": 4.8835,
+   "ftir_over_tor": 0.926,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SAWT1",
+   "n": 97,
+   "median_tor_ocec": 7.4147,
+   "median_tor_ec_ug": 2.5811,
+   "ftir_over_tor": 1.3618,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SENE1",
+   "n": 58,
+   "median_tor_ocec": 7.2042,
+   "median_tor_ec_ug": 3.6334,
+   "ftir_over_tor": 1.1483,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SEQU1",
+   "n": 122,
+   "median_tor_ocec": 7.0235,
+   "median_tor_ec_ug": 6.3493,
+   "ftir_over_tor": 1.1536,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SHEN1",
+   "n": 110,
+   "median_tor_ocec": 4.5326,
+   "median_tor_ec_ug": 5.2743,
+   "ftir_over_tor": 0.9667,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SHMI1",
+   "n": 33,
+   "median_tor_ocec": 6.8554,
+   "median_tor_ec_ug": 2.4771,
+   "ftir_over_tor": 1.3657,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SHRO1",
+   "n": 101,
+   "median_tor_ocec": 5.1899,
+   "median_tor_ec_ug": 3.6731,
+   "ftir_over_tor": 0.9831,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SIME1",
+   "n": 90,
+   "median_tor_ocec": 3.7539,
+   "median_tor_ec_ug": 0.999,
+   "ftir_over_tor": 1.102,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SIPS1",
+   "n": 49,
+   "median_tor_ocec": 5.7629,
+   "median_tor_ec_ug": 9.4891,
+   "ftir_over_tor": 0.8946,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SNPA1",
+   "n": 59,
+   "median_tor_ocec": 6.0915,
+   "median_tor_ec_ug": 3.7489,
+   "ftir_over_tor": 1.0582,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SOGP1",
+   "n": 109,
+   "median_tor_ocec": 4.7442,
+   "median_tor_ec_ug": 6.1809,
+   "ftir_over_tor": 0.9775,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "STAR1",
+   "n": 105,
+   "median_tor_ocec": 6.6211,
+   "median_tor_ec_ug": 2.426,
+   "ftir_over_tor": 1.2813,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "STIL1",
+   "n": 64,
+   "median_tor_ocec": 5.5229,
+   "median_tor_ec_ug": 7.2796,
+   "ftir_over_tor": 0.9337,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SULA1",
+   "n": 55,
+   "median_tor_ocec": 9.7768,
+   "median_tor_ec_ug": 3.9109,
+   "ftir_over_tor": 1.1307,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SWAN1",
+   "n": 115,
+   "median_tor_ocec": 6.563,
+   "median_tor_ec_ug": 4.6321,
+   "ftir_over_tor": 1.0379,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "SYCA2",
+   "n": 60,
+   "median_tor_ocec": 3.805,
+   "median_tor_ec_ug": 6.2931,
+   "ftir_over_tor": 0.5916,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "TALL1",
+   "n": 121,
+   "median_tor_ocec": 4.4846,
+   "median_tor_ec_ug": 5.759,
+   "ftir_over_tor": 0.9497,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "THRO1",
+   "n": 59,
+   "median_tor_ocec": 7.3967,
+   "median_tor_ec_ug": 3.6155,
+   "ftir_over_tor": 1.1422,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "THSI1",
+   "n": 109,
+   "median_tor_ocec": 7.3056,
+   "median_tor_ec_ug": 2.0459,
+   "ftir_over_tor": 1.3192,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "TONT1",
+   "n": 120,
+   "median_tor_ocec": 5.1427,
+   "median_tor_ec_ug": 2.824,
+   "ftir_over_tor": 1.0694,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "TOOL1",
+   "n": 48,
+   "median_tor_ocec": 9.513,
+   "median_tor_ec_ug": 0.8196,
+   "ftir_over_tor": 1.7119,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "TRCR1",
+   "n": 111,
+   "median_tor_ocec": 5.2202,
+   "median_tor_ec_ug": 1.2999,
+   "ftir_over_tor": 1.973,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "UPBU1",
+   "n": 92,
+   "median_tor_ocec": 5.495,
+   "median_tor_ec_ug": 6.3061,
+   "ftir_over_tor": 1.0233,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "VIIS1",
+   "n": 98,
+   "median_tor_ocec": 3.3836,
+   "median_tor_ec_ug": 1.1515,
+   "ftir_over_tor": 1.2789,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "VILA1",
+   "n": 118,
+   "median_tor_ocec": 4.1354,
+   "median_tor_ec_ug": 6.8403,
+   "ftir_over_tor": 1.0555,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "VOYA2",
+   "n": 52,
+   "median_tor_ocec": 6.8372,
+   "median_tor_ec_ug": 3.3269,
+   "ftir_over_tor": 1.0841,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "WEMI1",
+   "n": 64,
+   "median_tor_ocec": 6.1564,
+   "median_tor_ec_ug": 2.5801,
+   "ftir_over_tor": 1.3326,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "WHIT1",
+   "n": 109,
+   "median_tor_ocec": 5.5497,
+   "median_tor_ec_ug": 2.2019,
+   "ftir_over_tor": 1.1081,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "WHPA1",
+   "n": 59,
+   "median_tor_ocec": 9.9214,
+   "median_tor_ec_ug": 2.858,
+   "ftir_over_tor": 1.3701,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "WHPE1",
+   "n": 51,
+   "median_tor_ocec": 7.3898,
+   "median_tor_ec_ug": 1.8575,
+   "ftir_over_tor": 1.4599,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "WHRI1",
+   "n": 112,
+   "median_tor_ocec": 5.1685,
+   "median_tor_ec_ug": 1.3264,
+   "ftir_over_tor": 1.8518,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "WICA1",
+   "n": 107,
+   "median_tor_ocec": 5.4667,
+   "median_tor_ec_ug": 3.0351,
+   "ftir_over_tor": 1.1253,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "WIMO1",
+   "n": 46,
+   "median_tor_ocec": 6.741,
+   "median_tor_ec_ug": 5.2558,
+   "ftir_over_tor": 1.258,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "YELL2",
+   "n": 57,
+   "median_tor_ocec": 9.0851,
+   "median_tor_ec_ug": 3.4964,
+   "ftir_over_tor": 1.2548,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "YOSE1",
+   "n": 189,
+   "median_tor_ocec": 7.4409,
+   "median_tor_ec_ug": 3.7859,
+   "ftir_over_tor": 1.0346,
+   "kind": "other IMPROVE site"
+  },
+  {
+   "site": "ZICA1",
+   "n": 113,
+   "median_tor_ocec": 4.8092,
+   "median_tor_ec_ug": 2.6361,
+   "ftir_over_tor": 0.9874,
+   "kind": "other IMPROVE site"
+  }
+ ],
+ "ftir_selection": [
+  {
+   "chosen_by": "TOR's own OC/EC on this filter",
+   "ocec": 1.2396,
+   "ftir_over_tor": 0.621,
+   "n": 35
+  },
+  {
+   "chosen_by": "TOR's own OC/EC on this filter",
+   "ocec": 1.8575,
+   "ftir_over_tor": 0.7258,
+   "n": 93
+  },
+  {
+   "chosen_by": "TOR's own OC/EC on this filter",
+   "ocec": 2.2804,
+   "ftir_over_tor": 0.7761,
+   "n": 311
+  },
+  {
+   "chosen_by": "TOR's own OC/EC on this filter",
+   "ocec": 2.7584,
+   "ftir_over_tor": 0.8195,
+   "n": 482
+  },
+  {
+   "chosen_by": "TOR's own OC/EC on this filter",
+   "ocec": 3.4755,
+   "ftir_over_tor": 0.8527,
+   "n": 985
+  },
+  {
+   "chosen_by": "TOR's own OC/EC on this filter",
+   "ocec": 4.878,
+   "ftir_over_tor": 0.8874,
+   "n": 1469
+  },
+  {
+   "chosen_by": "TOR's own OC/EC on this filter",
+   "ocec": 7.8059,
+   "ftir_over_tor": 1.0571,
+   "n": 1603
+  },
+  {
+   "chosen_by": "FTIR's own OC/EC on this filter",
+   "ocec": 1.0189,
+   "ftir_over_tor": 1.5403,
+   "n": 107
+  },
+  {
+   "chosen_by": "FTIR's own OC/EC on this filter",
+   "ocec": 1.7908,
+   "ftir_over_tor": 1.1909,
+   "n": 103
+  },
+  {
+   "chosen_by": "FTIR's own OC/EC on this filter",
+   "ocec": 2.3104,
+   "ftir_over_tor": 1.1236,
+   "n": 159
+  },
+  {
+   "chosen_by": "FTIR's own OC/EC on this filter",
+   "ocec": 2.7677,
+   "ftir_over_tor": 1.0173,
+   "n": 279
+  },
+  {
+   "chosen_by": "FTIR's own OC/EC on this filter",
+   "ocec": 3.5095,
+   "ftir_over_tor": 0.9736,
+   "n": 861
+  },
+  {
+   "chosen_by": "FTIR's own OC/EC on this filter",
+   "ocec": 4.915,
+   "ftir_over_tor": 1.0145,
+   "n": 1729
+  },
+  {
+   "chosen_by": "FTIR's own OC/EC on this filter",
+   "ocec": 7.3918,
+   "ftir_over_tor": 1.0381,
+   "n": 1568
+  },
+  {
+   "chosen_by": "TOR OC/EC of the previous sample at the site",
+   "ocec": 1.2259,
+   "ftir_over_tor": 1.0106,
+   "n": 30
+  },
+  {
+   "chosen_by": "TOR OC/EC of the previous sample at the site",
+   "ocec": 1.8461,
+   "ftir_over_tor": 0.8554,
+   "n": 84
+  },
+  {
+   "chosen_by": "TOR OC/EC of the previous sample at the site",
+   "ocec": 2.2853,
+   "ftir_over_tor": 0.9083,
+   "n": 286
+  },
+  {
+   "chosen_by": "TOR OC/EC of the previous sample at the site",
+   "ocec": 2.7609,
+   "ftir_over_tor": 0.9372,
+   "n": 448
+  },
+  {
+   "chosen_by": "TOR OC/EC of the previous sample at the site",
+   "ocec": 3.4726,
+   "ftir_over_tor": 0.9513,
+   "n": 886
+  },
+  {
+   "chosen_by": "TOR OC/EC of the previous sample at the site",
+   "ocec": 4.8754,
+   "ftir_over_tor": 0.9822,
+   "n": 1347
+  },
+  {
+   "chosen_by": "TOR OC/EC of the previous sample at the site",
+   "ocec": 7.8058,
+   "ftir_over_tor": 1.0687,
+   "n": 1442
   }
  ]
 }
