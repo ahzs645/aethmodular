@@ -19,6 +19,7 @@ export const EXPERIMENTS: Experiment[] = [
   { key: 'season', label: 'Season or composition?', title: 'Addis FTIR EC by season against the TOR yardstick: how much the organic stand-in explains, and where in the spectrum the rest sits (3 Nov)' },
   { key: 'continuum', label: 'Continuum and the baseline', title: 'Existing-data closeout: baseline preservation, source-reference performance, seasonal structure and optical-response sensitivity' },
   { key: 'vibes-newton', label: 'VIBES solved to convergence', title: 'The v2 run next to 19 Oct: what the 155 premature optimizer stops change, and the independent checks at Addis' },
+  { key: 'vibes-tool', label: 'VIBES on one spectrum', title: 'Run the converged VIBES baseline in your browser on any network scan or your own file, at a chosen rank and tau' },
   { key: 'tor', label: 'Adama TOR study', title: 'The Adama TOR pilot against IMPROVE and SPARTAN: where it sits, where it would need to sit, and what counts as a pass' },
 ]
 export const EXPERIMENT_KEYS = EXPERIMENTS.map((e) => e.key)

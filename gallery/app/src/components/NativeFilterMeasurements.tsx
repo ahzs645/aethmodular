@@ -7,6 +7,7 @@ import { useAddisStatus, useFilterSpectrum } from '@/lib/filterSpectrum'
 import { BASELINE_COLOR, INK } from '@/lib/theme'
 import { Combobox } from '@/components/Combobox'
 import { DrawerScroll } from '@/components/DrawerShell'
+import { TraceChips } from '@/components/TraceChips'
 
 const TRACE_KEYS = ['raw', 'airspec', 'vibes'] as const
 type TraceKey = (typeof TRACE_KEYS)[number]
@@ -64,19 +65,9 @@ export function NativeFilterMeasurements({ id }: { id: string }) {
   const plot = (large = false) => t && <SpectrumPlot spec={{ series }} shown={shown} names={names} colors={COLORS} expanded={large}
     plotLabel={`${shown.map(k => LABEL[k]).join(' and ')} FTIR spectrum`} roundWindow={false}
     actions={!large && <button type="button" className="btn quiet" aria-haspopup="dialog" title="Open a larger plot" onClick={() => setExpanded(true)}>Expand</button>} />
-  // one chip per spectrum, coloured as its trace, so the picker is also the legend: any
-  // combination, at least one stays on (the last one on is locked). The full name is the tooltip
-  const traces = <div className="trace-chips" role="group" aria-label="Spectra shown">
-    {options.map(k => {
-      const on = shown.includes(k)
-      const locked = on && shown.length === 1
-      return <button key={k} type="button" className={`chip trace${on ? ' active' : ''}${locked ? ' locked' : ''}`}
-        style={{ ['--chip' as string]: COLORS[k] }} aria-pressed={on} aria-disabled={locked || undefined}
-        title={`${names[k]}${locked ? ' (at least one spectrum stays shown)' : ''}`} onClick={() => { if (!locked) toggle(k) }}>
-        <i aria-hidden="true" />{LABEL[k]}{k === 'vibes' && on && frozenVibes && !vibes ? ' · loading…' : ''}
-      </button>
-    })}
-  </div>
+  // the picker is also the legend (components/TraceChips)
+  const traces = <TraceChips options={options} shown={shown} labels={LABEL} names={names} colors={COLORS} onToggle={toggle}
+    suffix={(k, on) => (k === 'vibes' && on && frozenVibes && !vibes ? ' · loading…' : '')} />
   // which blanks trained this trace's VIBES background, and whether the filter's lot is among them
   const provenance = t?.vibes && analysis ? vibesProvenance(analysis, vibesInfo?.grid) : null
   // what used to sit behind "About this spectrum", now the analysis line's tooltip

@@ -14,7 +14,8 @@ the 87-blank rank-70 background, tau 0.1), every scan solved to convergence.
 | Does the rank matter? | **Not on loaded filters.** An injected band is recovered the same at ranks 20, 40 and 70 on typical and Addis filters. It matters only for a faint, wide band on a blank. |
 | What does the background absorb? | **Breadth, at every rank.** A 1,500 cm⁻¹ wide feature keeps 0 to 14 % of its height. This is the continuum loss again, and lowering the rank does not fix it. |
 | Were the SPARTAN field blanks used to build the background? | **Only Addis ones.** The bank is 59 IMPROVE blanks and 28 Addis field blanks (30 of the 545 field-blank scans). The other 515 fit almost as tightly: median noise level 1.6e-6 against 0.9e-6. |
-| Can the converged solver run in a browser as WebAssembly? | **Yes.** A Rust port, 82 KB with no dependencies, matches the Python solver to 9e-10 in noise level and 8e-14 in baseline. In Chromium it takes 0.33 s per spectrum on one worker, 3.8 times faster than the existing JavaScript path on the same machine. |
+| Can the converged solver run in a browser as WebAssembly? | **Yes.** A Rust port, 80 KB with no dependencies, matches the Python solver to 9e-10 in noise level and 8e-14 in baseline. In Chromium it takes 0.33 s per spectrum on one worker, 3.8 times faster than the existing JavaScript path on the same machine. |
+| Is it in the gallery? | **Yes**, as Experimental → VIBES on one spectrum. It solves any network scan or a file you choose, at a chosen rank and tau, and draws it against the saved 19 Oct trace. It needs the background export in the data release. |
 
 ## 1. A correction
 
@@ -104,7 +105,7 @@ Band height 0.01:
 
 [`wasm_demo/`](../research/ftir_hips_chem/wasm_demo/) is a Rust port of `fit_elbo_newton` and `solve_map_batch`: Newton on
 the ELBO with the exact Hessian, then the interior-point MAP with its duality-gap certificate. Everything is float64, so
-it needs none of the float32 workarounds of the WebGPU version. The module is 82 KB and has no dependencies.
+it needs none of the float32 workarounds of the WebGPU version. The module is 80 KB and has no dependencies.
 
 Agreement with the Python float64 solver, on 64 random network scans:
 
@@ -133,8 +134,46 @@ Speed on the same 64 scans, on a 4-vCPU cloud machine (not the M4 Pro of the 3 N
   was not run on that machine. If the 3.8 times ratio holds there, one worker takes about 0.13 s, and several workers
   would pass the WebGPU figure. That is an estimate.
 
-**What it is good for.** Correcting an uploaded spectrum, or changing the background, rank or tau, inside the gallery with
-no server. It is not the way to run the network: Python does all 4,452 scans in about three minutes on four cores.
+**First fit in a page.** A browser first runs WebAssembly in a quick-to-compile tier and swaps in optimised code for a
+function only between calls to it. With the whole fit inlined into one call, the first fit in a page took 1.0 s. The
+loops that run once per iteration are now separate functions, so they are optimised after the first iteration: the
+first fit takes 0.35 s, and results are unchanged to the last digit shown above.
+
+**What it is good for.** Correcting one spectrum, or changing the rank or tau, with no server. It is not the way to run
+the network: Python does all 4,452 scans in about three minutes on four cores.
+
+## 5. In the gallery
+
+Experimental → VIBES on one spectrum (`#tab=experimental&xp=vibes-tool`).
+
+- **Spectrum.** Any scan in the gallery's native SPARTAN archive (site, filter, scan), or a text file with two columns,
+  wavenumber then absorbance. A file is read in the browser and is not uploaded.
+- **Preparation.** The spectrum is averaged onto the background's 2,722 channels by the rule the network run used
+  (`resample` in `network_baselines_20261019.py`, ported and tested against it).
+- **Settings.** Rank 10, 20, 40 or 70 (the first components of the 87-blank background) and tau 0.05, 0.1 or 0.2. The
+  network run used 70 and 0.1.
+- **Result.** The corrected spectrum beside the saved 19 Oct trace, or the raw spectrum with its baseline; the noise
+  level, steps, certificate and solver time; a CSV download.
+- **Check against the saved run.** At rank 70 and tau 0.1, ETAD-0001 differs from the saved trace by 2.6e-6 in absorbance
+  (under 0.1 % of its corrected RMS). ETAD-0053, one of the 10 Addis early stops, differs by 0.015 (216 %): the saved
+  trace carries the broad hump the 3 Nov notes describe, and the page's does not.
+
+Where the pieces are:
+
+| Piece | Path |
+|---|---|
+| Solver source (Rust) | `research/ftir_hips_chem/wasm_demo/src/lib.rs` |
+| Built module and its build record | `gallery/app/src/lib/vibes/vibes_wasm.wasm`, `vibes_wasm.build.json` |
+| Wrapper, worker, resampler, file parser, tests | `gallery/app/src/lib/vibes/` |
+| Page | `gallery/app/src/pages/experimental/VibesTool.tsx` |
+| Background export | `gallery/data/export_vibes_background.py` → `public/data/experimental/vibes_background.json`, `.bin` |
+
+The built module is committed, so the gallery builds without Rust. `tests/test_vibes_wasm.py` fails if the Rust source
+changes without a rebuild (`wasm_demo.py build --gallery`).
+
+The background is 1.5 MB at full precision and is git-ignored like the other Experimental exports. The page shows the
+usual "run the exporter" panel until `export_vibes_background.py` has run, and the public site needs a data release that
+includes it.
 
 ## Limits
 
@@ -144,6 +183,9 @@ no server. It is not the way to run the network: Python does all 4,452 scans in 
 - The rank was lowered by truncating the rank-70 background, not by refitting a bank at each rank.
 - Browser timing is from one machine and one browser, headless. Firefox and Safari were not tested.
 - The WebAssembly module fits one spectrum per call with a fixed tau; it does not estimate tau.
+- The gallery page uses the 87-blank background only. Lot 241 and 241a filters were saved with their own blank banks, and the
+  page says so instead of comparing like with like.
+- The page was tested in headless Chromium at desktop and phone widths, not in Firefox or Safari.
 
 ## Reproduce
 
@@ -152,12 +194,15 @@ W=research/ftir_hips_chem/workflows
 python $W/run_vibes_rank_check_20261110.py --bundle VIBES_BUNDLE --out OUT --summary docs/vibes-rank-check-2026-11-10.json
 
 rustup target add wasm32-unknown-unknown
-python $W/wasm_demo.py build
+python $W/wasm_demo.py build --gallery        # --gallery also installs the module in gallery/app/src/lib/vibes
 python $W/wasm_demo.py prepare --bundle VIBES_BUNDLE --out web/ --rows 64
 python $W/wasm_demo.py check --dir web/
 python -m http.server 8766 --bind 127.0.0.1 --directory web/
 python $W/wasm_demo.py run --rows 64 --workers 4
 python -m pytest -q tests/test_vibes_wasm.py
+
+python gallery/data/export_vibes_background.py      # the background for the gallery page
+(cd gallery/app && node --test src/lib/vibes/vibes.test.mjs)
 ```
 
 `VIBES_BUNDLE` is `results/network_baselines_20261019/outputs/vibes_bundle` in the VIBES Drive folder.

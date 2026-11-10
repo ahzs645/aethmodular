@@ -43,7 +43,12 @@ fn ndtr(x: f64) -> f64 {
     if x > 0.0 { 1.0 - c } else { c }
 }
 
+// The kernels below are kept out of line on purpose. A browser first runs WebAssembly in a fast-to-compile
+// tier and swaps in optimised code for a function only between calls to it. Kernels that are called once
+// per iteration are optimised after the first iteration; inlined into one long call they never would be.
+
 /// In-place lower Cholesky of a row-major n x n matrix. False if not positive definite.
+#[inline(never)]
 fn cholesky(a: &mut [f64], n: usize) -> bool {
     for j in 0..n {
         let (head, tail) = a.split_at_mut((j + 1) * n);
@@ -68,6 +73,7 @@ fn cholesky(a: &mut [f64], n: usize) -> bool {
     true
 }
 
+#[inline(never)]
 fn chol_solve(l: &[f64], n: usize, b: &[f64], x: &mut [f64]) {
     for i in 0..n {
         let row = &l[i * n..i * n + n];
@@ -102,6 +108,7 @@ struct Elbo<'a> {
 
 impl Elbo<'_> {
     /// -ELBO and the mean expected pinball at x = [nu, d]; fills the per-channel buffers.
+    #[inline(never)]
     fn eval(&mut self, x: &[f64]) -> (f64, f64) {
         let (p, c, tau) = (self.p, self.c, self.tau);
         let (nu, d) = x.split_at(c);
@@ -140,6 +147,48 @@ impl Elbo<'_> {
         let elbo = pf * tau.ln() + pf * (1.0 - tau).ln() - pf * s.ln() - 0.5 * sn - 0.5 * sd + ld
             + (c as f64 / 2.0 - pf);
         (-elbo, s)
+    }
+    /// Gradient sums and the three weighted Gram blocks of the Hessian at the last `eval` point,
+    /// one channel at a time: `hnn` and `hdd` upper triangles, `hnd` full.
+    #[inline(never)]
+    #[allow(clippy::too_many_arguments)]
+    fn accumulate(&self, big_g: &mut [f64], bw2: &mut [f64], hnn: &mut [f64], hnd: &mut [f64], hdd: &mut [f64], ta: &mut [f64], tb: &mut [f64]) {
+        let (p, c, tau, w, w2) = (self.p, self.c, self.tau, self.w, self.w2);
+        big_g.iter_mut().for_each(|t| *t = 0.0);
+        bw2.iter_mut().for_each(|t| *t = 0.0);
+        hnn.iter_mut().for_each(|t| *t = 0.0);
+        hnd.iter_mut().for_each(|t| *t = 0.0);
+        hdd.iter_mut().for_each(|t| *t = 0.0);
+        for j in 0..p {
+            let wr = &w[j * c..j * c + c];
+            let w2r = &w2[j * c..j * c + c];
+            let dl = self.delta[j];
+            let b = self.pdf[j] / dl;
+            let z = self.theta[j] / dl;
+            let a_term = (1.0 - tau) - self.cdf[j];
+            let (w1, w2w, w3) = (b, z * b / dl, b * (z * z - 1.0) / (dl * dl));
+            for k in 0..c {
+                big_g[k] += a_term * wr[k];
+                bw2[k] += b * w2r[k];
+                ta[k] = w1 * wr[k];
+                tb[k] = w3 * w2r[k];
+            }
+            for i in 0..c {
+                let (ai, bi, ci) = (ta[i], tb[i], w2w * wr[i]);
+                let rn = &mut hnn[i * c + i..i * c + c];
+                for (h, &wk) in rn.iter_mut().zip(&wr[i..]) {
+                    *h += ai * wk;
+                }
+                let rd = &mut hdd[i * c + i..i * c + c];
+                for (h, &wk) in rd.iter_mut().zip(&w2r[i..]) {
+                    *h += bi * wk;
+                }
+                let rx = &mut hnd[i * c..i * c + c];
+                for (h, &wk) in rx.iter_mut().zip(w2r) {
+                    *h += ci * wk;
+                }
+            }
+        }
     }
 }
 
@@ -181,42 +230,7 @@ pub fn fit_elbo(w: &[f64], w2: &[f64], v: &[f64], p: usize, c: usize, tau: f64, 
         fit.sigma = s;
         fit.elbo = -f;
         fit.hessians += 1;
-        // Gradient and the three weighted Gram blocks of the Hessian, one channel at a time.
-        big_g.iter_mut().for_each(|t| *t = 0.0);
-        bw2.iter_mut().for_each(|t| *t = 0.0);
-        hnn.iter_mut().for_each(|t| *t = 0.0);
-        hnd.iter_mut().for_each(|t| *t = 0.0);
-        hdd.iter_mut().for_each(|t| *t = 0.0);
-        for j in 0..p {
-            let wr = &w[j * c..j * c + c];
-            let w2r = &w2[j * c..j * c + c];
-            let dl = e.delta[j];
-            let b = e.pdf[j] / dl;
-            let z = e.theta[j] / dl;
-            let a_term = (1.0 - tau) - e.cdf[j];
-            let (w1, w2w, w3) = (b, z * b / dl, b * (z * z - 1.0) / (dl * dl));
-            for k in 0..c {
-                big_g[k] += a_term * wr[k];
-                bw2[k] += b * w2r[k];
-                ta[k] = w1 * wr[k];
-                tb[k] = w3 * w2r[k];
-            }
-            for i in 0..c {
-                let (ai, bi, ci) = (ta[i], tb[i], w2w * wr[i]);
-                let rn = &mut hnn[i * c + i..i * c + c];
-                for (h, &wk) in rn.iter_mut().zip(&wr[i..]) {
-                    *h += ai * wk;
-                }
-                let rd = &mut hdd[i * c + i..i * c + c];
-                for (h, &wk) in rd.iter_mut().zip(&w2r[i..]) {
-                    *h += bi * wk;
-                }
-                let rx = &mut hnd[i * c..i * c + c];
-                for (h, &wk) in rx.iter_mut().zip(w2r) {
-                    *h += ci * wk;
-                }
-            }
-        }
+        e.accumulate(&mut big_g, &mut bw2, &mut hnn, &mut hnd, &mut hdd, &mut ta, &mut tb);
         let d = &x[c..];
         for k in 0..c {
             big_g[c + k] = bw2[k] * d[k];
@@ -328,6 +342,7 @@ pub struct MapFit {
     pub tolerance: f64,
 }
 
+#[inline(never)]
 fn w_times(w: &[f64], c: usize, x: &[f64], out: &mut [f64]) {
     for (o, wr) in out.iter_mut().zip(w.chunks_exact(c)) {
         let mut s = 0.0;
@@ -338,12 +353,37 @@ fn w_times(w: &[f64], c: usize, x: &[f64], out: &mut [f64]) {
     }
 }
 
+#[inline(never)]
 fn wt_times(w: &[f64], c: usize, y: &[f64], out: &mut [f64]) {
     out.iter_mut().for_each(|t| *t = 0.0);
     for (&yj, wr) in y.iter().zip(w.chunks_exact(c)) {
         for k in 0..c {
             out[k] += yj * wr[k];
         }
+    }
+}
+
+/// W^T diag(weights) W + ridge I, full symmetric, row-major.
+#[inline(never)]
+fn weighted_gram(w: &[f64], c: usize, weights: &[f64], ridge: f64, m: &mut [f64], row: &mut [f64]) {
+    m.iter_mut().for_each(|t| *t = 0.0);
+    for (j, wr) in w.chunks_exact(c).enumerate() {
+        let dj = weights[j];
+        for k in 0..c {
+            row[k] = dj * wr[k];
+        }
+        for i in 0..c {
+            let ri = row[i];
+            for (mk, &wk) in m[i * c + i..i * c + c].iter_mut().zip(&wr[i..]) {
+                *mk += ri * wk;
+            }
+        }
+    }
+    for i in 0..c {
+        for k in i + 1..c {
+            m[k * c + i] = m[i * c + k];
+        }
+        m[i * c + i] += ridge;
     }
 }
 
@@ -379,25 +419,7 @@ pub fn solve_map(w: &[f64], v: &[f64], p: usize, c: usize, tau: f64, sigma: f64,
             mu_c += s1[j] * z1[j] + s2[j] * z2[j];
         }
         mu_c /= 2.0 * p as f64;
-        m.iter_mut().for_each(|t| *t = 0.0);
-        for (j, wr) in w.chunks_exact(c).enumerate() {
-            let dj = dinv[j];
-            for k in 0..c {
-                row[k] = dj * wr[k];
-            }
-            for i in 0..c {
-                let ri = row[i];
-                for (mk, &wk) in m[i * c + i..i * c + c].iter_mut().zip(&wr[i..]) {
-                    *mk += ri * wk;
-                }
-            }
-        }
-        for i in 0..c {
-            for k in i + 1..c {
-                m[k * c + i] = m[i * c + k];
-            }
-            m[i * c + i] += sigma;
-        }
+        weighted_gram(w, c, &dinv, sigma, &mut m, &mut row);
         if !cholesky(&mut m, c) {
             return fit;
         }

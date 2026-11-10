@@ -1,0 +1,8 @@
+{
+ "source": "research/ftir_hips_chem/wasm_demo",
+ "source_sha256": "ba640ce3b41930b95d38d5201bf8d10aee76392a293a197cef0a90db3353b512",
+ "wasm_sha256": "549ac41f669653e7e354a2f6bb7b526573abb95de2f39df2d708d239bfab9071",
+ "bytes": 80235,
+ "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+ "flags": "-C target-feature=+simd128"
+}

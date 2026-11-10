@@ -16,6 +16,8 @@ import { ContinuumStudy } from '@/pages/experimental/ContinuumStudy'
 import { SeasonStudy } from '@/pages/experimental/SeasonStudy'
 import { VibesNewtonStudy } from '@/pages/experimental/VibesNewtonStudy'
 // the TOR study draws its network on a MapLibre map, so it (and MapLibre) loads when it is opened
+// the VIBES tool starts a worker and loads the solver module, so it loads when it is opened
+const VibesTool = lazy(() => import('@/pages/experimental/VibesTool').then((m) => ({ default: m.VibesTool })))
 const TorStudy = lazy(() => import('@/pages/experimental/TorStudy').then((m) => ({ default: m.TorStudy })))
 
 /**
@@ -40,6 +42,7 @@ export function ExperimentalPage({ experiment, onPick }: { experiment: string; o
       {experiment === 'season' && <SeasonStudy />}
       {experiment === 'continuum' && <ContinuumStudy />}
       {experiment === 'vibes-newton' && <VibesNewtonStudy />}
+      {experiment === 'vibes-tool' && <Suspense fallback={<Empty>Loading the VIBES solver…</Empty>}><VibesTool /></Suspense>}
       {experiment === 'tor' && <Suspense fallback={<Empty>Loading the TOR study…</Empty>}><TorStudy /></Suspense>}
     </PageToc>
   )

@@ -1,7 +1,7 @@
 """Browser test of the VIBES solver compiled to WebAssembly (wasm_demo/): Newton ELBO + MAP in Rust.
 
     # needs cargo with the wasm32-unknown-unknown target:  rustup target add wasm32-unknown-unknown
-    python wasm_demo.py build
+    python wasm_demo.py build                                  # --gallery also installs it in the gallery
     # write a sample of spectra and the Python float64 results next to a copy of the page
     python wasm_demo.py prepare --bundle vibes_bundle --out web/ --rows 64
     python wasm_demo.py check --dir web/                       # Node, no browser
@@ -12,6 +12,7 @@
 """
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -26,12 +27,32 @@ ROOT = Path(__file__).resolve().parents[1]
 HERE = ROOT / "wasm_demo"
 WASM = HERE / "target" / "wasm32-unknown-unknown" / "release" / "vibes_wasm.wasm"
 PAGE = ("index.html", "worker.js", "vibes_wasm.js", "check.mjs")
+SOURCES = ("Cargo.toml", "Cargo.lock", "src/lib.rs")
+GALLERY = ROOT.parents[1] / "gallery" / "app" / "src" / "lib" / "vibes"
+
+
+def source_hash():
+    """One hash over the files the module is built from, so a stale gallery copy can be detected without cargo."""
+    digest = hashlib.sha256()
+    for name in SOURCES:
+        digest.update(name.encode())
+        digest.update((HERE / name).read_bytes())
+    return digest.hexdigest()
 
 
 def build(a):
     env = {**os.environ, "RUSTFLAGS": "-C target-feature=+simd128"}
     subprocess.run(["cargo", "build", "--release", "--target", "wasm32-unknown-unknown"], cwd=HERE, env=env, check=True)
     print(f"{WASM}  {WASM.stat().st_size:,} bytes")
+    if getattr(a, "gallery", False):
+        body = WASM.read_bytes()
+        (GALLERY / WASM.name).write_bytes(body)
+        rustc = subprocess.run(["rustc", "--version"], capture_output=True, text=True, check=True).stdout.strip()
+        (GALLERY / "vibes_wasm.build.json").write_text(json.dumps({
+            "source": "research/ftir_hips_chem/wasm_demo", "source_sha256": source_hash(),
+            "wasm_sha256": hashlib.sha256(body).hexdigest(), "bytes": len(body), "rustc": rustc,
+            "flags": env["RUSTFLAGS"]}, indent=1) + "\n")
+        print(f"installed in {GALLERY}")
 
 
 def write_folder(out, W, mean, Y, tau=0.1, row_ids=None):
@@ -90,7 +111,8 @@ def run(a):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="stage", required=True)
-    sub.add_parser("build")
+    b = sub.add_parser("build")
+    b.add_argument("--gallery", action="store_true", help="copy the module into gallery/app/src/lib/vibes with its build record")
     p = sub.add_parser("prepare")
     p.add_argument("--bundle", required=True)
     p.add_argument("--out", required=True)

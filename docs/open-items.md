@@ -322,7 +322,9 @@ come before more factors, and before any named-source fraction or mass. The gall
 needs a GitHub token that can upload assets. A deploy without one reuses the latest data release; the deploy
 workflow now unpacks that release over the data committed at the built commit, so committed exports (for example
 `improve_site_quantiles.json`, the Aethalometer flow detail) still reach the site. Exports that are git-ignored
-reach it only through a new release: run the script from the Mac after the next export.
+reach it only through a new release: run the script from the Mac after the next export. The Experimental page
+"VIBES on one spectrum" (10 Nov) needs one: run `gallery/data/export_vibes_background.py` first, so the release carries
+`experimental/vibes_background.json` and `.bin`. Until then the page shows its "run the exporter" panel on the site.
 
 ## Explicitly declined—not open
 

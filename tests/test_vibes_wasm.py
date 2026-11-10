@@ -1,8 +1,10 @@
 """The WebAssembly VIBES solver (research/ftir_hips_chem/wasm_demo) against the Python one.
 
-Skipped unless cargo with the wasm32-unknown-unknown target and node are installed.
+The comparison is skipped unless cargo with the wasm32-unknown-unknown target and node are installed.
+The check on the gallery's built copy always runs.
 """
 
+import hashlib
 import importlib.util
 import json
 import shutil
@@ -22,7 +24,7 @@ def _toolchain():
     return bool(sysroot) and (Path(sysroot) / "lib" / "rustlib" / "wasm32-unknown-unknown").is_dir()
 
 
-pytestmark = pytest.mark.skipif(not _toolchain(), reason="needs cargo with wasm32-unknown-unknown, and node")
+needs_toolchain = pytest.mark.skipif(not _toolchain(), reason="needs cargo with wasm32-unknown-unknown, and node")
 
 
 def _demo():
@@ -32,6 +34,7 @@ def _demo():
     return module
 
 
+@needs_toolchain
 def test_wasm_solver_matches_python(tmp_path):
     demo = _demo()
     demo.build(None)
@@ -49,3 +52,12 @@ def test_wasm_solver_matches_python(tmp_path):
     assert r["converged"] == rows and r["certified"] == rows
     assert r["sigma_rel_max"] < 1e-6
     assert r["baseline_abs_max"] < 1e-8
+
+
+def test_gallery_module_is_built_from_the_current_source():
+    """The gallery ships a built copy; its build record must name the source as it stands (no toolchain needed)."""
+    demo = _demo()
+    record = json.loads((demo.GALLERY / "vibes_wasm.build.json").read_text())
+    assert record["source_sha256"] == demo.source_hash(), "rebuild with: python research/ftir_hips_chem/workflows/wasm_demo.py build --gallery"
+    body = (demo.GALLERY / "vibes_wasm.wasm").read_bytes()
+    assert hashlib.sha256(body).hexdigest() == record["wasm_sha256"]
