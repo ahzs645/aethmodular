@@ -10,6 +10,18 @@ mass-per-filter view in [`mass-per-filter.md`](mass-per-filter.md).
 
 ## Decisions needed
 
+### Decide what the Addis offset finding changes (10 Nov 2026)
+
+Against four independent measurements (aethalometer, gravimetric PM2.5 mass, XRF potassium, and HIPS itself as an
+instrument), HIPS rises as about the square root of the others at Addis while FTIR EC is proportional to them. Linearising
+HIPS with the ceiling fitted on three other sites moves the published fit from 2.31x − 6.17 to 0.44x + 0.58. What is left for
+FTIR is one level factor, bracketed at about × 1.0 to 1.5. Decisions for Ann and the committee: whether this becomes the paper's
+headline; whether the 28 Oct season, cohort and MAC results are re-read against the aethalometer before the draft; and whether
+Fabs / 10 stays the Addis yardstick anywhere in the gallery. It also bears on the TOR rule below: the existing evidence
+predicts FTIR ÷ TOR of about 0.67 to 1.0, straddling the proposed band's lower edge, and the request should include HIPS on
+the same filters with a few loaded to Addis optical depth. Account, limits and the ranked open pathways:
+[addis-reference-closure-2026-11-10.md](addis-reference-closure-2026-11-10.md); gallery Meeting tab, Nov 10.
+
 ### Confirm the pass rule for the Addis city TOR filters
 
 The rule for reading the Addis city TOR filters is proposed, not agreed, and it
