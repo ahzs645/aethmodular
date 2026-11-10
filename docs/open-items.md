@@ -12,14 +12,16 @@ mass-per-filter view in [`mass-per-filter.md`](mass-per-filter.md).
 
 ### Decide what the Addis offset finding changes (10 Nov 2026)
 
-Against four independent measurements (aethalometer, gravimetric PM2.5 mass, XRF potassium, and HIPS itself as an
-instrument), HIPS rises as about the square root of the others at Addis while FTIR EC is proportional to them. Linearising
-HIPS with the ceiling fitted on three other sites moves the published fit from 2.31x − 6.17 to 0.44x + 0.58. What is left for
-FTIR is one level factor, bracketed at about × 1.0 to 1.5. Decisions for Ann and the committee: whether this becomes the paper's
-headline; whether the 28 Oct season, cohort and MAC results are re-read against the aethalometer before the draft; and whether
-Fabs / 10 stays the Addis yardstick anywhere in the gallery. It also bears on the TOR rule below: the existing evidence
-predicts FTIR ÷ TOR of about 0.67 to 1.0, straddling the proposed band's lower edge, and the request should include HIPS on
-the same filters with a few loaded to Addis optical depth. Account, limits and the ranked open pathways:
+Without using the aethalometer (the Addis MA350 is not a reference): IMPROVE's thermal EC shows HIPS falling behind as
+filters darken (ceiling 2.26 [1.82, 2.70] in optical depth, from 347,936 samples), and Addis filters sit on that bend.
+The curve predicts most of the Addis disagreement between HIPS and FTIR EC, and linearising HIPS with it moves the
+published fit from 2.31x − 6.17 to 0.55x + 0.01. What is left for FTIR is mainly one level factor, bracketed at about
+× 1.0 to 1.5, with a smaller season or loading effect and a lot-248 offset still open. Decisions for Ann and the
+committee: whether this becomes the paper's headline; whether the 28 Oct season, cohort and MAC results are re-read
+against linearised HIPS before the draft; and whether Fabs / 10 stays the Addis yardstick anywhere in the gallery. It
+also bears on the TOR rule below: the existing evidence predicts FTIR ÷ TOR of about 0.65 to 1.0, straddling the proposed
+band's lower edge, and the request should include HIPS on the same filters with a few loaded to Addis optical depth.
+Account, limits and the ranked open pathways:
 [addis-reference-closure-2026-11-10.md](addis-reference-closure-2026-11-10.md); gallery Meeting tab, Nov 10.
 
 ### Confirm the pass rule for the Addis city TOR filters

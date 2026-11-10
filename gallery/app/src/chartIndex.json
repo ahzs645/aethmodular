@@ -717,7 +717,23 @@
    "file": "meetings/ann-20261009.meeting.ts"
   },
   {
-   "title": "HIPS rises as about the square root of every other measurement; FTIR EC is proportional to the aethalometer",
+   "title": "Per unit of thermal EC, HIPS reads about a third less at Addis optical depth than on light filters",
+   "id": "c1110-improve-ratio",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "The saturation ceiling is the same whichever IMPROVE sites are used",
+   "id": "c1110-ceilings",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "HIPS rises as about the square root of FTIR EC; the IMPROVE curve predicts 0.56 for HIPS alone",
    "id": "c1110-exponents",
    "component": "intervals",
    "tab": "meeting",
@@ -725,23 +741,7 @@
    "file": "meetings/closure-20261110.meeting.ts"
   },
   {
-   "title": "Against the aethalometer, HIPS flattens and FTIR EC runs straight through the origin",
-   "id": "c1110-against-aeth",
-   "component": "scatter",
-   "tab": "meeting",
-   "meeting": "closure-20261110",
-   "file": "meetings/closure-20261110.meeting.ts"
-  },
-  {
-   "title": "The bend is inside every season, so it is not a between-season composition effect",
-   "id": "c1110-by-season",
-   "component": "intervals",
-   "tab": "meeting",
-   "meeting": "closure-20261110",
-   "file": "meetings/closure-20261110.meeting.ts"
-  },
-  {
-   "title": "The same filters: 2.31x − 6.17 as measured, 0.44x + 0.58 once HIPS is linearised",
+   "title": "The same filters: 2.31x − 6.17 as measured, 0.55x + 0.01 once HIPS is linearised",
    "id": "c1110-against-hips",
    "component": "crossplot",
    "tab": "meeting",
@@ -757,15 +757,7 @@
    "file": "meetings/closure-20261110.meeting.ts"
   },
   {
-   "title": "FTIR EC is about as precise as the aethalometer; HIPS is somewhat noisier once its compressed range is allowed for",
-   "id": "c1110-errors",
-   "component": "intervals",
-   "tab": "meeting",
-   "meeting": "closure-20261110",
-   "file": "meetings/closure-20261110.meeting.ts"
-  },
-  {
-   "title": "Within lot 251 the published FTIR EC ÷ aethalometer is the same in every season",
+   "title": "Linearising HIPS removes most of the seasonal swing; a smaller one remains, and lot 248 reads low",
    "id": "c1110-season",
    "component": "table",
    "tab": "meeting",
@@ -797,7 +789,7 @@
    "file": "meetings/closure-20261110.meeting.ts"
   },
   {
-   "title": "Addis has the highest optical depth in the network and the lowest exponent",
+   "title": "The exponent falls with a site’s optical depth about as the IMPROVE thermal curve predicts; Addis is the heaviest site",
    "id": "c1110-network",
    "component": "scatter",
    "tab": "meeting",

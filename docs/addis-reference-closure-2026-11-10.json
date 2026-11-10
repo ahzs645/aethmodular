@@ -1,58 +1,434 @@
 {
  "generated_from": "research/ftir_hips_chem/workflows/run_addis_reference_closure_20261110.py",
+ "aethalometer_used": false,
  "inputs": {
   "closeout": "gallery/review/closeout_20261107/continuum_baseline.json",
   "filters": "gallery/app/public/data/filters.json",
-  "unified": "research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl"
+  "unified": "research/ftir_hips_chem/Filter Data/unified_filter_dataset.pkl",
+  "network": "gallery/app/public/data/spartan_reference.json",
+  "improve": "<FTIR local_db>/tables/results_tor.csv, results_hips.csv (Drive)"
  },
  "counts": {
   "filters": 233,
-  "with_aethalometer": 172,
   "with_pm25": 188,
   "with_published": 189,
   "volume_known": 189
  },
+ "improve_ceiling": [
+  {
+   "population": "all sites",
+   "samples": 347936,
+   "sites": 210,
+   "strata": 17,
+   "years": "2005-2025",
+   "tau_inf": 2.2596,
+   "tau_inf_lo": 1.8212,
+   "tau_inf_hi": 2.7014,
+   "unsaturated_fabs_over_ec": 13.1363,
+   "unsaturated_lo": 12.9136,
+   "unsaturated_hi": 13.4503,
+   "max_stratum_tau": 0.9433
+  },
+  {
+   "population": "sites with median OC/EC < 4",
+   "samples": 32898,
+   "sites": 32,
+   "strata": 17,
+   "years": "2005-2025",
+   "tau_inf": 2.2467,
+   "tau_inf_lo": 1.7361,
+   "tau_inf_hi": 3.0404,
+   "unsaturated_fabs_over_ec": 15.1002,
+   "unsaturated_lo": 13.5252,
+   "unsaturated_hi": 16.4624,
+   "max_stratum_tau": 1.179
+  },
+  {
+   "population": "six urban sites",
+   "samples": 11020,
+   "sites": 6,
+   "strata": 12,
+   "years": "2005-2025",
+   "tau_inf": 2.2296,
+   "tau_inf_lo": 1.8149,
+   "tau_inf_hi": 2.9583,
+   "unsaturated_fabs_over_ec": 16.3986,
+   "unsaturated_lo": 14.9343,
+   "unsaturated_hi": 18.3558,
+   "max_stratum_tau": 1.179
+  }
+ ],
+ "improve_strata": [
+  {
+   "n": 15760,
+   "loading_ug": 1.216,
+   "tau": 0.0452,
+   "population": "all sites",
+   "fabs_over_ec": 13.1241,
+   "fitted_tau": 0.0444
+  },
+  {
+   "n": 24285,
+   "loading_ug": 1.6002,
+   "tau": 0.0572,
+   "population": "all sites",
+   "fabs_over_ec": 12.6149,
+   "fitted_tau": 0.058
+  },
+  {
+   "n": 26312,
+   "loading_ug": 1.9409,
+   "tau": 0.0683,
+   "population": "all sites",
+   "fabs_over_ec": 12.4176,
+   "fitted_tau": 0.07
+  },
+  {
+   "n": 25553,
+   "loading_ug": 2.2908,
+   "tau": 0.0805,
+   "population": "all sites",
+   "fabs_over_ec": 12.4017,
+   "fitted_tau": 0.0822
+  },
+  {
+   "n": 47132,
+   "loading_ug": 2.7799,
+   "tau": 0.098,
+   "population": "all sites",
+   "fabs_over_ec": 12.4474,
+   "fitted_tau": 0.0989
+  },
+  {
+   "n": 38481,
+   "loading_ug": 3.5321,
+   "tau": 0.1251,
+   "population": "all sites",
+   "fabs_over_ec": 12.5039,
+   "fitted_tau": 0.1242
+  },
+  {
+   "n": 53670,
+   "loading_ug": 4.5594,
+   "tau": 0.1623,
+   "population": "all sites",
+   "fabs_over_ec": 12.5649,
+   "fitted_tau": 0.1578
+  },
+  {
+   "n": 34094,
+   "loading_ug": 5.8971,
+   "tau": 0.2051,
+   "population": "all sites",
+   "fabs_over_ec": 12.2774,
+   "fitted_tau": 0.2
+  },
+  {
+   "n": 31249,
+   "loading_ug": 7.0566,
+   "tau": 0.2413,
+   "population": "all sites",
+   "fabs_over_ec": 12.069,
+   "fitted_tau": 0.2353
+  },
+  {
+   "n": 21594,
+   "loading_ug": 8.4418,
+   "tau": 0.279,
+   "population": "all sites",
+   "fabs_over_ec": 11.6665,
+   "fitted_tau": 0.2758
+  },
+  {
+   "n": 12697,
+   "loading_ug": 10.3161,
+   "tau": 0.3236,
+   "population": "all sites",
+   "fabs_over_ec": 11.0732,
+   "fitted_tau": 0.3281
+  },
+  {
+   "n": 7512,
+   "loading_ug": 12.6338,
+   "tau": 0.3766,
+   "population": "all sites",
+   "fabs_over_ec": 10.5235,
+   "fitted_tau": 0.3892
+  },
+  {
+   "n": 4052,
+   "loading_ug": 17.2895,
+   "tau": 0.4892,
+   "population": "all sites",
+   "fabs_over_ec": 9.9874,
+   "fitted_tau": 0.5008
+  },
+  {
+   "n": 2665,
+   "loading_ug": 22.7741,
+   "tau": 0.6209,
+   "population": "all sites",
+   "fabs_over_ec": 9.6244,
+   "fitted_tau": 0.6163
+  },
+  {
+   "n": 1576,
+   "loading_ug": 32.7325,
+   "tau": 0.806,
+   "population": "all sites",
+   "fabs_over_ec": 8.6921,
+   "fitted_tau": 0.7914
+  },
+  {
+   "n": 816,
+   "loading_ug": 39.6889,
+   "tau": 0.9433,
+   "population": "all sites",
+   "fabs_over_ec": 8.39,
+   "fitted_tau": 0.8932
+  },
+  {
+   "n": 488,
+   "loading_ug": 43.5072,
+   "tau": 0.8909,
+   "population": "all sites",
+   "fabs_over_ec": 7.2283,
+   "fitted_tau": 0.9432
+  },
+  {
+   "n": 1191,
+   "loading_ug": 0.744,
+   "tau": 0.0361,
+   "population": "sites with median OC/EC < 4",
+   "fabs_over_ec": 17.1361,
+   "fitted_tau": 0.0314
+  },
+  {
+   "n": 1184,
+   "loading_ug": 1.1089,
+   "tau": 0.0482,
+   "population": "sites with median OC/EC < 4",
+   "fabs_over_ec": 15.3302,
+   "fitted_tau": 0.0465
+  },
+  {
+   "n": 954,
+   "loading_ug": 1.3445,
+   "tau": 0.0623,
+   "population": "sites with median OC/EC < 4",
+   "fabs_over_ec": 16.353,
+   "fitted_tau": 0.0561
+  },
+  {
+   "n": 750,
+   "loading_ug": 2.3379,
+   "tau": 0.1002,
+   "population": "sites with median OC/EC < 4",
+   "fabs_over_ec": 15.1243,
+   "fitted_tau": 0.0957
+  },
+  {
+   "n": 1377,
+   "loading_ug": 3.6796,
+   "tau": 0.1498,
+   "population": "sites with median OC/EC < 4",
+   "fabs_over_ec": 14.3705,
+   "fitted_tau": 0.1471
+  },
+  {
+   "n": 1500,
+   "loading_ug": 5.6413,
+   "tau": 0.2044,
+   "population": "sites with median OC/EC < 4",
+   "fabs_over_ec": 12.7929,
+   "fitted_tau": 0.2179
+  },
+  {
+   "n": 3147,
+   "loading_ug": 7.435,
+   "tau": 0.2637,
+   "population": "sites with median OC/EC < 4",
+   "fabs_over_ec": 12.518,
+   "fitted_tau": 0.2786
+  },
+  {
+   "n": 3228,
+   "loading_ug": 8.7326,
+   "tau": 0.304,
+   "population": "sites with median OC/EC < 4",
+   "fabs_over_ec": 12.2887,
+   "fitted_tau": 0.3203
+  },
+  {
+   "n": 4293,
+   "loading_ug": 9.8976,
+   "tau": 0.3343,
+   "population": "sites with median OC/EC < 4",
+   "fabs_over_ec": 11.9223,
+   "fitted_tau": 0.3563
+  },
+  {
+   "n": 4195,
+   "loading_ug": 11.44,
+   "tau": 0.3741,
+   "population": "sites with median OC/EC < 4",
+   "fabs_over_ec": 11.5439,
+   "fitted_tau": 0.4018
+  },
+  {
+   "n": 3410,
+   "loading_ug": 14.093,
+   "tau": 0.4278,
+   "population": "sites with median OC/EC < 4",
+   "fabs_over_ec": 10.7149,
+   "fitted_tau": 0.4753
+  },
+  {
+   "n": 2637,
+   "loading_ug": 17.6019,
+   "tau": 0.5089,
+   "population": "sites with median OC/EC < 4",
+   "fabs_over_ec": 10.2058,
+   "fitted_tau": 0.564
+  },
+  {
+   "n": 1888,
+   "loading_ug": 23.414,
+   "tau": 0.6649,
+   "population": "sites with median OC/EC < 4",
+   "fabs_over_ec": 10.0243,
+   "fitted_tau": 0.6927
+  },
+  {
+   "n": 1472,
+   "loading_ug": 29.0185,
+   "tau": 0.798,
+   "population": "sites with median OC/EC < 4",
+   "fabs_over_ec": 9.7078,
+   "fitted_tau": 0.7996
+  },
+  {
+   "n": 961,
+   "loading_ug": 37.338,
+   "tau": 0.9918,
+   "population": "sites with median OC/EC < 4",
+   "fabs_over_ec": 9.3766,
+   "fitted_tau": 0.9335
+  },
+  {
+   "n": 500,
+   "loading_ug": 44.6372,
+   "tau": 1.0815,
+   "population": "sites with median OC/EC < 4",
+   "fabs_over_ec": 8.5527,
+   "fitted_tau": 1.0322
+  },
+  {
+   "n": 211,
+   "loading_ug": 47.0099,
+   "tau": 1.179,
+   "population": "sites with median OC/EC < 4",
+   "fabs_over_ec": 8.8529,
+   "fitted_tau": 1.0611
+  },
+  {
+   "n": 196,
+   "loading_ug": 9.4627,
+   "tau": 0.3724,
+   "population": "six urban sites",
+   "fabs_over_ec": 13.891,
+   "fitted_tau": 0.3672
+  },
+  {
+   "n": 633,
+   "loading_ug": 10.812,
+   "tau": 0.4203,
+   "population": "six urban sites",
+   "fabs_over_ec": 13.7235,
+   "fitted_tau": 0.4099
+  },
+  {
+   "n": 914,
+   "loading_ug": 11.5907,
+   "tau": 0.456,
+   "population": "six urban sites",
+   "fabs_over_ec": 13.8873,
+   "fitted_tau": 0.4337
+  },
+  {
+   "n": 1349,
+   "loading_ug": 12.768,
+   "tau": 0.4742,
+   "population": "six urban sites",
+   "fabs_over_ec": 13.1109,
+   "fitted_tau": 0.4685
+  },
+  {
+   "n": 1551,
+   "loading_ug": 13.8167,
+   "tau": 0.5031,
+   "population": "six urban sites",
+   "fabs_over_ec": 12.8532,
+   "fitted_tau": 0.4984
+  },
+  {
+   "n": 1484,
+   "loading_ug": 16.1383,
+   "tau": 0.5507,
+   "population": "six urban sites",
+   "fabs_over_ec": 12.0468,
+   "fitted_tau": 0.561
+  },
+  {
+   "n": 1355,
+   "loading_ug": 19.3213,
+   "tau": 0.6071,
+   "population": "six urban sites",
+   "fabs_over_ec": 11.0909,
+   "fitted_tau": 0.6399
+  },
+  {
+   "n": 1152,
+   "loading_ug": 22.6605,
+   "tau": 0.6672,
+   "population": "six urban sites",
+   "fabs_over_ec": 10.3929,
+   "fitted_tau": 0.7151
+  },
+  {
+   "n": 1013,
+   "loading_ug": 28.2769,
+   "tau": 0.7828,
+   "population": "six urban sites",
+   "fabs_over_ec": 9.7717,
+   "fitted_tau": 0.8266
+  },
+  {
+   "n": 652,
+   "loading_ug": 37.5265,
+   "tau": 0.9921,
+   "population": "six urban sites",
+   "fabs_over_ec": 9.3325,
+   "fitted_tau": 0.9783
+  },
+  {
+   "n": 396,
+   "loading_ug": 45.0534,
+   "tau": 1.0839,
+   "population": "six urban sites",
+   "fabs_over_ec": 8.4922,
+   "fitted_tau": 1.0795
+  },
+  {
+   "n": 187,
+   "loading_ug": 47.0099,
+   "tau": 1.179,
+   "population": "six urban sites",
+   "fabs_over_ec": 8.8529,
+   "fitted_tau": 1.1032
+  }
+ ],
  "linearity": [
-  {
-   "y": "HIPS Fabs",
-   "x": "Aethalometer IR BCc",
-   "instrument": "PM2.5 mass (gravimetric)",
-   "group": "all",
-   "n": 171,
-   "exponent": 0.5122,
-   "lo": 0.475,
-   "hi": 0.5556
-  },
-  {
-   "y": "HIPS Fabs",
-   "x": "Aethalometer IR BCc",
-   "instrument": "FTIR EC, SPARTAN published",
-   "group": "all",
-   "n": 172,
-   "exponent": 0.4749,
-   "lo": 0.441,
-   "hi": 0.5122
-  },
-  {
-   "y": "HIPS Fabs",
-   "x": "Aethalometer IR BCc",
-   "instrument": "Potassium (XRF)",
-   "group": "all",
-   "n": 171,
-   "exponent": 0.4891,
-   "lo": 0.4367,
-   "hi": 0.5477
-  },
-  {
-   "y": "HIPS Fabs",
-   "x": "FTIR EC, SPARTAN published",
-   "instrument": "Aethalometer IR BCc",
-   "group": "all",
-   "n": 172,
-   "exponent": 0.4353,
-   "lo": 0.3988,
-   "hi": 0.4717
-  },
   {
    "y": "HIPS Fabs",
    "x": "FTIR EC, SPARTAN published",
@@ -75,13 +451,23 @@
   },
   {
    "y": "HIPS Fabs",
-   "x": "PM2.5 mass (gravimetric)",
-   "instrument": "Aethalometer IR BCc",
+   "x": "FTIR EC, PTFE-anchored VIBES",
+   "instrument": "PM2.5 mass (gravimetric)",
    "group": "all",
-   "n": 171,
-   "exponent": 0.6276,
-   "lo": 0.5762,
-   "hi": 0.6859
+   "n": 188,
+   "exponent": 0.4622,
+   "lo": 0.429,
+   "hi": 0.4991
+  },
+  {
+   "y": "HIPS Fabs",
+   "x": "FTIR EC, PTFE-anchored VIBES",
+   "instrument": "Potassium (XRF)",
+   "group": "all",
+   "n": 188,
+   "exponent": 0.4089,
+   "lo": 0.3634,
+   "hi": 0.4549
   },
   {
    "y": "HIPS Fabs",
@@ -105,76 +491,6 @@
   },
   {
    "y": "FTIR EC, SPARTAN published",
-   "x": "Aethalometer IR BCc",
-   "instrument": "PM2.5 mass (gravimetric)",
-   "group": "all",
-   "n": 171,
-   "exponent": 1.1289,
-   "lo": 1.0466,
-   "hi": 1.2337
-  },
-  {
-   "y": "FTIR EC, SPARTAN published",
-   "x": "Aethalometer IR BCc",
-   "instrument": "HIPS Fabs",
-   "group": "all",
-   "n": 172,
-   "exponent": 1.0909,
-   "lo": 1.0143,
-   "hi": 1.1802
-  },
-  {
-   "y": "FTIR EC, SPARTAN published",
-   "x": "Aethalometer IR BCc",
-   "instrument": "Potassium (XRF)",
-   "group": "all",
-   "n": 171,
-   "exponent": 1.2235,
-   "lo": 1.1125,
-   "hi": 1.3796
-  },
-  {
-   "y": "FTIR EC, PTFE-anchored VIBES",
-   "x": "Aethalometer IR BCc",
-   "instrument": "PM2.5 mass (gravimetric)",
-   "group": "all",
-   "n": 171,
-   "exponent": 1.1238,
-   "lo": 1.0483,
-   "hi": 1.2203
-  },
-  {
-   "y": "FTIR EC, PTFE-anchored VIBES",
-   "x": "Aethalometer IR BCc",
-   "instrument": "HIPS Fabs",
-   "group": "all",
-   "n": 172,
-   "exponent": 1.0879,
-   "lo": 1.0142,
-   "hi": 1.1731
-  },
-  {
-   "y": "FTIR EC, PTFE-anchored VIBES",
-   "x": "Aethalometer IR BCc",
-   "instrument": "Potassium (XRF)",
-   "group": "all",
-   "n": 171,
-   "exponent": 1.2196,
-   "lo": 1.1153,
-   "hi": 1.3662
-  },
-  {
-   "y": "FTIR EC, SPARTAN published",
-   "x": "PM2.5 mass (gravimetric)",
-   "instrument": "Aethalometer IR BCc",
-   "group": "all",
-   "n": 171,
-   "exponent": 1.442,
-   "lo": 1.3192,
-   "hi": 1.5957
-  },
-  {
-   "y": "FTIR EC, SPARTAN published",
    "x": "PM2.5 mass (gravimetric)",
    "instrument": "HIPS Fabs",
    "group": "all",
@@ -194,359 +510,53 @@
    "hi": 1.3841
   },
   {
-   "y": "Aethalometer IR BCc",
-   "x": "PM2.5 mass (gravimetric)",
-   "instrument": "FTIR EC, SPARTAN published",
-   "group": "all",
-   "n": 171,
-   "exponent": 1.2774,
-   "lo": 1.1767,
-   "hi": 1.3936
-  },
-  {
-   "y": "Aethalometer IR BCc",
-   "x": "PM2.5 mass (gravimetric)",
-   "instrument": "HIPS Fabs",
-   "group": "all",
-   "n": 171,
-   "exponent": 1.2254,
-   "lo": 1.1246,
-   "hi": 1.3316
-  },
-  {
-   "y": "Aethalometer IR BCc",
-   "x": "PM2.5 mass (gravimetric)",
-   "instrument": "Potassium (XRF)",
-   "group": "all",
-   "n": 171,
-   "exponent": 1.0323,
-   "lo": 0.8856,
-   "hi": 1.1783
-  },
-  {
-   "y": "HIPS, saved linearisation",
-   "x": "Aethalometer IR BCc",
-   "instrument": "PM2.5 mass (gravimetric)",
-   "group": "all",
-   "n": 170,
-   "exponent": 0.8947,
-   "lo": 0.83,
-   "hi": 0.9703
-  },
-  {
-   "y": "HIPS, saved linearisation",
-   "x": "Aethalometer IR BCc",
-   "instrument": "FTIR EC, SPARTAN published",
-   "group": "all",
-   "n": 171,
-   "exponent": 0.8385,
-   "lo": 0.7832,
-   "hi": 0.8951
-  },
-  {
-   "y": "HIPS, saved linearisation",
-   "x": "Aethalometer IR BCc",
-   "instrument": "Potassium (XRF)",
-   "group": "all",
-   "n": 170,
-   "exponent": 0.8616,
-   "lo": 0.7718,
-   "hi": 0.9675
-  },
-  {
-   "y": "Inferred TOR comparator",
-   "x": "Aethalometer IR BCc",
-   "instrument": "PM2.5 mass (gravimetric)",
-   "group": "all",
-   "n": 170,
-   "exponent": 0.739,
-   "lo": 0.688,
-   "hi": 0.7987
-  },
-  {
-   "y": "Inferred TOR comparator",
-   "x": "Aethalometer IR BCc",
-   "instrument": "FTIR EC, SPARTAN published",
-   "group": "all",
-   "n": 170,
-   "exponent": 0.6783,
-   "lo": 0.6318,
-   "hi": 0.7256
-  },
-  {
-   "y": "Inferred TOR comparator",
-   "x": "Aethalometer IR BCc",
-   "instrument": "Potassium (XRF)",
-   "group": "all",
-   "n": 170,
-   "exponent": 0.7295,
-   "lo": 0.6641,
-   "hi": 0.8152
-  },
-  {
    "y": "HIPS Fabs",
-   "x": "Aethalometer IR BCc",
+   "x": "FTIR EC, SPARTAN published",
    "instrument": "PM2.5 mass (gravimetric)",
    "group": "Bega",
-   "n": 51,
-   "exponent": 0.6933,
-   "lo": 0.5806,
-   "hi": 0.8476
-  },
-  {
-   "y": "FTIR EC, SPARTAN published",
-   "x": "Aethalometer IR BCc",
-   "instrument": "PM2.5 mass (gravimetric)",
-   "group": "Bega",
-   "n": 51,
-   "exponent": 1.2419,
-   "lo": 0.9813,
-   "hi": 1.5885
+   "n": 55,
+   "exponent": 0.5712,
+   "lo": 0.4292,
+   "hi": 0.7518
   },
   {
    "y": "HIPS Fabs",
-   "x": "Aethalometer IR BCc",
+   "x": "FTIR EC, SPARTAN published",
    "instrument": "PM2.5 mass (gravimetric)",
    "group": "Belg",
-   "n": 63,
-   "exponent": 0.5761,
-   "lo": 0.4843,
-   "hi": 0.7628
-  },
-  {
-   "y": "FTIR EC, SPARTAN published",
-   "x": "Aethalometer IR BCc",
-   "instrument": "PM2.5 mass (gravimetric)",
-   "group": "Belg",
-   "n": 63,
-   "exponent": 1.0811,
-   "lo": 0.9615,
-   "hi": 1.3676
+   "n": 69,
+   "exponent": 0.5303,
+   "lo": 0.4535,
+   "hi": 0.6149
   },
   {
    "y": "HIPS Fabs",
-   "x": "Aethalometer IR BCc",
+   "x": "FTIR EC, SPARTAN published",
    "instrument": "PM2.5 mass (gravimetric)",
    "group": "Kiremt",
-   "n": 57,
-   "exponent": 0.5643,
-   "lo": 0.4636,
-   "hi": 0.692
-  },
-  {
-   "y": "FTIR EC, SPARTAN published",
-   "x": "Aethalometer IR BCc",
-   "instrument": "PM2.5 mass (gravimetric)",
-   "group": "Kiremt",
-   "n": 57,
-   "exponent": 0.9894,
-   "lo": 0.8528,
-   "hi": 1.1515
+   "n": 64,
+   "exponent": 0.5856,
+   "lo": 0.5089,
+   "hi": 0.6711
   }
  ],
- "triple_collocation": [
+ "frisch_bounds": [
   {
-   "triplet": "FTIR EC, SPARTAN published \u00b7 Aethalometer IR BCc \u00b7 HIPS Fabs",
-   "measurement": "FTIR EC, SPARTAN published",
-   "n": 172,
-   "signal_sd": 0.445,
-   "exponent": 1.0,
-   "exponent_lo": 1.0,
-   "exponent_hi": 1.0,
-   "error_sd": 0.1595,
-   "error_sd_lo": 0.0892,
-   "error_sd_hi": 0.2291
+   "y": "HIPS Fabs",
+   "x": "FTIR EC, SPARTAN published",
+   "n": 189,
+   "lower": 0.3891,
+   "upper": 0.5361
   },
   {
-   "triplet": "FTIR EC, SPARTAN published \u00b7 Aethalometer IR BCc \u00b7 HIPS Fabs",
-   "measurement": "Aethalometer IR BCc",
-   "n": 172,
-   "signal_sd": 0.445,
-   "exponent": 0.9167,
-   "exponent_lo": 0.8473,
-   "exponent_hi": 0.9859,
-   "error_sd": 0.1346,
-   "error_sd_lo": 0.0771,
-   "error_sd_hi": 0.1867
-  },
-  {
-   "triplet": "FTIR EC, SPARTAN published \u00b7 Aethalometer IR BCc \u00b7 HIPS Fabs",
-   "measurement": "HIPS Fabs",
-   "n": 172,
-   "signal_sd": 0.445,
-   "exponent": 0.4353,
-   "exponent_lo": 0.3988,
-   "exponent_hi": 0.4717,
-   "error_sd": 0.206,
-   "error_sd_lo": 0.1683,
-   "error_sd_hi": 0.2421
-  },
-  {
-   "triplet": "FTIR EC, PTFE-anchored VIBES \u00b7 Aethalometer IR BCc \u00b7 HIPS Fabs",
-   "measurement": "FTIR EC, PTFE-anchored VIBES",
-   "n": 172,
-   "signal_sd": 0.4419,
-   "exponent": 1.0,
-   "exponent_lo": 1.0,
-   "exponent_hi": 1.0,
-   "error_sd": 0.1592,
-   "error_sd_lo": 0.1092,
-   "error_sd_hi": 0.2071
-  },
-  {
-   "triplet": "FTIR EC, PTFE-anchored VIBES \u00b7 Aethalometer IR BCc \u00b7 HIPS Fabs",
-   "measurement": "Aethalometer IR BCc",
-   "n": 172,
-   "signal_sd": 0.4419,
-   "exponent": 0.9192,
-   "exponent_lo": 0.8525,
-   "exponent_hi": 0.986,
-   "error_sd": 0.1404,
-   "error_sd_lo": 0.0714,
-   "error_sd_hi": 0.2006
-  },
-  {
-   "triplet": "FTIR EC, PTFE-anchored VIBES \u00b7 Aethalometer IR BCc \u00b7 HIPS Fabs",
-   "measurement": "HIPS Fabs",
-   "n": 172,
-   "signal_sd": 0.4419,
-   "exponent": 0.4403,
-   "exponent_lo": 0.4062,
-   "exponent_hi": 0.4748,
-   "error_sd": 0.1995,
-   "error_sd_lo": 0.1685,
-   "error_sd_hi": 0.2287
-  },
-  {
-   "triplet": "FTIR EC, SPARTAN published \u00b7 Aethalometer IR BCc \u00b7 PM2.5 mass (gravimetric)",
-   "measurement": "FTIR EC, SPARTAN published",
-   "n": 171,
-   "signal_sd": 0.4541,
-   "exponent": 1.0,
-   "exponent_lo": 1.0,
-   "exponent_hi": 1.0,
-   "error_sd": 0.1249,
-   "error_sd_lo": 0.0358,
-   "error_sd_hi": 0.2025
-  },
-  {
-   "triplet": "FTIR EC, SPARTAN published \u00b7 Aethalometer IR BCc \u00b7 PM2.5 mass (gravimetric)",
-   "measurement": "Aethalometer IR BCc",
-   "n": 171,
-   "signal_sd": 0.4541,
-   "exponent": 0.8859,
-   "exponent_lo": 0.8105,
-   "exponent_hi": 0.9555,
-   "error_sd": 0.1631,
-   "error_sd_lo": 0.111,
-   "error_sd_hi": 0.2198
-  },
-  {
-   "triplet": "FTIR EC, SPARTAN published \u00b7 Aethalometer IR BCc \u00b7 PM2.5 mass (gravimetric)",
-   "measurement": "PM2.5 mass (gravimetric)",
-   "n": 171,
-   "signal_sd": 0.4541,
-   "exponent": 0.6935,
-   "exponent_lo": 0.6267,
-   "exponent_hi": 0.758,
-   "error_sd": 0.2209,
-   "error_sd_lo": 0.1793,
-   "error_sd_hi": 0.2652
-  },
-  {
-   "triplet": "Aethalometer IR BCc \u00b7 FTIR EC, SPARTAN published \u00b7 HIPS, saved linearisation",
-   "measurement": "Aethalometer IR BCc",
-   "n": 171,
-   "signal_sd": 0.4064,
-   "exponent": 1.0,
-   "exponent_lo": 1.0,
-   "exponent_hi": 1.0,
-   "error_sd": 0.1185,
-   "error_sd_lo": 0.0642,
-   "error_sd_hi": 0.1628
-  },
-  {
-   "triplet": "Aethalometer IR BCc \u00b7 FTIR EC, SPARTAN published \u00b7 HIPS, saved linearisation",
-   "measurement": "FTIR EC, SPARTAN published",
-   "n": 171,
-   "signal_sd": 0.4064,
-   "exponent": 1.0924,
-   "exponent_lo": 1.016,
-   "exponent_hi": 1.1891,
-   "error_sd": 0.1486,
-   "error_sd_lo": 0.0873,
-   "error_sd_hi": 0.202
-  },
-  {
-   "triplet": "Aethalometer IR BCc \u00b7 FTIR EC, SPARTAN published \u00b7 HIPS, saved linearisation",
-   "measurement": "HIPS, saved linearisation",
-   "n": 171,
-   "signal_sd": 0.4064,
-   "exponent": 0.8385,
-   "exponent_lo": 0.7832,
-   "exponent_hi": 0.8951,
-   "error_sd": 0.1767,
-   "error_sd_lo": 0.1439,
-   "error_sd_hi": 0.2103
+   "y": "HIPS Fabs",
+   "x": "FTIR EC, PTFE-anchored VIBES",
+   "n": 233,
+   "lower": 0.4028,
+   "upper": 0.5651
   }
  ],
  "hips_response_fits": [
-  {
-   "loading": "aethalometer IR BCc",
-   "model": "proportional",
-   "n": 172,
-   "rms_log": 0.2622,
-   "aic": -458.4994,
-   "p1": 0.0193,
-   "p1_lo": 0.0186,
-   "p1_hi": 0.02,
-   "p2": null,
-   "p2_lo": null,
-   "p2_hi": null,
-   "delta_aic_vs_proportional": 0.0
-  },
-  {
-   "loading": "aethalometer IR BCc",
-   "model": "hyperbolic",
-   "n": 172,
-   "rms_log": 0.1088,
-   "aic": -759.0882,
-   "p1": 0.0438,
-   "p1_lo": 0.0398,
-   "p1_hi": 0.0501,
-   "p2": 1.8046,
-   "p2_lo": 1.6502,
-   "p2_hi": 1.9423,
-   "delta_aic_vs_proportional": -300.5887
-  },
-  {
-   "loading": "aethalometer IR BCc",
-   "model": "patterned",
-   "n": 172,
-   "rms_log": 0.1185,
-   "aic": -729.7473,
-   "p1": 0.031,
-   "p1_lo": 0.0291,
-   "p1_hi": 0.0336,
-   "p2": 0.722,
-   "p2_lo": 0.7042,
-   "p2_hi": 0.7361,
-   "delta_aic_vs_proportional": -271.2479
-  },
-  {
-   "loading": "aethalometer IR BCc",
-   "model": "power",
-   "n": 172,
-   "rms_log": 0.1051,
-   "aic": -770.931,
-   "p1": 0.1766,
-   "p1_lo": 0.1515,
-   "p1_hi": 0.2114,
-   "p2": 0.4351,
-   "p2_lo": 0.3911,
-   "p2_hi": 0.4728,
-   "delta_aic_vs_proportional": -312.4316
-  },
   {
    "loading": "FTIR EC, SPARTAN published",
    "model": "proportional",
@@ -718,76 +728,88 @@
  ],
  "linearised_hips": [
   {
-   "tau_inf": 2.0684,
+   "tau_inf": 2.2596,
    "which": "central",
    "model": "FTIR EC, SPARTAN published",
    "n": 189,
-   "dropped_at_or_above_tau_inf": 0,
-   "slope_vs_linearised_hips": 0.4396,
-   "intercept_vs_linearised_hips": 0.5809,
-   "linearised_exponent_vs_aethalometer": 1.0217,
-   "median_correction_factor": 1.8661,
-   "mac_for_agreement": 20.5445
+   "slope_vs_linearised_hips": 0.5458,
+   "intercept_vs_linearised_hips": 0.009,
+   "predicted_hips_exponent": 0.5646,
+   "linearised_exponent_vs_ftir": 0.85,
+   "linearised_exponent_lo": 0.7848,
+   "linearised_exponent_hi": 0.9153,
+   "median_correction_factor": 1.7387,
+   "mac_for_agreement": 18.7403
   },
   {
-   "tau_inf": 2.0684,
+   "tau_inf": 2.2596,
    "which": "central",
    "model": "FTIR EC, PTFE-anchored VIBES",
    "n": 233,
-   "dropped_at_or_above_tau_inf": 0,
-   "slope_vs_linearised_hips": 0.3688,
-   "intercept_vs_linearised_hips": 0.441,
-   "linearised_exponent_vs_aethalometer": 1.0217,
-   "median_correction_factor": 1.8661,
-   "mac_for_agreement": 24.7408
+   "slope_vs_linearised_hips": 0.4543,
+   "intercept_vs_linearised_hips": -0.0029,
+   "predicted_hips_exponent": 0.5646,
+   "linearised_exponent_vs_ftir": 0.8482,
+   "linearised_exponent_lo": 0.7904,
+   "linearised_exponent_hi": 0.9095,
+   "median_correction_factor": 1.7387,
+   "mac_for_agreement": 22.8027
   },
   {
-   "tau_inf": 1.7535,
+   "tau_inf": 1.8212,
    "which": "lo",
    "model": "FTIR EC, SPARTAN published",
    "n": 189,
-   "dropped_at_or_above_tau_inf": 0,
-   "slope_vs_linearised_hips": 0.2339,
-   "intercept_vs_linearised_hips": 1.958,
-   "linearised_exponent_vs_aethalometer": 1.2769,
-   "median_correction_factor": 2.2098,
-   "mac_for_agreement": 25.3632
+   "slope_vs_linearised_hips": 0.2824,
+   "intercept_vs_linearised_hips": 1.5853,
+   "predicted_hips_exponent": 0.4598,
+   "linearised_exponent_vs_ftir": 1.0892,
+   "linearised_exponent_lo": 1.0008,
+   "linearised_exponent_hi": 1.181,
+   "median_correction_factor": 2.1147,
+   "mac_for_agreement": 24.2251
   },
   {
-   "tau_inf": 1.7535,
+   "tau_inf": 1.8212,
    "which": "lo",
    "model": "FTIR EC, PTFE-anchored VIBES",
    "n": 233,
-   "dropped_at_or_above_tau_inf": 0,
-   "slope_vs_linearised_hips": 0.2013,
-   "intercept_vs_linearised_hips": 1.5224,
-   "linearised_exponent_vs_aethalometer": 1.2769,
-   "median_correction_factor": 2.2098,
-   "mac_for_agreement": 30.0675
+   "slope_vs_linearised_hips": 0.2411,
+   "intercept_vs_linearised_hips": 1.2276,
+   "predicted_hips_exponent": 0.4598,
+   "linearised_exponent_vs_ftir": 1.0867,
+   "linearised_exponent_lo": 1.0059,
+   "linearised_exponent_hi": 1.1768,
+   "median_correction_factor": 2.1147,
+   "mac_for_agreement": 28.7177
   },
   {
-   "tau_inf": 2.4908,
+   "tau_inf": 2.7014,
    "which": "hi",
    "model": "FTIR EC, SPARTAN published",
    "n": 189,
-   "dropped_at_or_above_tau_inf": 0,
-   "slope_vs_linearised_hips": 0.6603,
-   "intercept_vs_linearised_hips": -0.5484,
-   "linearised_exponent_vs_aethalometer": 0.8677,
-   "median_correction_factor": 1.6271,
-   "mac_for_agreement": 17.095
+   "slope_vs_linearised_hips": 0.7534,
+   "intercept_vs_linearised_hips": -0.9688,
+   "predicted_hips_exponent": 0.6358,
+   "linearised_exponent_vs_ftir": 0.7443,
+   "linearised_exponent_lo": 0.6901,
+   "linearised_exponent_hi": 0.7986,
+   "median_correction_factor": 1.5513,
+   "mac_for_agreement": 16.0547
   },
   {
-   "tau_inf": 2.4908,
+   "tau_inf": 2.7014,
    "which": "hi",
    "model": "FTIR EC, PTFE-anchored VIBES",
    "n": 233,
-   "dropped_at_or_above_tau_inf": 0,
-   "slope_vs_linearised_hips": 0.546,
-   "intercept_vs_linearised_hips": -0.4335,
-   "linearised_exponent_vs_aethalometer": 0.8677,
-   "median_correction_factor": 1.6271,
-   "mac_for_agreement": 21.0116
+   "slope_vs_linearised_hips": 0.6203,
+   "intercept_vs_linearised_hips": -0.7576,
+   "predicted_hips_exponent": 0.6358,
+   "linearised_exponent_vs_ftir": 0.7427,
+   "linearised_exponent_lo": 0.6928,
+   "linearised_exponent_hi": 0.796,
+   "median_correction_factor": 1.5513,
+   "mac_for_agreement": 19.7638
   }
  ],
  "raw_hips": [
@@ -808,74 +830,83 @@
   {
    "season": "all",
    "lot": "all",
-   "n": 172,
-   "published_over_aethalometer": 0.6497,
-   "anchored_over_aethalometer": 0.5424,
-   "hips_mac10_over_aethalometer": 0.682
+   "n": 189,
+   "published_over_linearised_hips": 0.5336,
+   "published_over_hips": 0.9855,
+   "published_over_pm25": 0.2185,
+   "median_optical_depth": 0.9664
   },
   {
    "season": "Bega",
    "lot": "all",
-   "n": 51,
-   "published_over_aethalometer": 0.5942,
-   "anchored_over_aethalometer": 0.5034,
-   "hips_mac10_over_aethalometer": 0.8122
+   "n": 55,
+   "published_over_linearised_hips": 0.4682,
+   "published_over_hips": 0.788,
+   "published_over_pm25": 0.1874,
+   "median_optical_depth": 0.8751
   },
   {
    "season": "Belg",
    "lot": "all",
-   "n": 63,
-   "published_over_aethalometer": 0.656,
-   "anchored_over_aethalometer": 0.5471,
-   "hips_mac10_over_aethalometer": 0.7173
+   "n": 69,
+   "published_over_linearised_hips": 0.5262,
+   "published_over_hips": 0.891,
+   "published_over_pm25": 0.2257,
+   "median_optical_depth": 0.933
   },
   {
    "season": "Kiremt",
    "lot": "all",
-   "n": 58,
-   "published_over_aethalometer": 0.6697,
-   "anchored_over_aethalometer": 0.5673,
-   "hips_mac10_over_aethalometer": 0.5392
+   "n": 65,
+   "published_over_linearised_hips": 0.5985,
+   "published_over_hips": 1.2862,
+   "published_over_pm25": 0.2426,
+   "median_optical_depth": 1.1368
   },
   {
    "season": "Bega",
    "lot": "248",
    "n": 18,
-   "published_over_aethalometer": 0.5257,
-   "anchored_over_aethalometer": 0.485,
-   "hips_mac10_over_aethalometer": 0.8476
+   "published_over_linearised_hips": 0.4,
+   "published_over_hips": 0.6308,
+   "published_over_pm25": 0.1591,
+   "median_optical_depth": 0.8135
   },
   {
    "season": "Bega",
    "lot": "251",
-   "n": 33,
-   "published_over_aethalometer": 0.6623,
-   "anchored_over_aethalometer": 0.5188,
-   "hips_mac10_over_aethalometer": 0.7593
+   "n": 37,
+   "published_over_linearised_hips": 0.5069,
+   "published_over_hips": 0.8448,
+   "published_over_pm25": 0.1979,
+   "median_optical_depth": 0.8895
   },
   {
    "season": "Belg",
    "lot": "248",
-   "n": 15,
-   "published_over_aethalometer": 0.6393,
-   "anchored_over_aethalometer": 0.658,
-   "hips_mac10_over_aethalometer": 0.7855
+   "n": 16,
+   "published_over_linearised_hips": 0.4659,
+   "published_over_hips": 0.776,
+   "published_over_pm25": 0.171,
+   "median_optical_depth": 0.9102
   },
   {
    "season": "Belg",
    "lot": "251",
-   "n": 48,
-   "published_over_aethalometer": 0.6595,
-   "anchored_over_aethalometer": 0.5344,
-   "hips_mac10_over_aethalometer": 0.6956
+   "n": 53,
+   "published_over_linearised_hips": 0.5314,
+   "published_over_hips": 0.9834,
+   "published_over_pm25": 0.2352,
+   "median_optical_depth": 0.9557
   },
   {
    "season": "Kiremt",
    "lot": "251",
-   "n": 58,
-   "published_over_aethalometer": 0.6697,
-   "anchored_over_aethalometer": 0.5673,
-   "hips_mac10_over_aethalometer": 0.5392
+   "n": 65,
+   "published_over_linearised_hips": 0.5985,
+   "published_over_hips": 1.2862,
+   "published_over_pm25": 0.2426,
+   "median_optical_depth": 1.1368
   }
  ],
  "improve_ratio_by_ocec": [
@@ -968,40 +999,40 @@
    "note": "n 25"
   },
   {
-   "anchor": "Aethalometer, scaled by Pasadena's published FTIR \u00f7 aethalometer",
-   "published_over_true": 0.8665,
-   "value": null,
-   "note": "assumes the two MA350 units share a calibration; Beijing shows they need not"
+   "anchor": "Linearised HIPS at the Adama MAC (m\u00b2/g), ceiling 2.26",
+   "published_over_true": 1.0089,
+   "value": 18.9078,
+   "note": "Addis needs 18.7 m\u00b2/g for agreement; five Adama filters, another site and sampler"
   },
   {
-   "anchor": "Aethalometer, scaled by Delhi's published FTIR \u00f7 aethalometer",
-   "published_over_true": 0.8318,
-   "value": null,
-   "note": "24 Delhi filters"
+   "anchor": "Linearised HIPS at the IMPROVE unsaturated MAC (m\u00b2/g), all sites",
+   "published_over_true": 0.701,
+   "value": 13.1363,
+   "note": "Addis needs 18.7 m\u00b2/g; assumes Addis soot absorbs like IMPROVE's per unit EC"
   },
   {
-   "anchor": "Adama pilot: Fabs \u00f7 TOR EC (m\u00b2/g), five filters",
-   "published_over_true": null,
-   "value": 15.8574,
-   "note": "another site and sampler; optical depth 0.15-0.44"
+   "anchor": "Linearised HIPS at the IMPROVE unsaturated MAC (m\u00b2/g), sites with median OC/EC < 4",
+   "published_over_true": 0.8058,
+   "value": 15.1002,
+   "note": "Addis needs 18.7 m\u00b2/g; assumes Addis soot absorbs like IMPROVE's per unit EC"
   },
   {
-   "anchor": "Linearised HIPS at the Adama MAC (m\u00b2/g), ceiling 2.07",
-   "published_over_true": 0.9313,
-   "value": 19.1326,
-   "note": "Addis needs 20.5 m\u00b2/g for agreement; five Adama filters set the MAC"
+   "anchor": "Linearised HIPS at the IMPROVE unsaturated MAC (m\u00b2/g), six urban sites",
+   "published_over_true": 0.875,
+   "value": 16.3986,
+   "note": "Addis needs 18.7 m\u00b2/g; assumes Addis soot absorbs like IMPROVE's per unit EC"
   },
   {
-   "anchor": "Linearised HIPS at the Adama MAC (m\u00b2/g), ceiling 1.75",
-   "published_over_true": 0.7739,
-   "value": 19.628,
-   "note": "Addis needs 25.4 m\u00b2/g for agreement; five Adama filters set the MAC"
+   "anchor": "Linearised HIPS at the Adama MAC (m\u00b2/g), ceiling 1.82",
+   "published_over_true": 0.8051,
+   "value": 19.5047,
+   "note": "Addis needs 24.2 m\u00b2/g for agreement; five Adama filters, another site and sampler"
   },
   {
-   "anchor": "Linearised HIPS at the Adama MAC (m\u00b2/g), ceiling 2.49",
-   "published_over_true": 1.0931,
-   "value": 18.6872,
-   "note": "Addis needs 17.1 m\u00b2/g for agreement; five Adama filters set the MAC"
+   "anchor": "Linearised HIPS at the Adama MAC (m\u00b2/g), ceiling 2.70",
+   "published_over_true": 1.1537,
+   "value": 18.5226,
+   "note": "Addis needs 16.1 m\u00b2/g for agreement; five Adama filters, another site and sampler"
   }
  ],
  "addis_ocec": [
@@ -1020,7 +1051,8 @@
    "p90_optical_depth": 0.0552,
    "hips_exponent_vs_ftir_ec": 0.9191,
    "lo": 0.3187,
-   "hi": 3.5922
+   "hi": 3.5922,
+   "predicted_from_improve": 0.9886
   },
   {
    "code": "CAHA",
@@ -1029,7 +1061,8 @@
    "p90_optical_depth": 0.1471,
    "hips_exponent_vs_ftir_ec": 1.4384,
    "lo": -4.0899,
-   "hi": 8.4398
+   "hi": 8.4398,
+   "predicted_from_improve": 0.9604
   },
   {
    "code": "USPA",
@@ -1038,7 +1071,8 @@
    "p90_optical_depth": 0.1629,
    "hips_exponent_vs_ftir_ec": 1.0437,
    "lo": 0.833,
-   "hi": 1.3116
+   "hi": 1.3116,
+   "predicted_from_improve": 0.9561
   },
   {
    "code": "CASH",
@@ -1047,7 +1081,8 @@
    "p90_optical_depth": 0.2317,
    "hips_exponent_vs_ftir_ec": 0.9257,
    "lo": 0.6362,
-   "hi": 1.6057
+   "hi": 1.6057,
+   "predicted_from_improve": 0.9407
   },
   {
    "code": "ILHA",
@@ -1056,7 +1091,8 @@
    "p90_optical_depth": 0.3085,
    "hips_exponent_vs_ftir_ec": 2.9236,
    "lo": 1.7515,
-   "hi": 8.0228
+   "hi": 8.0228,
+   "predicted_from_improve": 0.9295
   },
   {
    "code": "KRUL",
@@ -1065,7 +1101,8 @@
    "p90_optical_depth": 0.2026,
    "hips_exponent_vs_ftir_ec": 0.7186,
    "lo": 0.2533,
-   "hi": 1.1178
+   "hi": 1.1178,
+   "predicted_from_improve": 0.9386
   },
   {
    "code": "TWTA",
@@ -1074,7 +1111,8 @@
    "p90_optical_depth": 0.2717,
    "hips_exponent_vs_ftir_ec": 1.0628,
    "lo": 0.9491,
-   "hi": 1.1916
+   "hi": 1.1916,
+   "predicted_from_improve": 0.9247
   },
   {
    "code": "CLTA",
@@ -1083,7 +1121,8 @@
    "p90_optical_depth": 0.549,
    "hips_exponent_vs_ftir_ec": 0.5559,
    "lo": 0.5249,
-   "hi": 0.588
+   "hi": 0.588,
+   "predicted_from_improve": 0.8814
   },
   {
    "code": "AUMN",
@@ -1092,7 +1131,8 @@
    "p90_optical_depth": 0.3742,
    "hips_exponent_vs_ftir_ec": 0.7966,
    "lo": 0.6108,
-   "hi": 1.0708
+   "hi": 1.0708,
+   "predicted_from_improve": 0.9057
   },
   {
    "code": "ILNZ",
@@ -1101,7 +1141,8 @@
    "p90_optical_depth": 0.4371,
    "hips_exponent_vs_ftir_ec": 1.41,
    "lo": 1.0103,
-   "hi": 2.0063
+   "hi": 2.0063,
+   "predicted_from_improve": 0.8887
   },
   {
    "code": "KRSE",
@@ -1110,7 +1151,8 @@
    "p90_optical_depth": 0.3614,
    "hips_exponent_vs_ftir_ec": 1.7719,
    "lo": 1.0092,
-   "hi": 6.4065
+   "hi": 6.4065,
+   "predicted_from_improve": 0.8928
   },
   {
    "code": "CHTS",
@@ -1119,7 +1161,8 @@
    "p90_optical_depth": 0.5129,
    "hips_exponent_vs_ftir_ec": 0.9337,
    "lo": 0.8059,
-   "hi": 1.1382
+   "hi": 1.1382,
+   "predicted_from_improve": 0.8726
   },
   {
    "code": "TWKA",
@@ -1128,7 +1171,8 @@
    "p90_optical_depth": 0.4119,
    "hips_exponent_vs_ftir_ec": 0.8285,
    "lo": 0.7396,
-   "hi": 0.9168
+   "hi": 0.9168,
+   "predicted_from_improve": 0.8795
   },
   {
    "code": "CLST",
@@ -1137,7 +1181,8 @@
    "p90_optical_depth": 0.8606,
    "hips_exponent_vs_ftir_ec": 0.5594,
    "lo": 0.5308,
-   "hi": 0.5857
+   "hi": 0.5857,
+   "predicted_from_improve": 0.7821
   },
   {
    "code": "ZAPR",
@@ -1146,7 +1191,8 @@
    "p90_optical_depth": 0.7813,
    "hips_exponent_vs_ftir_ec": 0.8992,
    "lo": 0.8067,
-   "hi": 0.9926
+   "hi": 0.9926,
+   "predicted_from_improve": 0.7957
   },
   {
    "code": "ETBI",
@@ -1155,7 +1201,8 @@
    "p90_optical_depth": 0.617,
    "hips_exponent_vs_ftir_ec": 0.8927,
    "lo": 0.7119,
-   "hi": 1.5364
+   "hi": 1.5364,
+   "predicted_from_improve": 0.803
   },
   {
    "code": "MXMC",
@@ -1164,7 +1211,8 @@
    "p90_optical_depth": 0.6236,
    "hips_exponent_vs_ftir_ec": 1.0505,
    "lo": 0.7211,
-   "hi": 2.0688
+   "hi": 2.0688,
+   "predicted_from_improve": 0.7985
   },
   {
    "code": "INDH",
@@ -1173,7 +1221,8 @@
    "p90_optical_depth": 0.7446,
    "hips_exponent_vs_ftir_ec": 0.7967,
    "lo": 0.745,
-   "hi": 0.8483
+   "hi": 0.8483,
+   "predicted_from_improve": 0.7823
   },
   {
    "code": "ZAJB",
@@ -1182,7 +1231,8 @@
    "p90_optical_depth": 0.726,
    "hips_exponent_vs_ftir_ec": 0.8771,
    "lo": 0.7953,
-   "hi": 0.9692
+   "hi": 0.9692,
+   "predicted_from_improve": 0.7803
   },
   {
    "code": "INJA",
@@ -1191,7 +1241,8 @@
    "p90_optical_depth": 0.7362,
    "hips_exponent_vs_ftir_ec": 0.8296,
    "lo": 0.5825,
-   "hi": 1.3264
+   "hi": 1.3264,
+   "predicted_from_improve": 0.7709
   },
   {
    "code": "AEAZ",
@@ -1200,7 +1251,8 @@
    "p90_optical_depth": 0.7517,
    "hips_exponent_vs_ftir_ec": 2.6314,
    "lo": -18.3703,
-   "hi": 17.7564
+   "hi": 17.7564,
+   "predicted_from_improve": 0.7584
   },
   {
    "code": "BDDU",
@@ -1209,7 +1261,8 @@
    "p90_optical_depth": 1.1393,
    "hips_exponent_vs_ftir_ec": 0.6937,
    "lo": 0.5556,
-   "hi": 0.8949
+   "hi": 0.8949,
+   "predicted_from_improve": 0.6245
   },
   {
    "code": "ETAD",
@@ -1218,7 +1271,8 @@
    "p90_optical_depth": 1.2874,
    "hips_exponent_vs_ftir_ec": 0.463,
    "lo": 0.4256,
-   "hi": 0.5009
+   "hi": 0.5009,
+   "predicted_from_improve": 0.5683
   }
  ]
 }

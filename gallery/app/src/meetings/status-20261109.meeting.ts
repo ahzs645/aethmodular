@@ -60,7 +60,7 @@ export default {
           title: 'No candidate gives a 1:1 slope against HIPS',
           subtitle: 'Same fits. The slope scales with the assumed MAC; the intercept does not.',
           noteAlways: true,
-          note: 'HIPS is Fabs / MAC 10, an optical equivalent. The 10 Nov page shows HIPS is compressed at Addis loadings, which steepens every slope against it.',
+          note: 'HIPS is Fabs / MAC 10, an optical equivalent. The 10 Nov page shows from IMPROVE thermal EC that HIPS is compressed at Addis loadings, which steepens every slope against it.',
         },
       ],
     },
@@ -74,7 +74,7 @@ export default {
           title: 'Season-specific look-alikes fix Kiremt’s slope; Dry and Belg stay between 0.3 and 0.75 whatever the calibration filters',
           subtitle: 'Addis slope and intercept by season for five ways of choosing the IMPROVE calibration filters (28 Oct meeting). Baseline-corrected spectra, Deming FTIR EC vs HIPS Fabs / MAC 10, the 189 poster filters.',
           noteAlways: true,
-          note: 'Deming fits against HIPS Fabs / MAC 10 (optical, not thermal EC), Dry Oct–Feb calendar. The 10 Nov page re-reads these against the aethalometer.',
+          note: 'Deming fits against HIPS Fabs / MAC 10 (optical, not thermal EC), Dry Oct–Feb calendar. The 10 Nov page re-reads these against linearised HIPS.',
           panels: [
             { value: 'slope', label: 'Slope', reference: 1 },
             { value: 'intercept', label: 'Intercept (µg/m³)', reference: 0 },

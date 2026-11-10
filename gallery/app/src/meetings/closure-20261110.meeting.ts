@@ -1,63 +1,74 @@
 import type { MeetingSpec } from './types'
 
 // "Which measurement carries the Addis offset": the answer to the question the 9 Nov status page left open, from
-// data already in the repository. A results page, not a recorded meeting; every table comes from
-// gallery/data/export_meeting_20261110.py (workflow run_addis_reference_closure_20261110.py).
-// Titles carry the message, since section text shows only with Explain on.
-const OPTICAL = 'Optical comparators, not thermal EC: no Addis filter has TOR EC, so this shows shape (who is proportional to whom), not the EC level.'
+// data already in hand and without the aethalometer (the Addis MA350 is not a reference). A results page, not a
+// recorded meeting; every table comes from gallery/data/export_meeting_20261110.py
+// (workflow run_addis_reference_closure_20261110.py). Titles carry the message: section text shows only with Explain on.
+const OPTICAL = 'HIPS is optical and no Addis filter has thermal (TOR) EC: this shows the shape of the comparison, not the Addis EC level. No aethalometer data are used.'
 
 export default {
   id: 'closure-20261110',
   label: 'Nov 10, 2026',
   date: '2026-11-10',
-  title: 'Which measurement carries the Addis offset: HIPS bends, FTIR EC does not',
+  title: 'Which measurement carries the Addis offset: most of it is HIPS compression, shown with IMPROVE thermal EC',
   command: 'uv run python gallery/data/export_meeting_20261110.py',
   intro: '@intro',
   sections: [
     {
-      id: 'linearity',
-      title: '1. Four independent measurements: HIPS is the one that is not proportional',
-      text: '@linearity',
+      id: 'improve',
+      title: '1. IMPROVE thermal EC: HIPS falls behind as the filter darkens',
+      text: '@improve',
+      columns: 2,
+      figures: [
+        {
+          kind: 'sweep', id: 'c1110-improve-ratio', table: 'strata', x: 'HIPS optical depth', y: 'Fabs ÷ TOR EC (m²/g)', series: 'population',
+          xLabel: 'HIPS optical depth (group median)', yLabel: 'HIPS Fabs ÷ TOR EC (m²/g)',
+          xMarkers: [{ at: 0.96, label: 'Addis median' }],
+          title: 'Per unit of thermal EC, HIPS reads about a third less at Addis optical depth than on light filters',
+          subtitle: 'IMPROVE samples with TOR EC and HIPS on the same day, 2005–2025, grouped by the previous sample’s EC loading at the same site so that neither instrument’s error decides the group. Each point is a group median.',
+          noteAlways: true,
+          note: 'IMPROVE only: thermal-optical (TOR) EC on quartz against HIPS on PTFE. No FTIR and no aethalometer. Heavy IMPROVE filters include smoke, whose composition differs from Addis.',
+        },
+        {
+          kind: 'table', id: 'c1110-ceilings', table: 'ceilings',
+          title: 'The saturation ceiling is the same whichever IMPROVE sites are used',
+          subtitle: 'tau = aL / (1 + aL / ceiling) through the group medians; intervals resample whole sites (90 %).',
+          columns: [{ key: 'population', label: 'IMPROVE sites' }, { key: 'samples', format: 'int' }, { key: 'sites', format: 'int' },
+            { key: 'tau_inf', label: 'ceiling', format: 'f2' }, { key: 'tau_inf_lo', label: 'low', format: 'f2' }, { key: 'tau_inf_hi', label: 'high', format: 'f2' },
+            { key: 'unsaturated_fabs_over_ec', label: 'Fabs ÷ EC on light filters (m²/g)', format: 'f2' }, { key: 'max_stratum_tau', label: 'highest group optical depth', format: 'f2' }],
+        },
+      ],
+    },
+    {
+      id: 'addis',
+      title: '2. At Addis, HIPS and FTIR EC are not proportional',
+      text: '@addis',
       figures: [
         {
           kind: 'intervals', id: 'c1110-exponents', table: 'exponents', row: 'pair', series: 'instrument',
-          title: 'HIPS rises as about the square root of every other measurement; FTIR EC is proportional to the aethalometer',
+          title: 'HIPS rises as about the square root of FTIR EC; the IMPROVE curve predicts 0.56 for HIPS alone',
           subtitle: 'Response exponent b in Y ∝ X^b on the Addis filters, estimated with a third measurement as the instrument so noise in X does not flatten it. 1 = proportional. Bars: 95 % bootstrap over filters.',
           panels: [{ value: 'exponent', label: 'Response exponent', reference: 1, lo: 'lo', hi: 'hi' }],
           labelWidth: 400,
           noteAlways: true,
-          note: 'PM2.5 mass is gravimetric and potassium is XRF: neither is optical or FTIR. ' + OPTICAL,
-        },
-        {
-          kind: 'scatter', id: 'c1110-against-aeth', table: 'against_aeth', x: 'aethalometer', y: 'value', color: 'season', facet: 'measure',
-          idColumn: 'filter', maxSide: 380,
-          title: 'Against the aethalometer, HIPS flattens and FTIR EC runs straight through the origin',
-          subtitle: 'Each dot is an Addis filter (172 with an aethalometer match), coloured by season. The aethalometer has its own calibration, so read the shape, not the slope.',
-          xLabel: 'Aethalometer IR BCc (µg/m³, MA350)', yLabel: 'µg/m³',
-        },
-        {
-          kind: 'intervals', id: 'c1110-by-season', table: 'by_season', row: 'season', series: 'y',
-          title: 'The bend is inside every season, so it is not a between-season composition effect',
-          subtitle: 'The same exponent against the aethalometer within each season (instrument: PM2.5 mass).',
-          panels: [{ value: 'exponent', label: 'Response exponent', reference: 1, lo: 'lo', hi: 'hi' }],
-          labelWidth: 80,
+          note: 'PM2.5 mass is gravimetric and potassium is XRF: neither is optical or FTIR. EC’s share of PM2.5 can itself change with loading, so the PM2.5 rows show scaling, not a reference. ' + OPTICAL,
         },
       ],
     },
     {
       id: 'response',
-      title: '2. Linearising HIPS with a constant fitted at other sites removes the offset',
+      title: '3. Linearising HIPS with the IMPROVE ceiling takes the intercept to zero',
       text: '@response',
       columns: 2,
       figures: [
         {
           kind: 'crossplot', id: 'c1110-against-hips', table: 'against_hips', x: 'x', y: 'ftir_published', color: 'season', facet: 'comparator',
           fit: true, errorRatio: 2.96, sameScale: false, idColumn: 'filter', maxSide: 380,
-          title: 'The same filters: 2.31x − 6.17 as measured, 0.44x + 0.58 once HIPS is linearised',
-          subtitle: 'SPARTAN published FTIR EC against HIPS optical BC (MAC 10), as measured and after inverting a saturating response whose ceiling was fitted on Beijing, Pasadena and Delhi with Addis held out. Deming fits.',
+          title: 'The same filters: 2.31x − 6.17 as measured, 0.55x + 0.01 once HIPS is linearised',
+          subtitle: 'SPARTAN published FTIR EC against HIPS optical BC (MAC 10), as measured and after inverting the saturating response fitted on IMPROVE thermal EC (ceiling 2.26). Deming fits.',
           xLabel: 'HIPS optical BC (µg/m³, MAC 10)', yLabel: 'FTIR EC, SPARTAN published (µg/m³)',
           noteAlways: true,
-          note: 'The ceiling is empirical and its interval is wide (1.75 to 2.49); the correction multiplies noise on the heaviest filters. ' + OPTICAL,
+          note: 'The ceiling’s interval is wide (1.82 to 2.70) and the intercept moves from +1.6 to −1.0 across it; the correction multiplies noise on the heaviest filters. ' + OPTICAL,
         },
         {
           kind: 'table', id: 'c1110-fits', table: 'fits', title: 'The fits, across the ceiling’s interval',
@@ -67,39 +78,25 @@ export default {
       ],
     },
     {
-      id: 'errors',
-      title: '3. Random error with no reference',
-      text: '@errors',
-      figures: [
-        {
-          kind: 'intervals', id: 'c1110-errors', table: 'errors', row: 'measurement',
-          title: 'FTIR EC is about as precise as the aethalometer; HIPS is somewhat noisier once its compressed range is allowed for',
-          subtitle: 'Random error as a percentage, from three-way agreement alone (log-space triple collocation, 172 filters), on a common scale. Bars: 95 % bootstrap.',
-          panels: [{ value: 'error_sd', label: 'Random error (%)', lo: 'error_sd_lo', hi: 'error_sd_hi' }],
-          labelWidth: 220,
-          note: 'Assumes the three errors are independent. Scatter about the shared signal, not accuracy of the level.',
-        },
-      ],
-    },
-    {
       id: 'season',
-      title: '4. Seasons and filter lots, with the aethalometer as the comparator',
+      title: '4. Seasons and filter lots',
       text: '@season',
       figures: [
         {
           kind: 'table', id: 'c1110-season', table: 'season',
-          title: 'Within lot 251 the published FTIR EC ÷ aethalometer is the same in every season',
-          subtitle: 'Median ratio to the aethalometer IR BCc by season and filter lot.',
-          columns: [{ key: 'group', label: 'Season, lot' }, { key: 'n', format: 'int' },
-            { key: 'published_over_aethalometer', label: 'FTIR EC, published', format: 'f2' },
-            { key: 'anchored_over_aethalometer', label: 'FTIR EC, PTFE-anchored VIBES', format: 'f2' },
-            { key: 'hips_mac10_over_aethalometer', label: 'HIPS Fabs / 10', format: 'f2' }],
+          title: 'Linearising HIPS removes most of the seasonal swing; a smaller one remains, and lot 248 reads low',
+          subtitle: 'Median ratios of the published FTIR EC by season and filter lot. Kiremt has the heaviest filters, so season and loading cannot be separated here.',
+          columns: [{ key: 'group', label: 'Season, lot' }, { key: 'n', format: 'int' }, { key: 'median_optical_depth', label: 'HIPS optical depth', format: 'f2' },
+            { key: 'published_over_hips', label: 'FTIR EC ÷ HIPS / 10', format: 'f2' },
+            { key: 'published_over_linearised_hips', label: 'FTIR EC ÷ linearised HIPS / 10', format: 'f2' },
+            { key: 'published_over_pm25', label: 'FTIR EC ÷ PM2.5 mass', format: 'f2' }],
+          note: 'EC’s share of PM2.5 can really change with season, so the last column is context, not a test.',
         },
       ],
     },
     {
       id: 'level',
-      title: '5. What is left for FTIR: one level factor',
+      title: '5. What is left for FTIR: mainly one level factor',
       text: '@level',
       columns: 2,
       figures: [
@@ -133,12 +130,12 @@ export default {
       text: '@network',
       figures: [
         {
-          kind: 'scatter', id: 'c1110-network', table: 'network', x: 'median_optical_depth', y: 'hips_exponent_vs_ftir_ec', color: 'which',
+          kind: 'scatter', id: 'c1110-network', table: 'network', x: 'median_optical_depth', y: 'exponent', color: 'what',
           idColumn: 'site', tipColumns: ['site', 'n', 'lo', 'hi'], refY: [1], maxSide: 460,
-          title: 'Addis has the highest optical depth in the network and the lowest exponent',
-          subtitle: 'Exponent of HIPS against FTIR EC at each SPARTAN site (instrument: PM2.5 mass), against the site’s median HIPS optical depth. Sites with an interval wider than 0.6 are left off.',
+          title: 'The exponent falls with a site’s optical depth about as the IMPROVE thermal curve predicts; Addis is the heaviest site',
+          subtitle: 'Exponent of HIPS against FTIR EC at each SPARTAN site (instrument: PM2.5 mass) and the value the IMPROVE curve predicts for HIPS alone, against the site’s median HIPS optical depth. Sites with an interval wider than 0.6 are left off.',
           xLabel: 'Median HIPS optical depth', yLabel: 'Exponent of HIPS against FTIR EC',
-          note: 'A first pass. With two EC-like measures the exponent alone cannot say which one bends at a site; at Addis the aethalometer and potassium say it is HIPS.',
+          note: 'A first pass. The two Chilean sites (0.56 at optical depth 0.2 and 0.4) sit far below the prediction and are unexplained.',
         },
       ],
     },
@@ -149,7 +146,7 @@ export default {
       figures: [
         {
           kind: 'table', id: 'c1110-rereads', table: 'rereads', title: 'Earlier readings that used HIPS / 10 as the yardstick',
-          columns: [{ key: 'earlier reading', label: 'Earlier reading' }, { key: 'with a linear comparator', label: 'With a linear comparator' }],
+          columns: [{ key: 'earlier reading', label: 'Earlier reading' }, { key: 'with HIPS linearised', label: 'With HIPS linearised' }],
         },
         {
           kind: 'table', id: 'c1110-pathways', table: 'pathways', title: 'Pathways: done, open with data in hand, blocked',

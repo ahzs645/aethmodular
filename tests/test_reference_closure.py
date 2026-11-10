@@ -82,3 +82,17 @@ def test_linearise_inverts_the_hyperbolic_response():
     assert np.isnan(rc.linearise(np.array([2.0, 2.5]), 2.0)).all()
     # the patterned-deposit form is also proportional at low loading
     assert rc.patterned(np.array([1e-4]), 1.0, 0.8)[0] == pytest.approx(1e-4, rel=1e-3)
+
+
+def test_committed_account_does_not_use_the_aethalometer():
+    """The Addis MA350 is not a reference: the committed numbers and the gallery page must not carry it."""
+    import json
+
+    root = Path(__file__).resolve().parents[1]
+    summary = json.loads((root / "docs/addis-reference-closure-2026-11-10.json").read_text())
+    assert summary["aethalometer_used"] is False
+    assert "aeth" not in json.dumps({k: v for k, v in summary.items() if k != "aethalometer_used"}).lower()
+    bundle = json.loads((root / "gallery/app/public/data/meetings/closure-20261110.json").read_text())
+    assert "aeth" not in json.dumps(bundle["tables"]).lower()
+    ceiling = {row["population"]: row for row in summary["improve_ceiling"]}["all sites"]
+    assert ceiling["tau_inf_lo"] < ceiling["tau_inf"] < ceiling["tau_inf_hi"]
