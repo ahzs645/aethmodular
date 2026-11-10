@@ -21,7 +21,10 @@ committee: whether this becomes the paper's headline; whether the 28 Oct season,
 against linearised HIPS before the draft; and whether Fabs / 10 stays the Addis yardstick anywhere in the gallery. It
 also bears on the TOR rule below: the existing evidence predicts FTIR ÷ TOR of about 0.65 to 1.0, straddling the proposed
 band's lower edge, and the request should include HIPS on the same filters with a few loaded to Addis optical depth.
-Account, limits and the ranked open pathways:
+The ceiling is the main uncertainty: IMPROVE gives 2.53 for 2005–2014 and 1.71 for 2015–2025, which leaves the Addis
+intercept slightly negative or clearly positive after linearising. Ask the Davis HIPS operators what changed between
+those periods. One network-wide ceiling also over-corrects several SPARTAN sites, so it is evidence about Addis, not a
+correction for the network. Account, limits and the ranked open pathways:
 [addis-reference-closure-2026-11-10.md](addis-reference-closure-2026-11-10.md); gallery Meeting tab, Nov 10.
 
 ### Confirm the pass rule for the Addis city TOR filters

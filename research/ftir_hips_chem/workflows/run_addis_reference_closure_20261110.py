@@ -29,7 +29,9 @@ Stages (default: all)
 * ``season``     FTIR / linearised HIPS and FTIR / PM2.5 by season and filter lot
 * ``level``      what bounds the absolute FTIR level: held-out IMPROVE filters by OC/EC, mass closure, MAC anchors
 * ``product``    per-filter table: FTIR EC with a level range, and HIPS before and after linearising
-* ``network``    the same exponent at every SPARTAN site (PM2.5 mass is the instrument)
+* ``network``    every SPARTAN site: the exponent, and FTIR against HIPS before and after linearising, per filter
+* ``candidates`` every saved Addis calibration by season, against HIPS as measured and linearised
+* ``source``     is FTIR proportional to thermal EC on held-out IMPROVE sites, and does filter lot matter there
 
     uv run python research/ftir_hips_chem/workflows/run_addis_reference_closure_20261110.py --summary
 
@@ -70,12 +72,14 @@ LABEL = {
     "fabs": "HIPS Fabs", PUBLISHED: "FTIR EC, SPARTAN published", ANCHORED: "FTIR EC, PTFE-anchored VIBES",
     "aeth_ir": "Aethalometer IR BCc (side check)", "pm25": "PM2.5 mass (gravimetric)", "potassium": "Potassium (XRF)",
 }
-STAGES = ("improve", "linearity", "response", "season", "level", "product", "network")
+STAGES = ("improve", "linearity", "response", "season", "level", "product", "network", "candidates", "source")
 NETWORK_MIN_FILTERS = 40
 # IMPROVE strata: the previous sample's TOR EC loading at the same site (µg per filter)
 IMPROVE_EDGES = (0, 0.5, 1, 1.5, 2, 3, 4, 6, 8, 11, 15, 20, 27, 36, 50, 70, 100, 1e4)
 IMPROVE_MIN_STRATUM = 150
 IMPROVE_POPULATIONS = ("all sites", "sites with median OC/EC < 4", "six urban sites")
+IMPROVE_CHECKS = ("2005–2014", "2015–2025", "optical pyrolysis > 0")   # robustness, all sites
+SITE_MAP = ROOT / "gallery/app/public/data/spartan_map.json"
 IMPROVE_PRIMARY = "all sites"
 URBAN = ("ATLA1", "BIRM1", "FRES1", "PHOE1", "PITT1", "PUSO1")       # Ann's urban IMPROVE sites (28 Oct)
 # IMPROVE soil formula (Malm et al. 1994), as on the 28 Oct speciation table
@@ -134,7 +138,7 @@ def improve_samples() -> pd.DataFrame | None:
         wide["volume_m3"] = volume["AverageFlowRate"] * volume["ElapsedTime"] / 1000.0
         return wide
 
-    tor, hips = read("results_tor.csv", ["EC", "OC"]), read("results_hips.csv", ["fAbs"])
+    tor, hips = read("results_tor.csv", ["EC", "OC", "OPTR"]), read("results_hips.csv", ["fAbs"])
     both = tor.join(hips, how="inner", lsuffix="_quartz", rsuffix="_ptfe").reset_index()
     both["date"] = pd.to_datetime(both["SampleDate"], format="%m/%d/%Y %I:%M:%S %p", errors="coerce")
     ok = (both["EC"] > 0) & (both["fAbs"] > 0) & both["date"].notna()
@@ -178,8 +182,11 @@ def stage_improve(table, closeout, n_boot, tables, aethalometer):
         print("improve: IMPROVE tables not found; reusing the stratum table and ceilings saved in the summary")
         return {"improve_strata": pd.DataFrame(saved["improve_strata"]), "improve_ceiling": pd.DataFrame(saved["improve_ceiling"])}
     site_ocec = samples.groupby("Site")["ocec"].median()
+    year = samples["date"].dt.year
     populations = {"all sites": samples, "sites with median OC/EC < 4": samples[samples["Site"].map(site_ocec) < 4],
-                   "six urban sites": samples[samples["Site"].isin(URBAN)]}
+                   "six urban sites": samples[samples["Site"].isin(URBAN)],
+                   "2005–2014": samples[year <= 2014], "2015–2025": samples[year >= 2015],
+                   "optical pyrolysis > 0": samples[samples["OPTR"] > 0]}
     rng = np.random.default_rng(20261110)
     strata_rows, ceilings = [], []
     for name, part in populations.items():
@@ -188,7 +195,7 @@ def stage_improve(table, closeout, n_boot, tables, aethalometer):
         by_site = {site: frame for site, frame in part.groupby("Site")}
         sites = np.array(list(by_site))
         boot = np.array([_ceiling(_strata(pd.concat([by_site[s] for s in rng.choice(sites, sites.size)])))
-                         for _ in range(min(n_boot, 200))])
+                         for _ in range(min(n_boot, 200 if name in IMPROVE_POPULATIONS else 60))])
         (a_lo, a_hi), (t_lo, t_hi) = (np.percentile(boot[:, i], [5, 95]) for i in (0, 1))
         to_mac = 100.0 * DEPOSIT_AREA_CM2
         ceilings.append({"population": name, "samples": len(part), "sites": int(sites.size), "strata": len(strata),
@@ -379,29 +386,111 @@ def stage_product(table, closeout, n_boot, tables, aethalometer, *, level=(1.0, 
 
 
 def stage_network(table, closeout, n_boot, tables, aethalometer):
-    """HIPS against FTIR EC at every SPARTAN site, with gravimetric PM2.5 as the instrument.
+    """Every SPARTAN site: is HIPS proportional to FTIR EC, and what linearising HIPS does to the comparison.
 
-    PM2.5 is a good instrument only where EC is a steady share of it, and the intervals say where it is not
-    (dust and sulfate sites). An exponent below 1 says HIPS and FTIR EC are not proportional there; beside it
-    is what the IMPROVE ceiling predicts for HIPS alone at that site's optical depths. Deposit area 3.53 cm².
+    The exponent uses gravimetric PM2.5 (and, separately, XRF potassium) as the instrument. PM2.5 is a good
+    instrument only where EC is a steady share of it, and the intervals say where it is not (dust and sulfate
+    sites). Beside it is what the IMPROVE ceiling predicts for HIPS alone at that site's optical depths. The
+    Deming fits use the Addis error ratio at every site, so they are comparable with each other, not tuned per
+    site. Deposit area 3.53 cm². ``network_points`` is one row per filter for the gallery.
     """
     tau_inf = thermal_ceiling(tables)["central"]
+    lam = float(closeout["settings"]["LAMBDA_ADDIS"])
+    names = {site["code"]: site.get("name") or site["code"] for site in json.loads(SITE_MAP.read_text()).get("sites", [])}
     rows = pd.DataFrame(json.loads(NETWORK.read_text())["rows"])
     rows = rows[~rows["excluded"].astype(bool)].copy()
     rows["fabs"] = rows["HIPS Fabs"].fillna(rows["BC (public HIPS)"] * MAC_VALUE)
     rows["tau"] = rows["fabs"] * rows["Sampled volume"] / (100.0 * DEPOSIT_AREA_CM2)
-    out = []
+    rows["hips_bc"] = rows["fabs"] / MAC_VALUE
+    rows["hips_linearised"] = rc.linearise(rows["tau"], tau_inf) * 100.0 * DEPOSIT_AREA_CM2 / rows["Sampled volume"] / MAC_VALUE
+    sites, points = [], []
     for code, part in rows.groupby("code"):
-        part = part[["fabs", "EC (FTIR)", "PM2.5 mass", "tau"]].dropna()
-        part = part[(part[["fabs", "EC (FTIR)", "PM2.5 mass"]] > 0).all(axis=1)]
+        part = part[(part[["fabs", "EC (FTIR)", "PM2.5 mass"]] > 0).all(axis=1) & part["tau"].notna()]
         if len(part) < NETWORK_MIN_FILTERS:
             continue
         r = rc.response_exponent(part["fabs"], part["EC (FTIR)"], part["PM2.5 mass"], n_boot=min(n_boot, 500))
-        out.append({"code": code, "n": r["n"], "median_optical_depth": float(part["tau"].median()),
-                    "p90_optical_depth": float(part["tau"].quantile(0.9)),
-                    "hips_exponent_vs_ftir_ec": r["exponent"], "lo": r["lo"], "hi": r["hi"],
-                    "predicted_from_improve": float(np.mean(np.clip(1.0 - part["tau"] / tau_inf, 0.0, 1.0)))})
-    return {"network_exponents": pd.DataFrame(out).sort_values("median_optical_depth")}
+        row = {"code": code, "site": names.get(code, code), "n": r["n"], "median_optical_depth": float(part["tau"].median()),
+               "p90_optical_depth": float(part["tau"].quantile(0.9)), "share_above_half": float((part["tau"] > 0.5).mean()),
+               "hips_exponent_vs_ftir_ec": r["exponent"], "lo": r["lo"], "hi": r["hi"],
+               "predicted_from_improve": float(np.mean(np.clip(1.0 - part["tau"] / tau_inf, 0.0, 1.0)))}
+        potassium = part[part["Potassium"] > 0]
+        if len(potassium) >= NETWORK_MIN_FILTERS:
+            k = rc.response_exponent(potassium["fabs"], potassium["EC (FTIR)"], potassium["Potassium"], n_boot=min(n_boot, 300))
+            row |= {"exponent_potassium": k["exponent"], "potassium_lo": k["lo"], "potassium_hi": k["hi"]}
+        usable = part[np.isfinite(part["hips_linearised"])]
+        before = deming_regression(part["hips_bc"], part["EC (FTIR)"], lam)
+        after = deming_regression(usable["hips_linearised"], usable["EC (FTIR)"], lam)
+        row |= {"slope_measured": before["slope"], "intercept_measured": before["intercept"],
+                "slope_linearised": after["slope"], "intercept_linearised": after["intercept"],
+                "median_ftir_ec": float(part["EC (FTIR)"].median()), "dropped_above_ceiling": int(len(part) - len(usable)),
+                "median_ftir_over_hips": float((part["EC (FTIR)"] / part["hips_bc"]).median()),
+                "median_ftir_over_linearised": float((usable["EC (FTIR)"] / usable["hips_linearised"]).median())}
+        sites.append(row)
+        points.append(part.assign(site=names.get(code, code))[["id", "code", "site", "date", "tau", "hips_bc", "hips_linearised", "EC (FTIR)", "PM2.5 mass"]])
+    return {"network_exponents": pd.DataFrame(sites).sort_values("median_optical_depth"),
+            "network_points": pd.concat(points, ignore_index=True).rename(columns={"EC (FTIR)": "ftir_ec", "PM2.5 mass": "pm25"})}
+
+
+def stage_candidates(table, closeout, n_boot, tables, aethalometer):
+    """Every saved Addis calibration, by season, against HIPS as measured and against linearised HIPS.
+
+    The season-specific and cohort conclusions of September and October read slopes and intercepts against
+    HIPS / 10. This repeats the reading for each calibration the closeout saved per filter.
+    """
+    tau_inf = thermal_ceiling(tables)["central"]
+    lam = float(closeout["settings"]["LAMBDA_ADDIS"])
+    comparators = {"HIPS as measured": table["hips_bc"],
+                   "HIPS linearised": rc.linearise(table["tau"], tau_inf) * 100.0 * DEPOSIT_AREA_CM2 / table["volume_m3"] / MAC_VALUE}
+    names = {"published": "SPARTAN published", "raw k18": "Raw spectra", "spline k18": "Spline baseline", "vibes k18": "Production VIBES",
+             "vibes_deflate k18": "Deflated VIBES", "vibes_anchorhp k18": "PTFE-anchored VIBES", "anchored_balanced k12": "Anchored, OC/EC-balanced weights",
+             "epo k18": "Anchored + EPO (historical)", "mask_org k18": "Anchored, organic bands masked", "cont_only k10": "Continuum windows only",
+             "dipls_g10 k18": "Domain-invariant PLS", "iw k18": "Importance-weighted PLS"}
+    rows = []
+    for key, label in names.items():
+        for comparator, x in comparators.items():
+            for season, index in [("All", table.index), *[(name, part.index) for name, part in table.groupby("season")]]:
+                pair = pd.DataFrame({"x": x[index], "y": table.loc[index, key]}).replace([np.inf, -np.inf], np.nan).dropna()
+                if len(pair) < 20:
+                    continue
+                d = deming_regression(pair["x"], pair["y"], lam)
+                rows.append({"calibration": label, "comparator": comparator, "season": season, "n": d["n"], "slope": d["slope"],
+                             "intercept": d["intercept"], "intercept_share_of_mean": d["intercept"] / pair["y"].mean(),
+                             "median_ratio": float((pair["y"] / pair["x"]).median())})
+    return {"candidates_by_season": pd.DataFrame(rows)}
+
+
+def stage_source(table, closeout, n_boot, tables, aethalometer):
+    """Two checks inside the calibration set, where thermal EC exists.
+
+    1. Is FTIR EC proportional to TOR EC on held-out sites? Exponent of the held-out prediction against TOR EC,
+       with HIPS as the instrument. If it is near 1, the small leftover at Addis points at the HIPS ceiling
+       there rather than at FTIR rising faster than EC.
+    2. Does filter lot matter? Addis lot 248 reads low. The same lots exist in IMPROVE (catalogue on the Drive;
+       reused from the saved summary where it is absent).
+    """
+    improve = pd.DataFrame(closeout["improve_filters"])
+    models = {"raw k18": "Raw spectra", ANCHORED: "PTFE-anchored VIBES", "spline k18": "Spline baseline"}
+    groups = {"all held-out filters": improve, "TOR OC/EC < 2.5": improve[improve["ocec"] < 2.5], "TOR OC/EC ≥ 2.5": improve[improve["ocec"] >= 2.5],
+              "TOR EC ≥ 15 µg": improve[improve["tor_ug"] >= 15]}
+    rows = []
+    for key, label in models.items():
+        for name, part in groups.items():
+            r = rc.response_exponent(part[key], part["tor_ug"], part["hips_ug"], n_boot=min(n_boot, 500))
+            rows.append({"calibration": label, "filters": name, **r})
+    catalogue = data_paths.ftir_local_db() / "tables/ftir_catalog.csv"
+    if catalogue.is_file():
+        lots = pd.read_csv(catalogue, encoding="utf-8-sig", usecols=["FilterId", "LotNumber"], dtype=str).drop_duplicates("FilterId")
+        improve["lot"] = improve["filter_id"].astype(str).map(lots.set_index("FilterId")["LotNumber"])
+        lot_rows = []
+        for name, part in {"all held-out filters": improve, "TOR OC/EC < 2.5": improve[improve["ocec"] < 2.5]}.items():
+            for lot, sub in part.groupby("lot"):
+                lot_rows.append({"filters": name, "lot": lot, "n": len(sub), **{label: float(np.median(sub[key] / sub["tor_ug"])) for key, label in models.items()}})
+        lot_table = pd.DataFrame(lot_rows)
+    elif SUMMARY.is_file() and "improve_lot" in (saved := json.loads(SUMMARY.read_text())):
+        lot_table = pd.DataFrame(saved["improve_lot"])
+    else:
+        lot_table = pd.DataFrame(columns=["filters", "lot", "n", *models.values()])
+    return {"improve_ftir_linearity": pd.DataFrame(rows), "improve_lot": lot_table}
 
 
 def stage_aethalometer(table, closeout, n_boot, tables, aethalometer):
@@ -414,10 +503,10 @@ def stage_aethalometer(table, closeout, n_boot, tables, aethalometer):
 
 
 RUN = {"improve": stage_improve, "linearity": stage_linearity, "response": stage_response, "season": stage_season,
-       "level": stage_level, "product": stage_product, "network": stage_network}
+       "level": stage_level, "product": stage_product, "network": stage_network, "candidates": stage_candidates, "source": stage_source}
 SUMMARY_TABLES = ("improve_ceiling", "improve_strata", "linearity", "frisch_bounds", "hips_response_fits", "linearised_hips",
                   "raw_hips", "season_lot", "improve_ratio_by_ocec", "mass_closure", "level_anchors", "addis_ocec",
-                  "network_exponents")
+                  "network_exponents", "candidates_by_season", "improve_ftir_linearity", "improve_lot")
 
 
 def run(stages=STAGES, *, n_boot=2000, aethalometer=False, known_volume_only=False):

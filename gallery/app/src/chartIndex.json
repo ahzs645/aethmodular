@@ -725,7 +725,7 @@
    "file": "meetings/closure-20261110.meeting.ts"
   },
   {
-   "title": "The saturation ceiling is the same whichever IMPROVE sites are used",
+   "title": "The ceiling is the same whichever IMPROVE sites are used, but it differs between 2005–2014 and 2015–2025",
    "id": "c1110-ceilings",
    "component": "table",
    "tab": "meeting",
@@ -792,6 +792,62 @@
    "title": "The exponent falls with a site’s optical depth about as the IMPROVE thermal curve predicts; Addis is the heaviest site",
    "id": "c1110-network",
    "component": "scatter",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "Site by site: the intercept of FTIR EC against HIPS, as measured and once HIPS is linearised",
+   "id": "c1110-site-intercepts",
+   "component": "bars",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "One site’s filters: FTIR EC against HIPS as measured and linearised",
+   "id": "c1110-site-points",
+   "component": "crossplot",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "Every site with at least 40 complete filters",
+   "id": "c1110-site-table",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "The seasonal spread of every calibration shrinks once HIPS is linearised",
+   "id": "c1110-cand-season",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "All seasons together",
+   "id": "c1110-cand-overall",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "On held-out IMPROVE sites FTIR EC is proportional to thermal EC",
+   "id": "c1110-source",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "closure-20261110",
+   "file": "meetings/closure-20261110.meeting.ts"
+  },
+  {
+   "title": "IMPROVE filters of lot 248 read thermal EC no lower than lot 251",
+   "id": "c1110-lots",
+   "component": "table",
    "tab": "meeting",
    "meeting": "closure-20261110",
    "file": "meetings/closure-20261110.meeting.ts"

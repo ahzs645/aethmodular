@@ -166,7 +166,76 @@ Fabs linearised with the IMPROVE ceiling and both ends of its interval. Two caut
   A few heavy pairs would test the IMPROVE ceiling at Addis, separate the two readings of the leftover in
   section 2, and fix the MAC and the level together.
 
-## 5. Pathways: what is done, what is stale, what is still open
+## 5. Across every site and dataset: what the next steps showed
+
+Run the same day, on everything in hand: the IMPROVE record by period, all 23 SPARTAN sites with at least 40
+complete filters, the twelve Addis calibrations the closeout saved per filter, and the held-out IMPROVE
+predictions. All of it is on the gallery page (Meeting tab, Nov 10) with pickers for site and comparator.
+
+### The ceiling is the main uncertainty, and it differs by period
+
+| IMPROVE samples | n | Ceiling | Addis exponent it predicts | Addis fit after linearising |
+|---|---:|---:|---:|---|
+| All years, all sites | 347,936 | 2.26 [1.82, 2.70] | 0.56 | 0.55x + 0.01 |
+| 2005–2014 | 174,602 | 2.53 [2.09, 2.94] | 0.61 | 0.68x − 0.63 |
+| 2015–2025 | 173,334 | 1.71 [1.34, 2.36] | 0.42 | 0.20x + 2.25 |
+| Optical pyrolysis > 0 | 340,648 | 2.06 [1.68, 2.37] | 0.52 | 0.44x + 0.60 |
+
+The later period, which contains the Addis record, has a lower ceiling. It predicts the Addis exponent that is
+measured (0.41 to 0.46) and leaves a positive intercept. So the ceiling decides whether the intercept left
+after linearising is slightly negative, zero or positive. It does not decide whether the −6 goes away: every
+row removes it. Why IMPROVE's HIPS response changed between the two periods (instrument history, filter
+supply) is now the most useful thing to find out, and it is a question for the HIPS operators at Davis.
+
+### On held-out IMPROVE sites FTIR EC is proportional to thermal EC
+
+The exponent of the held-out FTIR prediction against TOR EC (instrument: HIPS) is 0.94 [0.90, 0.98] over all
+1,817 filters and 1.04 [0.96, 1.12] at TOR OC/EC below 2.5, with the PTFE-anchored and spline calibrations
+within 0.1 of that. FTIR does not rise faster than EC where EC is known. With the period result above, the
+small leftover in section 2 points at the HIPS ceiling and not at FTIR. This is the calibration set: it does
+not show how FTIR behaves on Addis aerosol.
+
+### Lot 248 is not a general filter-lot effect
+
+IMPROVE filters of lot 248 read thermal EC no lower than lot 251 (median held-out FTIR ÷ TOR 0.89 and 0.89;
+0.80 and 0.74 at low OC/EC). The low Addis lot-248 readings are therefore the SPARTAN lot-248 blanks or
+handling, or a real difference in the December 2022 to early 2023 aerosol.
+
+### Every SPARTAN site
+
+The exponent of HIPS against FTIR EC falls with a site's optical depth about as the IMPROVE curve predicts,
+with PM2.5 mass or potassium as the instrument. Linearising with the one network-wide ceiling:
+
+| Site | Optical depth | Exponent (PM2.5 · potassium) | Predicted | Intercept as measured → linearised (µg/m³) |
+|---|---:|---|---:|---|
+| Addis Ababa | 0.95 | 0.46 · 0.36 | 0.57 | −6.22 → −0.18 |
+| Dhaka | 0.73 | 0.69 · 0.74 | 0.62 | −1.93 → +2.44 |
+| Delhi | 0.47 | 0.80 · 0.87 | 0.78 | −1.77 → −0.41 |
+| Johannesburg | 0.48 | 0.88 · 1.04 | 0.78 | −0.18 → +0.42 |
+| Pretoria | 0.43 | 0.90 · 1.02 | 0.80 | −0.07 → +0.45 |
+| Bishoftu | 0.43 | 0.89 · n/a | 0.80 | −0.47 → −0.10 |
+| Santiago | 0.41 | 0.56 · 0.57 | 0.78 | −1.33 → −0.35 |
+| Beijing | 0.25 | 0.93 · 1.19 | 0.87 | −0.55 → −0.05 |
+| Talca | 0.20 | 0.56 · 0.54 | 0.88 | −1.07 → −0.61 |
+| Taipei | 0.16 | 1.06 · 0.99 | 0.92 | 0.00 → +0.07 |
+| Pasadena | 0.10 | 1.04 · 0.69 | 0.96 | −0.02 → +0.03 |
+
+Two things to take from it. **Addis stands alone**: the heaviest site, the least proportional, and the one
+where linearising matters most. **One ceiling does not suit every site**: it over-corrects where HIPS and FTIR
+EC were already near-proportional at moderate optical depth (the South African sites, Jaipur, Mexico City,
+Dhaka), and the two Chilean sites are far less proportional than their optical depth predicts with either
+instrument. HIPS response looks site-dependent, which is what a deposit-pattern or aerosol-type effect would
+do. The IMPROVE ceiling is evidence about Addis, not a correction to apply across SPARTAN.
+
+### Every saved Addis calibration, by season
+
+Against HIPS as measured the twelve calibrations have intercepts from −10.3 to −1.0 µg/m³; against linearised
+HIPS, from −1.0 to +0.6. Kiremt ÷ Bega in median FTIR ÷ HIPS falls from 1.63 to 1.28 for the published product
+and from 1.47 to 1.18 for the spline baseline. The calibrations that use the whole spectrum keep more of the
+seasonal spread than the ones that do not, which fits a composition-linked part in FTIR (more organic signal
+in Kiremt). Season and loading still cannot be separated at Addis.
+
+## 6. Pathways: what is done, what is stale, what is still open
 
 ### Listed as open on the 9 Nov status page, but already run
 
@@ -192,19 +261,21 @@ Ranked by how likely each is to change what is carried forward.
 
 1. **Re-read the 28 Oct season, cohort, deficit and MAC results against linearised HIPS.** If section 1 holds,
    the season-specific calibrations were mostly chasing HIPS compression.
-2. **Lot 248.** It reads 15 to 20 % low against linearised HIPS and against PM2.5 mass: a filter-lot or blank
-   effect in FTIR, or a real difference in the 2022–23 aerosol. The lot's blanks and the IMPROVE filters of the
-   same lot can referee.
-3. **Is the leftover a lower ceiling at Addis, or FTIR rising faster than EC?** On heavy IMPROVE filters with
-   TOR, fit the exponent of the held-out FTIR prediction against thermal EC by loading. If FTIR is proportional
-   there, the leftover points at the ceiling.
+2. **Why the HIPS ceiling differs between 2005–2014 and 2015–2025 in IMPROVE, and which one applies to SPARTAN's
+   filters.** Section 5 shows it decides the sign of what is left. Split the IMPROVE record by HIPS instrument
+   or calibration period (the Davis operators know the dates), and by filter lot.
+3. **Site-dependent HIPS response.** Why the South African sites, Jaipur and Mexico City stay near-proportional
+   at optical depth 0.45, and the Chilean sites do not at 0.2 to 0.4. Aerosol type, deposit pattern and sampler
+   are the candidates; the spartan_reference chemistry is in hand.
+3a. **Lot 248 at Addis.** IMPROVE shows no lot effect (section 5), so it is the SPARTAN lot-248 blanks or the
+   2022–23 aerosol. The lot's blanks can referee.
 4. **A composition-aware level factor from the calibration set.** Predict EC and OC together, learn the
    FTIR ÷ TOR bias as a function of predicted OC/EC on held-out sites (nested by site), and read it at Addis
    with an interval. This would replace the × 1.0 to 1.5 range with a source-domain estimate.
 5. **Spectral augmentation, never run.** Only 10 IMPROVE filters at ≥ 15 µg have OC/EC below 1.5. Co-adding
    blank-corrected IMPROVE spectra can build Addis-like loadings and compositions with known TOR sums.
-6. **The network test done properly:** potassium as a second instrument, and the Chilean result explained.
-   This is the "network-wide, not only Addis" framing, and it needs no new data.
+6. **Done here (section 5):** FTIR against thermal EC on held-out IMPROVE sites; the exponent and the
+   linearised fit at every SPARTAN site with potassium as a second instrument; every saved calibration by season.
 7. **PLS on the masked regions** (Ann, 10 Sep) and the raw model without 3600–4000 and below 1425 cm⁻¹ (28 Oct
    "next"). Still not run; lower priority now that the intercept is not an FTIR quantity.
 8. **Blind three-way split of the Addis test set** (Ann, 25 Aug and 2 Sep). The 73-filter split exists and is
@@ -222,7 +293,7 @@ Addis quartz + PTFE pairs (the level); AQRC's deployed EC model file; Emily Li's
 SPARTAN's hole fraction for the White patterned-deposit correction; wet-season Bishoftu filters; FTIR
 functional groups after October 2024.
 
-## 6. For the supervisor meetings
+## 7. For the supervisor meetings
 
 - **The result is more publishable than "the calibration does not transfer".** With existing data and no
   aethalometer: (a) IMPROVE's thermal EC shows HIPS compressing at the optical depths Addis filters reach;

@@ -35,10 +35,11 @@ MEETING_ID = "closure-20261110"
 SEASON_COLORS = {"Bega": "#E67E22", "Belg": "#27AE60", "Kiremt": "#3498DB"}   # config.ETHIOPIA_SEASONS colours
 COLORS = {**SEASON_COLORS, "all sites": "#22252A", "sites with median OC/EC < 4": "#2C6E9E", "six urban sites": "#B23327",
           "PM2.5 mass (gravimetric)": "#27AE60", "Potassium (XRF)": "#2C6E9E", "FTIR EC, SPARTAN published": "#B23327",
-          "HIPS Fabs": "#5B5852", "measured": "#C49442", "predicted from IMPROVE thermal EC": "#8a8f98"}
-SITE_NAMES = {"ETAD": "Addis Ababa", "BDDU": "Dhaka", "USPA": "Pasadena", "CHTS": "Beijing", "INDH": "Delhi",
-              "TWTA": "Taipei", "TWKA": "Kaohsiung", "CLST": "Santiago", "CLTA": "Talca", "ZAPR": "Pretoria",
-              "ZAJB": "Johannesburg", "AUMN": "Melbourne", "ETBI": "Bishoftu"}
+          "HIPS Fabs": "#5B5852", "measured (instrument: PM2.5 mass)": "#C49442", "measured (instrument: potassium)": "#2C6E9E",
+          "predicted from IMPROVE thermal EC": "#8a8f98", "HIPS as measured": "#B23327", "HIPS linearised": "#2C6E9E",
+          "2005–2014": "#8F8C84", "2015–2025": "#7A4FA3", "optical pyrolysis > 0": "#27AE60",
+          "Raw spectra": "#22252A", "PTFE-anchored VIBES": "#C49442", "Spline baseline": "#2C6E9E"}
+
 
 tables, table = closure.run(n_boot=2000)
 PUB = closure.LABEL[closure.PUBLISHED]
@@ -47,7 +48,20 @@ ceiling = closure.thermal_ceiling(tables)
 # ---------------------------------------------------------------- 1. IMPROVE: HIPS against thermal EC
 strata = tables["improve_strata"].rename(columns={"loading_ug": "TOR EC (µg per filter)", "tau": "HIPS optical depth",
                                                   "fabs_over_ec": "Fabs ÷ TOR EC (m²/g)"})
-ceilings = tables["improve_ceiling"]
+from pls_transfer import deming_regression  # noqa: E402
+
+ceilings = tables["improve_ceiling"].copy()
+LAMBDA = 2.96   # closeout LAMBDA_ADDIS, as in the workflow
+implied = []
+for value in ceilings.tau_inf:
+    lin = rc.linearise(table.tau, value) * 100.0 * closure.DEPOSIT_AREA_CM2 / table.volume_m3 / closure.MAC_VALUE
+    ok = np.isfinite(lin) & table[closure.PUBLISHED].notna()
+    d = deming_regression(lin[ok], table.loc[ok, closure.PUBLISHED], LAMBDA)
+    implied.append({"addis_predicted_exponent": float(np.mean(np.clip(1.0 - table.tau / value, 0.0, 1.0))),
+                    "addis_slope": d["slope"], "addis_intercept": d["intercept"]})
+ceilings = pd.concat([ceilings.reset_index(drop=True), pd.DataFrame(implied)], axis=1)
+ceilings["kind"] = np.where(ceilings.population.isin(closure.IMPROVE_POPULATIONS), "choice of sites", "robustness, all sites")
+era = ceilings.set_index("population")
 primary = ceilings.set_index("population").loc[closure.IMPROVE_PRIMARY]
 light = strata[strata.population.eq(closure.IMPROVE_PRIMARY)].iloc[0]
 heavy = strata[strata.population.eq(closure.IMPROVE_PRIMARY)].sort_values("HIPS optical depth").iloc[-1]
@@ -57,7 +71,11 @@ so that neither instrument's error decides the group, HIPS Fabs ÷ TOR EC falls 
 lightest filters to {heavy['Fabs ÷ TOR EC (m²/g)']:.1f} at optical depth {heavy['HIPS optical depth']:.2f}. A saturating curve through the group
 medians has a **ceiling of {primary.tau_inf:.2f}** ({primary.tau_inf_lo:.2f}–{primary.tau_inf_hi:.2f}, resampling sites); the low-OC/EC sites and
 the six urban sites give the same. Addis optical depth has a median of {table.tau.median():.2f} and reaches {table.tau.max():.2f}, so
-Addis sits on the bend. No FTIR and no aethalometer enter this."""
+Addis sits on the bend. No FTIR and no aethalometer enter this. **The ceiling is not the same in every period:** {era.loc['2005–2014', 'tau_inf']:.2f}
+for 2005–2014 and {era.loc['2015–2025', 'tau_inf']:.2f} ({era.loc['2015–2025', 'tau_inf_lo']:.2f}–{era.loc['2015–2025', 'tau_inf_hi']:.2f}) for 2015–2025, the years
+that include the Addis record. The later value predicts an Addis exponent of {era.loc['2015–2025', 'addis_predicted_exponent']:.2f}, which is what Addis
+shows, and a positive intercept ({era.loc['2015–2025', 'addis_intercept']:+.2f}). So the ceiling is the main uncertainty: it decides whether the
+intercept left after linearising is slightly negative, zero or positive, though not whether the −6 goes away."""
 
 # ---------------------------------------------------------------- 2. Addis: not proportional, and by how much
 lin = tables["linearity"]
@@ -124,20 +142,68 @@ thermal EC lower the lower the OC/EC ({ocec.iloc[-1]['Raw spectra']:.2f} above O
 {addis_ocec['median']:.2f}). Mass closure caps it: published EC reconstructs {mass.iloc[0, 2] * 100:.0f} % of gravimetric PM2.5, × 1.5 reaches
 {mass.iloc[3, 2] * 100:.0f} % and × 1.9 gives {mass.iloc[5, 2] * 100:.0f} %. None of this is thermal EC measured at Addis."""
 
-# ---------------------------------------------------------------- 5. the network
+# ---------------------------------------------------------------- 5. the network, site by site
 net = tables["network_exponents"].copy()
-net["site"] = net.code.map(SITE_NAMES).fillna(net.code)
-readable = net[(net.hi - net.lo) < 0.6].sort_values("median_optical_depth")
+net["readable"] = (net.hi - net.lo) < 0.6
+readable = net[net.readable].sort_values("median_optical_depth")
 network = pd.concat([
-    readable.assign(what="measured", exponent=readable.hips_exponent_vs_ftir_ec),
+    readable.assign(what="measured (instrument: PM2.5 mass)", exponent=readable.hips_exponent_vs_ftir_ec),
+    readable.assign(what="measured (instrument: potassium)", exponent=readable.exponent_potassium, lo=readable.potassium_lo, hi=readable.potassium_hi),
     readable.assign(what="predicted from IMPROVE thermal EC", exponent=readable.predicted_from_improve, lo=np.nan, hi=np.nan),
-])[["site", "code", "what", "n", "median_optical_depth", "exponent", "lo", "hi"]]
-addis_net, dhaka_net = net[net.code.eq("ETAD")].iloc[0], net[net.code.eq("BDDU")].iloc[0]
-text_network = f"""**The IMPROVE curve predicts the pattern across SPARTAN.** The exponent of HIPS against FTIR EC (instrument: PM2.5 mass) falls
-with a site's optical depth about as the IMPROVE thermal curve says it should: near 1 at light sites, {dhaka_net.hips_exponent_vs_ftir_ec:.2f} measured
-against {dhaka_net.predicted_from_improve:.2f} predicted at Dhaka, and {addis_net.hips_exponent_vs_ftir_ec:.2f} against {addis_net.predicted_from_improve:.2f} at
-Addis, the heaviest site. Sites where the interval is wider than 0.6 are left off ({len(net) - len(readable)} of {len(net)}). The two Chilean sites sit
-far below the prediction and need a second look before anyone quotes them."""
+]).dropna(subset=["exponent"])[["site", "code", "what", "n", "median_optical_depth", "exponent", "lo", "hi"]]
+site_fits = pd.concat([
+    net.assign(comparator="HIPS as measured", slope=net.slope_measured, intercept=net.intercept_measured),
+    net.assign(comparator="HIPS linearised", slope=net.slope_linearised, intercept=net.intercept_linearised),
+])
+site_fits["intercept_share"] = site_fits.intercept / site_fits.median_ftir_ec
+site_fits = site_fits.sort_values("median_optical_depth")[["site", "code", "comparator", "n", "median_optical_depth", "slope", "intercept", "intercept_share"]]
+pts = tables["network_points"]
+site_points = pd.concat([
+    pts.assign(comparator="HIPS as measured (Fabs / 10)", x=pts.hips_bc),
+    pts.assign(comparator="HIPS linearised (/ 10)", x=pts.hips_linearised),
+])[["id", "site", "date", "comparator", "x", "ftir_ec", "tau"]].dropna()
+site_points["year"] = site_points.date.str[:4]
+site_table = net[["site", "n", "median_optical_depth", "share_above_half", "hips_exponent_vs_ftir_ec", "lo", "hi", "exponent_potassium",
+                  "predicted_from_improve", "intercept_measured", "intercept_linearised", "median_ftir_ec"]]
+by = net.set_index("code")
+closer = int(((net.intercept_linearised.abs() < net.intercept_measured.abs()) & net.readable).sum())
+text_network = f"""**Across SPARTAN, the exponent falls with a site's optical depth about as the IMPROVE curve says, but one ceiling does not suit
+every site.** Addis is the heaviest site (median optical depth {by.loc['ETAD', 'median_optical_depth']:.2f}) and the least proportional
+({by.loc['ETAD', 'hips_exponent_vs_ftir_ec']:.2f} measured, {by.loc['ETAD', 'predicted_from_improve']:.2f} predicted). Linearising takes the Addis intercept from
+{by.loc['ETAD', 'intercept_measured']:.2f} to {by.loc['ETAD', 'intercept_linearised']:.2f} µg/m³, Delhi from {by.loc['INDH', 'intercept_measured']:.2f} to
+{by.loc['INDH', 'intercept_linearised']:.2f}, Santiago from {by.loc['CLST', 'intercept_measured']:.2f} to {by.loc['CLST', 'intercept_linearised']:.2f} and Beijing from
+{by.loc['CHTS', 'intercept_measured']:.2f} to {by.loc['CHTS', 'intercept_linearised']:.2f}. It moves the intercept toward zero at {closer} of the {int(net.readable.sum())}
+sites with a readable exponent. It over-corrects where HIPS and FTIR EC were already close to proportional at moderate optical depth:
+Pretoria ({by.loc['ZAPR', 'intercept_measured']:.2f} to {by.loc['ZAPR', 'intercept_linearised']:+.2f}), Johannesburg, Jaipur, Mexico City and Dhaka
+({by.loc['BDDU', 'intercept_measured']:.2f} to {by.loc['BDDU', 'intercept_linearised']:+.2f}). The two Chilean sites are far less proportional than their optical
+depth predicts with either instrument (0.56), which is a real difference, not noise. Pick a site below to see its filters."""
+
+# ---------------------------------------------------------------- 5b. every saved calibration, by season
+cand = tables["candidates_by_season"]
+by_season = cand[~cand.season.eq("All")]
+overall = cand[cand.season.eq("All")][["calibration", "comparator", "n", "slope", "intercept", "median_ratio"]]
+swing = by_season.pivot_table(index=["calibration", "comparator"], columns="season", values="median_ratio")
+swing = (swing["Kiremt"] / swing["Bega"]).unstack("comparator")
+pub_swing, spline_swing = swing.loc["SPARTAN published"], swing.loc["Spline baseline"]
+inter = overall.pivot(index="calibration", columns="comparator", values="intercept")
+text_candidates = f"""**Every saved calibration loses its intercept and more than half of its seasonal swing once HIPS is linearised.** Across the twelve
+calibrations the Addis intercept runs from {inter['HIPS as measured'].min():.1f} to {inter['HIPS as measured'].max():.1f} µg/m³ against HIPS as measured and from
+{inter['HIPS linearised'].min():.1f} to {inter['HIPS linearised'].max():+.1f} against linearised HIPS. For the published product, Kiremt reads
+{pub_swing['HIPS as measured']:.2f}× Bega as measured and {pub_swing['HIPS linearised']:.2f}× once linearised. What remains differs by calibration: the spline
+baseline keeps {spline_swing['HIPS linearised']:.2f}×, the full-spectrum calibrations about 1.3×. That is consistent with a composition-linked part in
+FTIR (more organic signal in Kiremt), but season and loading still cannot be separated at Addis."""
+
+# ---------------------------------------------------------------- 5c. inside the calibration set
+source = tables["improve_ftir_linearity"]
+lots = tables["improve_lot"]
+raw_low = source[(source.calibration.eq("Raw spectra")) & (source.filters.eq("TOR OC/EC < 2.5"))].iloc[0]
+raw_all = source[(source.calibration.eq("Raw spectra")) & (source.filters.eq("all held-out filters"))].iloc[0]
+text_source = f"""**On held-out IMPROVE sites FTIR EC is proportional to thermal EC, and filter lot does not matter there.** The exponent of the
+held-out FTIR prediction against TOR EC (instrument: HIPS) is {raw_all.exponent:.2f} ({raw_all.lo:.2f}–{raw_all.hi:.2f}) over all filters and
+{raw_low.exponent:.2f} ({raw_low.lo:.2f}–{raw_low.hi:.2f}) at TOR OC/EC below 2.5. So the calibration does not rise faster than EC where EC is known, and
+the small leftover at Addis points at the HIPS ceiling there rather than at FTIR. IMPROVE filters of lot 248 read thermal EC no lower than lot
+251, so the low Addis lot-248 readings are not a general property of that filter lot. This is the calibration set: it does not show how FTIR
+behaves on Addis aerosol."""
 
 # ---------------------------------------------------------------- 6. what changes, what is open
 spline_level = float((table["spline k18"] / table.hips_bc).median())
@@ -151,11 +217,13 @@ rereads = pd.DataFrame([
 ], columns=["earlier reading", "with HIPS linearised"])
 pathways = pd.DataFrame([
     ("Re-read the 28 Oct season, cohort, deficit and MAC results against linearised HIPS", "open, data in hand", "1"),
-    ("Lot 248 reads 15 to 20 % low against linearised HIPS and PM2.5: filter lot, blanks, or the 2022–23 aerosol", "open, data in hand", "2"),
-    ("Is the leftover a lower ceiling at Addis or FTIR rising faster than EC? Test on heavy IMPROVE filters with TOR", "open, data in hand", "3"),
+    ("Lot 248 reads 15 to 20 % low at Addis; IMPROVE shows no lot effect, so it is the SPARTAN lot-248 blanks or the 2022–23 aerosol", "narrowed here", "2"),
+    ("Why the HIPS ceiling differs between 2005–2014 and 2015–2025 in IMPROVE (instrument history), and which applies to SPARTAN", "new, data in hand", "3"),
+    ("Site-specific HIPS response: why South Africa, Jaipur and Mexico City stay near-proportional and Chile does not", "new, data in hand", "3"),
     ("A composition-aware level factor learned on held-out IMPROVE sites", "open, data in hand", "4"),
     ("Spectral augmentation: co-added IMPROVE spectra at Addis-like loading and OC/EC", "never run", "5"),
-    ("The Chilean sites, and potassium as a second instrument across SPARTAN", "first pass here", "6"),
+    ("FTIR proportional to thermal EC on held-out IMPROVE sites (exponent 0.94 to 1.04)", "done here", ""),
+    ("The exponent and the linearised fit at every SPARTAN site, with potassium as a second instrument", "done here", ""),
     ("PLS on the masked regions; raw model without 3600–4000 and below 1425 cm⁻¹", "open, lower priority", "7"),
     ("OC/EC-selected cohorts, organic deficit, dust, season-specific MAC, OP = 0, urban sites", "done 28 Oct (HIPS / 10 on x)", ""),
     ("Addis quartz + PTFE pairs, with HIPS and some heavy loadings", "blocked: filters not in hand", ""),
@@ -177,10 +245,12 @@ write_bundle(
                    "and the unified filter dataset via research/ftir_hips_chem/workflows/run_addis_reference_closure_20261110.py",
     colors=COLORS,
     text={"intro": intro, "improve": text_improve, "addis": text_addis, "response": text_response, "season": text_season,
-          "level": text_level, "network": text_network, "next": text_next},
+          "level": text_level, "network": text_network, "candidates": text_candidates, "source": text_source, "next": text_next},
     tables={"strata": strata[["population", "n", "TOR EC (µg per filter)", "HIPS optical depth", "Fabs ÷ TOR EC (m²/g)"]],
             "ceilings": ceilings, "exponents": exponents, "against_hips": against_hips, "fits": fits,
             "season": season_rows[["group", "season", "lot", "n", "median_optical_depth", "published_over_hips",
                                    "published_over_linearised_hips", "published_over_pm25"]],
-            "ocec": ocec, "anchors": anchors, "mass": mass, "network": network, "rereads": rereads, "pathways": pathways},
+            "ocec": ocec, "anchors": anchors, "mass": mass, "network": network, "site_fits": site_fits, "site_points": site_points,
+            "site_table": site_table, "cand_season": by_season, "cand_overall": overall, "source": source, "lots": lots,
+            "rereads": rereads, "pathways": pathways},
 )
