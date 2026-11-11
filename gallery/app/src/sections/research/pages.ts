@@ -22,7 +22,6 @@ import { TwoProblem } from './pages/TwoProblem'
 import { OffsetShift } from './pages/OffsetShift'
 import { MoistureMac } from './pages/MoistureMac'
 import { HipsEnvelope } from './pages/HipsEnvelope'
-import { HipsLinearise } from './pages/HipsLinearise'
 import { ImproveEnvelope } from './pages/ImproveEnvelope'
 import { ImproveOrigin } from './pages/ImproveOrigin'
 import { SpartanImprove } from './pages/SpartanImprove'
@@ -65,7 +64,6 @@ export const RESEARCH_PAGES: (SectionPage & { Page: ComponentType<SectionPagePro
   { key: 'offset-shift', label: 'EC shift and the offset', title: 'Deming against the error ratio, the EC shift that zeros the intercept, and the implied missing EC by season', samples: ADDIS, Page: OffsetShift },
   { key: 'moisture-mac', label: 'Moisture and MAC', title: 'Effective MAC against precipitable water and humidity; does moisture move the slope or the intercept?', samples: ADDIS, Page: MoistureMac },
   { key: 'hips-envelope', label: 'HIPS operating envelope', title: 'Raw HIPS optics, mass per area, lot screen, blank domain and the Addis windows', samples: FOCUS, Page: HipsEnvelope },
-  { key: 'hips-linearise', label: 'Linearising HIPS at Addis', title: 'The IMPROVE bend, the one-line inversion, the correction on every Addis filter, the intercept it removes, the network check and the season ratios, at any ceiling (10 Nov closure)', samples: ADDIS, Page: HipsLinearise },
   { key: 'improve-envelope', label: 'Addis vs IMPROVE loading', title: 'The IMPROVE network in loading space: Addis windows, matched subsets, the fAbs sweep, smoke and R/T proxies', samples: FOCUS, Page: ImproveEnvelope },
   { key: 'improve-origin', label: 'IMPROVE HIPS at EC = 0', title: 'Does IMPROVE HIPS read a nonzero Fabs at zero EC, and is its response curved? (ftir_26, ftir_37)', samples: ADDIS, Page: ImproveOrigin },
   { key: 'spartan-improve', label: 'SPARTAN vs IMPROVE', title: 'The shared parameters as one set: distributions, ratios, fits and Addis-like IMPROVE sites', samples: FOCUS, Page: SpartanImprove },

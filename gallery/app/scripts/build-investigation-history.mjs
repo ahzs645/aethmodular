@@ -114,7 +114,7 @@ const chartGroups = [
   [['experiments_20261022'], 'experimental', 'selector', 'Error-predicting selector'],
   [['experiments_20261022'], 'experimental', 'forward', 'Earlier → later years'],
   [['addis_feb_season_sensitivity_20261028'], 'experimental', 'fixes', 'February calendar sensitivity'],
-  [['addis_reference_closure_20261110'], 'research', 'hips-linearise', 'Linearising HIPS at Addis'],
+  [['addis_reference_closure_20261110'], 'meeting', 'hips-linearise', 'Linearising HIPS at Addis'],
   [['season_composition_20261103'], 'experimental', 'season', 'Season or composition?'],
   [['vibes_newton_refit_20261103'], 'experimental', 'vibes-newton', 'VIBES solved to convergence'],
   [['transfer_diagnosis_20261102'], 'experimental', 'continuum', 'Continuum and the baseline'],

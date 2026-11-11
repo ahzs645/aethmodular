@@ -55,7 +55,7 @@
       ],
       "charts": [
         {
-          "tab": "research",
+          "tab": "meeting",
           "page": "hips-linearise",
           "label": "Linearising HIPS at Addis"
         }

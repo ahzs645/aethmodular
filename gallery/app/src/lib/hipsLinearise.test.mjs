@@ -1,12 +1,12 @@
 // The Linearising HIPS page recomputes, in the browser, what the 10 Nov closure workflow saved: the Deming fits of
 // FTIR EC on HIPS (as measured and linearised at each ceiling), the season and lot ratios, and the predicted exponent.
-// Inputs: research/hips_linearise/linearise.json (gallery/data/export_research_hips_linearise.py).
+// Inputs: hips_linearise/linearise.json (gallery/data/export_hips_linearise.py).
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { correction, fitAgainstHips, linearise, noiseGain, predictedExponent, ratioMedians, saturate } from './linearise.ts'
+import { correction, fitAgainstHips, linearise, noiseGain, predictedExponent, ratioMedians, saturate } from './hipsLinearise.ts'
 
-const data = JSON.parse(fs.readFileSync(new URL('../../../../public/data/research/hips_linearise/linearise.json', import.meta.url), 'utf8'))
+const data = JSON.parse(fs.readFileSync(new URL('../../public/data/hips_linearise/linearise.json', import.meta.url), 'utf8'))
 const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b}`)
 
 test('the inversion undoes the saturating curve, and its factors', () => {

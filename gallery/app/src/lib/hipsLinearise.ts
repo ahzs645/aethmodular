@@ -1,12 +1,12 @@
 /**
- * Linearising HIPS on dark filters (the Research page "Linearising HIPS at Addis"). The IMPROVE curve of HIPS optical
+ * Linearising HIPS on dark filters (the Meeting page "Linearising HIPS at Addis" (pages/HipsLinearisePage.tsx)). The IMPROVE curve of HIPS optical
  * depth against thermal EC on the filter is saturating, τ = aL / (1 + aL/τ∞); inverting it gives the optical depth a
  * proportional HIPS would have read, τ_lin = τ / (1 − τ/τ∞), which is research/ftir_hips_chem/scripts/
  * reference_closure.linearise. Because volume, deposit area and MAC cancel in the ratio, BC (Fabs ÷ MAC) is
  * linearised by the same factor. Everything here is a pure function of the per-filter optical depth and the ceiling,
  * so the page can follow any ceiling the reader picks.
  */
-import { deming, median } from '../../../lib/stats.ts'
+import { deming, median } from './stats.ts'
 
 /** the saturating IMPROVE response: optical depth for a proportional optical depth u = aL */
 export const saturate = (u: number, ceiling: number): number => u / (1 + u / ceiling)

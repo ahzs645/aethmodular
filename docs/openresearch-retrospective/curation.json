@@ -170,7 +170,7 @@
         "research/ftir_hips_chem/workflows/run_addis_reference_closure_20261110.py",
         "research/ftir_hips_chem/scripts/reference_closure.py",
         "docs/addis-reference-closure-2026-11-10.json",
-        "gallery/data/export_research_hips_linearise.py"
+        "gallery/data/export_hips_linearise.py"
       ]
     }
   ],

@@ -339,10 +339,10 @@
       ],
       "reason": "Regenerates the investigation-history catalog from the research notebooks and their git history (scripts/build-investigation-history.mjs --check); a gallery-only deploy checkout has neither."
     },
-    "src/sections/research/common/linearise.test.mjs": {
-      "scope": "research",
+    "src/lib/hipsLinearise.test.mjs": {
+      "scope": "public",
       "inputs": [
-        "gallery/app/public/data/research/hips_linearise/linearise.json"
+        "gallery/app/public/data/hips_linearise/linearise.json"
       ],
       "reason": "Recompute the closure workflow's saved Addis fits, season ratios and predicted exponent from the per-filter optical depths."
     }

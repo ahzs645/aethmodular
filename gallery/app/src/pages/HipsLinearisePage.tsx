@@ -1,4 +1,4 @@
-import { useId, useMemo } from 'react'
+import { useId, useMemo, type ReactNode } from 'react'
 import { ChartFrame, Note } from '@/components/ChartFrame'
 import { Segmented, Select } from '@/components/Controls'
 import { LoadState } from '@/components/ExportState'
@@ -14,14 +14,12 @@ import { RESEARCH_SERIES } from '@/lib/palettes'
 import { median } from '@/lib/stats'
 import { FONT, INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
-import type { SectionPageProps } from '../../types'
-import { DataTable } from '../common/ui'
-import { correction, fitAgainstHips, linearBc, linearise, noiseGain, predictedExponent, ratioMedians, saturate, type LinFilter } from '../common/linearise'
+import { correction, fitAgainstHips, linearBc, linearise, noiseGain, predictedExponent, ratioMedians, saturate, type LinFilter } from '@/lib/hipsLinearise'
 
-const COMMAND = 'uv run python gallery/data/export_research_hips_linearise.py'
+const COMMAND = 'uv run python gallery/data/export_hips_linearise.py'
 const WORKFLOW = 'research/ftir_hips_chem/workflows/run_addis_reference_closure_20261110.py'
 const NOTE_DOC = 'docs/addis-reference-closure-2026-11-10.md'
-const PROVENANCE = <>{WORKFLOW}; summary <code>{NOTE_DOC}</code> and its JSON; per-filter optical depths from the workflow's <code>load()</code> (<code>research/hips_linearise/linearise.json</code>).</>
+const PROVENANCE = <>{WORKFLOW}; summary <code>{NOTE_DOC}</code> and its JSON; per-filter optical depths from the workflow's <code>load()</code> (<code>hips_linearise/linearise.json</code>).</>
 
 const MEASURED = RESEARCH_SERIES[1]
 const LINEAR = RESEARCH_SERIES[0]
@@ -73,8 +71,8 @@ const range = (a: number, b: number, step: number) => Array.from({ length: Math.
  * chart; the per-filter numbers are recomputed in the browser (common/linearise.ts) and reproduce the workflow's
  * saved fits (linearise.test.mjs).
  */
-export function HipsLinearise(_: SectionPageProps) {
-  const { data, error } = useExport<Linearise>('research/hips_linearise/linearise.json')
+export function HipsLinearisePage() {
+  const { data, error } = useExport<Linearise>('hips_linearise/linearise.json')
   const ceil = useCeiling(data)
   if (error || !data) return (
     <ChartFrame id="hl-missing" title="Linearising HIPS at Addis" provenance={WORKFLOW}>
@@ -105,6 +103,21 @@ function Readouts({ items }: { items: { label: string; value: string; color?: st
       {it.sub && <div className="stat-sub">{it.sub}</div>}
     </div>)}
   </div>
+}
+
+/** a plain table in the gallery's table style (styles.css .census-table); numeric columns right-aligned in mono */
+interface Column<T> { key: string; label: ReactNode; value: (row: T) => ReactNode; num?: boolean }
+function DataTable<T>({ rows, columns, rowKey, highlight }: { rows: T[]; columns: Column<T>[]; rowKey: (r: T, i: number) => string; highlight?: (r: T) => boolean }) {
+  return (
+    <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
+      <table className="census-table" style={{ minWidth: Math.min(880, columns.length * 88) }}>
+        <thead><tr>{columns.map((c) => <th key={c.key} style={{ textTransform: 'none', letterSpacing: 0, textAlign: c.num ? 'right' : 'left' }}>{c.label}</th>)}</tr></thead>
+        <tbody>{rows.map((r, i) => <tr key={rowKey(r, i)} style={highlight?.(r) ? { background: 'var(--accent-soft)' } : undefined}>
+          {columns.map((c) => <td key={c.key} style={c.num ? { fontFamily: FONT.mono, textAlign: 'right', whiteSpace: 'nowrap' } : undefined}>{c.value(r)}</td>)}
+        </tr>)}</tbody>
+      </table>
+    </div>
+  )
 }
 
 // ------------------------------------------------------------------ 1. the bend

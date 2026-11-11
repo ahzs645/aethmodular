@@ -90,6 +90,7 @@ const SimilarityPage = lazyView(() => import('@/pages/SimilarityPage').then(m =>
 const MeetingFollowupPage = lazyView<NonNullable<Parameters<typeof import('@/pages/MeetingFollowupPage')['MeetingFollowupPage']>[0]>>(() => import('@/pages/MeetingFollowupPage').then(m => m.MeetingFollowupPage))
 const SectionPage = lazyView(() => import('@/pages/SectionPage').then(m => m.SectionPage))
 const SatoshiFollowupPage = lazyView(() => import('@/pages/SatoshiFollowupPage').then(m => m.SatoshiFollowupPage))
+const HipsLinearisePage = lazyView(() => import('@/pages/HipsLinearisePage').then(m => m.HipsLinearisePage))
 const MeetingSpecPage = lazyView(() => import('@/pages/MeetingSpecPage').then(m => m.MeetingSpecPage))
 const BlanksPage = lazyView(() => import('@/pages/BlanksPage').then(m => m.BlanksPage))
 const ExperimentalPage = lazyView(() => import('@/pages/ExperimentalPage').then(m => m.ExperimentalPage))
@@ -183,6 +184,7 @@ const LANDING_TAB = (SHARE_TABS.find((t) => TABS.some((x) => x.key === t)) ?? 'c
 const MEETINGS: { key: string; label: string; title?: string }[] = [
   { key: 'followup', date: '2026-09-17', title: 'The 17 Sep meeting’s follow-ups: the analog bias check and the figures behind it' },
   { key: 'satoshi', date: '2026-10-02', title: 'Satoshi’s 2 Oct questions: analog overlap, the swap test, VIP, the fit ladder and the envelope' },
+  { key: 'hips-linearise', date: '2026-11-10', title: 'Linearising HIPS at Addis: the IMPROVE bend, the inversion, the correction on every filter and the intercept it removes, at any ceiling' },
   ...SPEC_MEETINGS.map((m) => ({ key: m.id, date: m.date, title: m.title })),
 ].sort((a, b) => b.date.localeCompare(a.date)).map(({ date, ...m }) => ({ ...m, label: meetingLabel(date) }))
 type MeetingKey = string
@@ -1622,6 +1624,7 @@ export default function App() {
           </SidebarControls>
           {meeting === 'followup' ? <MeetingFollowupPage galleryRows={filters.rows} galleryMeta={data.meta} viewRows={presentRows} viewMeta={presentMeta} />
             : meeting === 'satoshi' ? <SatoshiFollowupPage />
+            : meeting === 'hips-linearise' ? <HipsLinearisePage />
             : <MeetingSpecPage key={meeting} spec={SPEC_MEETINGS.find((m) => m.id === meeting) ?? SPEC_MEETINGS[0]} />}
         </PresentationProvider>}
         {tab === 'blanks' && <BlanksPage />}

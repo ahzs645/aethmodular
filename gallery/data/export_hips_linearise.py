@@ -2,10 +2,10 @@
 
 Run from the repo root with the repo environment:
 
-    uv run python gallery/data/export_research_hips_linearise.py
+    uv run python gallery/data/export_hips_linearise.py
 
-The data behind the Research page "Linearising HIPS at Addis" (gallery/app/src/sections/research/pages/
-HipsLinearise.tsx). Nothing is refitted here: the per-filter table is the 10 Nov closure workflow's own
+The data behind the Meeting-tab page "Linearising HIPS at Addis" (gallery/app/src/pages/
+HipsLinearisePage.tsx). Nothing is refitted here: the per-filter table is the 10 Nov closure workflow's own
 (research/ftir_hips_chem/workflows/run_addis_reference_closure_20261110.py, load()), and every summary
 (IMPROVE strata and ceilings, the Addis fits, the network exponents, season and lot ratios) is read from the
 summary that workflow committed, docs/addis-reference-closure-2026-11-10.json. The page linearises each
@@ -16,7 +16,7 @@ filter in the browser at whichever ceiling the reader picks, with the same formu
 All inputs are committed (the closeout, filters.json, the unified filter dataset, the closure summary); no
 Drive and no aethalometer data are needed.
 
-Writes gallery/app/public/data/research/hips_linearise/linearise.json.
+Writes gallery/app/public/data/hips_linearise/linearise.json.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ sys.path[:0] = [str(ROOT / "research/ftir_hips_chem/workflows"), str(ROOT / "res
 
 import run_addis_reference_closure_20261110 as closure  # noqa: E402
 
-OUT = ROOT / "gallery/app/public/data/research/hips_linearise"
+OUT = ROOT / "gallery/app/public/data/hips_linearise"
 # the ceilings the page offers: the central IMPROVE fit, both ends of its 90 % interval, and the later era
 ERA = "2015–2025"
 
