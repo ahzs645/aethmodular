@@ -1543,6 +1543,9 @@ html.dash-mode .app-title-row .nav-btn { padding: 3px 10px; font-size: calc(12px
 .stat-unit { color: var(--ink-muted); font-size: calc(12px * var(--text-scale)); }
 .stat-sub { color: var(--ink-muted); font-size: calc(11.5px * var(--text-scale)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stat-spark { display: block; margin-top: 4px; overflow: visible; }
+/* a row of headline numbers under a chart (research Linearising HIPS): tiles wrap on a phone */
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px 18px; margin: 10px 0 4px; }
+.readouts .stat-value strong { font-size: calc(20px * var(--text-scale)); }
 
 /* site cards (charts/summary/SiteCards) */
 .site-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; align-content: start; padding: 2px; }

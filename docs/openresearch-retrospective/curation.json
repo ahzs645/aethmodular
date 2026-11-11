@@ -17,6 +17,9 @@
     },
     "ftir_49": {
       "note": "Recorded daily-pickle fallback; minute-only diagnostics are not established by that fallback run."
+    },
+    "addis_reference_closure_20261110": {
+      "note": "IMPROVE HIPS optical depth against same-day thermal EC (348,000 samples) bends toward a ceiling of 2.26 [1.82, 2.70]; Addis filters (median 0.97, up to 1.51) sit on the bend. Linearising, tau_lin = tau / (1 - tau/ceiling), moves the Addis Deming fit of published FTIR EC on HIPS BC from 2.31x - 6.17 to 0.55x + 0.01 (intercept +1.59 to -0.97 across the interval), and shrinks the Bega-to-Kiremt swing in FTIR / HIPS within lot 251 from 54 % to 18 %. The ceiling is borrowed from IMPROVE (1.71 for 2015-2025); linearised HIPS is still optical, so the FTIR level and the Addis MAC stay tangled. The gallery page recomputes every fit at the chosen ceiling and reproduces the workflow's saved values."
     }
   },
   "additional_records": [
@@ -155,6 +158,19 @@
         "research/ftir_hips_chem/scripts/vibes_error_audit.py",
         "research/ftir_hips_chem/workflows/audit_vibes_saved_predictions.py",
         "tests/test_vibes_error_audit.py"
+      ]
+    },
+    {
+      "id": "addis_reference_closure_20261110",
+      "kind": "reference_validation",
+      "title": "Linearising HIPS at Addis: the IMPROVE thermal-EC ceiling and the Addis intercept",
+      "source": "docs/addis-reference-closure-2026-11-10.md",
+      "evidence_status": "artifacts_inspected",
+      "artifact_files": [
+        "research/ftir_hips_chem/workflows/run_addis_reference_closure_20261110.py",
+        "research/ftir_hips_chem/scripts/reference_closure.py",
+        "docs/addis-reference-closure-2026-11-10.json",
+        "gallery/data/export_research_hips_linearise.py"
       ]
     }
   ],
@@ -308,6 +324,16 @@
       "from": "vibes_full_colab",
       "to": "vibes_subgroup_audit",
       "reason": "Completed frozen predictions support paired subgroup diagnosis without refitting or changing test membership."
+    },
+    {
+      "from": "ftir_37",
+      "to": "addis_reference_closure_20261110",
+      "reason": "ftir_37 found IMPROVE's Fabs-TOR response concave at high loading; the closure fits that bend as a saturating ceiling in optical depth and inverts it for Addis."
+    },
+    {
+      "from": "ftir_26",
+      "to": "addis_reference_closure_20261110",
+      "reason": "ftir_26 ruled out an IMPROVE intercept at EC = 0; the closure attributes the Addis intercept to HIPS compression on dark filters instead."
     }
   ],
   "reviewed_evidence": [
