@@ -10,6 +10,21 @@ mass-per-filter view in [`mass-per-filter.md`](mass-per-filter.md).
 
 ## Decisions needed
 
+### Decide how HIPS is handled across the network, and ask about the Addis sampled volume (11 Nov 2026)
+
+The 10 Nov HIPS bend, applied to every SPARTAN filter: 12 of 30 sites lose more than a fifth of the absorption on their
+median filter (Addis 42 %, Kanpur 35 %, Dhaka 33 %, Delhi 21 %), and the loss follows the filter's optical depth, which is
+the air times the sampled volume. Delhi's air is as heavy as Addis's, but its volume was cut from 7 to 3.6 to 1.8 m³ and it
+loses half as much; Addis has stayed at 7.2 m³. The correction is known to ±3 % on filters that lose up to a fifth (69 % of
+the network, no Addis filter) and to ±13 % beyond three tenths, and only 6 of the 12 sites that can tell match the curve.
+Decisions for Ann and the committee: (1) carry the HIPS optical depth beside every HIPS value in the gallery and the paper;
+(2) use HIPS as a yardstick for FTIR EC only on filters that lose a fifth or less, linearised, and treat darker filters as
+evidence about shape; (3) whether to ask SPARTAN for 3.6 or 1.8 m³ at Addis (27 % and 15 % expected, against 42 % now), and
+at Ilorin and Bandung, which also still sample 7.2 m³; (4) whether linearised HIPS for every filter is shown at all,
+and if so only as a stated sensitivity. Unexplained: Santiago and Talca are far more compressed than predicted, and
+Johannesburg and Pretoria less. Account and limits: [hips-network-2026-11-11.md](hips-network-2026-11-11.md); gallery
+Meeting tab, Nov 11.
+
 ### Decide what the Addis offset finding changes (10 Nov 2026)
 
 Without using the aethalometer (the Addis MA350 is not a reference): IMPROVE's thermal EC shows HIPS falling behind as

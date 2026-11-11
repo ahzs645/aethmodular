@@ -989,6 +989,150 @@
    "file": "meetings/closure-20261110.meeting.ts"
   },
   {
+   "title": "Addis Ababa loses the most, 42 %; Delhi 21 %; thirteen sites under a tenth",
+   "id": "h1111-sites",
+   "component": "bars",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "Every site: the air, the volume, the optical depth and the share of filters past each mark",
+   "id": "h1111-sites-table",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "Addis, Delhi and Jaipur have the heaviest air; only Addis draws the full 7.2 m³ through the filter",
+   "id": "h1111-air-volume",
+   "component": "scatter",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "The same air at each of SPARTAN's three volumes: Addis would lose 27 % at 3.6 m³ and 15 % at 1.8 m³",
+   "id": "h1111-replay",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "Every filter through time, coloured by sampled volume: Delhi's volume was cut twice, Addis's never",
+   "id": "h1111-history",
+   "component": "scatter",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "Delhi, same months at two volumes: more absorption per unit PM2.5 at the lower volume, as the curve predicts",
+   "id": "h1111-matched",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "Sites that have sampled at more than one volume",
+   "id": "h1111-regimes",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "Expected under-read by site and calendar month: Addis is above a third all year",
+   "id": "h1111-months",
+   "component": "heatmap",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "How far each site swings between its best and worst month",
+   "id": "h1111-swing",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "Two thirds of the network's filters lose a fifth or less; 594 lose more than three tenths",
+   "id": "h1111-bands",
+   "component": "bars",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "The correction is known to ±3 % up to a fifth, and to ±13 % beyond three tenths",
+   "id": "h1111-bands-table",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "Where each site's filters fall: 95 % of Addis filters are in the last band",
+   "id": "h1111-bands-site",
+   "component": "heatmap",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "One site's filters by optical depth: 0.45 is a fifth lost, 0.68 three tenths",
+   "id": "h1111-tau",
+   "component": "histogram",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "Observed exponent of HIPS against FTIR EC beside what the curve predicts, for the twelve sites that can tell",
+   "id": "h1111-exponents",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "The twelve sites that can tell: observed follows predicted, with Addis and the Chilean sites below and the South African sites above",
+   "id": "h1111-agreement",
+   "component": "scatter",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "All 23 sites with enough filters, including the eleven whose interval is too wide to read",
+   "id": "h1111-evidence-table",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "The tally",
+   "id": "h1111-tally",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "Six ways to handle it, and where each stands on the evidence above",
+   "id": "h1111-options",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-network-20261111",
+   "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
    "title": "Addis slope and intercept by season, for five ways of choosing the IMPROVE calibration filters",
    "id": "m1028-cals",
    "component": "intervals",
