@@ -234,7 +234,13 @@ gallery/app/public/data/rank70/
 gallery/app/public/data/satoshi/
 
 # Experimental tab exports (gallery/data/export_experimental.py, export_experiments.py): per-filter predictions
-gallery/app/public/data/experimental/
+gallery/app/public/data/experimental/*
+# ...except what "VIBES on one spectrum" solves with (gallery/data/export_vibes_background.py; 1.8 MB together).
+# They are committed so the page works on the site before a data release carries them; the deploy keeps a
+# committed export that the release does not have.
+!gallery/app/public/data/experimental/vibes_background.json
+!gallery/app/public/data/experimental/vibes_background.bin
+!gallery/app/public/data/experimental/vibes_saved_fits.json
 
 # full-gallery Pages build (gallery/share/publish_pages.py)
 gallery/share/pages-dist/

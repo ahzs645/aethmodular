@@ -190,9 +190,10 @@ Where the pieces are:
 The built module is committed, so the gallery builds without Rust. `tests/test_vibes_wasm.py` fails if the Rust source
 changes without a rebuild (`wasm_demo.py build --gallery`).
 
-The background is 1.5 MB at full precision and is git-ignored like the other Experimental exports. The page shows the
-usual "run the exporter" panel until `export_vibes_background.py` has run, and the public site needs a data release that
-includes it. Without `vibes_saved_fits.json` the page still solves, but offers no 19 Oct preset and no settings table.
+The background (1.5 MB at full precision) and the saved-run records (0.2 MB) are committed, as an exception to the
+Experimental ignore rule, so the page works on the site before a data release carries them. Rerun
+`export_vibes_background.py` if the background or the saved runs change. Without `vibes_saved_fits.json` the page still
+solves, but offers no 19 Oct preset and no settings table.
 
 ## Limits
 
