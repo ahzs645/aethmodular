@@ -114,6 +114,19 @@ Before ÷ curve alone = after. Eleven more sites have intervals too wide to read
 A failed check means the site's filters bend differently from IMPROVE's, or FTIR EC is not proportional to the absorber
 there. With FTIR EC as the only reference, the check cannot say which.
 
+**Run it within each season too.** The correction is per filter, but a site's seasons can sit at different levels of HIPS
+per unit FTIR EC for reasons that are not loading. Pooled, that reads as a failed correction. At Addis the pooled check
+gives 0.84 while Bega, Belg and Kiremt each pass (1.10, 1.04, 1.13). At Johannesburg the site passes on average while
+winter is under-corrected and spring over-corrected. `aeth hips screen` reports both and writes `seasons.csv`; a file takes
+`--season COLUMN`. See [hips-seasons-2026-11-11.md](hips-seasons-2026-11-11.md).
+
+## Per site, per season or per filter
+
+Correct **per filter**. At the heavy sites one factor per site is wrong by 7 % on the typical filter and one per site and
+season by 5 %, and a season factor misses more than a quarter of filters by over a tenth. Only 15 % of the spread in the
+correction is between seasons; 44 % is between filters of the same site and season. Use **seasons to check** the
+correction, and the **site** to decide whether its HIPS can carry a level at all.
+
 ## What it writes
 
 | File | Rows | Use |
@@ -121,6 +134,7 @@ there. With FTIR EC as the only reference, the check cannot say which.
 | `filters.csv` | one per filter: tau, under-read, status, `beyond_reference`, factor, linearised Fabs with low and high | join to any analysis that uses HIPS |
 | `sites.csv` | one per site: shares by status, both tests beside their predictions, the reading, the check's verdict | which sites are corrected and which are shape only |
 | `propagation.csv` | one per site and quantity: reported, linearised, low, high | what to quote, and how far a reported result moves |
+| `seasons.csv` | one per site and season: the check within that season | which seasons pass, and where a pooled verdict misleads |
 
 ## How to report it
 

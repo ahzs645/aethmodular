@@ -57,6 +57,25 @@ Still unchecked after the audit: the 1966 Palmira climate passage, the full Palm
 2022 report, direct full-text access to the 14 papers read as indexed passages, and an
 official Central Weather Administration source for Taiwan's shifted quarters.
 
+## Checked against the climate (11 Nov 2026)
+
+Every calendar here is now scored against ERA5 monthly normals for 1991–2020 (`gallery/app/public/data/weather/normals_1991_2020.json`,
+from `research/ftir_hips_chem/workflows/fetch_climate_normals_era5.py`): the share of the month-to-month spread in rain and in
+temperature that falls between a calendar's seasons, beside the best split of the year into as many runs of consecutive
+months. Run `python research/ftir_hips_chem/workflows/run_hips_seasons_20261111.py --stages calendars`; results and limits are in
+[hips-seasons-2026-11-11.md](hips-seasons-2026-11-11.md) and the gallery's Meeting tab (Nov 11, "HIPS and seasons").
+
+- All 42 calendars cover each month once, and the Python calendars give the same months as these.
+- Addis's calendar in use (`belg_feb`) is the best three-season split of its climate; `dry_feb` is better on rain alone.
+- The alternatives with December in winter score higher at Kanpur (`dec_winter`), Jaipur (`imd_jaipur`) and Delhi
+  (`research_2026_04`) than the IMD national bins in use. Kaohsiung scores higher on standard quarters (`outlook`); Taipei
+  on the shifted ones in use.
+- Bujumbura is weak under both calendars, and its one-month short dry season is not drier than its rains in ERA5.
+- Wet, dry, cold and warm names hold at every site that has them, except Bujumbura's calendar in use.
+
+The score does not replace a national definition, and ERA5 rain is least reliable in mountains and on coasts. It is a
+measured second opinion, the same for every site. No calendar was changed.
+
 ## Sites with two calendars
 
 Where the sources support two different bins, both are kept and the gallery's Filters

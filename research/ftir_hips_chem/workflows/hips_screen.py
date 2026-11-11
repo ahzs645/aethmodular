@@ -9,7 +9,8 @@
 
 For each filter: the HIPS optical depth, the expected under-read, a status (use linearised, caution, shape
 only), and the linearised Fabs with its range. For each site: whether its own data show the bend, what the
-bend does to the numbers read off HIPS, and whether the correction removes it. A file needs Fabs (Mm-1) and
+bend does to the numbers read off HIPS, and whether the correction removes it, pooled and within each season
+(the gallery's calendars; --season for a file). A file needs Fabs (Mm-1) and
 the sampled volume (m3), or the laboratory's own optical depth with --tau; the site tests also need a
 reference (FTIR EC), an instrument (weighed PM2.5) and a date. Protocol: docs/hips-loading-protocol.md.
 The ceiling is IMPROVE's; no aethalometer data are used.
@@ -41,13 +42,15 @@ def from_gallery(codes):
         if missing:
             raise SystemExit(f"no filters with HIPS and a volume for: {', '.join(missing)}")
         f = f[f["code"].isin(codes)]
-    return f
+    import run_hips_seasons_20261111 as seasons
+
+    return f.assign(season=seasons.season_of(f, seasons.load_calendars()))    # each site's calendar in use
 
 
 def from_file(a):
     raw = pd.read_csv(a.input)
     names = {"fabs": a.fabs, "volume": a.volume, "tau": a.tau, "ftir_ec": a.reference, "pm25": a.instrument, "date": a.date,
-             "code": a.site_column, "id": a.id}
+             "code": a.site_column, "id": a.id, "season": a.season}
     missing = [f"--{k} {v}" for k, v in names.items() if v and v not in raw]
     if missing:
         raise SystemExit(f"{a.input} has no column for: {', '.join(missing)}")
@@ -98,6 +101,7 @@ def main(argv=None) -> int:
     ap.add_argument("--date", help="column: sampling date (for the seasonal contrast)")
     ap.add_argument("--site-column", help="column: site code (default: one site, named after the file)")
     ap.add_argument("--id", help="column: filter id")
+    ap.add_argument("--season", help="column: season label, for the check within seasons")
     ap.add_argument("--out", help="folder for filters.csv, sites.csv and propagation.csv")
     ap.add_argument("--boot", type=int, default=500, help="bootstrap draws for the intervals")
     a = ap.parse_args(argv)
@@ -108,11 +112,18 @@ def main(argv=None) -> int:
 
     f = from_file(a) if a.input else from_gallery(a.site)
     screened = hl.screen(f, tau=a.tau if a.input else None)
-    sites, traced_all = [], []
+    sites, traced_all, by_season = [], [], []
     for (code, site), part in screened.groupby(["code", "site"], sort=False):
         found, checked = hl.identify(part, n_boot=a.boot), hl.check(part, n_boot=a.boot)
         traced = hl.propagate(part) if "month" in part else pd.DataFrame(columns=["quantity", "reported", "linearised", "lo", "hi"])
         print(report(code, site, found, traced, checked))
+        if "season" in part:
+            within = hl.check_by(part, n_boot=a.boot)
+            for row in within.itertuples():
+                tail = (f"exponent after correcting {row.exponent_after:.2f} [{row.after_lo:.2f}, {row.after_hi:.2f}]: {row.verdict}"
+                        if isinstance(getattr(row, "exponent_after", None), float) and row.exponent_after == row.exponent_after else row.verdict)
+                print(f"    by season  {row.season:<34} {row.filters:4d} filters, optical depth {row.median_tau:.2f}; {tail}")
+            by_season.append(within.assign(code=code, site=site))
         sites.append({"code": code, "site": site} | found | {f"check_{k}": v for k, v in checked.items()})
         traced_all.append(traced.assign(code=code, site=site))
     if a.out:
@@ -121,7 +132,9 @@ def main(argv=None) -> int:
         screened[[c for c in FILTER_COLUMNS if c in screened]].to_csv(out / "filters.csv", index=False)
         pd.DataFrame(sites).to_csv(out / "sites.csv", index=False)
         pd.concat(traced_all, ignore_index=True).to_csv(out / "propagation.csv", index=False)
-        print(f"\nwrote filters.csv ({len(screened)} filters), sites.csv and propagation.csv to {out}")
+        if by_season:
+            pd.concat(by_season, ignore_index=True).to_csv(out / "seasons.csv", index=False)
+        print(f"\nwrote filters.csv ({len(screened)} filters), sites.csv, propagation.csv{' and seasons.csv' if by_season else ''} to {out}")
     return 0
 
 

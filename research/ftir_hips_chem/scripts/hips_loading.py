@@ -8,7 +8,7 @@ with HIPS Fabs and a sampled volume:
     screen     each filter: optical depth, expected under-read, a status, the corrected value and its range
     identify   one site: do its own data show the bend (no curve assumed)?
     propagate  one site: what the bend does to the numbers people read off HIPS
-    check      one site: after correcting, are the signs of the bend gone?
+    check      one site: after correcting, are the signs of the bend gone? (check_by: the same within each season)
 
 The ceiling is IMPROVE's. HIPS is optical and FTIR EC is FTIR-derived; neither is thermal EC. Nothing here
 uses aethalometer data. Protocol: docs/hips-loading-protocol.md.
@@ -228,7 +228,7 @@ def propagate(screened: pd.DataFrame, *, fabs="fabs", reference="ftir_ec", pm="p
     return table
 
 
-def check(screened: pd.DataFrame, *, fabs="fabs", reference="ftir_ec", instrument="pm25", n_boot=500) -> dict[str, float]:
+def check(screened: pd.DataFrame, *, fabs="fabs", reference="ftir_ec", instrument="pm25", n_boot=500, min_filters=MIN_TEST) -> dict[str, float]:
     """Step 4 for a site: after linearising, is HIPS proportional to the reference, and is the intercept gone?
 
     The correction has done its job when the exponent's interval includes 1. Below 1, the site is more compressed than
@@ -238,7 +238,7 @@ def check(screened: pd.DataFrame, *, fabs="fabs", reference="ftir_ec", instrumen
     """
     have = [c for c in (reference, instrument) if c in screened]
     part = screened[(screened[have] > 0).all(axis=1) & np.isfinite(screened["fabs_linearised"])] if len(have) == 2 else screened.iloc[0:0]
-    if len(part) < MIN_TEST:
+    if len(part) < min_filters:
         return {"tested_filters": int(len(part)), "verdict": "cannot be tested"}
     before = _exponent(part[fabs], part[reference], part[instrument], n_boot)
     after = _exponent(part["fabs_linearised"], part[reference], part[instrument], n_boot)
@@ -253,3 +253,17 @@ def check(screened: pd.DataFrame, *, fabs="fabs", reference="ftir_ec", instrumen
             "exponent_predicted": predicted[""], "predicted_lo": min(predicted["_lo"], predicted["_hi"]), "predicted_hi": max(predicted["_lo"], predicted["_hi"]),
             "exponent_after": after["exponent"], "after_lo": after["lo"], "after_hi": after["hi"],
             "slope_after": float(line["slope"]), "intercept_after": float(line["intercept"]), "verdict": verdict}
+
+
+def check_by(screened: pd.DataFrame, by="season", *, min_filters=30, n_boot=500, **columns) -> pd.DataFrame:
+    """Step 4 within each group of ``by`` (a season): the check, run where a group has enough filters.
+
+    The correction is per filter, but a site's seasons can sit at different levels of Fabs per unit of the reference
+    for reasons that have nothing to do with loading. Pooled, that reads as a failed correction; within seasons it
+    does not. Run both.
+    """
+    rows = []
+    for name, part in screened.groupby(by, sort=False):
+        rows.append({by: name, "filters": int(len(part)), "median_tau": float(part["tau"].median())}
+                    | check(part, n_boot=n_boot, min_filters=min_filters, **columns))
+    return pd.DataFrame(rows)

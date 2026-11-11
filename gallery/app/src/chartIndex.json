@@ -1245,6 +1245,110 @@
    "file": "meetings/hips-procedure-20261111.meeting.ts"
   },
   {
+   "title": "One factor for a group against each filter's own: finer groups help, but a season is still wrong by about as much as the ceiling is uncertain",
+   "id": "hs-levels",
+   "component": "bars",
+   "tab": "meeting",
+   "meeting": "hips-seasons-20261111",
+   "file": "meetings/hips-seasons-20261111.meeting.ts"
+  },
+  {
+   "title": "The same, with the worst tenth of filters and the share missed by more than a tenth",
+   "id": "hs-levels-table",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-seasons-20261111",
+   "file": "meetings/hips-seasons-20261111.meeting.ts"
+  },
+  {
+   "title": "Where the spread in the correction lies: seasons carry the least",
+   "id": "hs-variance",
+   "component": "bars",
+   "tab": "meeting",
+   "meeting": "hips-seasons-20261111",
+   "file": "meetings/hips-seasons-20261111.meeting.ts"
+  },
+  {
+   "title": "Site by site: how far each coarser factor is from the filter's own",
+   "id": "hs-levels-site",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-seasons-20261111",
+   "file": "meetings/hips-seasons-20261111.meeting.ts"
+  },
+  {
+   "title": "The check pooled and within seasons: Addis fails pooled but holds within seasons",
+   "id": "hs-within",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "hips-seasons-20261111",
+   "file": "meetings/hips-seasons-20261111.meeting.ts"
+  },
+  {
+   "title": "Each site's reading, and how far HIPS per unit FTIR EC differs between its seasons",
+   "id": "hs-within-table",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-seasons-20261111",
+   "file": "meetings/hips-seasons-20261111.meeting.ts"
+  },
+  {
+   "title": "One site, season by season: how dark the filters are, and whether the correction holds",
+   "id": "hs-site-seasons",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-seasons-20261111",
+   "file": "meetings/hips-seasons-20261111.meeting.ts"
+  },
+  {
+   "title": "Every calendar in use, scored against 1991–2020 rain and temperature",
+   "id": "hs-calendars",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-seasons-20261111",
+   "file": "meetings/hips-seasons-20261111.meeting.ts"
+  },
+  {
+   "title": "Sites with two calendars on file: December in winter fits better at the Indian sites; Addis's calendar in use is the best",
+   "id": "hs-alternatives",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-seasons-20261111",
+   "file": "meetings/hips-seasons-20261111.meeting.ts"
+  },
+  {
+   "title": "The climate the calendars are scored against: one site's year",
+   "id": "hs-climate",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "hips-seasons-20261111",
+   "file": "meetings/hips-seasons-20261111.meeting.ts"
+  },
+  {
+   "title": "The calendars in the Python code and in the gallery are the same",
+   "id": "hs-consistency",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-seasons-20261111",
+   "file": "meetings/hips-seasons-20261111.meeting.ts"
+  },
+  {
+   "title": "How much of the monthly cycle in expected under-read the calendar carries, and whether it follows rain or temperature",
+   "id": "hs-cycle",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-seasons-20261111",
+   "file": "meetings/hips-seasons-20261111.meeting.ts"
+  },
+  {
+   "title": "Correct per filter, check per season, keep the calendars and score them",
+   "id": "hs-actions",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-seasons-20261111",
+   "file": "meetings/hips-seasons-20261111.meeting.ts"
+  },
+  {
    "title": "Addis slope and intercept by season, for five ways of choosing the IMPROVE calibration filters",
    "id": "m1028-cals",
    "component": "intervals",

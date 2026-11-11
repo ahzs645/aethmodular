@@ -10,6 +10,22 @@ mass-per-filter view in [`mass-per-filter.md`](mass-per-filter.md).
 
 ## Decisions needed
 
+### Decide four season-calendar questions the climate check raised (11 Nov 2026)
+
+Every calendar is now scored against 1991–2020 ERA5 normals (how much of the year's cycle in rain and temperature falls
+between its seasons). Structure is sound and Addis's calendar in use is the best split of its climate, so nothing is
+broken. Four things need a decision, because frozen results name their calendar and a change means a new version, not an
+edit: (1) December at Delhi, Jaipur and Kanpur: the calendars with December in winter fit better than the IMD national
+bins in use (Kanpur 0.82 against 0.78, Jaipur 0.76 against 0.72, Delhi 0.81 against 0.76); (2) Kaohsiung: standard
+quarters fit better than the shifted quarters in use (0.82 against 0.75), Taipei the reverse; (3) Bujumbura: weak under
+both calendars (0.42 and 0.44), and its one-month short dry season is not drier than its rains in ERA5; (4) whether this
+score becomes the standard check for any new or changed calendar. Separately for HIPS: the correction is per filter, but
+the check should be run within seasons; a rule is proposed that a season failing its check is treated as shape only
+without downgrading the site's other seasons (Johannesburg winter and spring, Kaohsiung winter, Beijing summer). At
+Addis, HIPS per unit FTIR EC stays 1.36 times higher in Bega than in Kiremt after correcting, which is a season effect in
+absorption or in FTIR EC and still unexplained. Account: [hips-seasons-2026-11-11.md](hips-seasons-2026-11-11.md); gallery
+Meeting tab, Nov 11, "HIPS and seasons".
+
 ### Decide how HIPS is handled across the network, and ask about the Addis sampled volume (11 Nov 2026)
 
 The 10 Nov HIPS bend, applied to every SPARTAN filter: 12 of 30 sites lose more than a fifth of the absorption on their

@@ -68,7 +68,7 @@ aeth hips screen --input batch.csv --fabs Fabs --volume Volume --reference EC --
 ```
 
 Marks each filter by how much HIPS is expected to under-read on it, gives the linearised Fabs with its range, and tests
-each site. The protocol is [hips-loading-protocol.md](hips-loading-protocol.md).
+each site, pooled and within each season of its calendar (`--season COLUMN` for a file). The protocol is [hips-loading-protocol.md](hips-loading-protocol.md).
 
 ## SPARTAN workflows
 
