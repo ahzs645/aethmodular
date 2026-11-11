@@ -1101,7 +1101,7 @@
    "file": "meetings/hips-network-20261111.meeting.ts"
   },
   {
-   "title": "The twelve sites that can tell: observed follows predicted, with Addis and the Chilean sites below and the South African sites above",
+   "title": "The twelve sites that can tell: observed follows predicted, with Addis, Delhi and the Chilean sites below and Johannesburg and Taipei above",
    "id": "h1111-agreement",
    "component": "scatter",
    "tab": "meeting",
@@ -1131,6 +1131,118 @@
    "tab": "meeting",
    "meeting": "hips-network-20261111",
    "file": "meetings/hips-network-20261111.meeting.ts"
+  },
+  {
+   "title": "Identify, trace, correct, check: what each step asks, computes, needs and gives",
+   "id": "hp-steps",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-procedure-20261111",
+   "file": "meetings/hips-procedure-20261111.meeting.ts"
+  },
+  {
+   "title": "Every filter gets a status: Addis has none it can use for level; thirteen sites can use almost all",
+   "id": "hp-status",
+   "component": "heatmap",
+   "tab": "meeting",
+   "meeting": "hips-procedure-20261111",
+   "file": "meetings/hips-procedure-20261111.meeting.ts"
+  },
+  {
+   "title": "A test that assumes no curve: Fabs ÷ FTIR EC on the most loaded third of filters over the least loaded third",
+   "id": "hp-ratios",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "hips-procedure-20261111",
+   "file": "meetings/hips-procedure-20261111.meeting.ts"
+  },
+  {
+   "title": "Each site's reading: expected and seen at eight, expected but untestable at five",
+   "id": "hp-found",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-procedure-20261111",
+   "file": "meetings/hips-procedure-20261111.meeting.ts"
+  },
+  {
+   "title": "One site, every number: reported, linearised, and the range the ceiling allows",
+   "id": "hp-traced",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-procedure-20261111",
+   "file": "meetings/hips-procedure-20261111.meeting.ts"
+  },
+  {
+   "title": "How far each number moves at each site: levels rise, seasons widen, slopes fall",
+   "id": "hp-change",
+   "component": "heatmap",
+   "tab": "meeting",
+   "meeting": "hips-procedure-20261111",
+   "file": "meetings/hips-procedure-20261111.meeting.ts"
+  },
+  {
+   "title": "The order of sites changes: Delhi reports the most BC, but linearised Addis and Delhi are level",
+   "id": "hp-ranks",
+   "component": "crossplot",
+   "tab": "meeting",
+   "meeting": "hips-procedure-20261111",
+   "file": "meetings/hips-procedure-20261111.meeting.ts"
+  },
+  {
+   "title": "Straight-line fits of FTIR EC on HIPS BC: the slope above 1 with a negative intercept is the bend's signature",
+   "id": "hp-fits",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-procedure-20261111",
+   "file": "meetings/hips-procedure-20261111.meeting.ts"
+  },
+  {
+   "title": "The correction is known to ±2 % where it is small and ±13 % where it is large",
+   "id": "hp-by-status",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-procedure-20261111",
+   "file": "meetings/hips-procedure-20261111.meeting.ts"
+  },
+  {
+   "title": "Every filter, reported against linearised: the correction grows with the filter's darkness, not the site",
+   "id": "hp-points",
+   "component": "scatter",
+   "tab": "meeting",
+   "meeting": "hips-procedure-20261111",
+   "file": "meetings/hips-procedure-20261111.meeting.ts"
+  },
+  {
+   "title": "The exponent before and after correcting: it should reach 1",
+   "id": "hp-after",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "hips-procedure-20261111",
+   "file": "meetings/hips-procedure-20261111.meeting.ts"
+  },
+  {
+   "title": "The verdict at every site",
+   "id": "hp-checked",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-procedure-20261111",
+   "file": "meetings/hips-procedure-20261111.meeting.ts"
+  },
+  {
+   "title": "Three tables from one command",
+   "id": "hp-outputs",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-procedure-20261111",
+   "file": "meetings/hips-procedure-20261111.meeting.ts"
+  },
+  {
+   "title": "When to run it again, and what would change the answer",
+   "id": "hp-revisit",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "hips-procedure-20261111",
+   "file": "meetings/hips-procedure-20261111.meeting.ts"
   },
   {
    "title": "Addis slope and intercept by season, for five ways of choosing the IMPROVE calibration filters",

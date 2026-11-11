@@ -124,14 +124,15 @@ exponents = pd.concat([
 ]).sort_values(["median_tau", "kind"], ascending=[False, True])
 count = lambda name: int(tally.loc[name, "sites"]) if name in tally.index else 0  # noqa: E731
 text_evidence = f"""**The test.** If HIPS bends, a site's HIPS should rise more slowly than its FTIR EC, by an exponent the curve
-predicts from that site's optical depths. The exponent uses weighed PM2.5 as the instrument, so random error in FTIR EC does not
-flatten it. **What it shows.** {len(told)} of {len(evidence)} sites have an interval narrow enough to tell. {count('as predicted')} match the
-prediction, Delhi among them ({ev.loc['INDH', 'observed']:.2f} [{ev.loc['INDH', 'lo']:.2f}, {ev.loc['INDH', 'hi']:.2f}] against
-{ev.loc['INDH', 'predicted']:.2f}). {count('more compressed than predicted')} are more compressed than predicted (Addis Ababa and the two
-Chilean sites) and {count('less compressed than predicted')} less (Johannesburg, Pretoria, Taipei). Across the {len(told)}, observed follows
-predicted with a correlation of {agree.correlation:.2f}. **What it does not show.** That one ceiling fits every site. FTIR EC is not
-thermal EC (our refit of it carries an offset on light filters), the exponent cannot separate a HIPS bend from an FTIR one, and where EC is a small
-or unsteady share of PM2.5 the instrument is weak. The direction holds across the network; the size is not confirmed site by site."""
+predicts for that site's filters. The exponent uses weighed PM2.5 as the instrument, so random error in FTIR EC does not flatten it.
+The prediction is the exponent of reported against linearised HIPS, so it allows for filters sampled at different volumes.
+**What it shows.** {len(told)} of {len(evidence)} sites have an interval narrow enough to tell. {count('as predicted')} match the prediction.
+{count('more compressed than predicted')} are more compressed than predicted: Addis Ababa, the two Chilean sites, and Delhi by a little
+({ev.loc['INDH', 'observed']:.2f} [{ev.loc['INDH', 'lo']:.2f}, {ev.loc['INDH', 'hi']:.2f}] against {ev.loc['INDH', 'predicted']:.2f}).
+{count('less compressed than predicted')} are less (Johannesburg, Taipei). Across the {len(told)}, observed follows predicted with a correlation
+of {agree.correlation:.2f}. **What it does not show.** That one ceiling fits every site. FTIR EC is not thermal EC (our refit of it carries
+an offset on light filters), the exponent cannot separate a HIPS bend from an FTIR one, and where EC is a small or unsteady share of
+PM2.5 the instrument is weak. The direction holds across the network; the size is not confirmed site by site."""
 
 # ---------------------------------------------------------------- 6. what to do
 share = lambda mask: pct(mask.mean())  # noqa: E731

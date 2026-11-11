@@ -59,6 +59,17 @@ aeth data resample --site ETAD --site Delhi
 The resampling pipeline accepts either site codes or configured site names. Its
 default remains all configured sites.
 
+## HIPS on loaded filters
+
+```bash
+aeth hips screen                               # every SPARTAN site: identify, trace, correct, check
+aeth hips screen --site ETAD INDH --out OUT    # chosen sites; writes filters.csv, sites.csv, propagation.csv
+aeth hips screen --input batch.csv --fabs Fabs --volume Volume --reference EC --instrument PM25 --date SampleDate
+```
+
+Marks each filter by how much HIPS is expected to under-read on it, gives the linearised Fabs with its range, and tests
+each site. The protocol is [hips-loading-protocol.md](hips-loading-protocol.md).
+
 ## SPARTAN workflows
 
 ```bash

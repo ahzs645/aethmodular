@@ -55,6 +55,10 @@ DRIVE_COMMANDS = {
     "mirror": "scripts/pipelines/mirror_davis_drive.py",
 }
 
+HIPS_COMMANDS = {
+    "screen": "research/ftir_hips_chem/workflows/hips_screen.py",
+}
+
 BUILD_GROUPS = {
     "ftir-calibration": "research/ftir_ec_calibration_2026_06_25",
     "spartan-ec": "research/spartan_ec_2026_06_16",
@@ -317,6 +321,10 @@ def command_drive(args: argparse.Namespace) -> int:
     return _run_script(DRIVE_COMMANDS[args.workflow], args.script_args)
 
 
+def command_hips(args: argparse.Namespace) -> int:
+    return _run_script(HIPS_COMMANDS[args.workflow], args.script_args)
+
+
 def _build_targets(group: str) -> dict[str, Path]:
     directory = _repo_path(BUILD_GROUPS[group])
     targets = {}
@@ -475,6 +483,11 @@ def build_parser() -> argparse.ArgumentParser:
     drive.add_argument("workflow", choices=sorted(DRIVE_COMMANDS))
     drive.add_argument("script_args", nargs=argparse.REMAINDER, help="Arguments passed to the workflow.")
     drive.set_defaults(func=command_drive)
+
+    hips = subparsers.add_parser("hips", help="Screen filters for the HIPS bend (docs/hips-loading-protocol.md).")
+    hips.add_argument("workflow", choices=sorted(HIPS_COMMANDS))
+    hips.add_argument("script_args", nargs=argparse.REMAINDER, help="Arguments passed to the workflow.")
+    hips.set_defaults(func=command_hips)
 
     build = subparsers.add_parser("build", help="Discover and run research artifact builders.")
     build_sub = build.add_subparsers(dest="build_command", required=True)

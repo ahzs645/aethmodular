@@ -13,6 +13,7 @@ script applies that to every SPARTAN filter and asks:
   bands     which filters, wherever they are, form the affected group, and how sure the correction is
   evidence  whether each site's own HIPS and FTIR EC show the bend the IMPROVE curve predicts
   matched   Delhi filters of the same calendar months sampled at two volumes
+  procedure the four steps of scripts/hips_loading.py at every site: identify, propagate, correct, check
 
 Optical depth is  Fabs x sampled volume / (100 x 3.53 cm2), which equals the laboratory's own HIPS tau on
 the 546 filters where both are on file. Inputs are committed files only: the gallery's SPARTAN table and
@@ -33,7 +34,9 @@ import pandas as pd
 AREA = Path(__file__).resolve().parents[1]
 ROOT = AREA.parents[1]
 sys.path.insert(0, str(AREA / "scripts"))
+import hips_loading as hl  # noqa: E402
 import reference_closure as rc  # noqa: E402
+from hips_loading import at_volume, under_read  # noqa: E402,F401  (the definitions live with the procedure)
 
 NETWORK = ROOT / "gallery/app/public/data/spartan_reference.json"
 SITE_MAP = ROOT / "gallery/app/public/data/spartan_map.json"
@@ -49,7 +52,7 @@ VOLUMES = (7.2, 3.6, 1.8)   # the three sampled volumes SPARTAN has used (m3)
 REGIMES = {"1.8 m³": (0.0, 2.6), "3.6 m³": (2.6, 5.0), "7.2 m³": (5.0, 9.0), "14 m³ or more": (9.0, 1e3)}
 BANDS = (("under 5 %", 0.00, 0.05), ("5 to 10 %", 0.05, 0.10), ("10 to 20 %", 0.10, 0.20),
          ("20 to 30 %", 0.20, 0.30), ("over 30 %", 0.30, 9.99))
-STAGES = ("sites", "volume", "months", "bands", "evidence", "matched")
+STAGES = ("sites", "volume", "months", "bands", "evidence", "matched", "procedure")
 
 
 def ceiling() -> dict[str, float]:
@@ -59,19 +62,6 @@ def ceiling() -> dict[str, float]:
     return {"central": float(main["tau_inf"]), "lo": float(main["tau_inf_lo"]), "hi": float(main["tau_inf_hi"]),
             "early": float(rows.loc["2005–2014", "tau_inf"]), "late": float(rows.loc["2015–2025", "tau_inf"]),
             "improve_reach": float(rows.loc["six urban IMPROVE sites", "max_stratum_tau"])}
-
-
-def under_read(tau, top):
-    """Share of the absorption on the filter that HIPS does not report: 1 - tau / L = tau / ceiling."""
-    return np.clip(np.asarray(tau, dtype=float) / top, 0.0, 1.0)
-
-
-def at_volume(tau, volume, new_volume, top):
-    """The optical depth the same air would give at another sampled volume, through the same curve."""
-    tau = np.asarray(tau, dtype=float)
-    true = rc.linearise(tau, top) * new_volume / np.asarray(volume, dtype=float)
-    # a filter at or past the ceiling has no finite loading under the curve; it stays at the ceiling
-    return np.where(np.isfinite(true), true / (1.0 + np.where(np.isfinite(true), true, 0.0) / top), top)
 
 
 def band_of(share):
@@ -195,26 +185,32 @@ def stage_bands(f, top):
     return {"bands": pd.DataFrame(rows), "bands_by_site": by_site}
 
 
+READING = {"corrected": "as predicted", "under-corrected": "more compressed than predicted",
+           "over-corrected": "less compressed than predicted", "cannot tell": "cannot tell"}
+
+
 def stage_evidence(f, top, n_boot=500):
-    """Each site's own exponent of HIPS against FTIR EC beside what the IMPROVE curve predicts for its filters."""
+    """Each site's own exponent of HIPS against FTIR EC beside what the curve gives its filters (hips_loading.check).
+
+    The prediction is the exponent of reported against linearised HIPS with the same instrument, so it allows for
+    filters sampled at different volumes. A site is "as predicted" when linearising leaves an exponent whose interval
+    includes 1.
+    """
+    screened = hl.screen(f, ceiling=hl.Ceiling(top["central"], top["lo"], top["hi"], top["improve_reach"]))
     rows = []
-    for (code, site), part in f.groupby(["code", "site"]):
-        part = part[(part[["ftir_ec", "pm25"]] > 0).all(axis=1)]
-        if len(part) < MIN_EVIDENCE:
+    for (code, site), part in screened.groupby(["code", "site"]):
+        c = hl.check(part, n_boot=n_boot)
+        if "exponent_before" not in c:
             continue
-        r = rc.response_exponent(part["fabs"], part["ftir_ec"], part["pm25"], n_boot=n_boot)
-        predicted = float(np.mean(1.0 - under_read(part["tau"], top["central"])))
-        row = {"code": code, "site": site, "n": r["n"], "median_tau": float(part["tau"].median()), "predicted": predicted,
-               "predicted_lo": float(np.mean(1.0 - under_read(part["tau"], top["lo"]))),
-               "predicted_hi": float(np.mean(1.0 - under_read(part["tau"], top["hi"]))),
-               "observed": r["exponent"], "lo": r["lo"], "hi": r["hi"]}
-        k = part[part["potassium"] > 0]
+        tested = part[(part[["ftir_ec", "pm25"]] > 0).all(axis=1)]
+        row = {"code": code, "site": site, "n": c["tested_filters"], "median_tau": float(tested["tau"].median()),
+               "predicted": c["exponent_predicted"], "predicted_lo": c["predicted_lo"], "predicted_hi": c["predicted_hi"],
+               "observed": c["exponent_before"], "lo": c["before_lo"], "hi": c["before_hi"],
+               "after": c["exponent_after"], "after_lo": c["after_lo"], "after_hi": c["after_hi"], "reading": READING[c["verdict"]]}
+        k = tested[tested["potassium"] > 0]
         if len(k) >= MIN_EVIDENCE:
             p = rc.response_exponent(k["fabs"], k["ftir_ec"], k["potassium"], n_boot=n_boot)
             row |= {"observed_potassium": p["exponent"], "potassium_lo": p["lo"], "potassium_hi": p["hi"]}
-        width = row["hi"] - row["lo"]
-        row["reading"] = ("cannot tell" if width > 0.6 else "as predicted" if row["lo"] <= predicted <= row["hi"]
-                          else "more compressed than predicted" if row["hi"] < predicted else "less compressed than predicted")
         rows.append(row)
     evidence = pd.DataFrame(rows).sort_values("median_tau", ascending=False)
     told = evidence[evidence["reading"] != "cannot tell"]
@@ -259,8 +255,28 @@ def stage_matched(f, top, code="INDH", low="1.8 m³", high="3.6 m³", n_boot=200
     return {"volume_matched": table}
 
 
+def stage_procedure(f, top, n_boot=500):
+    """The procedure of scripts/hips_loading.py at every site: what it finds, what it changes, and whether it worked."""
+    top_ceiling = hl.Ceiling(top["central"], top["lo"], top["hi"], top["improve_reach"])
+    screened = hl.screen(f, ceiling=top_ceiling)
+    found, traced, checked = [], [], []
+    for (code, site), part in screened.groupby(["code", "site"]):
+        head = {"code": code, "site": site}
+        found.append(head | hl.identify(part, n_boot=n_boot, ceiling=top_ceiling))
+        traced.append(hl.propagate(part).assign(**head))
+        checked.append(head | {"median_tau": float(part["tau"].median())} | hl.check(part, n_boot=n_boot))
+    order = screened.groupby("code")["tau"].median().sort_values(ascending=False).index
+    by_code = lambda rows: pd.DataFrame(rows).set_index("code").loc[order].reset_index()  # noqa: E731
+    traced = pd.concat(traced, ignore_index=True)
+    traced["rank"] = traced["code"].map({c: i for i, c in enumerate(order)})
+    keep = ["id", "code", "site", "date", "fabs", "volume", "tau", "under_read", "under_read_lo", "under_read_hi", "status",
+            "beyond_reference", "factor", "fabs_linearised", "fabs_linearised_lo", "fabs_linearised_hi"]
+    return {"identified": by_code(found), "propagated": traced.sort_values(["rank", "key"]).drop(columns="rank"),
+            "checked": by_code(checked), "screened": screened[keep]}
+
+
 RUN = {"sites": stage_sites, "volume": stage_volume, "months": stage_months, "bands": stage_bands,
-       "evidence": stage_evidence, "matched": stage_matched}
+       "evidence": stage_evidence, "matched": stage_matched, "procedure": stage_procedure}
 
 
 def run(stages=STAGES):
@@ -280,7 +296,7 @@ def main(argv=None) -> int:
     tables, top = run(a.stages)
     pd.set_option("display.width", 250, "display.max_rows", 200, "display.float_format", lambda v: f"{v:.3g}")
     for name, table in tables.items():
-        if name != "filters":
+        if name not in ("filters", "screened"):
             print(f"\n== {name}\n{table.to_string(index=False)}")
     if a.summary:
         f = tables["filters"]
@@ -291,7 +307,7 @@ def main(argv=None) -> int:
                               "over_10": float((f["under_read"] > 0.10).mean()), "over_20": float((f["under_read"] > 0.20).mean()),
                               "over_30": float((f["under_read"] > 0.30).mean()), "at_or_above_ceiling": int((f["tau"] >= top["central"]).sum())}}
         for name, table in tables.items():
-            if name != "filters":
+            if name not in ("filters", "screened"):
                 payload[name] = json.loads(table.to_json(orient="records", double_precision=6))
         Path(a.summary).write_text(json.dumps(payload, indent=1, ensure_ascii=False) + "\n")
         print(f"\nwrote {a.summary}")

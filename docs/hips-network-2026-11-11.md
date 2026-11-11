@@ -11,9 +11,9 @@ aethalometer data are used. FTIR EC is FTIR-derived, HIPS is optical, and no SPA
 | Does the HIPS bend apply across the network? | **Wherever filters are dark.** 12 of 30 sites lose more than a fifth on their median filter; 13 lose under a tenth. Of 3,733 filters, 59 % lose more than a tenth, 31 % more than a fifth, 16 % more than three tenths. |
 | Is there a filter group we can identify? | **Yes, by optical depth.** Above 0.45 a filter loses more than a fifth; above 0.68, more than three tenths. That group is 594 filters at 17 sites, 235 of them Addis. |
 | Is it seasonal? | **At most heavy sites.** Santiago, Pretoria, Johannesburg and Delhi lose at least twice as much in their polluted season as in their cleanest month. Addis does not come down: 38 % in its best month. |
-| Does Delhi get affected? | **Yes, about half as much as Addis.** Its median filter loses 21 % [17 %, 26 %], and about 29 % from October to January. Its own exponent, 0.80 [0.74, 0.85], matches the prediction, 0.78. |
+| Does Delhi get affected? | **Yes, about half as much as Addis.** Its median filter loses 21 % [17 %, 26 %], and about 29 % from October to January. Its own data show the bend, slightly more than predicted: exponent 0.80 [0.74, 0.85] against 0.86, and 0.92 [0.87, 0.98] after correcting. |
 | Is it a volume issue? | **Volume is the lever, not the cause of most differences.** 26 of 30 sites sample about 7.2 m³, so between sites the air decides. Delhi and Jaipur have air as heavy as Addis's but sample half the volume or less. At 7.2 m³ Delhi would lose 42 %, the same as Addis. |
-| Does each site's own data show it? | **In direction, not site by site.** 12 of 23 sites can tell: 6 match the curve, 3 are more compressed, 3 less. |
+| Does each site's own data show it? | **In direction, not site by site.** 12 of 23 sites can tell: 6 match the curve, 4 are more compressed (Addis, Delhi, Santiago, Talca), 2 less. |
 | What can we do? | Carry the optical depth with every HIPS value. Use HIPS as a yardstick for FTIR EC only on filters that lose a fifth or less, linearised (69 % of the network, no Addis filter). Ask for a lower sampled volume at Addis. |
 
 ## The rule applied
@@ -118,26 +118,31 @@ the ceilings of IMPROVE 2005–2014 (2.53) and 2015–2025 (1.71). IMPROVE's own
 
 ## 5. Each site's own evidence
 
-The exponent b in `HIPS ∝ (FTIR EC)^b`, with weighed PM2.5 as the instrument, beside what the curve predicts from the site's
-optical depths. Twelve of 23 sites have an interval narrower than 0.6.
+The exponent b in `HIPS ∝ (FTIR EC)^b`, with weighed PM2.5 as the instrument, beside what the curve gives that site's
+filters. The prediction is the exponent of reported against linearised HIPS with the same instrument, so it allows for
+filters sampled at different volumes. Twelve of 23 sites have an interval narrower than 0.6.
 
-| Site | Filters | Optical depth | Predicted | Observed | Reading |
-|---|---|---|---|---|---|
-| Addis Ababa, Ethiopia | 246 | 0.95 | 0.57 | 0.46 [0.43, 0.50] | more compressed than predicted |
-| Dhaka, Bangladesh | 58 | 0.73 | 0.62 | 0.69 [0.56, 0.89] | as predicted |
-| Johannesburg, South Africa | 212 | 0.48 | 0.78 | 0.88 [0.80, 0.97] | less compressed than predicted |
-| Delhi, India | 133 | 0.47 | 0.78 | 0.80 [0.74, 0.85] | as predicted |
-| Pretoria, South Africa | 264 | 0.43 | 0.80 | 0.90 [0.81, 0.99] | less compressed than predicted |
-| Santiago, Chile | 191 | 0.41 | 0.78 | 0.56 [0.53, 0.59] | more compressed than predicted |
-| Kaohsiung, Taiwan | 160 | 0.28 | 0.88 | 0.83 [0.74, 0.92] | as predicted |
-| Beijing, China | 192 | 0.25 | 0.87 | 0.93 [0.81, 1.14] | as predicted |
-| Melbourne, Australia | 73 | 0.20 | 0.91 | 0.80 [0.61, 1.07] | as predicted |
-| Talca, Chile | 93 | 0.20 | 0.88 | 0.56 [0.52, 0.59] | more compressed than predicted |
-| Taipei, Taiwan | 260 | 0.16 | 0.92 | 1.06 [0.95, 1.19] | less compressed than predicted |
-| Pasadena, United States | 210 | 0.10 | 0.96 | 1.04 [0.83, 1.31] | as predicted |
+| Site | Filters | Optical depth | Predicted | Observed | After correcting | Reading |
+|---|---|---|---|---|---|---|
+| Addis Ababa, Ethiopia | 246 | 0.95 | 0.55 | 0.46 [0.43, 0.50] | 0.84 [0.77, 0.91] | more compressed than predicted |
+| Dhaka, Bangladesh | 56 | 0.73 | 0.67 | 0.68 [0.52, 0.91] | 1.01 [0.64, 1.43] | as predicted |
+| Johannesburg, South Africa | 212 | 0.48 | 0.79 | 0.88 [0.80, 0.97] | 1.10 [1.01, 1.21] | less compressed than predicted |
+| Delhi, India | 133 | 0.47 | 0.86 | 0.80 [0.74, 0.85] | 0.92 [0.87, 0.98] | more compressed than predicted |
+| Pretoria, South Africa | 264 | 0.43 | 0.81 | 0.90 [0.81, 0.99] | 1.10 [0.99, 1.21] | as predicted |
+| Santiago, Chile | 191 | 0.41 | 0.78 | 0.56 [0.53, 0.59] | 0.72 [0.68, 0.75] | more compressed than predicted |
+| Kaohsiung, Taiwan | 160 | 0.28 | 0.90 | 0.83 [0.74, 0.92] | 0.92 [0.83, 1.01] | as predicted |
+| Beijing, China | 192 | 0.25 | 0.88 | 0.93 [0.81, 1.14] | 1.06 [0.92, 1.29] | as predicted |
+| Melbourne, Australia | 73 | 0.20 | 0.98 | 0.80 [0.61, 1.07] | 0.81 [0.60, 1.13] | as predicted |
+| Talca, Chile | 93 | 0.20 | 0.86 | 0.56 [0.52, 0.59] | 0.65 [0.61, 0.68] | more compressed than predicted |
+| Taipei, Taiwan | 260 | 0.16 | 0.93 | 1.06 [0.95, 1.19] | 1.14 [1.02, 1.28] | less compressed than predicted |
+| Pasadena, United States | 210 | 0.10 | 0.96 | 1.04 [0.83, 1.31] | 1.08 [0.87, 1.36] | as predicted |
 
-Observed follows predicted with a correlation of 0.65 across the twelve. The eleven that cannot
+Observed follows predicted with a correlation of 0.69 across the twelve. The eleven that cannot
 tell are mostly light sites, and dust or sulfate sites where EC is a small share of PM2.5.
+
+An earlier version of this note gave Delhi's prediction as 0.78 and called it a match. That prediction averaged
+`1 − tau ÷ ceiling` over filters and ignored that Delhi's were sampled at three volumes. Allowed for, the prediction is
+0.86 and Delhi is slightly more compressed than the curve says.
 
 ## 6. What to do
 
@@ -146,7 +151,7 @@ tell are mostly light sites, and dust or sulfate sites where EC is a small share
 | Leave HIPS as reported | Fine at the 13 sites that lose under a tenth | 59 % of filters read more than a tenth low; heavy sites are mis-ranked | Not for heavy sites |
 | Carry the optical depth with every HIPS value | Costs nothing; it is the laboratory's own number | Corrects nothing by itself | Do it |
 | Linearise filters that lose up to a fifth; flag the rest | 69 % of filters; correction known to ±3 % | Leaves out every Addis filter and 54 % of Delhi's | Use for comparisons with FTIR EC |
-| Linearise every filter with one ceiling | Removes the bend on average | ±13 % above three tenths; 6 of 12 sites match; no thermal EC to check | A stated sensitivity, not a product |
+| Linearise every filter with one ceiling | Removes the bend on average | ±13 % above three tenths; 6 of 12 sites pass the check; no thermal EC | A stated sensitivity, not a product |
 | Sample less air at the heavy sites | Addis falls from 42 % to 27 % at 3.6 m³ and 15 % at 1.8 m³ | New filters only; less mass for other analyses; a break in the record | Ask SPARTAN |
 | Fit each site its own curve | Would absorb real differences between sites | Needs a reference that is not FTIR EC | Not with the data on file |
 
@@ -154,11 +159,16 @@ For Addis this means HIPS cannot set the FTIR EC level on the filters on file, b
 shows that the published slope and intercept come from the bend. For Delhi, 46 % of filters qualify, nine in ten of them
 outside October to January.
 
+## 7. The procedure
+
+The steps above are packaged as a procedure that runs on any set of filters: identify, trace, correct, check.
+See [hips-loading-protocol.md](hips-loading-protocol.md) and `aeth hips screen`.
+
 ## Limits
 
 - The curve is IMPROVE's. The same laboratory and filter type measure both networks, but SPARTAN has no thermal EC to test it.
 - The exponent test uses FTIR EC, which is not thermal EC, and cannot separate a bend in HIPS from one in FTIR EC.
-- Santiago and Talca are far more compressed than predicted, and Johannesburg and Pretoria less. Neither is explained.
+- Santiago and Talca are far more compressed than predicted, Addis and Delhi somewhat more, and Johannesburg and Taipei less. None is explained.
 - The volume replay assumes the curve holds at each volume. The Delhi comparison is 36 filters across two years.
 - Sampled volume is the recorded value. A sampler whose flow fell on a heavy filter would have drawn less than recorded.
 - Site medians pool every year on file; 7 sites have fewer than 60 filters.
@@ -168,7 +178,9 @@ outside October to January.
 ```bash
 python research/ftir_hips_chem/workflows/run_hips_network_20261111.py --summary
 python gallery/data/export_meeting_20261111.py
-python -m pytest -q tests/test_hips_network.py
+python gallery/data/export_meeting_20261111_procedure.py
+aeth hips screen --out OUT
+python -m pytest -q tests/test_hips_network.py tests/test_hips_loading.py
 ```
 
 Both read committed files only: `gallery/app/public/data/spartan_reference.json` and the 10 Nov summary.

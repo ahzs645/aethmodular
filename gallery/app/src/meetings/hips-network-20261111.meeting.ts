@@ -140,13 +140,13 @@ export default {
     },
     {
       id: 'evidence',
-      title: '5. Does each site\'s own data show it? Six of twelve as predicted, Delhi among them',
+      title: '5. Does each site\'s own data show it? Six of twelve as predicted; Addis, Delhi and the Chilean sites bend more',
       text: '@evidence',
       figures: [
         {
           kind: 'intervals', id: 'h1111-exponents', table: 'exponents', row: 'site', series: 'kind',
           title: 'Observed exponent of HIPS against FTIR EC beside what the curve predicts, for the twelve sites that can tell',
-          subtitle: 'b in HIPS ∝ (FTIR EC)^b, with weighed PM2.5 as the instrument; 1 is proportional. Bars: 95 % bootstrap over filters (observed), the ceiling\'s interval (predicted). Sites in order of optical depth, heaviest first.',
+          subtitle: 'b in HIPS ∝ (FTIR EC)^b, with weighed PM2.5 as the instrument; 1 is proportional. Predicted: reported against linearised HIPS, same instrument, so volume changes are allowed for. Bars: 95 % bootstrap over filters (observed), the ceiling\'s interval (predicted). Heaviest sites first.',
           panels: [{ value: 'value', label: 'Response exponent', reference: 1, lo: 'lo', hi: 'hi' }],
           labelWidth: 220,
           noteAlways: true, note: 'An exponent against FTIR EC cannot separate a bend in HIPS from one in FTIR EC, and PM2.5 is a weak instrument where EC is a small or unsteady share of it (dust and sulfate sites). ' + OPTICAL,
@@ -154,7 +154,7 @@ export default {
         {
           kind: 'scatter', id: 'h1111-agreement', table: 'told', x: 'predicted', y: 'observed', color: 'reading', idColumn: 'site', tipColumns: ['site', 'n', 'median_tau', 'lo', 'hi'],
           refX: [1], refY: [1], maxSide: 520, xLabel: 'exponent predicted from the IMPROVE curve', yLabel: 'exponent observed against FTIR EC',
-          title: 'The twelve sites that can tell: observed follows predicted, with Addis and the Chilean sites below and the South African sites above',
+          title: 'The twelve sites that can tell: observed follows predicted, with Addis, Delhi and the Chilean sites below and Johannesburg and Taipei above',
           subtitle: 'Sites whose interval is narrower than 0.6. On the diagonal the site bends as IMPROVE predicts.',
           noteAlways: true, note: OPTICAL,
         },
