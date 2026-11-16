@@ -10,6 +10,30 @@ mass-per-filter view in [`mass-per-filter.md`](mass-per-filter.md).
 
 ## Decisions needed
 
+### Decide the training set and k of the IMPROVE EC calibration together (16 Nov 2026)
+
+The 16 Nov settings check settled the VIBES solver, rank and tau (converged, 70, 0.1; no presets in the browser tool) and
+found that the calibration, not the baseline setting, is what moves SPARTAN EC. Three things need Ann and Satoshi.
+
+1. **The QC-failed training spectrum.** IMPROVE filter 2008808 (TONT1) fails raw QC and is in the train split of the
+   frozen k 4 model. Leaving it out does not change IMPROVE scores (held-out RMSE 3.85 against 3.87 µg) but moves
+   SPARTAN PM2.5 EC by a median 17 %, with site medians from −64 % (PRFJ) to +51 % (ILHA). Recommended: leave it out of
+   new calibrations. Refreezing the k 4 model changes network EC, so that is their call.
+2. **The training range and k, as one choice.** Trimming the heaviest filters steadies the model against single
+   spectra and improves accuracy on light IMPROVE filters, but each cut-off gives a different EC (3 to 30 % apart; Addis
+   median 8.1 µg with everything in, 5.9 µg below 25 µg). The Addis slope against HIPS rises with k under every
+   training set, and the set moves it at every k: trained below 25 µg it is about half and never reaches 1. So "the k
+   that matches HIPS" depends on the training set. Not adopted: nothing measured says the lower reading is more
+   correct, and the frozen model stays as it is until this is decided. Thermal EC on SPARTAN filters would settle it.
+3. **How EC is quoted meanwhile.** With a spread: the per-site table in the note (under 10 % at 12 of 28 sites, above
+   20 % at PRFJ, AEAZ and ILHA), on top of the choice of k and training set. A site-to-site comparison of EC from the
+   k 4 model is not safe for those three sites.
+
+Also: compare settings at a fixed k, never at the k the selection rule picks (it picks 4, 11, 8 or 3 depending on tau
+and on that one spectrum); and the 3 Nov transfer table's low-k Addis slopes are stale, because the harness now leaves
+the QC-failed spectrum out (k 5 is 0.61, not 0.41). Account: [vibes-settings-2026-11-16.md](vibes-settings-2026-11-16.md);
+gallery Meeting tab, Nov 16.
+
 ### Decide four season-calendar questions the climate check raised (11 Nov 2026)
 
 Every calendar is now scored against 1991–2020 ERA5 normals (how much of the year's cycle in rain and temperature falls
@@ -72,7 +96,9 @@ method no longer depends on one software stack. Decisions for Ann and Satoshi: m
 release; describe it in the methods as the same objective solved to convergence; tell the VIBES authors about the
 early stops. Still to rerun on v2 before conclusions that read corrected spectra are promoted: season composition and
 fingerprint grouping. See [vibes-newton-adoption-tests-2026-11-03.md](vibes-newton-adoption-tests-2026-11-03.md) and
-[vibes-rank-and-wasm-2026-11-10.md](vibes-rank-and-wasm-2026-11-10.md).
+[vibes-rank-and-wasm-2026-11-10.md](vibes-rank-and-wasm-2026-11-10.md). A 16 Nov check measured the switch on EC: unchanged on
+3,529 PM2.5 scans, a median 5 % on the 97 early stops, and rank 40 gives the same EC as rank 70
+([vibes-settings-2026-11-16.md](vibes-settings-2026-11-16.md)).
 
 ### Check three flat network scans that carry the normal QC code (10 Nov 2026)
 

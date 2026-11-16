@@ -1733,6 +1733,222 @@
    "file": "meetings/status-20261109.meeting.ts"
   },
   {
+   "title": "Converged, rank 70, tau 0.1: what each step asked, found and settled",
+   "id": "vs-glance",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "The words on this page",
+   "id": "vs-terms",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "EC, October run against converged: unchanged on 97 % of PM2.5 scans, a median 5 % on the early stops",
+   "id": "vs-solver-groups",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "The 97 early stops: most move down, and all ten Addis filters move down",
+   "id": "vs-solver-scans",
+   "component": "crossplot",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "One filter, CHTS-0830: the early-stop scan moves 3 %; the filter's other scan reads nearly three times higher under either solver",
+   "id": "vs-solver-example",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "Every rank and tau against the network setting: the rank matters only below 40, tau a little everywhere",
+   "id": "vs-grid",
+   "component": "heatmap",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "By rank at tau 0.1: field blanks spread out as the rank falls; repeat scans agree the same",
+   "id": "vs-by-rank",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "Why: a band added to a real scan is kept the same at ranks 20, 40 and 70, unless the scan is a blank",
+   "id": "vs-injection",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "By tau at rank 70: every scan moves a little, and a few move a lot",
+   "id": "vs-by-tau",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "The fitted noise level follows tau: it roughly doubles when tau doubles",
+   "id": "vs-noise",
+   "component": "bars",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "Held-out IMPROVE error against k: the three tau curves cross, and all three fall with k",
+   "id": "vs-heldout",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "Each tau against tau 0.1 on the same filters: tau 0.05 is never better; tau 0.2 is better at low k and worse at high k",
+   "id": "vs-boot",
+   "component": "intervals",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "Held-out RMSE (µg) at four fixed k",
+   "id": "vs-heldout-fixed",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "Addis against HIPS: the slope follows k, from 0.4 at k 4 to 1.8 at k 18, and the three tau values stay together",
+   "id": "vs-addis",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "The k the frozen selection rule picks, and the held-out RMSE at that k",
+   "id": "vs-rule",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "The curve the rule reads: an early dip near k 4 and a later one near k 8 to 11 are close in depth, so small changes swap them",
+   "id": "vs-cv",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "The k 4 model with and without IMPROVE filter 2008808, on every network scan: PM2.5 EC moves by a median 17 %, field blanks from 1.27 to 0.30 µg",
+   "id": "vs-qc-groups",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "By site: medians move from −64 % (PRFJ) to +51 % (ILHA); Addis (ETAD) moves 2 %",
+   "id": "vs-qc-sites",
+   "component": "bars",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "Which model is right? IMPROVE cannot tell them apart, and the other checks disagree",
+   "id": "vs-qc-checks",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "The pull is strongest at low k: 17 % at k 4, 8 % at k 8, 3 % at k 12",
+   "id": "vs-qc-by-k",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "It is 364 times farther from the mean than a typical training spectrum; the next most extreme are heavy filters that passed QC, and one of them alone moves network EC by up to 6 %",
+   "id": "vs-qc-leverage",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "The 3 Nov transfer table was made with it in training: without it the Addis slope at k 5 is 0.61, not 0.41",
+   "id": "vs-qc",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "Six training sets: trimming cuts the pull of one spectrum from 6 % to 0.4 %, but EC still spreads 8 % when IMPROVE sites are resampled",
+   "id": "vs-domain",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "Each training set gives a different network EC: the k 4 models are 3 to 30 % apart",
+   "id": "vs-domain-pairs",
+   "component": "heatmap",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "With the training set held fixed the Addis slope still follows k; the set trained below 25 µg reads about half the slope at every k and never reaches 1",
+   "id": "vs-domain-addis",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "Which sites are least pinned down: PRFJ spreads by 61 % with every spectrum in, and no site by more than 13 % below 25 µg",
+   "id": "vs-domain-sites",
+   "component": "bars",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
+   "title": "The solver, the rank and tau are settled; the calibration (its k and its training spectra) and the background are not",
+   "id": "vs-choices",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "vibes-settings-20261116",
+   "file": "meetings/vibes-settings-20261116.meeting.ts"
+  },
+  {
    "title": "Baseline versions",
    "component": "BaselineComparisonPage",
    "tab": "baseline",

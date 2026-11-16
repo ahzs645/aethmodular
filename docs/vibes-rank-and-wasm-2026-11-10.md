@@ -1,6 +1,7 @@
 # VIBES: what the rank-70 background absorbs, and the solver in WebAssembly
 
-Date: 10 November 2026. Follows [vibes-newton-adoption-tests-2026-11-03.md](vibes-newton-adoption-tests-2026-11-03.md)
+Date: 10 November 2026. What the rank and tau do to EC was measured on 16 Nov:
+[vibes-settings-2026-11-16.md](vibes-settings-2026-11-16.md). Follows [vibes-newton-adoption-tests-2026-11-03.md](vibes-newton-adoption-tests-2026-11-03.md)
 and [vibes-reference-webgpu-decision-2026-11-03.md](vibes-reference-webgpu-decision-2026-11-03.md). The numbers are in
 [`vibes-rank-check-2026-11-10.json`](vibes-rank-check-2026-11-10.json). Input: the 19 Oct network bundle (4,452 scans,
 the 87-blank rank-70 background, tau 0.1), every scan solved to convergence.

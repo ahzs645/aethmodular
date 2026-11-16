@@ -352,6 +352,13 @@
         "gallery/app/public/data/meetings/hips-procedure-20261111.json"
       ],
       "reason": "Check which sites' linearised BC loses a decimal place on the 11 Nov procedure's saved site statistics."
+    },
+    "src/lib/vibesSettings.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/meetings/vibes-settings-20261116.json"
+      ],
+      "reason": "The page's rule rings and named tables must match its committed bundle."
     }
   }
 }

@@ -118,6 +118,7 @@ const chartGroups = [
   [['addis_reference_closure_20261110'], 'meeting', 'hips-parts', 'HIPS on dark filters, part by part'],
   [['season_composition_20261103'], 'experimental', 'season', 'Season or composition?'],
   [['vibes_newton_refit_20261103'], 'experimental', 'vibes-newton', 'VIBES solved to convergence'],
+  [['vibes_newton_refit_20261103', 'vibes_rank_tau_ec_20261116'], 'meeting', 'vibes-settings-20261116', 'Which VIBES setting: solver, rank and tau'],
   [['transfer_diagnosis_20261102'], 'experimental', 'continuum', 'Continuum and the baseline'],
   [['ann_followup_20261009'], 'meeting', 'ann-20261009', '9 October meeting'],
   [['meeting_followup_20260917'], 'meeting', 'followup', '17 September follow-up'],
