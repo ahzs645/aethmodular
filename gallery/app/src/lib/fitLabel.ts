@@ -112,13 +112,14 @@ interface LabelBox { left: number; right: number; top: number; bottom: number }
  * Direct labels near points: prefer above/right, turn left at the edge, then
  * move the text to the nearest free row. Points stay fixed. Both labels and
  * point markers are obstacles; the result includes a connector for moved text.
- * Labels that cannot fit stay in the caller's legend/tooltip instead.
+ * Labels that cannot fit stay in the caller's legend/tooltip instead. `avoid` lists the marks that
+ * get no label of their own (the rest of a scatter): labels keep clear of them as well.
  */
 export function placePointLabels(points: readonly PointLabel[], width: number, height: number,
-  { size = 10.5, weight = 600, radius = 10, gap = 4 }: { size?: number; weight?: number; radius?: number; gap?: number } = {}) {
+  { size = 10.5, weight = 600, radius = 10, gap = 4, avoid = [] }: { size?: number; weight?: number; radius?: number; gap?: number; avoid?: readonly { x: number; y: number }[] } = {}) {
   const overlaps = (a: LabelBox, b: LabelBox) => a.left < b.right + gap && b.left < a.right + gap
     && a.top < b.bottom + gap && b.top < a.bottom + gap
-  const obstacles: LabelBox[] = points.map(p => ({ left: p.x - radius, right: p.x + radius, top: p.y - radius, bottom: p.y + radius }))
+  const obstacles: LabelBox[] = [...points, ...avoid].map(p => ({ left: p.x - radius, right: p.x + radius, top: p.y - radius, bottom: p.y + radius }))
   const placed: { key: string; text: string; x: number; y: number; anchor: 'start' | 'end';
     connector: { x1: number; y1: number; x2: number; y2: number } | null }[] = []
   const descent = size * 0.25, pad = 2, offset = radius + gap + 2

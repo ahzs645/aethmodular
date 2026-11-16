@@ -140,6 +140,10 @@ correction, and the **site** to decide whether its HIPS can carry a level at all
 
 - Give the optical depth, or the status, beside any HIPS value from a heavy site.
 - Quote a linearised value with its range, and say the ceiling is IMPROVE's.
+- Write it to the digit its range starts in. Half the range is the "±": 1 µg/m³ or more leaves whole numbers, 0.1 to 1
+  leaves one decimal. Median BC at Addis is 8 (7 to 10), the only site that loses its decimal; Delhi is 8.0 (7.7 to 8.5).
+  For means, Addis, Kanpur, Dhaka, Ilorin and Jaipur are whole numbers. The gallery shows it for every site and every
+  Addis filter (Meeting tab, "Linearising HIPS at Addis"; rule in `gallery/app/src/lib/claimDigits.ts`).
 - Call HIPS optical. Do not call linearised HIPS thermal EC, and do not call FTIR EC thermal EC.
 - For Addis: no filter on file is `use, linearised`, so HIPS does not set a level there.
 

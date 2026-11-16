@@ -345,6 +345,13 @@
         "gallery/app/public/data/hips_linearise/linearise.json"
       ],
       "reason": "Recompute the closure workflow's saved Addis fits, season ratios and predicted exponent from the per-filter optical depths."
+    },
+    "src/lib/claimDigits.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/meetings/hips-procedure-20261111.json"
+      ],
+      "reason": "Check which sites' linearised BC loses a decimal place on the 11 Nov procedure's saved site statistics."
     }
   }
 }

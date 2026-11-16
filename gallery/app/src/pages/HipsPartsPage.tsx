@@ -16,7 +16,10 @@ import { rowsOf } from '@/lib/table'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import { SPEC_MEETINGS } from '@/meetings'
-import { AgainstHips, Bend, CeilingOptions, COMMAND, CorrectionCurve, CorrectionPlot, Limits, LINEAR, MEASURED, PROVENANCE, Readouts, SeasonLot, SIDE, WORKFLOW, Worked, pathOf, range, useCeiling, type Ceil, type Linearise } from '@/pages/HipsLinearisePage'
+import { AgainstHips, Bend, CeilingOptions, COMMAND, CorrectionCurve, CorrectionPlot, Limits, PROVENANCE, SeasonLot, SIDE, WORKFLOW, Worked, pathOf, range, useCeiling, type Ceil, type Linearise } from '@/pages/HipsLinearisePage'
+import { ImproveReach, LevelChoices } from '@/pages/HipsCaveats'
+import { FilterDecimals, SiteDecimals } from '@/pages/HipsDecimals'
+import { LINEAR, MEASURED, Readouts } from '@/pages/hipsLineariseParts'
 
 /** the meeting pages this one borrows figures from (src/meetings/<id>.meeting.ts, data/meetings/<id>.json) */
 const CLOSURE = 'closure-20261110'
@@ -64,7 +67,8 @@ const Part = ({ children }: { children: string }) => <h2 className="meeting-sect
  * Nothing is computed for this page alone. The interactive charts are the "Linearising HIPS at Addis" page's
  * (pages/HipsLinearisePage), on one ceiling control; every other figure is borrowed from the 10 and 11 Nov meeting
  * pages by id (Borrow). The one new chart, a site's filters on the correction curve, reads the 11 Nov procedure's
- * per-filter table.
+ * per-filter table. Where IMPROVE stops, the level under each ceiling and MAC (pages/HipsCaveats) and the decimal
+ * places a linearised value can carry (pages/HipsDecimals) are that page's too.
  */
 export function HipsPartsPage() {
   const { data, error } = useExport<Linearise>('hips_linearise/linearise.json')
@@ -95,6 +99,7 @@ export function HipsPartsPage() {
       <Part>1. Where it is seen: on IMPROVE filters, HIPS falls behind thermal EC as the filter darkens</Part>
       <Bend data={data} ceil={ceil} />
       <Borrow from={CLOSURE} figures={[{ id: 'c1110-improve-ratio', about: 'improve' }, 'c1110-ceilings']} />
+      <ImproveReach data={data} ceil={ceil} />
 
       <Part>2. What linearising does: each filter is read back through the curve</Part>
       <Worked data={data} ceil={ceil} />
@@ -104,6 +109,7 @@ export function HipsPartsPage() {
       <Borrow from={NETWORK} figures={['h1111-tau']} />
       <AgainstHips data={data} ceil={ceil} />
       <Limits data={data} />
+      <LevelChoices data={data} />
       <Borrow from={PROCEDURE} figures={[{ id: 'hp-traced', about: 'trace' }]} />
       <Borrow from={SEASONS} figures={[{ id: 'hs-within', about: 'within' }, 'hs-site-seasons']} />
       <SeasonLot data={data} ceil={ceil} />
@@ -121,6 +127,8 @@ export function HipsPartsPage() {
 
       <Part>6. What linearising costs, and what would fix it: less air through the filter</Part>
       <Downsides data={data} ceil={ceil} />
+      <SiteDecimals />
+      <FilterDecimals data={data} ceil={ceil} />
       <VolumeReplay data={data} ceil={ceil} />
       <Borrow from={NETWORK} figures={[{ id: 'h1111-options', about: 'decision' }]} />
 

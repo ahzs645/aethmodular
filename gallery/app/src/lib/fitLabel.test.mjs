@@ -53,3 +53,14 @@ test('an impossible box omits the direct label rather than drawing outside it', 
   assert.deepEqual(placePointLabels([{ key: 'a', text: 'Addis Ababa', x: 10, y: 10 }], 20, 20), [])
   assert.deepEqual(placePointLabels([], 240, 100), [])
 })
+
+test('labels keep clear of the marks that get no label of their own', () => {
+  const named = [{ key: 'a', text: 'Addis', x: 100, y: 100 }]
+  // an unlabelled mark where the label would sit by default (above and to the right of its point)
+  const avoid = [{ x: 130, y: 92 }]
+  const free = boxes(placePointLabels(named, 400, 300, { radius: 6 }))[0]
+  const kept = boxes(placePointLabels(named, 400, 300, { radius: 6, avoid }))[0]
+  const hits = (b) => b.left < 136 && b.right > 124 && b.top < 98 && b.bottom > 86
+  assert.ok(hits(free), 'the default place covers the mark')
+  assert.ok(!hits(kept), 'with avoid, the label moves off it')
+})

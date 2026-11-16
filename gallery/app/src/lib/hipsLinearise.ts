@@ -7,7 +7,7 @@
  * so the page can follow any ceiling the reader picks.
  */
 import { bisectRight, group } from 'd3'
-import { deming, median } from './stats.ts'
+import { deming, median, medianSorted } from './stats.ts'
 
 /** deposit area of the 25 mm PTFE filter HIPS reads, cm² (hips_loading.DEPOSIT_AREA_CM2) */
 export const DEPOSIT_AREA_CM2 = 3.53
@@ -102,4 +102,15 @@ export function ratioMedians(filters: readonly LinFilter[], ceiling: number): { 
     measured: median(own.map((f) => f.ftir! / f.hips_bc)),
     linearised: median(own.map((f) => f.ftir! / linearBc(f, ceiling)).filter(Number.isFinite)),
   }
+}
+
+/**
+ * A site's median or mean HIPS BC once linearised at a ceiling (µg/m³ at the export's MAC). A filter at or past the
+ * ceiling has no finite linearised value and counts as +∞ instead of dropping out: the median stays finite while
+ * fewer than half the filters are past the ceiling, and the mean has no finite value as soon as one is.
+ */
+export function linearLevel(filters: readonly Pick<LinFilter, 'tau' | 'hips_bc'>[], ceiling: number | null, stat: 'median' | 'mean'): number {
+  const values = filters.map((f) => { const v = ceiling == null ? f.hips_bc : linearBc(f, ceiling); return Number.isNaN(v) ? Infinity : v })
+  if (!values.length) return NaN
+  return stat === 'median' ? medianSorted(values.sort((a, b) => a - b)) : values.reduce((a, b) => a + b, 0) / values.length
 }
