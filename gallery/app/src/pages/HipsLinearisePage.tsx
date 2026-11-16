@@ -1,20 +1,27 @@
-import { useId, useMemo, type ReactNode } from 'react'
-import { ChartFrame, Note } from '@/components/ChartFrame'
+import { useId, useMemo, useState, type ReactNode } from 'react'
+import { group as groupBy, rollup } from 'd3'
+import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { Segmented, Select } from '@/components/Controls'
+import { DrawerScroll, DrawerShell } from '@/components/DrawerShell'
 import { LoadState } from '@/components/ExportState'
+import { XIcon } from '@/components/Icons'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
-import { Marker, RefLine } from '@/components/RefLines'
+import { IdentityLine, Marker, RefLine } from '@/components/RefLines'
 import { ScatterPlot, type ScatterPoint, type ScatterScales } from '@/components/ScatterPlot'
 import { ScrubField } from '@/components/ScrubField'
+import { StepButton } from '@/components/StepButton'
 import { useExport } from '@/lib/data'
 import { fmt, signed } from '@/lib/format'
-import { FixedSetNote } from '@/lib/markedRows'
+import { PinRing, useHighlightActions } from '@/lib/highlight'
+import { ExcludedNote, FixedSetNote, useExclusionSplit } from '@/lib/markedRows'
+import { SidebarControls } from '@/lib/pageSidebar'
 import { RESEARCH_SERIES } from '@/lib/palettes'
-import { median } from '@/lib/stats'
+import type { SpartanReference } from '@/lib/referencePopulation'
+import { isFiniteNumber, median } from '@/lib/stats'
 import { FONT, INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
-import { correction, fitAgainstHips, linearBc, linearise, noiseGain, predictedExponent, ratioMedians, saturate, type LinFilter } from '@/lib/hipsLinearise'
+import { correction, fitAgainstHips, linearBc, linearise, noiseGain, opticalDepth, predictedExponent, previousLoadingGroups, ratioMedians, saturate, SPARTAN_LOADING_MAX_GAP_DAYS, type LinFilter, type LoadingGroup } from '@/lib/hipsLinearise'
 
 export const COMMAND = 'uv run python gallery/data/export_hips_linearise.py'
 export const WORKFLOW = 'research/ftir_hips_chem/workflows/run_addis_reference_closure_20261110.py'
@@ -26,8 +33,15 @@ export const LINEAR = RESEARCH_SERIES[0]
 
 type CeilingKey = 'central' | 'lo' | 'hi' | 'era'
 const CEILING_KEYS: readonly CeilingKey[] = ['central', 'lo', 'hi', 'era']
-const HIPS_VIEWS = ['measured', 'linearised'] as const
+const HIPS_SERIES = ['measured', 'linearised'] as const
+const HIPS_VIEWS = ['both', ...HIPS_SERIES] as const
 const SITE_VIEWS = ['clear', 'all'] as const
+type BendSampleNetwork = 'IMPROVE' | 'SPARTAN'
+const BEND_NETWORKS = ['IMPROVE', 'SPARTAN', 'Both'] as const
+const SPARTAN_BEND_VIEWS = ['groups', 'filters'] as const
+const SPARTAN_BEND_COLOR = RESEARCH_SERIES[2]
+const SPARTAN_GROUP_PREFIX = 'spartan/'
+const HAS_IMPROVE_GROUPS = import.meta.env.VITE_PUBLIC_BUILD !== '1'
 /** every x-y chart on the page is a square plot area this wide at most (as the gallery's crossplots are) */
 export const SIDE = 480
 /** a site's exponent is read when its 95 % interval is narrower than this (12 of the 23 sites) */
@@ -42,6 +56,7 @@ export interface Linearise {
   a_per_ug: number
   ceilings: { key: CeilingKey; label: string; tau_inf: number }[]
   improve_ceilings: Ceiling[]
+  loading_edges_ug?: number[]
   strata: { n: number; loading_ug: number; tau: number; fabs_over_ec: number; fitted_tau: number }[]
   filters: LinFilter[]
   fit_measured: { slope: number; intercept: number; n: number }
@@ -54,9 +69,9 @@ export function useCeiling(data: Linearise | null) {
   const [key, setKey] = useSearchParam<CeilingKey>('hl.ceil', 'central', CEILING_KEYS)
   const list = data?.ceilings ?? []
   const pick = list.find((c) => c.key === key) ?? list[0]
-  const control = <Segmented label="Ceiling τ∞" value={key} options={list.map((c) => c.key)} onChange={(v) => setKey(v as CeilingKey)}
+  const control = <Segmented value={key} options={list.map((c) => c.key)} onChange={setKey}
     optionLabel={(o) => list.find((c) => c.key === o)?.label ?? o}
-    title="The IMPROVE ceiling every chart on this page linearises with: the central fit, both ends of its 90 % interval, and the 2015–2025 fit (the period that contains the Addis record)" />
+    title="Choose the central fit, either end of its 90 % interval, or the 2015–2025 fit. The ceiling applies across this page." />
   return { ceiling: pick?.tau_inf ?? NaN, label: pick?.label ?? '', key, control, list }
 }
 
@@ -83,6 +98,7 @@ export function HipsLinearisePage() {
   )
   return (
     <>
+      <CeilingOptions ceil={ceil} />
       <Bend data={data} ceil={ceil} />
       <Worked data={data} ceil={ceil} />
       <CorrectionCurve data={data} ceil={ceil} />
@@ -95,6 +111,12 @@ export function HipsLinearisePage() {
 }
 
 export type Ceil = ReturnType<typeof useCeiling>
+
+export function CeilingOptions({ ceil }: { ceil: Ceil }) {
+  return <SidebarControls title="Ceiling τ∞" tabNote={`τ∞ ${fmt(ceil.ceiling, 2)}`}>
+    <div role="group" aria-label="Ceiling τ∞">{ceil.control}</div>
+  </SidebarControls>
+}
 
 /** a row of headline numbers under a chart */
 export function Readouts({ items }: { items: { label: string; value: string; color?: string; sub?: string }[] }) {
@@ -125,30 +147,105 @@ export function DataTable<T>({ rows, columns, rowKey, highlight }: { rows: T[]; 
 // ------------------------------------------------------------------ 1. the bend
 export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   const [tauText, setTau] = useSearchParam<string>('hl.tau', '0.97')
+  const [group, setGroup] = useSearchParam<string>('hl.group', 'none')
+  const [network, setNetwork] = useSearchParam<(typeof BEND_NETWORKS)[number]>('hl.bend.network', 'IMPROVE', BEND_NETWORKS)
+  const [site, setSite] = useSearchParam<string>('hl.bend.site', 'all')
+  const [spartanView, setSpartanView] = useSearchParam<(typeof SPARTAN_BEND_VIEWS)[number]>('hl.bend.spartan', 'groups', SPARTAN_BEND_VIEWS)
+  const [spartanGroup, setSpartanGroup] = useSearchParam<string>('hl.bend.group', 'none')
+  const [sampleDrawer, setSampleDrawer] = useState<BendSampleNetwork | null>(null)
+  const closeSamples = () => setSampleDrawer(null)
+  const { openRecord } = useHighlightActions()
+  const showImprove = network !== 'SPARTAN'
+  const showSpartan = network !== 'IMPROVE'
+  const bothNetworks = network === 'Both'
+  const { data: spartan, error: spartanError } = useExport<SpartanReference>(showSpartan ? 'spartan_reference.json' : null)
+  const spartanRows = useMemo(() => (spartan?.rows ?? []).flatMap((row) => {
+    const ec = row['EC (FTIR)'], fabs = row['HIPS Fabs'], volume = row['Sampled volume']
+    if (!isFiniteNumber(ec) || !isFiniteNumber(fabs) || fabs <= 0 || !isFiniteNumber(volume) || volume <= 0) return []
+    return [{ row, fabs, volume, x: ec * volume, y: opticalDepth(fabs, volume) }]
+  }), [spartan])
+  const sites = useMemo(() => new Map(spartanRows.map(({ row }) => [row.code, row.site])), [spartanRows])
+  const activeSite = sites.has(site) ? site : 'all'
+  const siteRows = useMemo(() => spartanRows.filter(({ row }) => activeSite === 'all' || row.code === activeSite), [spartanRows, activeSite])
+  const spartanPoints = useMemo(() => siteRows
+    .map<ScatterPoint>(({ row, fabs, volume, x, y }) => ({
+      id: row.id, key: row.id, x, y, color: SPARTAN_BEND_COLOR, r: 3, opacity: 0.65,
+      tip: [row.id, `${row.site} · ${row.date}`, `FTIR EC ${fmt(x, 2)} µg`, `HIPS optical depth τ ${fmt(y, 3)}`],
+      rec: { id: row.id, site: row.site, date: row.date, source: 'The bend · SPARTAN', fields: [
+        ['FTIR EC loading (µg)', x], ['HIPS optical depth τ', y], ['Sampled volume (m³)', volume], ['HIPS Fabs (Mm⁻¹)', fabs],
+      ] },
+    })), [siteRows])
+  const { counted, nOut } = useExclusionSplit(siteRows, ({ row }) => row.id)
+  const showSpartanGroups = spartanView === 'groups' && !!data.loading_edges_ug?.length
+  const spartanGroups = useMemo(() => {
+    if (!showSpartanGroups || !data.loading_edges_ug) return []
+    return previousLoadingGroups(counted.map(({ row, x, y }) => ({ id: row.id, site: row.code, date: row.date, loading: x, tau: y })), data.loading_edges_ug).map((bin) => {
+      const x = median(bin.rows.map((row) => row[3])), y = median(bin.rows.map((row) => row[4]))
+      const n = bin.rows.length, sites = new Set(bin.rows.map((row) => row[0])).size
+      const binKey = String(bin.lower)
+      const details = [`FTIR EC ${fmt(x, 1)} µg`, `optical depth τ ${fmt(y, 3)}`, `${n.toLocaleString()} samples across ${sites} ${sites === 1 ? 'site' : 'sites'}`]
+      return { bin, binKey, key: `${SPARTAN_GROUP_PREFIX}${binKey}`, x, y, r: 3 + Math.sqrt(n) / 6, color: SPARTAN_BEND_COLOR, shape: 'square' as const, details,
+        tip: ['SPARTAN group median', ...details, 'Click to view the samples in this group'] }
+    })
+  }, [counted, data.loading_edges_ug, showSpartanGroups])
+  const selectedSpartan = spartanGroups.find(({ binKey }) => binKey === spartanGroup)
+  const pickSpartanGroup = (key: string) => {
+    setSpartanGroup(key)
+    setSampleDrawer(key === 'none' ? null : 'SPARTAN')
+  }
+  const showSpartanFilter = (id: string) => {
+    const record = spartanPoints.find((p) => p.id === id)?.rec
+    if (record) {
+      closeSamples()
+      openRecord(record)
+    }
+  }
+  const spartanDomain = useMemo<[number, number]>(() => [
+    Math.min(0, ...spartanRows.map(({ x }) => x)), Math.max(90, ...spartanRows.map(({ x }) => x)),
+  ], [spartanRows])
   const taus = useMemo(() => data.filters.filter((f) => f.ftir != null).map((f) => f.tau), [data])
   const [lo, hi] = [Math.min(...taus), Math.max(...taus)]
   const t = Math.min(hi, Math.max(0.05, Number(tauText) || 0.97))
   const a = data.a_per_ug, c = ceil.ceiling
   const tl = linearise(t, c), L = tl / a
   const clip = useId()
-  const points = useMemo<ScatterPoint[]>(() => data.strata.map((s) => ({
-    x: s.loading_ug, y: s.tau, color: INK.muted, r: 3 + Math.sqrt(s.n) / 40, opacity: 0.85,
-    tip: [`IMPROVE group, TOR EC ${fmt(s.loading_ug, 1)} µg`, `optical depth ${fmt(s.tau, 3)}`, `Fabs ÷ EC ${fmt(s.fabs_over_ec, 1)} m²/g`, `${s.n.toLocaleString()} samples`],
-  })), [data])
+  const points = useMemo(() => data.strata.map((s, i) => {
+    const details = [`TOR EC ${fmt(s.loading_ug, 1)} µg`, `optical depth τ ${fmt(s.tau, 3)}`, `Fabs ÷ EC ${fmt(s.fabs_over_ec, 1)} m²/g`, `${s.n.toLocaleString()} samples`]
+    return {
+      key: String(i + 1), x: s.loading_ug, y: s.tau, n: s.n, color: INK.muted, r: 3 + Math.sqrt(s.n) / 40, opacity: 0.85,
+      details, tip: ['IMPROVE group median', ...details, HAS_IMPROVE_GROUPS ? 'Click to view the samples in this group' : 'Click to select or clear this group'],
+    }
+  }), [data.strata])
+  const selected = points.find((p) => p.key === group)
+  const pickGroup = (key: string) => {
+    setGroup(key)
+    setSampleDrawer(HAS_IMPROVE_GROUPS && key !== 'none' ? 'IMPROVE' : null)
+  }
+  const spartanMarks = showSpartanGroups ? spartanGroups : spartanPoints
+  const plotPoints = useMemo(() => bothNetworks ? [...points, ...spartanMarks] : showImprove ? points : spartanMarks,
+    [bothNetworks, showImprove, points, spartanMarks])
+  const pickPoint = ({ key, rec }: ScatterPoint) => {
+    if (rec) { closeSamples(); openRecord(rec); return }
+    if (!key) return
+    if (key.startsWith(SPARTAN_GROUP_PREFIX)) pickSpartanGroup(key.slice(SPARTAN_GROUP_PREFIX.length))
+    else pickGroup(!HAS_IMPROVE_GROUPS && key === group ? 'none' : key)
+  }
   const under = ({ x, y, iw, ih }: ScatterScales) => {
-    const xs = range(0, 90, 0.5)
+    if (!showImprove) return <Marker orient="h" at={y(c)} from={0} to={iw} color={MEASURED} label={`IMPROVE ceiling τ∞ = ${fmt(c, 2)}`} />
+    const maxLoading = x.domain()[1]
+    const xs = range(0, maxLoading, 0.5)
     return <g>
       <defs><clipPath id={clip}><rect width={iw} height={ih} /></clipPath></defs>
       <g clipPath={`url(#${clip})`}>
         <rect x={0} y={y(hi)} width={iw} height={y(lo) - y(hi)} fill={MEASURED} opacity={0.1} />
         <text x={iw - 6} y={y(hi) - 6} textAnchor="end" fontSize={10.5} fontFamily={FONT.mono} fill={INK.muted}>Addis filters, τ {fmt(lo, 2)}–{fmt(hi, 2)}</text>
         <Marker orient="h" at={y(c)} from={0} to={iw} color={MEASURED} label={`ceiling τ∞ = ${fmt(c, 2)}`} />
-        <path d={pathOf([[x(0), y(0)], [x(90), y(a * 90)]])} fill="none" stroke={LINEAR} strokeWidth={2} strokeDasharray="6 4" />
+        <path d={pathOf([[x(0), y(0)], [x(maxLoading), y(a * maxLoading)]])} fill="none" stroke={LINEAR} strokeWidth={2} strokeDasharray="6 4" />
         <path d={pathOf(xs.map((v) => [x(v), y(saturate(a * v, c))]))} fill="none" stroke={MEASURED} strokeWidth={2} />
       </g>
     </g>
   }
-  const children = ({ x, y, iw }: ScatterScales) => {
+  const construction = ({ x, y, iw }: ScatterScales) => {
     if (!Number.isFinite(tl)) return null
     const onChart = x(L) < iw - 4
     // labels go left of the construction when it sits in the right part of the plot (a phone, a high ceiling)
@@ -166,27 +263,147 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
     </g>
   }
   const primary = data.improve_ceilings[0]
+  const spartanLabel = showSpartanGroups ? 'SPARTAN group medians (FTIR EC)' : 'SPARTAN individual filters (FTIR EC)'
+  const spartanDescription = showSpartanGroups
+    ? `SPARTAN groups use the IMPROVE loading bins and FTIR EC from the previous eligible date at that site, within ${SPARTAN_LOADING_MAX_GAP_DAYS} days. If several filters share that date, their median sets the bin. Click a square to see its filters by site.`
+    : 'Each SPARTAN dot is an individual filter. FTIR EC loading is the reported concentration multiplied by sampled volume. Click a dot to open its filter record.'
   return (
-    <ChartFrame id="hl-bend" title="The bend — HIPS optical depth against thermal EC on the filter, IMPROVE 2005–2025"
-      subtitle={`Each grey dot is the median of one IMPROVE group (${primary.samples.toLocaleString()} samples at ${primary.sites} sites, grouped by the previous sample's TOR EC at the same site, which keeps each sample's own error out of the grouping); size ∝ samples. Blue dashed: what a proportional HIPS would read, τ = aL with a = ${fmt(a, 4)} µg⁻¹ (${fmt(primary.unsaturated_fabs_over_ec, 1)} m²/g on light filters). Orange: the fitted saturating response τ = aL / (1 + aL/τ∞). Move the measured τ: the construction runs across to the orange curve, down to the loading that curve implies, then up to the blue line. That height is the linearised τ.`}
-      provenance={PROVENANCE}
+    <ChartFrame id="hl-bend" title={network === 'IMPROVE' ? 'The bend — HIPS optical depth against thermal EC on the filter, IMPROVE 2005–2025'
+      : bothNetworks ? 'The bend — HIPS optical depth against EC on the filter, IMPROVE and SPARTAN'
+      : 'The bend — HIPS optical depth against FTIR EC on the filter, SPARTAN'}
+      subtitle={bothNetworks
+        ? `The grey dots and reference curves come from IMPROVE thermal EC (TOR). SPARTAN is overlaid at its FTIR-derived EC loading for visual comparison. ${spartanDescription}`
+        : showSpartan ? `${spartanDescription} Optical depth uses measured HIPS Fabs and sampled volume. The dashed line marks the IMPROVE optical-depth ceiling.`
+        : `Each grey dot is the median of one IMPROVE group, binned by the previous sample’s TOR EC loading at the same site (${primary.samples.toLocaleString()} samples at ${primary.sites} sites in the parent population). Dot size shows group sample count.${HAS_IMPROVE_GROUPS ? ' Click a dot to see its samples.' : ''} The dashed blue line shows a proportional response with a = ${fmt(a, 4)} µg⁻¹ (${fmt(primary.unsaturated_fabs_over_ec, 1)} m²/g on light filters). The orange curve shows the fitted saturating response. Move the measured τ to trace the conversion to linearised τ.`}
+      provenance={<>{showImprove && PROVENANCE}{showSpartan && <> <code>spartan_reference.json</code> · paired FTIR EC, HIPS Fabs and sampled volume by filter ID.</>}</>}
       controls={<>
-        <span className="control" title="The measured HIPS optical depth the construction follows: drag sideways across the Addis range or click to type">Measured τ <ScrubField label="Measured τ" value={t} min={0.05} max={+hi.toFixed(2)} step={0.01} width={96} format={(v) => fmt(v, 2)} onChange={(v) => setTau(String(+v.toFixed(2)))} /></span>
-        {ceil.control}
+        <Segmented label="Network" value={network} options={BEND_NETWORKS} onChange={(value) => { setNetwork(value); closeSamples() }} />
+        {showSpartan && sites.size > 0 && <>
+          <Select label="SPARTAN site" value={activeSite} options={['all', ...sites.keys()]}
+            onChange={(value) => { setSite(value); closeSamples() }} optionLabel={(code) => sites.get(code) ?? `All ${sites.size} sites`} />
+          {!!data.loading_edges_ug?.length && <Segmented label="SPARTAN view" value={spartanView} options={SPARTAN_BEND_VIEWS}
+            optionLabel={(value) => value === 'groups' ? 'Group medians' : 'Individual filters'} onChange={(value) => { setSpartanView(value); closeSamples() }} />}
+          {showSpartanGroups && <Select label="SPARTAN group" value={selectedSpartan?.binKey ?? 'none'}
+            options={['none', ...spartanGroups.map((p) => p.binKey)]} onChange={pickSpartanGroup}
+            optionLabel={(key) => { const g = spartanGroups.find((p) => p.binKey === key)?.bin; return g ? loadingRange(g) : 'None' }} />}
+        </>}
+        {showImprove && <>
+          <span className="control" title="The measured HIPS optical depth the construction follows: drag sideways across the Addis range or click to type">Measured τ <ScrubField label="Measured τ" value={t} min={0.05} max={+hi.toFixed(2)} step={0.01} width={96} format={(v) => fmt(v, 2)} onChange={(v) => setTau(String(+v.toFixed(2)))} /></span>
+          <Select label="IMPROVE group" value={selected?.key ?? 'none'} options={['none', ...points.map((p) => p.key)]} onChange={pickGroup}
+            optionLabel={(key) => points.find((p) => p.key === key)?.details[0] ?? 'None'} />
+        </>}
       </>}>
-      <ScatterPlot points={points} xLabel="TOR EC on the filter (µg)" yLabel="HIPS optical depth τ" xDomain={[0, 90]} yDomain={[0, 3.4]} nice={false}
-        maxSide={SIDE} outside="clip" note={false} under={under}>{children}</ScatterPlot>
-      <Key items={[{ label: 'IMPROVE group medians (size ∝ samples)', color: INK.muted, kind: 'dot' }, { label: 'proportional: τ = aL', color: LINEAR, kind: 'dash' },
-        { label: 'saturating fit', color: MEASURED, kind: 'line' }, { label: 'Addis τ range', color: MEASURED, kind: 'faded' }]} />
-      <Readouts items={[
-        { label: 'Measured τ', value: fmt(t, 2), color: MEASURED },
-        { label: 'Linearised τ', value: Number.isFinite(tl) ? fmt(tl, 2) : '—', color: LINEAR },
-        { label: 'Correction ×', value: Number.isFinite(tl) ? fmt(tl / t, 2) : '—' },
-        { label: 'Noise amplified ×', value: Number.isFinite(tl) ? fmt(noiseGain(t, c), 1) : '—', sub: '1 / (1 − τ/τ∞)²' },
-      ]} />
-      <Note>The ceiling buttons switch between the central fit, both ends of its 90 % interval, and the 2015–2025 fit (the period that contains the Addis record); the choice carries to every chart on this page. The noise factor is the slope of the inverse, 1 / (1 − τ/τ∞)². At 70 % of the ceiling it is about 11.</Note>
+      {plotPoints.length > 0 && <>
+        <ScatterPlot points={plotPoints} xLabel={bothNetworks ? 'EC on the filter (µg)' : `${showImprove ? 'TOR' : 'FTIR'} EC on the filter (µg)`}
+          yLabel="HIPS optical depth τ" xDomain={showSpartan ? spartanDomain : [0, 90]} yDomain={[0, 3.4]} nice={false}
+          maxSide={SIDE} outside={showSpartan ? 'pin' : 'clip'} note={showSpartan && !showSpartanGroups ? 'mark' : false} under={under} onPick={pickPoint}>
+          {(scales) => <>
+            {showImprove && construction(scales)}
+            {showImprove && selected && <PinRing cx={scales.x(selected.x)} cy={scales.y(selected.y)} r={selected.r} />}
+            {showSpartan && selectedSpartan && <PinRing cx={scales.x(selectedSpartan.x)} cy={scales.y(selectedSpartan.y)} r={selectedSpartan.r} />}
+          </>}
+        </ScatterPlot>
+        <Key items={[
+          ...(showImprove ? [{ label: 'IMPROVE group medians (TOR EC)', color: INK.muted, kind: 'dot' as const },
+            { label: 'IMPROVE proportional response', color: LINEAR, kind: 'dash' as const },
+            { label: 'IMPROVE saturating fit', color: MEASURED, kind: 'line' as const },
+            { label: 'Addis τ range', color: MEASURED, kind: 'faded' as const }] : []),
+          ...(showSpartan && spartanMarks.length ? [{ label: spartanLabel, color: SPARTAN_BEND_COLOR, kind: showSpartanGroups ? 'square' as const : 'dot' as const }] : []),
+        ]} />
+      </>}
+      {showSpartan && (!spartan ? <LoadState what="SPARTAN filter measurements" error={spartanError} /> : spartanMarks.length === 0 && <Empty>{showSpartanGroups
+        ? 'No eligible SPARTAN sample pairs at this site. Choose Individual filters to see its measurements.'
+        : 'No paired SPARTAN FTIR EC, HIPS Fabs and sampled volume measurements.'}</Empty>)}
+      {showSpartan && showSpartanGroups && <>
+        <ExcludedNote count={nOut} />
+        {selectedSpartan && <>
+          <p className="chart-note"><strong>SPARTAN group median</strong> · {selectedSpartan.details.join(' · ')}</p>
+          <button type="button" className="btn" onClick={() => setSampleDrawer('SPARTAN')}>{bothNetworks ? 'View SPARTAN group samples' : 'View group samples'}</button>
+          {sampleDrawer === 'SPARTAN' && <LoadingGroupDrawer key={`${activeSite}/${selectedSpartan.key}`} network="SPARTAN" data={selectedSpartan.bin}
+            details={selectedSpartan.details} onClose={closeSamples} onOpenFilter={showSpartanFilter} />}
+        </>}
+      </>}
+      {showImprove && <>
+        <div role="status">
+          {selected && <p className="chart-note"><strong>IMPROVE group median</strong> · {selected.details.join(' · ')}</p>}
+        </div>
+        {HAS_IMPROVE_GROUPS && selected && <>
+          <button type="button" className="btn" onClick={() => setSampleDrawer('IMPROVE')}>{bothNetworks ? 'View IMPROVE group samples' : 'View group samples'}</button>
+          {sampleDrawer === 'IMPROVE' && <ImproveGroupDrawer key={selected.key} group={selected} onClose={closeSamples} />}
+        </>}
+        <Readouts items={[
+          { label: 'Measured τ', value: fmt(t, 2), color: MEASURED },
+          { label: 'Linearised τ', value: Number.isFinite(tl) ? fmt(tl, 2) : '—', color: LINEAR },
+          { label: 'Correction ×', value: Number.isFinite(tl) ? fmt(tl / t, 2) : '—' },
+          { label: 'Noise amplified ×', value: Number.isFinite(tl) ? fmt(noiseGain(t, c), 1) : '—', sub: '1 / (1 − τ/τ∞)²' },
+        ]} />
+        <Note>Set the ceiling under Page options. The noise factor is the slope of the inverse, 1 / (1 − τ/τ∞)². At 70 % of the ceiling it is about 11.</Note>
+      </>}
     </ChartFrame>
   )
+}
+
+const GROUP_PAGE_SIZE = 50
+const loadingRange = (g: LoadingGroup) => g.upper == null ? `≥ ${fmt(g.lower, 1)} µg` : `${fmt(g.lower, 1)}–<${fmt(g.upper, 1)} µg`
+
+function ImproveGroupDrawer({ group, onClose }: { group: { key: string; n: number; details: string[] }; onClose: () => void }) {
+  const { data, error } = useExport<LoadingGroup>(`research/hips_linearise_groups/${group.key}.json.gz`, (d) =>
+    d.rows.length === group.n ? null : 'sample count differs from the plotted group')
+  return <LoadingGroupDrawer network="IMPROVE" details={group.details} data={data} onClose={onClose}
+    pending={<LoadState what="the IMPROVE group samples" error={error} command={`${COMMAND} --improve-groups`} />} />
+}
+
+function LoadingGroupDrawer({ network, details, data, onClose, pending, onOpenFilter }: {
+  network: BendSampleNetwork; details: string[]; data: LoadingGroup | null; onClose: () => void
+  pending?: ReactNode; onOpenFilter?: (id: string) => void
+}) {
+  const [site, setSite] = useState('all')
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
+  const bySite = useMemo(() => groupBy(data?.rows ?? [], ([code]) => code), [data])
+  const matches = useMemo(() => {
+    const rows = site === 'all' ? data?.rows ?? [] : bySite.get(site) ?? []
+    const query = search.trim().toLowerCase()
+    if (!query) return rows
+    const terms = query.split(/\s+/)
+    return rows.filter(([code, date]) => terms.every((term) => `${code} ${date}`.toLowerCase().includes(term)))
+  }, [bySite, data, search, site])
+  const counts = useMemo(() => rollup(matches, (rows) => rows.length, ([code]) => code), [matches])
+  const start = page * GROUP_PAGE_SIZE
+  const end = Math.min(start + GROUP_PAGE_SIZE, matches.length)
+  const sections = groupBy(matches.slice(start, end), ([code]) => code)
+  const ec = network === 'IMPROVE' ? 'TOR EC' : 'FTIR EC'
+  const title = `${network} group samples`
+  return <DrawerShell label={title} onClose={onClose} portal>
+    <header className="drawer-head">
+      <div><div className="drawer-id">{title}</div><div className="drawer-sub">{details.join(' · ')}</div></div>
+      <button type="button" className="btn quiet x-btn" onClick={onClose} aria-label="Close group samples"><XIcon /></button>
+    </header>
+    {data ? <div className="drawer-section">
+      <p>Previous sampling date’s {ec} loading at the same site was at least {fmt(data.lower, 1)} µg{data.upper != null && ` and below ${fmt(data.upper, 1)} µg`}.</p>
+      <div className="drawer-actions">
+        <Select label="Site" value={site} options={['all', ...bySite.keys()]}
+          optionLabel={(code) => code === 'all' ? `All ${bySite.size} sites` : `${code} (${bySite.get(code)?.length.toLocaleString()})`}
+          onChange={(value) => { setSite(value); setPage(0) }} />
+        <input type="search" aria-label="Search by site code or date" placeholder="Site code or YYYY-MM-DD" value={search}
+          onChange={(event) => { setSearch(event.target.value); setPage(0) }} />
+        <StepButton dir="prev" label="Previous sample page" disabled={page === 0} onClick={() => setPage(page - 1)} />
+        <span role="status">{matches.length ? `${(start + 1).toLocaleString()}–${end.toLocaleString()} of ${matches.length.toLocaleString()}` : 'No matching samples'}</span>
+        <StepButton dir="next" label="Next sample page" disabled={end >= matches.length} onClick={() => setPage(page + 1)} />
+      </div>
+      <DrawerScroll label={`Samples in this ${network} group`}><table className="placement group-rows">
+        <thead><tr>{onOpenFilter && <th scope="col">Filter</th>}<th scope="col">Sample date</th><th scope="col" className="num">Previous {ec} (µg)</th><th scope="col" className="num">{ec} (µg)</th><th scope="col" className="num">HIPS τ</th></tr></thead>
+        {[...sections].map(([code, rows]) => <tbody key={code}>
+          <tr><th scope="rowgroup" colSpan={onOpenFilter ? 5 : 4}>{code} <span className="u">· {counts.get(code)?.toLocaleString()}</span></th></tr>
+          {rows.map(([, date, previous, loading, tau, id]) => <tr key={id ?? date}>
+            {onOpenFilter && <td>{id && <button type="button" className="link-btn" onClick={() => onOpenFilter(id)}>{id}</button>}</td>}
+            <td className="mono">{date}</td><td className="mono num">{fmt(previous, 2)}</td>
+            <td className="mono num">{fmt(loading, 2)}</td><td className="mono num">{fmt(tau, 3)}</td>
+          </tr>)}
+        </tbody>)}
+      </table></DrawerScroll>
+    </div> : pending}
+  </DrawerShell>
 }
 
 // ------------------------------------------------------------------ 2. one filter, step by step
@@ -211,14 +428,14 @@ export function Worked({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   ]
   return (
     <ChartFrame id="hl-worked" title="One Addis filter through every step — from reported BC to linearised BC, at the chosen ceiling"
-      subtitle="Pick a filter (sorted by optical depth). Every number is recomputed from its HIPS value and sampled volume with the ceiling chosen above. Because V, A and MAC cancel in the ratio, linearising BC is the same multiplication as linearising τ."
+      subtitle="Pick a filter (sorted by optical depth). Every number is recomputed from its HIPS value and sampled volume at the ceiling set in Page options. Because V, A and MAC cancel in the ratio, linearising BC is the same multiplication as linearising τ."
       provenance={PROVENANCE} exportable={false}
       controls={<Select label="Filter" value={f.id} options={sorted.map((r) => r.id)} onChange={setId}
         optionLabel={(o) => { const r = sorted.find((s) => s.id === o)!; return `${o} · ${r.season} · τ ${fmt(r.tau, 2)}` }} />}>
       <DataTable rows={rows} rowKey={(_r, i) => `${i}`} columns={[
         { key: 'n', label: '#', num: true, value: (_r) => String(rows.indexOf(_r) + 1) },
         { key: 's', label: 'Step', value: (r) => r.step }, { key: 'w', label: 'Formula', value: (r) => <code>{r.what}</code> }, { key: 'v', label: 'This filter', value: (r) => r.value }]} />
-      <Note>Ceiling {ceil.label}. V is this filter's sampled air volume{f.volume_known ? '' : ' (not on its HIPS row: the Addis median stands in, volumes vary by under 2 %)'}. The loading L is "EC on the filter as IMPROVE's light filters would rate it", so it carries IMPROVE's light-filter MAC and is not a measured Addis EC.</Note>
+      <Note explain>Ceiling {ceil.label}. V is this filter's sampled air volume{f.volume_known ? '' : ' (not on its HIPS row: the Addis median stands in, volumes vary by under 2 %)'}. The loading L is "EC on the filter as IMPROVE's light filters would rate it", so it carries IMPROVE's light-filter MAC and is not a measured Addis EC.</Note>
     </ChartFrame>
   )
 }
@@ -272,7 +489,19 @@ export function CorrectionCurve({ data, ceil }: { data: Linearise; ceil: Ceil })
   const shown = useMemo(() => data.filters.filter((f) => f.ftir != null), [data])
   const points = useMemo<ScatterPoint[]>(() => shown.flatMap((f) => {
     const k = correction(f.tau, c)
-    return Number.isFinite(k) ? [{ id: f.id, x: f.tau, y: k, color: MEASURED, tip: [`${f.id} · ${f.season}${f.lot ? ` · lot ${f.lot}` : ''}`, `τ ${fmt(f.tau, 2)} → × ${fmt(k, 2)}`] }] : []
+    return Number.isFinite(k) ? [{
+      id: f.id, x: f.tau, y: k, color: MEASURED,
+      tip: [`${f.id} · ${f.season}${f.lot ? ` · lot ${f.lot}` : ''}`, `τ ${fmt(f.tau, 2)} → × ${fmt(k, 2)}`],
+      rec: {
+        id: f.id, source: 'HIPS optical depth correction', site: 'Addis Ababa',
+        fields: [
+          ['Measured optical depth τ', fmt(f.tau, 3)],
+          ['Ceiling τ∞', fmt(c, 2)],
+          ['Correction factor', `× ${fmt(k, 2)}`],
+          ['Linearised optical depth τ_lin', fmt(linearise(f.tau, c), 3)],
+        ],
+      },
+    }] : []
   }), [shown, c])
   const med = median(shown.map((f) => f.tau)), mc = correction(med, c)
   const facs = shown.map((f) => correction(f.tau, c)).filter(Number.isFinite)
@@ -280,11 +509,11 @@ export function CorrectionCurve({ data, ceil }: { data: Linearise; ceil: Ceil })
   const heaviest = shown.reduce((m, f) => (f.tau > m.tau ? f : m), shown[0])
   return (
     <ChartFrame id="hl-correction" title="The correction is small for light filters and large for Addis — correction factor against measured optical depth, every Addis filter"
-      subtitle={`τ_lin / τ = 1 / (1 − τ/τ∞) against measured τ. The dots are the ${shown.length} Addis filters with a published FTIR EC. Most SPARTAN sites sit to the left of 0.5, where the factor is under 1.3; Addis sits where the curve steepens.`}
-      provenance={PROVENANCE} controls={ceil.control}>
+      subtitle={`τ_lin / τ = 1 / (1 − τ/τ∞) against measured τ. The dots are the ${shown.length} Addis filters with a published FTIR EC. Click a dot to open its filter record. Most SPARTAN sites sit to the left of 0.5, where the factor is under 1.3; Addis sits where the curve steepens.`}
+      provenance={PROVENANCE}>
       <CorrectionPlot points={points} ceiling={c} lo={lo} hi={hi} median={med} medianLabel={`Addis median τ ${fmt(med, 2)} → × ${fmt(mc, 2)}`} lightBox />
       <Key items={[{ label: `chosen ceiling ${fmt(c, 2)}`, color: LINEAR, kind: 'line' }, { label: `ceiling ${fmt(lo, 2)} to ${fmt(hi, 2)} (90 %)`, color: LINEAR, kind: 'faded' }, { label: 'Addis filters', color: MEASURED, kind: 'dot' }]} />
-      <Note>Median Addis correction × {fmt(median(facs), 2)} at this ceiling (× {fmt(at(hi), 2)} to × {fmt(at(lo), 2)} across the 90 % interval). The heaviest filter ({heaviest.id}, τ {fmt(heaviest.tau, 2)}) is corrected × {fmt(correction(heaviest.tau, c), 2)}.</Note>
+      <Note explain>Median Addis correction × {fmt(median(facs), 2)} at this ceiling (× {fmt(at(hi), 2)} to × {fmt(at(lo), 2)} across the 90 % interval). The heaviest filter ({heaviest.id}, τ {fmt(heaviest.tau, 2)}) is corrected × {fmt(correction(heaviest.tau, c), 2)}.</Note>
       <FixedSetNote what="the closure workflow's counted Addis filters with a published FTIR EC" />
     </ChartFrame>
   )
@@ -292,49 +521,50 @@ export function CorrectionCurve({ data, ceil }: { data: Linearise; ceil: Ceil })
 
 // ------------------------------------------------------------------ 4. FTIR EC against HIPS
 export function AgainstHips({ data, ceil }: { data: Linearise; ceil: Ceil }) {
-  const [view, setView] = useSearchParam<(typeof HIPS_VIEWS)[number]>('hl.hips', 'measured', HIPS_VIEWS)
-  const c = ceil.ceiling, lin = view === 'linearised'
+  const [view, setView] = useSearchParam<(typeof HIPS_VIEWS)[number]>('hl.hips', 'both', HIPS_VIEWS)
+  const c = ceil.ceiling
+  const series = useMemo(() => HIPS_SERIES.filter((s) => view === 'both' || view === s).map((key) => {
+    const lin = key === 'linearised'
+    return { key, lin, label: lin ? 'Linearised' : 'As measured', color: lin ? LINEAR : MEASURED,
+      fit: fitAgainstHips(data.filters, data.lambda, lin ? c : null) }
+  }), [data.filters, data.lambda, c, view])
   const shown = useMemo(() => data.filters.filter((f) => f.ftir != null), [data])
-  const points = useMemo<ScatterPoint[]>(() => shown.flatMap((f) => {
+  const points = useMemo<ScatterPoint[]>(() => series.flatMap(({ key, lin, label, color }) => shown.flatMap((f) => {
     const xl = linearBc(f, c), x = lin ? xl : f.hips_bc
-    return Number.isFinite(x) ? [{ id: f.id, x, y: f.ftir!, color: lin ? LINEAR : MEASURED,
-      tip: [`${f.id} · ${f.season}${f.lot ? ` · lot ${f.lot}` : ''}`, `FTIR EC ${fmt(f.ftir, 2)} µg/m³`, `HIPS BC ${fmt(f.hips_bc, 2)} → linearised ${fmt(xl, 2)} µg/m³`, `τ ${fmt(f.tau, 2)}`] }] : []
-  }), [shown, c, lin])
-  const fit = lin ? fitAgainstHips(data.filters, data.lambda, c) : fitAgainstHips(data.filters, data.lambda, null)
+    return Number.isFinite(x) ? [{ id: f.id, key: `${f.id}/${key}`, x, y: f.ftir!, color, hollow: lin,
+      tip: [`${f.id} · ${label}`, `${f.season}${f.lot ? ` · lot ${f.lot}` : ''}`, `FTIR EC ${fmt(f.ftir, 2)} µg/m³`,
+        `HIPS BC ${fmt(f.hips_bc, 2)} → linearised ${fmt(xl, 2)} µg/m³`, `τ ${fmt(f.tau, 2)}`] }] : []
+  })), [shown, c, series])
+  const domain = useMemo<[number, number]>(() => [0, Math.max(24, Math.ceil(Math.max(...points.map(({ x, y }) => Math.max(x, y))) / 6) * 6)], [points])
   const top = useMemo(() => 1.08 * Math.max(...shown.map((f) => f.ftir!)), [shown])
-  const band = [data.ceilings.find((k) => k.key === 'lo')!, data.ceilings.find((k) => k.key === 'hi')!].map((k) => fitAgainstHips(data.filters, data.lambda, k.tau_inf))
-  const children = ({ x, y }: ScatterScales) => {
-    if (!fit) return null
-    const [d0, d1] = x.domain()
-    // the line starts where it meets y = 0, or at x = 0 when its intercept is positive; a ring marks that point
-    const xz = -fit.intercept / fit.slope
-    // and ends just past the highest FTIR EC, so the line does not run on through the empty half of the square
-    const x0 = Math.max(d0, xz), x1 = Math.min(d1, (Math.min(y.domain()[1], top) - fit.intercept) / fit.slope)
-    return <g pointerEvents="none">
-      <line x1={x(x0)} y1={y(fit.slope * x0 + fit.intercept)} x2={x(x1)} y2={y(fit.slope * x1 + fit.intercept)} stroke={INK.fit} strokeWidth={2} />
-      <circle cx={x(x0)} cy={y(fit.slope * x0 + fit.intercept)} r={5} fill="none" stroke={INK.fit} strokeWidth={2} />
+  const band = useMemo(() => data.ceilings.filter(({ key }) => key === 'lo' || key === 'hi')
+    .map(({ tau_inf }) => fitAgainstHips(data.filters, data.lambda, tau_inf)), [data.ceilings, data.filters, data.lambda])
+  const children = ({ x, y }: ScatterScales) => series.map(({ key, fit, lin, color }) => {
+    if (!fit || fit.slope <= 0) return null
+    const x0 = Math.max(domain[0], -fit.intercept / fit.slope)
+    const x1 = Math.min(domain[1], (Math.min(domain[1], top) - fit.intercept) / fit.slope)
+    if (x1 < x0) return null
+    return <g key={key} pointerEvents="none">
+      <line x1={x(x0)} y1={y(fit.slope * x0 + fit.intercept)} x2={x(x1)} y2={y(fit.slope * x1 + fit.intercept)} stroke={color} strokeWidth={2} strokeDasharray={lin ? '5 3' : undefined} />
+      <circle cx={x(x0)} cy={y(fit.slope * x0 + fit.intercept)} r={5} fill="none" stroke={color} strokeWidth={2} />
     </g>
-  }
+  })
   return (
     <ChartFrame id="hl-against-hips" title="Stretch the HIPS axis back out and the negative intercept disappears — SPARTAN published FTIR EC against HIPS BC, Addis Ababa"
-      subtitle={`Each dot is one Addis filter (n = ${shown.length}). The FTIR EC values stay where they are; only the x value changes, and the darkest filters move furthest. The line is the Deming fit with the closure's error ratio λ = ${data.lambda}, refitted here at the chosen ceiling.`}
+      subtitle={`The ${shown.length} Addis filters keep the same FTIR EC on the y-axis. In Both, each filter appears at its measured and linearised HIPS BC where available. The Deming fits use λ = ${data.lambda}, with linearisation at the page’s selected ceiling.`}
       provenance={PROVENANCE}
-      controls={<>
-        <Segmented label="HIPS" value={view} options={HIPS_VIEWS} onChange={setView} optionLabel={(o) => (o === 'measured' ? 'As measured (Fabs / 10)' : 'Linearised (/ 10)')} />
-        {lin && ceil.control}
-      </>}>
-      <ScatterPlot points={points} xLabel={lin ? `HIPS BC linearised at τ∞ ${fmt(c, 2)} (µg/m³)` : 'HIPS BC, Fabs ÷ 10 (µg/m³)'} yLabel="FTIR EC (µg/m³)"
-        xDomain={[0, 24]} yDomain={[0, 24]} nice={false} maxSide={SIDE} outside="pin" note={false}
-        under={({ x, y }) => <><RefLine orient="h" at={y(0)} from={x(0)} to={x(24)} />
-          <line x1={x(0)} y1={y(0)} x2={x(24)} y2={y(24)} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="5 4" />
-          <text x={x(22) - 6} y={y(22) - 6} textAnchor="end" fontSize={10} fontFamily={FONT.mono} fill={INK.muted}>1 : 1</text></>}>{children}</ScatterPlot>
-      <Key items={[{ label: lin ? 'HIPS linearised' : 'HIPS as measured', color: lin ? LINEAR : MEASURED, kind: 'dot' }, { label: 'Deming fit', color: INK.fit, kind: 'line' }]} />
-      <Readouts items={[
-        { label: 'Deming fit', value: eq(fit), sub: fit ? `n = ${fit.n}` : undefined },
-        { label: 'Intercept', value: fit ? `${signed(fit.intercept, 2)} µg/m³` : '—', color: lin ? LINEAR : MEASURED },
-        { label: 'As measured', value: eq(data.fit_measured), color: MEASURED },
-      ]} />
-      <Note>Why this happens: when the high end of the x axis is squashed, a straight line through the cloud has to be steep, and a steep line through the middle of the data crosses zero far below the origin. Straighten the axis and the line flattens and passes through the origin. Across the ceiling's 90 % interval the linearised intercept runs from {signed(band[0]?.intercept, 2)} to {signed(band[1]?.intercept, 2)} µg/m³, which cannot be told apart from zero.</Note>
+      controls={<Segmented label="HIPS" value={view} options={HIPS_VIEWS} onChange={setView} optionLabel={(o) => o === 'measured' ? 'As measured' : o === 'linearised' ? 'Linearised' : 'Both'} />}>
+      <ScatterPlot points={points} xLabel="HIPS BC (µg/m³)" yLabel="FTIR EC (µg/m³)"
+        xDomain={domain} yDomain={domain} nice={false} maxSide={SIDE} outside="pin" note={false}
+        under={({ x, y }) => <><RefLine orient="h" at={y(0)} from={x(0)} to={x(domain[1])} />
+          <IdentityLine x1={x(0)} y1={y(0)} x2={x(domain[1])} y2={y(domain[1])} /></>}>{children}</ScatterPlot>
+      <Key items={[...series.flatMap(({ label, lin, color }) => [
+        { label: `HIPS ${label.toLowerCase()}`, color, kind: lin ? 'hollow' as const : 'dot' as const },
+        { label: `${label} Deming fit`, color, kind: lin ? 'dash' as const : 'line' as const },
+      ]), { label: '1:1', color: INK.identity, kind: 'dash' }]} />
+      <Readouts items={series.map(({ label, fit, color }) => ({ label, value: eq(fit), color,
+        sub: fit ? `Intercept ${signed(fit.intercept, 2)} µg/m³ · n = ${fit.n}` : undefined }))} />
+      <Note explain>Why this happens: when the high end of the x axis is squashed, a straight line through the cloud has to be steep, and a steep line through the middle of the data crosses zero far below the origin. Straighten the axis and the line flattens and passes through the origin. Across the ceiling's 90 % interval the linearised intercept runs from {signed(band[0]?.intercept, 2)} to {signed(band[1]?.intercept, 2)}, which cannot be told apart from zero.</Note>
       <FixedSetNote what="the closure workflow's counted Addis filters with a published FTIR EC" />
     </ChartFrame>
   )
@@ -373,7 +603,7 @@ export function NetworkExponents({ data }: { data: Linearise }) {
       <ScatterPlot points={points} xLabel="Site median HIPS optical depth" yLabel="Exponent b" xDomain={[0, 1.05]} yDomain={[0.2, 1.4]} nice={false}
         maxSide={SIDE} outside="pin" note={false} refY={[1]} under={under}>{children}</ScatterPlot>
       <Key items={[{ label: 'measured, 95 % interval', color: INK.text, kind: 'dot' }, { label: 'predicted from the IMPROVE curve', color: LINEAR, kind: 'hollow' }]} />
-      <Note>Darker sites fall further below 1, about as the curve predicts. Addis has the darkest filters and the lowest exponent ({fmt(addis?.exponent, 2)} against {fmt(addis?.predicted, 2)} predicted). The two Chilean sites ({chile.map((s) => fmt(s.exponent, 2)).join(', ')} against {fmt(Math.min(...chile.map((s) => s.predicted)), 2)}–{fmt(Math.max(...chile.map((s) => s.predicted)), 2)} predicted) are not explained. The predictions here use the central ceiling and each site's own filters as the 10 Nov note made them; the 11 Nov network page refines them per site (Meeting tab, HIPS across the network).</Note>
+      <Note explain>Darker sites fall further below 1, about as the curve predicts. Addis has the darkest filters and the lowest exponent ({fmt(addis?.exponent, 2)} against {fmt(addis?.predicted, 2)} predicted). The two Chilean sites ({chile.map((s) => fmt(s.exponent, 2)).join(', ')} against {fmt(Math.min(...chile.map((s) => s.predicted)), 2)}–{fmt(Math.max(...chile.map((s) => s.predicted)), 2)} predicted) are not explained. The predictions here use the central ceiling and each site's own filters as the 10 Nov note made them; the 11 Nov network page refines them per site (Meeting tab, HIPS across the network).</Note>
       <FixedSetNote what="the closure workflow's saved site exponents (all SPARTAN sites with at least 40 filters)" />
     </ChartFrame>
   )
@@ -392,14 +622,14 @@ export function SeasonLot({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   return (
     <ChartFrame id="hl-season" title="Most of the seasonal swing was loading, not FTIR — median FTIR EC ÷ HIPS BC by season and filter lot"
       subtitle="Kiremt filters are the darkest, so they are the most compressed. Against HIPS as measured, FTIR looked like it changed a lot by season; linearised, most of that goes. Absolute levels drop because linearised HIPS is larger, so compare the spread, not the position. Recomputed at the chosen ceiling."
-      provenance={PROVENANCE} controls={ceil.control}>
+      provenance={PROVENANCE}>
       <IntervalStrip blocks={[{ key: 's', rows: groups.map((g) => ({
         key: g.key, label: g.label, note: `τ ${fmt(g.tau, 2)} · n ${g.n}`,
         marks: [[{ mid: g.linearised, lo: Math.min(g.linearised, g.measured), hi: Math.max(g.linearised, g.measured), color: LINEAR, r: 6 }, { mid: g.measured, color: MEASURED, r: 6 }]],
         tip: [g.label, `against HIPS as measured ${fmt(g.measured, 2)}`, `against HIPS linearised ${fmt(g.linearised, 2)}`, `median τ ${fmt(g.tau, 2)} · n ${g.n}`],
       })) }]} panels={[{ label: 'Median FTIR EC ÷ HIPS BC', domain: [0, 1.4], format: (v) => fmt(v, 1) }]} labelWidth={130} noteWidth={110} rowHeight={30} />
       <Key items={[{ label: 'against HIPS as measured', color: MEASURED, kind: 'dot' }, { label: 'against HIPS linearised', color: LINEAR, kind: 'dot' }]} />
-      <Note>Within lot 251, Bega to Kiremt goes from {fmt(bega?.measured, 2)} to {fmt(kiremt?.measured, 2)} ({fmt(100 * swing('measured'), 0)} %) against HIPS as measured, and from {fmt(bega?.linearised, 2)} to {fmt(kiremt?.linearised, 2)} ({fmt(100 * swing('linearised'), 0)} %) against linearised HIPS. Lot 248 still reads 15 to 20 % low, and it does so against gravimetric mass too, so that offset is not a HIPS effect.</Note>
+      <Note explain>Within lot 251, Bega to Kiremt goes from {fmt(bega?.measured, 2)} to {fmt(kiremt?.measured, 2)} ({fmt(100 * swing('measured'), 0)} %) against HIPS as measured, and from {fmt(bega?.linearised, 2)} to {fmt(kiremt?.linearised, 2)} ({fmt(100 * swing('linearised'), 0)} %) against linearised HIPS. Lot 248 still reads 15 to 20 % low, and it does so against gravimetric mass too, so that offset is not a HIPS effect.</Note>
       <FixedSetNote what="the closure workflow's counted Addis filters with a published FTIR EC" />
     </ChartFrame>
   )
@@ -420,7 +650,7 @@ export function Limits({ data }: { data: Linearise }) {
         { key: 'e', label: 'Addis exponent predicted', num: true, value: (r) => fmt(r.predicted, 2) },
         { key: 'f', label: 'Addis fit after linearising', num: true, value: (r) => eq(r.fit) },
       ]} />
-      <Note>Noise grows near the ceiling: the correction multiplies measurement error on the heaviest filters, so per-filter linearised values are least reliable exactly where they matter most. Linearised HIPS is still optical, not the true Addis EC: its slope is FTIR level × 10 ÷ true MAC, and the MAC at Addis is unknown. The direct test is HIPS on the incoming Addis TOR filters, including some loaded to τ 0.5–1.5, which would measure the ceiling at Addis itself.</Note>
+      <Note explain>Noise grows near the ceiling: the correction multiplies measurement error on the heaviest filters, so per-filter linearised values are least reliable exactly where they matter most. Linearised HIPS is still optical, not the true Addis EC: its slope is FTIR level × 10 ÷ true MAC, and the MAC at Addis is unknown. The direct test is HIPS on the incoming Addis TOR filters, including some loaded to τ 0.5–1.5, which would measure the ceiling at Addis itself.</Note>
     </ChartFrame>
   )
 }

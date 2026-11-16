@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { correction, DEPOSIT_AREA_CM2, fitAgainstHips, IMPROVE_CEILINGS, linearise, noiseGain, opticalDepth, predictedExponent, ratioMedians, saturate } from './hipsLinearise.ts'
+import { correction, DEPOSIT_AREA_CM2, fitAgainstHips, IMPROVE_CEILINGS, linearise, noiseGain, opticalDepth, predictedExponent, previousLoadingGroups, ratioMedians, saturate } from './hipsLinearise.ts'
 
 const data = JSON.parse(fs.readFileSync(new URL('../../public/data/hips_linearise/linearise.json', import.meta.url), 'utf8'))
 const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b}`)
@@ -14,6 +14,23 @@ test('the inversion undoes the saturating curve, and its factors', () => {
   assert.ok(Number.isNaN(linearise(2.3, 2.26)))
   near(correction(0.97, 2.26), 1 / (1 - 0.97 / 2.26), 1e-12, 'correction')
   near(noiseGain(0.7 * 2.26, 2.26), 1 / 0.09, 1e-9, 'noise at 70 % of the ceiling')
+})
+
+test('SPARTAN bins use the previous eligible sampling date within the same site', () => {
+  const sample = (id, site, date, loading) => ({ id, site, date, loading, tau: loading / 10 })
+  const samples = [
+    sample('A4', 'AAAA', '2024-01-20', 3),
+    sample('A1', 'AAAA', '2024-01-01', 1),
+    sample('A2', 'AAAA', '2024-01-01', 3),
+    sample('B1', 'BBBB', '2024-01-09', 0),
+    sample('A3', 'AAAA', '2024-01-10', 6),
+    sample('B2', 'BBBB', '2024-01-10', 1),
+    sample('A5', 'AAAA', '2024-01-21', 9),
+  ]
+  assert.deepEqual(previousLoadingGroups(samples, [0, 2, 3]), [
+    { lower: 2, upper: 3, rows: [['AAAA', '2024-01-10', 2, 6, 0.6, 'A3']] },
+    { lower: 3, upper: null, rows: [['AAAA', '2024-01-21', 3, 9, 0.9, 'A5']] },
+  ])
 })
 
 test('the fit as measured and at every saved ceiling matches the workflow', () => {

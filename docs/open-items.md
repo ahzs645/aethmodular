@@ -356,8 +356,8 @@ come before more factors, and before any named-source fraction or mass. The gall
 needs a GitHub token that can upload assets. A deploy without one reuses the latest data release; the deploy
 workflow now unpacks that release over the data committed at the built commit, so committed exports (for example
 `improve_site_quantiles.json`, the Aethalometer flow detail) still reach the site. Exports that are git-ignored
-reach it only through a new release: run the script from the Mac after the next export. The three files the Experimental page
-"VIBES on one spectrum" solves with (`experimental/vibes_background.json`, `.bin` and `vibes_saved_fits.json`, 1.8 MB)
+reach it only through a new release: run the script from the Mac after the next export. The two files the Experimental page
+"VIBES on one spectrum" solves with (`experimental/vibes_background.json` and `.bin`)
 are committed for that reason, as an exception to the Experimental ignore rule; drop the exception once a release
 carries them, if the repo should not hold them.
 

@@ -85,7 +85,7 @@ export interface Trace { wn: number[]; y: ArrayLike<number> }
 /** This analysis's traces: raw always; AIRSpec (corrected and its baseline) and VIBES (corrected) where present. */
 export interface NativeTraces { raw: Trace; airspec?: Trace; airspecBaseline?: Trace; vibes?: Trace }
 
-export function nativeTraces(buffer: ArrayBuffer, a: NativeAnalysis, vibesGrid?: Grid | null): NativeTraces {
+function nativeRawTrace(buffer: ArrayBuffer, a: NativeAnalysis): Trace {
   const wn = gridOf(a)
   if (!a.series) {
     // schema 1: float32 little-endian, offsets in values
@@ -94,16 +94,21 @@ export function nativeTraces(buffer: ArrayBuffer, a: NativeAnalysis, vibesGrid?:
       throw new Error('Native spectrum length does not match its descriptor')
     }
     const view = new DataView(buffer)
-    return { raw: { wn, y: Float32Array.from({ length: a.n }, (_, i) => view.getFloat32((off + i) * 4, true)) } }
+    return { wn, y: Float32Array.from({ length: a.n }, (_, i) => view.getFloat32((off + i) * 4, true)) }
   }
-  const raw = decodeTrace(buffer, a.series.raw)
-  const out: NativeTraces = { raw: { wn, y: raw } }
+  return { wn, y: decodeTrace(buffer, a.series.raw) }
+}
+
+export function nativeTraces(buffer: ArrayBuffer, a: NativeAnalysis, vibesGrid?: Grid | null): NativeTraces {
+  const raw = nativeRawTrace(buffer, a)
+  const out: NativeTraces = { raw }
+  if (!a.series) return out
   const ab = a.series.airspec_baseline
   if (ab) {
     const base = decodeTrace(buffer, ab), start = ab.start ?? 0
-    const span = wn.slice(start, start + base.length)
+    const span = raw.wn.slice(start, start + base.length)
     out.airspecBaseline = { wn: span, y: base }
-    out.airspec = { wn: span, y: base.map((v, i) => raw[start + i] - v) }
+    out.airspec = { wn: span, y: base.map((v, i) => raw.y[start + i] - v) }
   }
   if (a.series.vibes_corrected && vibesGrid) out.vibes = { wn: gridOf(vibesGrid), y: decodeTrace(buffer, a.series.vibes_corrected) }
   return out
@@ -134,6 +139,10 @@ export function vibesProvenance(a: Pick<NativeAnalysis, 'lot' | 'vibes_model'>, 
 
 export async function loadNativeTraces(file: string, a: NativeAnalysis, vibesGrid?: Grid | null) {
   return nativeTraces(await loadBinary(file), a, vibesGrid)
+}
+
+export async function loadNativeRawTrace(file: string, a: NativeAnalysis) {
+  return nativeRawTrace(await loadBinary(file), a)
 }
 
 /** Only an explicit network-reference request loads every site's filter numbers.

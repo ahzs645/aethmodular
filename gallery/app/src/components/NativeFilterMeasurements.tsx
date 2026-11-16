@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useLoaded } from '@/lib/data'
 import { baseFilterId } from '@/lib/highlight'
+import { selectNativeAnalysis } from '@/lib/nativeScanReview'
 import { loadSpartanIndex, loadNativeSite, loadNativeTraces, vibesProvenance } from '@/lib/spartan'
 import { SpectrumModal, SpectrumPlot } from '@/components/FilterSpectrumPlot'
 import { useAddisStatus, useFilterSpectrum } from '@/lib/filterSpectrum'
@@ -42,16 +43,15 @@ export function NativeFilterMeasurements({ id }: { id: string }) {
   const pm25 = entry?.analyses.filter(a => a.filter_type === 'PM2.5') ?? []
   const analyses = pm25.length ? pm25 : entry?.analyses.filter(a => a.filter_type === 'PM10') ?? []
   const pm10 = !pm25.length && analyses.length > 0
-  const analysis = analyses.find(a => choice?.base === base && a.analysis_id === choice.analysis) ?? analyses[0]
+  const { analysis, reviewNote } = selectNativeAnalysis(analyses, choice?.base === base ? choice.analysis : undefined)
   const key = `${base}:${analysis?.analysis_id ?? ''}:${entry?.file ?? ''}`
   const current = useLoaded(analysis && entry ? key : null, () => loadNativeTraces(entry!.file, analysis!, vibesInfo?.grid), { deps: [vibesInfo] })
-  if (!code) return null
   const error = state.error
   const t = current.data
   // Until the network VIBES run is exported, an Addis filter in the frozen runs shows that run's
   // VIBES trace (10 cm⁻¹ bins), fetched only when VIBES is ticked; elsewhere VIBES is offered only
   // where the export has it (never for a filter without one, e.g. IMPROVE)
-  const status = useAddisStatus(id)
+  const status = useAddisStatus(code ? id : null)
   const frozenVibes = !!t && !t.vibes && !!status?.in_run
   const frozen = useFilterSpectrum(frozenVibes && picked.includes('vibes') ? id : null, ['VIBES'])
   const vibes = t?.vibes ?? (frozenVibes ? frozen?.series.VIBES : undefined)
@@ -77,6 +77,7 @@ export function NativeFilterMeasurements({ id }: { id: string }) {
     has.vibes && vibesInfo ? `VIBES: a saved blank background (not refitted per filter), applied after averaging this spectrum onto its ${vibesInfo.grid.n.toLocaleString()}-point grid.${provenance ? ` ${provenance.line} ${provenance.detail}` : ''}` : '',
   ].filter(Boolean).join('\n\n') : ''
 
+  if (!code) return null
   return <section className="drawer-section">
     <div className="ftir-head">
       <h3>FTIR spectrum</h3>
@@ -94,6 +95,7 @@ export function NativeFilterMeasurements({ id }: { id: string }) {
         : 'This filter is not in the native FTIR archive, so there is no spectrum to draw; its measurements come from the public data.'}</p>
       : <>
         {pm10 && <p className="ftir-meta">The archive holds this filter as PM10, not PM2.5: its own spectrum is shown, but it sits outside every PM2.5 comparison.</p>}
+        {reviewNote && <p className="ftir-meta">{reviewNote}</p>}
         {current.error ? <p role="alert">Spectrum could not be loaded: {current.error}</p> : t ? <>{traces}{plot()}</> : <p className="ftir-meta">Loading this filter’s spectrum…</p>}
         {provenance && shown.includes('vibes') && <p className="ftir-meta" title={provenance.detail}>{provenance.line}</p>}
         {expanded && t && <SpectrumModal id={id} title="FTIR spectrum" onClose={() => setExpanded(false)}>

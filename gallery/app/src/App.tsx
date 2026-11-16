@@ -1621,7 +1621,8 @@ export default function App() {
       <Shell nav={nav} dash={tab === 'dashboard'} onDash={toggleDash} editsBadge={!subset}>
         {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
         {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting' || tab === 'experimental' || tab === 'similarity' || tab === 'ml')
-          && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'} label={tab === 'similarity' ? 'Target' : 'Samples'}
+          && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'}
+            label={tab === 'similarity' ? 'Target' : tab === 'meeting' && ['hips-linearise', 'hips-parts'].includes(meeting) ? 'Page' : 'Samples'}
             // the tabs whose charts read HIPS BC get the MAC on a Plot tab, as the Samples-panel tabs do
             mac={tab === 'ml' || tab === 'experimental' || tab === 'meeting' ? {
               value: viewOpts.mac, exportMac, onMac: setMac,
@@ -1833,7 +1834,7 @@ function PageSidebar({ fits, label = 'Samples', mac }: {
   const hasPage = !mac || !!usePageTab()
   const view: 'page' | 'plot' = !mac ? 'page' : !hasPage || chosenView === 'plot' ? 'plot' : 'page'
   const toggle = (v: 'page' | 'plot') => { if (open && view === v) setOpen(false); else { setView(v === 'plot' ? 'plot' : 'page'); setOpen(true) } }
-  const name = view === 'plot' ? 'Plot' : label
+  const name = view === 'plot' ? 'Plot' : label === 'Page' ? 'Page options' : label
   const noun = name.toLowerCase()
   const edge = (v: 'page' | 'plot', text: string, tip: string, count?: string | null) =>
     <button key={v} className={`subset-tab${mac && open && view === v ? ' active' : ''}`} type="button" role={mac ? 'tab' : undefined} aria-selected={mac ? view === v : undefined}
@@ -1848,7 +1849,7 @@ function PageSidebar({ fits, label = 'Samples', mac }: {
         {edge('plot', 'Plot', `plot options: ${fits ? 'fits and ' : ''}the MAC`, mac.hipsCeiling != null ? 'HIPS lin.' : null)}
       </div>}>
       <aside className="panel subset subset-panel" aria-label={name}>
-        <header className="subset-head"><strong>{view === 'plot' ? 'Plot options' : label}</strong><span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet x-btn" onClick={() => setOpen(false)} aria-label={`Close ${noun}`} title="Close"><XIcon /></button></span></header>
+        <header className="subset-head"><strong>{view === 'plot' ? 'Plot options' : name}</strong><span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet x-btn" onClick={() => setOpen(false)} aria-label={`Close ${noun}`} title="Close"><XIcon /></button></span></header>
         {/* kept mounted on either half so the page's controls keep their state */}
         <div hidden={view !== 'page'}><PageSidebarSlot /></div>
         {fits && view === (mac ? 'plot' : 'page') && <RegressionControls />}

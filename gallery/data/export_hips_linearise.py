@@ -16,13 +16,17 @@ filter in the browser at whichever ceiling the reader picks, with the same formu
 All inputs are committed (the closeout, filters.json, the unified filter dataset, the closure summary); no
 Drive and no aethalometer data are needed.
 
-Writes gallery/app/public/data/hips_linearise/linearise.json.
+Writes gallery/app/public/data/hips_linearise/linearise.json. With --improve-groups, exports just the
+group members from the local TOR and HIPS tables, under the private research data folder.
 """
 
 from __future__ import annotations
 
+import argparse
+import gzip
 import json
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -36,6 +40,7 @@ sys.path[:0] = [str(ROOT / "research/ftir_hips_chem/workflows"), str(ROOT / "res
 import run_addis_reference_closure_20261110 as closure  # noqa: E402
 
 OUT = ROOT / "gallery/app/public/data/hips_linearise"
+GROUP_OUT = OUT.parent / "research/hips_linearise_groups"
 # the ceilings the page offers: the central IMPROVE fit, both ends of its 90 % interval, and the later era
 ERA = "2015–2025"
 
@@ -55,8 +60,46 @@ def records(rows) -> list[dict]:
     return [{k: clean(v) for k, v in r.items()} for r in rows]
 
 
+def export_improve_groups(saved: list[dict]) -> None:
+    samples = closure.improve_samples()
+    if samples is None:
+        raise FileNotFoundError("IMPROVE TOR and HIPS tables are required; set AETHMODULAR_FTIR_LOCAL_DB")
+    strata = closure.improve_strata(samples)
+    if list(strata["n"]) != [s["n"] for s in saved] or any(
+        not np.allclose(strata[field], [s[field] for s in saved], atol=0.00005, rtol=0)
+        for field in ("loading_ug", "tau")
+    ):
+        raise ValueError("Rebuilt IMPROVE groups do not match the saved counts and medians")
+
+    groups = closure.improve_groups(samples)
+    GROUP_OUT.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=GROUP_OUT) as staging:
+        for key, bin_index in enumerate(strata.index, start=1):
+            rows = groups.get_group(bin_index)
+            # The analysis pairs TOR and HIPS by site and sampling timestamp.
+            dates = rows["date"].dt.strftime("%Y-%m-%d %H:%M:%S").str.replace(" 00:00:00$", "", regex=True)
+            values = rows[["previous_loading_ug", "loading_ug", "tau"]].round(6).to_numpy().tolist()
+            payload = {
+                "lower": closure.IMPROVE_EDGES[bin_index - 1],
+                "upper": closure.IMPROVE_EDGES[bin_index] if bin_index < len(closure.IMPROVE_EDGES) else None,
+                "rows": [[site, date, *numbers] for site, date, numbers in zip(rows["Site"], dates, values, strict=True)],
+            }
+            (Path(staging) / f"{key}.json.gz").write_bytes(
+                gzip.compress(json.dumps(payload, separators=(",", ":")).encode(), mtime=0))
+        for file in Path(staging).iterdir():
+            file.replace(GROUP_OUT / file.name)
+    print(f"wrote {len(strata)} IMPROVE groups with {strata['n'].sum():,} samples")
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--improve-groups", action="store_true", help="Export the private IMPROVE group members")
+    args = parser.parse_args()
     summary = json.loads(closure.SUMMARY.read_text())
+    strata = [r for r in summary["improve_strata"] if r["population"] == closure.IMPROVE_PRIMARY]
+    if args.improve_groups:
+        export_improve_groups(strata)
+        return 0
     table, closeout = closure.load()
 
     filters = pd.DataFrame({
@@ -68,7 +111,6 @@ def main() -> int:
     ceilings = pd.DataFrame(summary["improve_ceiling"])
     primary = ceilings[ceilings.population.eq(closure.IMPROVE_PRIMARY)].iloc[0]
     era = ceilings[ceilings.population.eq(ERA)].iloc[0]
-    strata = [r for r in summary["improve_strata"] if r["population"] == closure.IMPROVE_PRIMARY]
 
     raw = next(r for r in summary["raw_hips"] if r["model"] == closure.LABEL[closure.PUBLISHED])
     linearised = [r for r in summary["linearised_hips"] if r["model"] == closure.LABEL[closure.PUBLISHED]]
@@ -89,6 +131,7 @@ def main() -> int:
             {"key": "era", "label": f"{era['tau_inf']:.2f} ({ERA})", "tau_inf": era["tau_inf"]},
         ],
         "improve_ceilings": records(summary["improve_ceiling"]),
+        "loading_edges_ug": closure.IMPROVE_EDGES,
         "strata": records(strata),
         "filters": records(filters.to_dict("records")),
         "fit_measured": {"slope": raw["slope_vs_hips"], "intercept": raw["intercept_vs_hips"], "n": raw["n"]},

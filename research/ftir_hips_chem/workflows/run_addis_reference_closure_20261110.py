@@ -158,8 +158,13 @@ def improve_samples() -> pd.DataFrame | None:
     return both.dropna(subset=["previous_loading_ug"])
 
 
-def _strata(samples: pd.DataFrame) -> pd.DataFrame:
-    groups = samples.groupby(np.digitize(samples["previous_loading_ug"], IMPROVE_EDGES))
+def improve_groups(samples: pd.DataFrame):
+    """Group by the previous sample's TOR EC loading at the same site."""
+    return samples.groupby(np.digitize(samples["previous_loading_ug"], IMPROVE_EDGES))
+
+
+def improve_strata(samples: pd.DataFrame) -> pd.DataFrame:
+    groups = improve_groups(samples)
     table = pd.DataFrame({"n": groups.size(), "loading_ug": groups["loading_ug"].median(), "tau": groups["tau"].median()})
     return table[table["n"] >= IMPROVE_MIN_STRATUM]
 
@@ -195,11 +200,11 @@ def stage_improve(table, closeout, n_boot, tables, aethalometer):
     rng = np.random.default_rng(20261110)
     strata_rows, ceilings = [], []
     for name, part in populations.items():
-        strata = _strata(part)
+        strata = improve_strata(part)
         a, tau_inf = _ceiling(strata)
         by_site = {site: frame for site, frame in part.groupby("Site")}
         sites = np.array(list(by_site))
-        boot = np.array([_ceiling(_strata(pd.concat([by_site[s] for s in rng.choice(sites, sites.size)])))
+        boot = np.array([_ceiling(improve_strata(pd.concat([by_site[s] for s in rng.choice(sites, sites.size)])))
                          for _ in range(min(n_boot, 200 if name in IMPROVE_POPULATIONS else 60))])
         (a_lo, a_hi), (t_lo, t_hi) = (np.percentile(boot[:, i], [5, 95]) for i in (0, 1))
         to_mac = 100.0 * DEPOSIT_AREA_CM2

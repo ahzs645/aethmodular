@@ -16,7 +16,7 @@ import { rowsOf } from '@/lib/table'
 import { INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import { SPEC_MEETINGS } from '@/meetings'
-import { AgainstHips, Bend, COMMAND, CorrectionCurve, CorrectionPlot, Limits, LINEAR, MEASURED, PROVENANCE, Readouts, SeasonLot, SIDE, WORKFLOW, Worked, pathOf, range, useCeiling, type Ceil, type Linearise } from '@/pages/HipsLinearisePage'
+import { AgainstHips, Bend, CeilingOptions, COMMAND, CorrectionCurve, CorrectionPlot, Limits, LINEAR, MEASURED, PROVENANCE, Readouts, SeasonLot, SIDE, WORKFLOW, Worked, pathOf, range, useCeiling, type Ceil, type Linearise } from '@/pages/HipsLinearisePage'
 
 /** the meeting pages this one borrows figures from (src/meetings/<id>.meeting.ts, data/meetings/<id>.json) */
 const CLOSURE = 'closure-20261110'
@@ -78,8 +78,9 @@ export function HipsPartsPage() {
   const band = `${fmt(primary.tau_inf, 2)} [${fmt(primary.tau_inf_lo, 2)}, ${fmt(primary.tau_inf_hi, 2)}]`
   return (
     <PageToc>
+      <CeilingOptions ceil={ceil} />
       <Figure kind="table" id="hw-parts" title="HIPS reads low on dark filters, part by part — where it is seen, what linearising does, Addis, and every SPARTAN site"
-        subtitle={`One curve, measured on IMPROVE against thermal EC (ceiling ${band}), read backwards on each filter. The ceiling buttons on the charts below set the ceiling for every interactive chart on this page.`}
+        subtitle={`One curve, measured on IMPROVE against thermal EC (ceiling ${band}), read backwards on each filter. The ceiling in Page options drives every interactive chart on this page.`}
         columns={[{ key: 'part', label: 'Part' }, { key: 'question', label: 'Question' }, { key: 'shows', label: 'What it shows' }]}
         data={[
           { part: '1. IMPROVE', question: 'Where is the bend seen?', shows: 'HIPS optical depth against thermal EC on the same filters, and the same bend in every subset of sites' },
@@ -243,7 +244,7 @@ function VolumeReplay({ data, ceil }: { data: Linearise; ceil: Ceil }) {
     <ChartFrame id="hw-volume" title="Less air, lighter filter — the same air at a lower sampled volume needs a smaller, better-known correction"
       subtitle="Expected under-read of the site's median filter against the volume of air drawn through it. Line: the median filter; band: the middle half of its filters. Dots: SPARTAN's three volumes, 1.8, 3.6 and 7.2 m³. Lines at a fifth (use, linearised) and three tenths (shape only beyond)."
       provenance={<>{PROVENANCE} Per-filter rows: <code>meetings/{PROCEDURE}.json</code>, table <code>points</code>; the replay is <code>hips_loading.at_volume</code>.</>}
-      controls={<>{control}{ceil.control}</>}>
+      controls={control}>
       <ScatterPlot points={points} xLabel="Sampled volume (m³)" yLabel="Expected under-read, median filter" xDomain={[0, 8]} yDomain={[0, 0.6]} nice={false}
         yFormat={(v: number) => `${Math.round(100 * v)} %`} maxSide={SIDE} outside="pin" note={false} refY={[0.2, 0.3]} under={under} />
       <Readouts items={[
@@ -281,10 +282,7 @@ function SiteOnCurve({ data, ceil }: { data: Linearise; ceil: Ceil }) {
     <ChartFrame id="hw-site-curve" title="One site's filters on the curve — the curve is shared; a site differs only in where its filters fall on it"
       subtitle="Correction factor 1 / (1 − τ/τ∞) against each filter's measured optical depth (Fabs × its sampled volume ÷ 353). Choose a site, darkest first. The line and its band are the same for every site."
       provenance={<>{PROVENANCE} Per-filter rows: <code>meetings/{PROCEDURE}.json</code>, table <code>points</code>.</>}
-      controls={<>
-        {control}
-        {ceil.control}
-      </>}>
+      controls={control}>
       <CorrectionPlot points={points} ceiling={c} lo={lo} hi={hi} median={med} medianLabel={`median τ ${fmt(med, 2)} → × ${fmt(correction(med, c), 2)}`} />
       <Key items={[{ label: `chosen ceiling ${fmt(c, 2)}`, color: LINEAR, kind: 'line' }, { label: `ceiling ${fmt(lo, 2)} to ${fmt(hi, 2)} (90 %)`, color: LINEAR, kind: 'faded' },
         ...statuses.map((s) => ({ label: s, color: colors[s] ?? INK.muted, kind: 'dot' as const }))]} />

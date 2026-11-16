@@ -1039,6 +1039,7 @@ html.ctx-open .tooltip { visibility: hidden; }
 .group-site .u, .group-tick-bar + table .u { color: var(--ink-muted); font-family: var(--mono); font-size: calc(11px * var(--text-scale)); }
 .group-tick-bar { display: flex; align-items: center; gap: 8px; min-height: 26px; }
 .group-rows th.num, .group-rows td.num { text-align: right; }
+.group-rows th[scope="rowgroup"] { background: var(--ink-hover); color: var(--ink-text); }
 .group-rows td.mono { font-family: var(--mono); font-size: calc(11.5px * var(--text-scale)); white-space: nowrap; }
 .group-rows tr:hover td { background: var(--ink-hover); }
 .group-rows tr.gone td { color: var(--ink-muted); }

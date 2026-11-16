@@ -6,6 +6,7 @@
  * linearised by the same factor. Everything here is a pure function of the per-filter optical depth and the ceiling,
  * so the page can follow any ceiling the reader picks.
  */
+import { bisectRight, group } from 'd3'
 import { deming, median } from './stats.ts'
 
 /** deposit area of the 25 mm PTFE filter HIPS reads, cm² (hips_loading.DEPOSIT_AREA_CM2) */
@@ -26,6 +27,35 @@ export const CENTRAL_CEILING: number = IMPROVE_CEILINGS[0].tau_inf
 
 /** HIPS optical depth of a filter from Fabs (Mm⁻¹) and its sampled volume (m³): the laboratory's own HIPS τ */
 export const opticalDepth = (fabs: number, volume: number): number => (fabs * volume) / (100 * DEPOSIT_AREA_CM2)
+
+interface LoadingSample { id: string; site: string; date: string; loading: number; tau: number }
+export type LoadingGroupSample = [site: string, date: string, previousLoading: number, loading: number, tau: number, id?: string]
+export interface LoadingGroup { lower: number; upper: number | null; rows: LoadingGroupSample[] }
+
+/** SPARTAN's nominal sampling cadence. Use the same loading edges as IMPROVE, with the prior sampled date at each site. */
+export const SPARTAN_LOADING_MAX_GAP_DAYS = 9
+
+export function previousLoadingGroups(samples: readonly LoadingSample[], edges: readonly number[]): LoadingGroup[] {
+  const bins = new Map<number, LoadingGroupSample[]>()
+  const eligible = samples.filter((s) => s.loading > 0 && Number.isFinite(s.loading) && Number.isFinite(s.tau) && Number.isFinite(Date.parse(s.date)))
+  const sites = [...group(eligible, (s) => s.site)].sort(([a], [b]) => a.localeCompare(b))
+  for (const [site, samplesAtSite] of sites) {
+    const dates = [...group(samplesAtSite, (s) => s.date)].sort(([a], [b]) => a.localeCompare(b))
+    for (let i = 1; i < dates.length; i++) {
+      const [date, rows] = dates[i], [previousDate, previousRows] = dates[i - 1]
+      const gapDays = (Date.parse(date) - Date.parse(previousDate)) / 86_400_000
+      if (gapDays < 1 || gapDays > SPARTAN_LOADING_MAX_GAP_DAYS) continue
+      // Co-located filters on one date contribute a single lag value, with no arbitrary order within that date.
+      const lag = median(previousRows.map((s) => s.loading))
+      const index = bisectRight(edges, lag) - 1
+      if (index < 0) continue
+      const members = bins.get(index) ?? []
+      for (const row of rows) members.push([site, date, lag, row.loading, row.tau, row.id])
+      bins.set(index, members)
+    }
+  }
+  return [...bins].sort(([a], [b]) => a - b).map(([i, rows]) => ({ lower: edges[i], upper: edges[i + 1] ?? null, rows }))
+}
 
 /** the saturating IMPROVE response: optical depth for a proportional optical depth u = aL */
 export const saturate = (u: number, ceiling: number): number => u / (1 + u / ceiling)

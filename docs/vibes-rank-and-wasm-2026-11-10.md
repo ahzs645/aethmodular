@@ -146,6 +146,10 @@ the network: Python does all 4,452 scans in about three minutes on four cores.
 
 Experimental → VIBES on one spectrum (`#tab=experimental&xp=vibes-tool`).
 
+**16 November update.** The browser tool fits the raw spectrum to convergence at the selected rank and tau.
+The original gallery comparison and replay described below were used to verify the solver. The historical
+analysis retains its October results. The browser tool takes the raw spectrum and the blank background as inputs.
+
 - **Spectrum.** Any scan in the gallery's native SPARTAN archive (site, filter, scan), or a text file with two columns,
   wavenumber then absorbance. A file is read in the browser and is not uploaded.
 - **Preparation.** The spectrum is averaged onto the background's 2,722 channels by the rule the network run used
@@ -185,15 +189,13 @@ Where the pieces are:
 | Built module and its build record | `gallery/app/src/lib/vibes/vibes_wasm.wasm`, `vibes_wasm.build.json` |
 | Wrapper, worker, resampler, file parser, tests | `gallery/app/src/lib/vibes/` |
 | Page | `gallery/app/src/pages/experimental/VibesTool.tsx` |
-| Background and saved-run export | `gallery/data/export_vibes_background.py` → `public/data/experimental/vibes_background.json`, `.bin`, `vibes_saved_fits.json` |
+| Background export | `gallery/data/export_vibes_background.py` → `public/data/experimental/vibes_background.json` and `.bin` |
 
 The built module is committed, so the gallery builds without Rust. `tests/test_vibes_wasm.py` fails if the Rust source
 changes without a rebuild (`wasm_demo.py build --gallery`).
 
-The background (1.5 MB at full precision) and the saved-run records (0.2 MB) are committed, as an exception to the
-Experimental ignore rule, so the page works on the site before a data release carries them. Rerun
-`export_vibes_background.py` if the background or the saved runs change. Without `vibes_saved_fits.json` the page still
-solves, but offers no 19 Oct preset and no settings table.
+The background (1.5 MB at full precision) is committed, as an exception to the Experimental ignore rule.
+Rerun `export_vibes_background.py` when the background changes.
 
 ## Limits
 

@@ -109,6 +109,11 @@ def env_root(var: str, rel: str = "") -> Need:
     return Need(f"${var}/{rel}".rstrip("/"), lambda: bool(os.environ.get(var)) and (Path(os.environ[var]).expanduser() / rel).exists())
 
 
+def ftir_table(name: str) -> Need:
+    return Need(f"FTIR local database: tables/{name}",
+                lambda: (dp := _data_paths()) is not None and (dp.ftir_local_db() / "tables" / name).is_file())
+
+
 AERONET_L15 = repo("research/ftir_hips_chem/output/tables/aeronet_spartan/inv_points_lev15.parquet")
 WINDOWS = repo("gallery/app/public/data/weather/filters.json")
 PICKLES = repo("research/ftir_hips_chem/processed_sites/df_Addis_Ababa_9am_resampled.pkl")
@@ -233,6 +238,9 @@ STEPS: tuple[Step, ...] = (
     Step("hips-linearise", "export", ("gallery/data/export_hips_linearise.py",),
          "Linearising HIPS at Addis: per-filter optical depths and the 10 Nov closure summary (committed inputs only)",
          "hips_linearise/", (repo("docs/addis-reference-closure-2026-11-10.json"),)),
+    Step("hips-linearise-groups", "research", ("gallery/data/export_hips_linearise.py", "--improve-groups"),
+         "IMPROVE sample members of the saved HIPS bend groups (local research data)", "research/hips_linearise_groups/",
+         (repo("docs/addis-reference-closure-2026-11-10.json"), ftir_table("results_tor.csv"), ftir_table("results_hips.csv"))),
     Step("research-spectral", "export", ("gallery/data/export_research_spectral.py",),
          "The spectral and calibration diagnostics (1617 band, MAC choice, applicability, network map, …)", "research/spectral/",
          note="recomputes spartan_ec 08 where $AETHMODULAR_DRIVE_ROOT holds University/Research/Grad/Data/Davis Data"),
@@ -370,11 +378,10 @@ STEPS: tuple[Step, ...] = (
           repo("research/ftir_hips_chem/output/tables/vibes_newton_20261103/addis_premature_checks.csv"),),
          note="reads the saved run tables; does not refit"),
     Step("vibes-background", "export", ("gallery/data/export_vibes_background.py",),
-         "The 87-blank rank-70 VIBES background at full precision and each scan's saved noise level, for the page that solves one spectrum in the browser",
+         "The 87-blank rank-70 VIBES background at full precision for the browser solver",
          "gallery/app/public/data/experimental/vibes_background.json",
-         (repo("research/ftir_hips_chem/output/tables/network_baselines_20261019/vibes_bundle/background_model.npz"),
-          repo("research/ftir_hips_chem/output/tables/network_baselines_v2_20261103/vibes_fit_diagnostics.csv"),),
-         note="copies the saved background and run records; does not refit. Also writes vibes_background.bin and vibes_saved_fits.json beside the JSON"),
+         (repo("research/ftir_hips_chem/output/tables/network_baselines_20261019/vibes_bundle/background_model.npz"),),
+         note="also writes the mean and components to vibes_background.bin"),
     Step("vibes-validation", "export", ("gallery/data/export_vibes_validation.py",),
          "Independent VIBES blank/continuum controls, checked physical-filter identities, recovery curves and measured runtime",
          "gallery/app/public/data/baseline_validation.json",

@@ -2,7 +2,38 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { gzipSync } from 'node:zlib'
 import { loadJson, loadBinary } from './data.ts'
-import { decodeTrace, nativeTraces } from './spartan.ts'
+import { selectNativeAnalysis } from './nativeScanReview.ts'
+import { decodeTrace, loadNativeRawTrace, nativeTraces } from './spartan.ts'
+
+test('reviewed FTIR defaults preserve explicit choices and use the archive when a preferred repeat is absent', () => {
+  const weak = { filter_id: 'PRFJ-0073-1', analysis_id: '530', filter_type: 'PM2.5', qc: '1' }
+  const repeat = { ...weak, analysis_id: '522', qc: '2' }
+  const analyses = Object.freeze([weak, repeat])
+  assert.equal(selectNativeAnalysis(analyses).analysis, repeat)
+  assert.equal(selectNativeAnalysis(analyses, '406').analysis, repeat)
+  assert.equal(selectNativeAnalysis(analyses, '530').analysis, weak)
+  assert.match(selectNativeAnalysis(analyses, '530').reviewNote, /nearly flat/)
+  assert.equal(selectNativeAnalysis([weak]).analysis, weak)
+  assert.deepEqual(analyses, [weak, repeat])
+
+  const unrelated = { ...weak, filter_id: 'PRFJ-0074-1' }
+  const other = { ...repeat, filter_id: unrelated.filter_id }
+  assert.deepEqual(selectNativeAnalysis([unrelated, other]), { analysis: unrelated })
+})
+
+test('single weak scans are flagged for lab review, including the Seoul PM10 scan', () => {
+  for (const [filter_id, analysis_id, filter_type] of [
+    ['CHTS-0814-5', '1413', 'PM2.5'],
+    ['ETAD-0037-5', '406', 'PM2.5'],
+    ['INDH-0265-1', '4528', 'PM2.5'],
+    ['KRSE-0136-8', '470', 'PM10'],
+  ]) {
+    const scan = { filter_id, analysis_id, filter_type }
+    const selected = selectNativeAnalysis([scan])
+    assert.equal(selected.analysis, scan)
+    assert.match(selected.reviewNote, new RegExp(`Lab review\\. Analysis ${analysis_id} .*no repeat`))
+  }
+})
 
 test('gzip data works on plain static hosts and hosts that already decoded it; concurrent reads share a fetch', async () => {
   const original = globalThis.fetch
@@ -85,6 +116,21 @@ test('schema 2 analyses give raw, AIRSpec (raw minus its baseline over its span)
   assert.deepEqual(Array.from(t.airspec.y), [30, 40])
   assert.deepEqual(t.vibes.wn, [3000, 2000, 1000])
   assert.deepEqual(Array.from(t.vibes.y), [5, 10, 15])
+})
+
+test('the raw-only loader decodes a scan without reading its saved baselines', async () => {
+  const original = globalThis.fetch
+  globalThis.fetch = async () => new Response(gzipSync(planes([30, 10, 10])))
+  const scan = { first: 4000, last: 500, n: 3, series: {
+    raw: { offset: 0, n: 3, step: 1 },
+    airspec_baseline: { offset: 12, n: 3, step: 1 },
+    vibes_corrected: { offset: 24, n: 3, step: 1 },
+  } }
+  try {
+    const trace = await loadNativeRawTrace('raw-only.bin.gz', scan)
+    assert.deepEqual(trace.wn, [4000, 2250, 500])
+    assert.deepEqual(Array.from(trace.y), [30, 40, 50])
+  } finally { globalThis.fetch = original }
 })
 
 test('site selection fetches only selected filter shards, keeps the whole site index and never requests spectra', async () => {
