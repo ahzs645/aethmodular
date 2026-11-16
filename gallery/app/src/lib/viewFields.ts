@@ -10,9 +10,14 @@
  * - Mass per filter: every µg/m³ field × the filter's sampled volume (µg on the filter, what FTIR
  *   sees). IMPROVE samples about 33 m³ a day, SPARTAN about 7, so concentrations hide a ~4x
  *   difference in loading. A filter without a volume drops out of mass-per-filter charts.
- * - Ratios: numerator / denominator on the same filter, after the two steps above.
+ * - HIPS linearised: HIPS reads low on dark filters (the IMPROVE curve, lib/hipsLinearise). With a ceiling set, HIPS
+ *   Fabs, HIPS BC and the public HIPS BC of each filter are multiplied by 1 / (1 − τ/τ∞), τ = Fabs × sampled volume
+ *   ÷ 353. A filter without a sampled volume, or at or past the ceiling, has no linearised value and drops out of
+ *   the HIPS fields rather than keep its measured one beside corrected filters. Units carry ", linearised".
+ * - Ratios: numerator / denominator on the same filter, after the steps above.
  */
-import { prettyUnit } from './theme.ts'
+import { correction, opticalDepth } from './hipsLinearise.ts'
+import { baseUnit, HIPS_LINEARISED_MARK, LINEARISED_MARK, prettyUnit } from './theme.ts'
 
 export interface RatioDef { num: string; den: string }
 export type Basis = 'conc' | 'mass'
@@ -24,6 +29,8 @@ export const MAC_CHOICES = [5, 7.5, 10, 12.5, 15, 17.5, 20] as const
 const HIPS_BC = 'HIPS BC'
 const HIPS_FABS = 'HIPS Fabs'
 const PUBLIC_BC = 'BC (public HIPS)'
+/** the fields the linearised view changes */
+export const HIPS_VIEW_FIELDS: readonly string[] = [HIPS_FABS, HIPS_BC, PUBLIC_BC]
 
 export const ratioKey = (d: RatioDef) => `${d.num} / ${d.den}`
 
@@ -64,9 +71,14 @@ const tidy = prettyUnit
 
 /** the unit of a ratio from its parts' units (already in the view's basis) */
 export function ratioUnit(num: string | undefined, den: string | undefined): string {
-  const a = tidy(num), b = tidy(den)
-  return a === b ? 'ratio' : a && b ? `${a} per ${b}` : 'ratio'
+  const a = tidy(baseUnit(num)), b = tidy(baseUnit(den))
+  const unit = a === b ? 'ratio' : a && b ? `${a} per ${b}` : 'ratio'
+  // a ratio of a linearised HIPS field says so
+  return num !== baseUnit(num) || den !== baseUnit(den) ? unit + HIPS_LINEARISED_MARK : unit
 }
+
+/** µg on the filter (the mass-per-filter view), linearised or not */
+export const isPerFilter = (unit: string | undefined) => baseUnit(unit) === 'µg/filter'
 
 export interface ViewOptions {
   mac: number
@@ -76,12 +88,15 @@ export interface ViewOptions {
   /** field → unit, before this view */
   units: Record<string, string>
   ratios: RatioDef[]
+  /** linearise HIPS with this ceiling τ∞ (lib/hipsLinearise); null or absent: HIPS as measured */
+  hipsCeiling?: number | null
 }
 
 /** field units after the view: concentrations become µg per filter, ratios get their own */
 export function viewUnits(o: ViewOptions): Record<string, string> {
   const out: Record<string, string> = { ...o.units }
   if (o.basis === 'mass') for (const [f, u] of Object.entries(o.units)) if (isConcentration(u)) out[f] = 'µg/filter'
+  if (o.hipsCeiling != null) for (const f of HIPS_VIEW_FIELDS) if (out[f]) out[f] += LINEARISED_MARK
   for (const d of o.ratios) out[ratioKey(d)] = ratioUnit(out[d.num], out[d.den])
   return out
 }
@@ -89,12 +104,30 @@ export function viewUnits(o: ViewOptions): Record<string, string> {
 type Row = Record<string, unknown>
 import { isFiniteNumber as num } from './stats.ts'
 
+/**
+ * The factor that linearises one filter's HIPS at a ceiling: 1 / (1 − τ/τ∞) with τ from its Fabs and sampled volume.
+ * NaN when the filter has no HIPS, no sampled volume, or sits at or past the ceiling.
+ */
+export function hipsFactor(r: Row, ceiling: number, exportMac = 10): number {
+  const v = r[VOLUME]
+  const fabs = num(r[HIPS_FABS]) ? (r[HIPS_FABS] as number) : num(r[PUBLIC_BC]) ? (r[PUBLIC_BC] as number) * exportMac : null
+  return fabs !== null && num(v) && v > 0 ? correction(opticalDepth(fabs, v), ceiling) : NaN
+}
+
 /** one row under the view; the same object when nothing changes */
 export function viewRow<R extends Row>(r: R, o: ViewOptions, concFields: string[]): R {
   const macChanged = o.mac !== o.exportMac
-  if (!macChanged && o.basis === 'conc' && !o.ratios.length) return r
+  const ceiling = o.hipsCeiling ?? null
+  if (!macChanged && o.basis === 'conc' && !o.ratios.length && ceiling === null) return r
   const out: Row = { ...r }
-  if (macChanged) {
+  if (ceiling !== null) {
+    // the filter's own factor, from its own optical depth; the public BC is Fabs / exportMac, so it stands in for a missing Fabs
+    const k = hipsFactor(r, ceiling, o.exportMac)
+    const ok = Number.isFinite(k)
+    if (HIPS_FABS in r) out[HIPS_FABS] = ok && num(r[HIPS_FABS]) ? (r[HIPS_FABS] as number) * k : null
+    if (HIPS_BC in r || HIPS_FABS in r) out[HIPS_BC] = ok && num(r[HIPS_FABS]) ? ((r[HIPS_FABS] as number) * k) / o.mac : null
+    if (PUBLIC_BC in r) out[PUBLIC_BC] = ok && num(r[PUBLIC_BC]) ? ((r[PUBLIC_BC] as number) * k * o.exportMac) / o.mac : null
+  } else if (macChanged) {
     if (num(r[HIPS_FABS])) out[HIPS_BC] = (r[HIPS_FABS] as number) / o.mac
     if (num(r[PUBLIC_BC])) out[PUBLIC_BC] = (r[PUBLIC_BC] as number) * o.exportMac / o.mac
   }

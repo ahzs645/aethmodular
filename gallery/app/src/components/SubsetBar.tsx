@@ -24,6 +24,8 @@ import { SitePicker, type SiteItem } from '@/components/SitePicker'
 import { Combobox } from '@/components/Combobox'
 import { useRatios } from '@/components/RatioDialog'
 import { MAC_CHOICES, type Basis } from '@/lib/viewFields'
+import { CENTRAL_CEILING, IMPROVE_CEILINGS } from '@/lib/hipsLinearise'
+import { Select } from '@/components/Controls'
 import { SeasonEditor } from '@/components/SeasonEditor'
 import { DynamicSeasonEditor } from '@/components/DynamicSeasonEditor'
 import { defaultRuleFor, type DynRule } from '@/lib/dynamicSeasons'
@@ -142,6 +144,10 @@ export interface SubsetState {
   ssr?: { mode: SsrHide; any: number; only: number }
   /** filters in view with a sampled volume, of all in view (mass per filter needs one) */
   withVolume?: [number, number]
+  /** the ceiling HIPS is linearised with (lib/viewFields), null as measured */
+  hipsCeiling?: number | null
+  /** filters in view whose HIPS could be linearised, of those in view with HIPS */
+  withHips?: [number, number]
 }
 
 export interface SubsetActions {
@@ -193,6 +199,7 @@ export interface SubsetActions {
   onPmfOnly?: (v: boolean) => void
   onSsr?: (v: SsrHide) => void
   onMac?: (mac: number | null) => void
+  onHips?: (ceiling: number | null) => void
 }
 
 /** The calendar picker's wording lives with the calendars (lib/seasons). */
@@ -402,6 +409,15 @@ export function SubsetBar({
           {explain && <span className="row-note">MAC scales the slope of a fit against HIPS BC; the intercept barely moves (exactly unchanged for OLS)</span>}
         </Row>
       )}
+      {(caps.fields !== 'none' && a.onBasis || caps.mac) && a.onHips && (
+        <Row label="HIPS">
+          <HipsControl ceiling={s.hipsCeiling} onHips={a.onHips} />
+          {s.hipsCeiling != null && s.withHips && <span className="method-note" style={{ display: 'block' }}>
+            {s.withHips[0].toLocaleString()} of {s.withHips[1].toLocaleString()} filters with HIPS in view are linearised; the rest have no sampled volume or sit past the ceiling and drop out of the HIPS fields. Saved fits and precomputed statistics stay as measured
+          </span>}
+          {explain && <span className="row-note">HIPS reads low on dark filters. Linearised multiplies each filter's HIPS by 1 ÷ (1 − optical depth ÷ ceiling), its optical depth being Fabs × sampled volume ÷ 353. Saved fits and meeting figures stay as measured</span>}
+        </Row>
+      )}
       {/* a page's unit choice that rides on the MAC (lib/pageSidebar PlotControls) */}
       <PlotTabSlot />
       {caps.fields !== 'none' && <RatioRow explain={explain} />}
@@ -456,6 +472,7 @@ export function SubsetBar({
             title={open && view === 'plot' ? 'Hide the plot options' : 'Show the plot options: fits, axes, units, ratios, FTIR baseline'}
           >
             <span className="subset-tab-label">Plot</span>
+            {s.hipsCeiling != null && <span className="subset-tab-count" title="HIPS is shown linearised (Plot → HIPS)">HIPS lin.</span>}
           </button>
         )}
         {hasPage && (
@@ -844,6 +861,28 @@ export function MacControl({ mac, exportMac, onMac }: { mac?: number | null; exp
       {mac != null && mac !== exportMac && <button type="button" className="btn quiet x-btn"
         aria-label={`Reset MAC to ${trim(base, 1)} m²/g`} title={`Reset to ${trim(base, 1)} m²/g, the MAC the data was exported with`}
         onClick={() => onMac(null)}><UndoIcon /></button>}
+    </span>
+  )
+}
+
+const HIPS_VIEWS = ['As measured', 'Linearised'] as const
+
+/**
+ * HIPS as measured or linearised (lib/viewFields, lib/hipsLinearise), with the IMPROVE ceiling to linearise with. On
+ * its own "HIPS" row under the MAC, here and in App's PageSidebar, so every tab sets it the same way.
+ */
+export function HipsControl({ ceiling, onHips }: { ceiling?: number | null; onHips: (ceiling: number | null) => void }) {
+  const on = ceiling != null
+  const key = IMPROVE_CEILINGS.find((c) => c.tau_inf === ceiling)?.key ?? 'central'
+  return (
+    <span className="control">
+      <Segmented value={on ? 'Linearised' : 'As measured'} options={HIPS_VIEWS as any}
+        onChange={(v: string) => onHips(v === 'Linearised' ? CENTRAL_CEILING : null)}
+        title="HIPS reads low on dark filters: on IMPROVE, against thermal EC, its optical depth follows τ = L / (1 + L/τ∞). Linearised reads each filter back through that curve: Fabs ÷ (1 − τ/τ∞), with τ = Fabs × sampled volume ÷ 353. It changes HIPS Fabs, HIPS BC and the public HIPS BC on every chart drawn from the filters." />
+      {on && <Select label="Ceiling τ∞" value={key} options={IMPROVE_CEILINGS.map((c) => c.key)}
+        onChange={(k) => onHips(IMPROVE_CEILINGS.find((c) => c.key === k)?.tau_inf ?? CENTRAL_CEILING)}
+        optionLabel={(k) => IMPROVE_CEILINGS.find((c) => c.key === k)?.label ?? k}
+        title="The IMPROVE ceiling: the central fit of all sites 2005–2025, both ends of its 90 % interval, or the 2015–2025 fit (the period that contains the SPARTAN record)" />}
     </span>
   )
 }

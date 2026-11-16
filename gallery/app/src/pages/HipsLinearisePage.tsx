@@ -16,23 +16,25 @@ import { FONT, INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import { correction, fitAgainstHips, linearBc, linearise, noiseGain, predictedExponent, ratioMedians, saturate, type LinFilter } from '@/lib/hipsLinearise'
 
-const COMMAND = 'uv run python gallery/data/export_hips_linearise.py'
-const WORKFLOW = 'research/ftir_hips_chem/workflows/run_addis_reference_closure_20261110.py'
+export const COMMAND = 'uv run python gallery/data/export_hips_linearise.py'
+export const WORKFLOW = 'research/ftir_hips_chem/workflows/run_addis_reference_closure_20261110.py'
 const NOTE_DOC = 'docs/addis-reference-closure-2026-11-10.md'
-const PROVENANCE = <>{WORKFLOW}; summary <code>{NOTE_DOC}</code> and its JSON; per-filter optical depths from the workflow's <code>load()</code> (<code>hips_linearise/linearise.json</code>).</>
+export const PROVENANCE = <>{WORKFLOW}; summary <code>{NOTE_DOC}</code> and its JSON; per-filter optical depths from the workflow's <code>load()</code> (<code>hips_linearise/linearise.json</code>).</>
 
-const MEASURED = RESEARCH_SERIES[1]
-const LINEAR = RESEARCH_SERIES[0]
+export const MEASURED = RESEARCH_SERIES[1]
+export const LINEAR = RESEARCH_SERIES[0]
 
 type CeilingKey = 'central' | 'lo' | 'hi' | 'era'
 const CEILING_KEYS: readonly CeilingKey[] = ['central', 'lo', 'hi', 'era']
 const HIPS_VIEWS = ['measured', 'linearised'] as const
 const SITE_VIEWS = ['clear', 'all'] as const
+/** every x-y chart on the page is a square plot area this wide at most (as the gallery's crossplots are) */
+export const SIDE = 480
 /** a site's exponent is read when its 95 % interval is narrower than this (12 of the 23 sites) */
 const CLEAR_WIDTH = 0.5
 
 interface Ceiling { population: string; samples: number; sites: number; years: string; tau_inf: number; tau_inf_lo: number; tau_inf_hi: number; unsaturated_fabs_over_ec: number; max_stratum_tau: number }
-interface Linearise {
+export interface Linearise {
   generated: string
   deposit_area_cm2: number
   mac: number
@@ -48,7 +50,7 @@ interface Linearise {
 }
 
 /** the page's shared state: the ceiling every chart linearises with (URL `hl.ceil`) */
-function useCeiling(data: Linearise | null) {
+export function useCeiling(data: Linearise | null) {
   const [key, setKey] = useSearchParam<CeilingKey>('hl.ceil', 'central', CEILING_KEYS)
   const list = data?.ceilings ?? []
   const pick = list.find((c) => c.key === key) ?? list[0]
@@ -61,8 +63,8 @@ function useCeiling(data: Linearise | null) {
 /** a stroke path through (x, y) pairs in plot pixels, skipping non-finite points */
 /** "y = 2.31x − 6.17" */
 const eq = (f: { slope: number; intercept: number } | null | undefined) => (f ? `y = ${fmt(f.slope, 2)}x ${f.intercept < 0 ? '−' : '+'} ${fmt(Math.abs(f.intercept), 2)}` : '—')
-const pathOf = (pts: [number, number][]) => pts.filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b)).map(([a, b], i) => `${i ? 'L' : 'M'}${a},${b}`).join('')
-const range = (a: number, b: number, step: number) => Array.from({ length: Math.round((b - a) / step) + 1 }, (_, i) => a + i * step)
+export const pathOf = (pts: [number, number][]) => pts.filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b)).map(([a, b], i) => `${i ? 'L' : 'M'}${a},${b}`).join('')
+export const range = (a: number, b: number, step: number) => Array.from({ length: Math.round((b - a) / step) + 1 }, (_, i) => a + i * step)
 
 /**
  * What "HIPS linearised" means at Addis, step by step, as the 10 Nov closure note explains it: the IMPROVE bend that
@@ -92,10 +94,10 @@ export function HipsLinearisePage() {
   )
 }
 
-type Ceil = ReturnType<typeof useCeiling>
+export type Ceil = ReturnType<typeof useCeiling>
 
 /** a row of headline numbers under a chart */
-function Readouts({ items }: { items: { label: string; value: string; color?: string; sub?: string }[] }) {
+export function Readouts({ items }: { items: { label: string; value: string; color?: string; sub?: string }[] }) {
   return <div className="readouts">
     {items.map((it) => <div key={it.label} className="stat-tile">
       <div className="stat-label">{it.label}</div>
@@ -106,8 +108,8 @@ function Readouts({ items }: { items: { label: string; value: string; color?: st
 }
 
 /** a plain table in the gallery's table style (styles.css .census-table); numeric columns right-aligned in mono */
-interface Column<T> { key: string; label: ReactNode; value: (row: T) => ReactNode; num?: boolean }
-function DataTable<T>({ rows, columns, rowKey, highlight }: { rows: T[]; columns: Column<T>[]; rowKey: (r: T, i: number) => string; highlight?: (r: T) => boolean }) {
+export interface Column<T> { key: string; label: ReactNode; value: (row: T) => ReactNode; num?: boolean }
+export function DataTable<T>({ rows, columns, rowKey, highlight }: { rows: T[]; columns: Column<T>[]; rowKey: (r: T, i: number) => string; highlight?: (r: T) => boolean }) {
   return (
     <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
       <table className="census-table" style={{ minWidth: Math.min(880, columns.length * 88) }}>
@@ -121,7 +123,7 @@ function DataTable<T>({ rows, columns, rowKey, highlight }: { rows: T[]; columns
 }
 
 // ------------------------------------------------------------------ 1. the bend
-function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
+export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   const [tauText, setTau] = useSearchParam<string>('hl.tau', '0.97')
   const taus = useMemo(() => data.filters.filter((f) => f.ftir != null).map((f) => f.tau), [data])
   const [lo, hi] = [Math.min(...taus), Math.max(...taus)]
@@ -173,7 +175,7 @@ function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
         {ceil.control}
       </>}>
       <ScatterPlot points={points} xLabel="TOR EC on the filter (µg)" yLabel="HIPS optical depth τ" xDomain={[0, 90]} yDomain={[0, 3.4]} nice={false}
-        height={360} outside="clip" note={false} under={under}>{children}</ScatterPlot>
+        maxSide={SIDE} outside="clip" note={false} under={under}>{children}</ScatterPlot>
       <Key items={[{ label: 'IMPROVE group medians (size ∝ samples)', color: INK.muted, kind: 'dot' }, { label: 'proportional: τ = aL', color: LINEAR, kind: 'dash' },
         { label: 'saturating fit', color: MEASURED, kind: 'line' }, { label: 'Addis τ range', color: MEASURED, kind: 'faded' }]} />
       <Readouts items={[
@@ -188,7 +190,7 @@ function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
 }
 
 // ------------------------------------------------------------------ 2. one filter, step by step
-function Worked({ data, ceil }: { data: Linearise; ceil: Ceil }) {
+export function Worked({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   const sorted = useMemo(() => [...data.filters].filter((f) => f.ftir != null).sort((p, q) => p.tau - q.tau), [data])
   const [id, setId] = useSearchParam<string>('hl.filter', 'ETAD-0019')
   const f = sorted.find((r) => r.id === id) ?? sorted[Math.floor(sorted.length / 2)]
@@ -222,7 +224,49 @@ function Worked({ data, ceil }: { data: Linearise; ceil: Ceil }) {
 }
 
 // ------------------------------------------------------------------ 3. the correction factor
-function CorrectionCurve({ data, ceil }: { data: Linearise; ceil: Ceil }) {
+/**
+ * The correction factor 1 / (1 − τ/τ∞) against measured optical depth: the curve at the chosen ceiling, the band of
+ * the ceiling's 90 % interval, and a set of filters on it with their median marked. The curve is the same for every
+ * set of filters; only where the filters fall on it differs (Addis here, any SPARTAN site on the part-by-part page).
+ */
+export function CorrectionPlot({ points, ceiling, lo, hi, median: med, medianLabel, lightBox = false }: {
+  points: ScatterPoint[]; ceiling: number; lo: number; hi: number
+  /** the median optical depth of the filters shown, marked with a dashed line up to the curve */
+  median?: number; medianLabel?: string
+  /** the dashed box where most SPARTAN sites sit (τ under 0.5, factor under 1.3) */
+  lightBox?: boolean
+}) {
+  const clip = useId()
+  const mc = med == null ? NaN : correction(med, ceiling)
+  const under = ({ x, y, iw, ih }: ScatterScales) => {
+    const ts = range(0, 1.6, 0.01)
+    const band = pathOf([...ts.map((t): [number, number] => [x(t), y(Math.min(5, correction(t, lo)))]), ...[...ts].reverse().map((t): [number, number] => [x(t), y(correction(t, hi))])]) + 'Z'
+    return <g>
+      <defs><clipPath id={clip}><rect width={iw} height={ih} /></clipPath></defs>
+      <g clipPath={`url(#${clip})`}>
+        <path d={band} fill={LINEAR} opacity={0.1} />
+        <path d={pathOf(ts.map((t) => { const k = correction(t, ceiling); return [x(t), k < 6 ? y(k) : NaN] }))} fill="none" stroke={LINEAR} strokeWidth={2} />
+        {lightBox && <>
+          <rect x={x(0)} y={y(1.3)} width={x(0.5) - x(0)} height={y(0.9) - y(1.3)} fill="none" stroke={INK.muted} strokeDasharray="2 3" />
+          <text x={x(0.02)} y={y(1.3) - 6} fontSize={10.5} fontFamily={FONT.mono} fill={INK.muted}>most SPARTAN sites</text>
+        </>}
+      </g>
+    </g>
+  }
+  const children = ({ x, y, iw }: ScatterScales) => {
+    if (med == null || !Number.isFinite(mc)) return null
+    // the label sits right of the median line, or left of it when the line is in the right part of the plot
+    const flip = x(med) > iw * 0.55
+    return <g pointerEvents="none">
+      <line x1={x(med)} x2={x(med)} y1={y(0.9)} y2={y(mc)} stroke={INK.text} strokeDasharray="3 3" />
+      {medianLabel && <text x={x(med) + (flip ? -6 : 6)} y={y(mc) + (flip ? -10 : 28)} textAnchor={flip ? 'end' : 'start'} fontSize={11} fontFamily={FONT.mono} fill={INK.text}>{medianLabel}</text>}
+    </g>
+  }
+  return <ScatterPlot points={points} xLabel="Measured HIPS optical depth τ" yLabel="Correction factor τ_lin / τ" xDomain={[0, 1.6]} yDomain={[0.9, 4.2]} nice={false}
+    maxSide={SIDE} outside="pin" note={false} under={under}>{children}</ScatterPlot>
+}
+
+export function CorrectionCurve({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   const c = ceil.ceiling
   const { lo, hi } = { lo: data.ceilings.find((k) => k.key === 'lo')!.tau_inf, hi: data.ceilings.find((k) => k.key === 'hi')!.tau_inf }
   const shown = useMemo(() => data.filters.filter((f) => f.ftir != null), [data])
@@ -234,30 +278,11 @@ function CorrectionCurve({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   const facs = shown.map((f) => correction(f.tau, c)).filter(Number.isFinite)
   const at = (k: number) => median(shown.map((f) => correction(f.tau, k)).filter(Number.isFinite))
   const heaviest = shown.reduce((m, f) => (f.tau > m.tau ? f : m), shown[0])
-  const clip = useId()
-  const under = ({ x, y, iw, ih }: ScatterScales) => {
-    const ts = range(0, 1.6, 0.01)
-    const band = pathOf([...ts.map((t): [number, number] => [x(t), y(Math.min(5, correction(t, lo)))]), ...[...ts].reverse().map((t): [number, number] => [x(t), y(correction(t, hi))])]) + 'Z'
-    return <g>
-      <defs><clipPath id={clip}><rect width={iw} height={ih} /></clipPath></defs>
-      <g clipPath={`url(#${clip})`}>
-        <path d={band} fill={LINEAR} opacity={0.1} />
-        <path d={pathOf(ts.map((t) => { const k = correction(t, c); return [x(t), k < 6 ? y(k) : NaN] }))} fill="none" stroke={LINEAR} strokeWidth={2} />
-        <rect x={x(0)} y={y(1.3)} width={x(0.5) - x(0)} height={y(0.9) - y(1.3)} fill="none" stroke={INK.muted} strokeDasharray="2 3" />
-        <text x={x(0.02)} y={y(1.3) - 6} fontSize={10.5} fontFamily={FONT.mono} fill={INK.muted}>most SPARTAN sites</text>
-      </g>
-    </g>
-  }
-  const children = ({ x, y }: ScatterScales) => <g pointerEvents="none">
-    <line x1={x(med)} x2={x(med)} y1={y(0.9)} y2={y(mc)} stroke={INK.text} strokeDasharray="3 3" />
-    <text x={x(med) + 6} y={y(mc) + 28} fontSize={11} fontFamily={FONT.mono} fill={INK.text}>Addis median τ {fmt(med, 2)} → × {fmt(mc, 2)}</text>
-  </g>
   return (
     <ChartFrame id="hl-correction" title="The correction is small for light filters and large for Addis — correction factor against measured optical depth, every Addis filter"
       subtitle={`τ_lin / τ = 1 / (1 − τ/τ∞) against measured τ. The dots are the ${shown.length} Addis filters with a published FTIR EC. Most SPARTAN sites sit to the left of 0.5, where the factor is under 1.3; Addis sits where the curve steepens.`}
       provenance={PROVENANCE} controls={ceil.control}>
-      <ScatterPlot points={points} xLabel="Measured HIPS optical depth τ" yLabel="Correction factor τ_lin / τ" xDomain={[0, 1.6]} yDomain={[0.9, 4.2]} nice={false}
-        height={300} outside="pin" note={false} under={under}>{children}</ScatterPlot>
+      <CorrectionPlot points={points} ceiling={c} lo={lo} hi={hi} median={med} medianLabel={`Addis median τ ${fmt(med, 2)} → × ${fmt(mc, 2)}`} lightBox />
       <Key items={[{ label: `chosen ceiling ${fmt(c, 2)}`, color: LINEAR, kind: 'line' }, { label: `ceiling ${fmt(lo, 2)} to ${fmt(hi, 2)} (90 %)`, color: LINEAR, kind: 'faded' }, { label: 'Addis filters', color: MEASURED, kind: 'dot' }]} />
       <Note>Median Addis correction × {fmt(median(facs), 2)} at this ceiling (× {fmt(at(hi), 2)} to × {fmt(at(lo), 2)} across the 90 % interval). The heaviest filter ({heaviest.id}, τ {fmt(heaviest.tau, 2)}) is corrected × {fmt(correction(heaviest.tau, c), 2)}.</Note>
       <FixedSetNote what="the closure workflow's counted Addis filters with a published FTIR EC" />
@@ -266,7 +291,7 @@ function CorrectionCurve({ data, ceil }: { data: Linearise; ceil: Ceil }) {
 }
 
 // ------------------------------------------------------------------ 4. FTIR EC against HIPS
-function AgainstHips({ data, ceil }: { data: Linearise; ceil: Ceil }) {
+export function AgainstHips({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   const [view, setView] = useSearchParam<(typeof HIPS_VIEWS)[number]>('hl.hips', 'measured', HIPS_VIEWS)
   const c = ceil.ceiling, lin = view === 'linearised'
   const shown = useMemo(() => data.filters.filter((f) => f.ftir != null), [data])
@@ -276,13 +301,15 @@ function AgainstHips({ data, ceil }: { data: Linearise; ceil: Ceil }) {
       tip: [`${f.id} · ${f.season}${f.lot ? ` · lot ${f.lot}` : ''}`, `FTIR EC ${fmt(f.ftir, 2)} µg/m³`, `HIPS BC ${fmt(f.hips_bc, 2)} → linearised ${fmt(xl, 2)} µg/m³`, `τ ${fmt(f.tau, 2)}`] }] : []
   }), [shown, c, lin])
   const fit = lin ? fitAgainstHips(data.filters, data.lambda, c) : fitAgainstHips(data.filters, data.lambda, null)
+  const top = useMemo(() => 1.08 * Math.max(...shown.map((f) => f.ftir!)), [shown])
   const band = [data.ceilings.find((k) => k.key === 'lo')!, data.ceilings.find((k) => k.key === 'hi')!].map((k) => fitAgainstHips(data.filters, data.lambda, k.tau_inf))
   const children = ({ x, y }: ScatterScales) => {
     if (!fit) return null
     const [d0, d1] = x.domain()
     // the line starts where it meets y = 0, or at x = 0 when its intercept is positive; a ring marks that point
     const xz = -fit.intercept / fit.slope
-    const x0 = Math.max(d0, xz), x1 = Math.min(d1, (y.domain()[1] - fit.intercept) / fit.slope)
+    // and ends just past the highest FTIR EC, so the line does not run on through the empty half of the square
+    const x0 = Math.max(d0, xz), x1 = Math.min(d1, (Math.min(y.domain()[1], top) - fit.intercept) / fit.slope)
     return <g pointerEvents="none">
       <line x1={x(x0)} y1={y(fit.slope * x0 + fit.intercept)} x2={x(x1)} y2={y(fit.slope * x1 + fit.intercept)} stroke={INK.fit} strokeWidth={2} />
       <circle cx={x(x0)} cy={y(fit.slope * x0 + fit.intercept)} r={5} fill="none" stroke={INK.fit} strokeWidth={2} />
@@ -297,10 +324,10 @@ function AgainstHips({ data, ceil }: { data: Linearise; ceil: Ceil }) {
         {lin && ceil.control}
       </>}>
       <ScatterPlot points={points} xLabel={lin ? `HIPS BC linearised at τ∞ ${fmt(c, 2)} (µg/m³)` : 'HIPS BC, Fabs ÷ 10 (µg/m³)'} yLabel="FTIR EC (µg/m³)"
-        xDomain={[0, 24]} yDomain={[0, 12.5]} nice={false} height={360} outside="pin" note={false}
+        xDomain={[0, 24]} yDomain={[0, 24]} nice={false} maxSide={SIDE} outside="pin" note={false}
         under={({ x, y }) => <><RefLine orient="h" at={y(0)} from={x(0)} to={x(24)} />
-          <line x1={x(0)} y1={y(0)} x2={x(12.5)} y2={y(12.5)} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="5 4" />
-          <text x={x(12.5) + 4} y={y(12.5) + 12} fontSize={10} fontFamily={FONT.mono} fill={INK.muted}>1 : 1</text></>}>{children}</ScatterPlot>
+          <line x1={x(0)} y1={y(0)} x2={x(24)} y2={y(24)} stroke={INK.identity} strokeWidth={1.5} strokeDasharray="5 4" />
+          <text x={x(22) - 6} y={y(22) - 6} textAnchor="end" fontSize={10} fontFamily={FONT.mono} fill={INK.muted}>1 : 1</text></>}>{children}</ScatterPlot>
       <Key items={[{ label: lin ? 'HIPS linearised' : 'HIPS as measured', color: lin ? LINEAR : MEASURED, kind: 'dot' }, { label: 'Deming fit', color: INK.fit, kind: 'line' }]} />
       <Readouts items={[
         { label: 'Deming fit', value: eq(fit), sub: fit ? `n = ${fit.n}` : undefined },
@@ -314,7 +341,7 @@ function AgainstHips({ data, ceil }: { data: Linearise; ceil: Ceil }) {
 }
 
 // ------------------------------------------------------------------ 5. the network check
-function NetworkExponents({ data }: { data: Linearise }) {
+export function NetworkExponents({ data }: { data: Linearise }) {
   const [view, setView] = useSearchParam<(typeof SITE_VIEWS)[number]>('hl.sites', 'clear', SITE_VIEWS)
   const sites = useMemo(() => data.network.filter((s) => view === 'all' || s.hi - s.lo < CLEAR_WIDTH), [data, view])
   const LABELS = new Set(['USPA', 'BDDU', 'ETAD', 'CLST', 'CLTA', 'INDH'])
@@ -344,7 +371,7 @@ function NetworkExponents({ data }: { data: Linearise }) {
       controls={<Segmented label="Sites" value={view} options={SITE_VIEWS} onChange={setView}
         optionLabel={(o) => (o === 'clear' ? `Interval under ${CLEAR_WIDTH} (${data.network.filter((s) => s.hi - s.lo < CLEAR_WIDTH).length})` : `All (${data.network.length})`)} />}>
       <ScatterPlot points={points} xLabel="Site median HIPS optical depth" yLabel="Exponent b" xDomain={[0, 1.05]} yDomain={[0.2, 1.4]} nice={false}
-        height={320} outside="pin" note={false} refY={[1]} under={under}>{children}</ScatterPlot>
+        maxSide={SIDE} outside="pin" note={false} refY={[1]} under={under}>{children}</ScatterPlot>
       <Key items={[{ label: 'measured, 95 % interval', color: INK.text, kind: 'dot' }, { label: 'predicted from the IMPROVE curve', color: LINEAR, kind: 'hollow' }]} />
       <Note>Darker sites fall further below 1, about as the curve predicts. Addis has the darkest filters and the lowest exponent ({fmt(addis?.exponent, 2)} against {fmt(addis?.predicted, 2)} predicted). The two Chilean sites ({chile.map((s) => fmt(s.exponent, 2)).join(', ')} against {fmt(Math.min(...chile.map((s) => s.predicted)), 2)}–{fmt(Math.max(...chile.map((s) => s.predicted)), 2)} predicted) are not explained. The predictions here use the central ceiling and each site's own filters as the 10 Nov note made them; the 11 Nov network page refines them per site (Meeting tab, HIPS across the network).</Note>
       <FixedSetNote what="the closure workflow's saved site exponents (all SPARTAN sites with at least 40 filters)" />
@@ -353,7 +380,7 @@ function NetworkExponents({ data }: { data: Linearise }) {
 }
 
 // ------------------------------------------------------------------ 6. seasons and lots
-function SeasonLot({ data, ceil }: { data: Linearise; ceil: Ceil }) {
+export function SeasonLot({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   const c = ceil.ceiling
   const groups = useMemo(() => data.season_lot.filter((s) => s.lot !== 'all').map((s) => {
     const own = data.filters.filter((f) => f.season === s.season && f.lot === s.lot)
@@ -379,7 +406,7 @@ function SeasonLot({ data, ceil }: { data: Linearise; ceil: Ceil }) {
 }
 
 // ------------------------------------------------------------------ 7. what the ceiling decides
-function Limits({ data }: { data: Linearise }) {
+export function Limits({ data }: { data: Linearise }) {
   const taus = data.filters.map((f) => f.tau)
   const rows = data.improve_ceilings.map((c) => ({ ...c, fit: fitAgainstHips(data.filters, data.lambda, c.tau_inf), predicted: predictedExponent(taus, c.tau_inf) }))
   return (

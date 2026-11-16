@@ -9,6 +9,7 @@ import * as d3 from 'd3'
 import { codesOf, keyOf, loadJson, useExport, useLoaded } from '@/lib/data'
 import type { FilterRow, MetaFile } from '@/lib/types'
 import { num } from '@/lib/table'
+import { isPerFilter } from '@/lib/viewFields'
 import { seasonColor, siteColor } from '@/lib/siteColours'
 
 export const CHANNELS = ['UV', 'Blue', 'Green', 'Red', 'IR'] as const
@@ -89,7 +90,7 @@ export function buildPairs(rows: FilterRow[], meta: MetaFile, extra: Map<string,
     // every pair value in µg/m³: under mass per filter (Plot → units) the µg/m³ fields arrive × the sampled
     // volume, but HIPS Fabs (Mm⁻¹) and the extra smoothed channels do not, so the ratios and MACs would mix units
     const vol = num(r['Sampled volume'])
-    const conc = (f: string) => { const v = num(r[f]); return v === null || meta.field_units[f] !== 'µg/filter' ? v : vol && vol > 0 ? v / vol : null }
+    const conc = (f: string) => { const v = num(r[f]); return v === null || !isPerFilter(meta.field_units[f]) ? v : vol && vol > 0 ? v / vol : null }
     // smoothed asked for: the smoothed series where the instrument file has one, else the raw (labelled so, bcTag)
     const sm = smoothed ? (ch === 'IR' ? conc(bccField('IR', true)) : num(x?.[bccField(ch, true)])) : null
     const bc = sm ?? conc(bccField(ch))

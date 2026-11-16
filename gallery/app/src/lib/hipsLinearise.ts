@@ -8,6 +8,25 @@
  */
 import { deming, median } from './stats.ts'
 
+/** deposit area of the 25 mm PTFE filter HIPS reads, cm² (hips_loading.DEPOSIT_AREA_CM2) */
+export const DEPOSIT_AREA_CM2 = 3.53
+
+/**
+ * The IMPROVE ceilings the gallery offers (hips_loading.IMPROVE_CEILING and the 10 Nov closure): the central fit of
+ * all sites 2005–2025, both ends of its 90 % interval, and the 2015–2025 fit. hipsLinearise.test.mjs fails if they
+ * move away from the committed summary (hips_linearise/linearise.json).
+ */
+export const IMPROVE_CEILINGS = [
+  { key: 'central', tau_inf: 2.2596, label: '2.26 (central)' },
+  { key: 'lo', tau_inf: 1.8212, label: '1.82 (90 % low)' },
+  { key: 'hi', tau_inf: 2.7014, label: '2.70 (90 % high)' },
+  { key: 'era', tau_inf: 1.7092, label: '1.71 (2015–2025)' },
+] as const
+export const CENTRAL_CEILING: number = IMPROVE_CEILINGS[0].tau_inf
+
+/** HIPS optical depth of a filter from Fabs (Mm⁻¹) and its sampled volume (m³): the laboratory's own HIPS τ */
+export const opticalDepth = (fabs: number, volume: number): number => (fabs * volume) / (100 * DEPOSIT_AREA_CM2)
+
 /** the saturating IMPROVE response: optical depth for a proportional optical depth u = aL */
 export const saturate = (u: number, ceiling: number): number => u / (1 + u / ceiling)
 

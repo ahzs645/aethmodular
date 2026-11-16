@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { correction, fitAgainstHips, linearise, noiseGain, predictedExponent, ratioMedians, saturate } from './hipsLinearise.ts'
+import { correction, DEPOSIT_AREA_CM2, fitAgainstHips, IMPROVE_CEILINGS, linearise, noiseGain, opticalDepth, predictedExponent, ratioMedians, saturate } from './hipsLinearise.ts'
 
 const data = JSON.parse(fs.readFileSync(new URL('../../public/data/hips_linearise/linearise.json', import.meta.url), 'utf8'))
 const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b}`)
@@ -44,4 +44,12 @@ test('season and lot medians at the central ceiling match the saved table', () =
 test('the predicted Addis exponent at the central ceiling', () => {
   const r = data.fits_linearised.find((f) => f.which === 'central')
   near(predictedExponent(data.filters.map((f) => f.tau), r.tau_inf), r.predicted_hips_exponent, 1e-3, 'predicted exponent')
+})
+
+test('the ceilings the gallery-wide view offers are the committed IMPROVE ones, and the optical depth is the workflow\'s', () => {
+  assert.equal(DEPOSIT_AREA_CM2, data.deposit_area_cm2)
+  assert.deepEqual(IMPROVE_CEILINGS.map((c) => c.key), data.ceilings.map((c) => c.key))
+  for (const c of data.ceilings) near(IMPROVE_CEILINGS.find((k) => k.key === c.key).tau_inf, c.tau_inf, 1e-9, `ceiling ${c.key}`)
+  // each Addis filter's tau from its HIPS BC (x MAC) and volume, as the workflow's load() saved it
+  for (const f of data.filters.filter((x) => x.volume_known).slice(0, 40)) near(opticalDepth(f.hips_bc * data.mac, f.volume_m3), f.tau, 2e-3, `tau of ${f.id}`)
 })

@@ -152,6 +152,22 @@ correction, and the **site** to decide whether its HIPS can carry a level at all
 | Thermal EC arrives for a heavy site (the Addis TOR filters) | Fit that site's own ceiling against thermal EC and compare with IMPROVE's |
 | The IMPROVE ceiling is re-estimated | Change `IMPROVE_CEILING` in `hips_loading.py`; `tests/test_hips_loading.py` fails until it matches the summary |
 
+## In the gallery
+
+The gallery can show every chart drawn from the filters with HIPS linearised: side panel, Plot, HIPS, Linearised
+(`#hips=2.2596` in a link). It multiplies each filter's HIPS Fabs, HIPS BC and public HIPS BC by its own factor,
+from its own Fabs and sampled volume, at the ceiling chosen (central, either end of the interval, or 2015–2025).
+The code is `gallery/app/src/lib/viewFields.ts` and `lib/hipsLinearise.ts`; the ceilings there are tested against
+the committed summary.
+
+- A filter without a sampled volume, or at or past the ceiling, drops out of the HIPS fields. It never keeps its
+  measured value beside corrected filters.
+- Axis titles and exports read ", linearised", and the side panel's Plot tab is marked "HIPS lin." while the view is on.
+- It applies on the tabs that load the network rows, which carry the sampled volume. The meeting pages, saved fits
+  and precomputed statistics stay as measured, and the HIPS row in the side panel says so.
+- The per-filter statuses still apply: a linearised Addis filter is `shape only`. The view does not make it usable
+  for level.
+
 ## Limits
 
 - The ceiling is IMPROVE's. The same laboratory and filter type serve both networks, but SPARTAN has no thermal EC to test it.

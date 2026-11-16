@@ -63,6 +63,8 @@ export interface MetaFile {
   mac_value: number
   /** the gallery's units view (lib/viewFields): concentration, or mass per filter */
   basis?: 'conc' | 'mass'
+  /** the ceiling the view linearises HIPS with (lib/viewFields); null or absent: HIPS as measured */
+  hips_ceiling?: number | null
   /** the PMF groups under the chosen scheme, with 'No PMF day', where a site in view has PMF (lib/pmfGroups) */
   pmf_groups?: { name: string; color: string }[]
   /** the PMF factors themselves (their shares are the 'PMF sources' fields), for the sample drawer */
