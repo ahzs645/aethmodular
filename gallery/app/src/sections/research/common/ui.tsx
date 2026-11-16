@@ -14,7 +14,7 @@ import { shortSeason } from '@/lib/seasons'
 import { usePlaceFilter } from '@/lib/markedRows'
 import { ALL_SITES, SitePicker, usePageSite } from '@/lib/siteFocus'
 import type { FilterRow, MetaFile } from '@/lib/types'
-import { VOLUME } from '@/lib/viewFields'
+import { isPerFilter, VOLUME } from '@/lib/viewFields'
 import type { OlsFit as Fit } from '@/lib/stats'
 import { num as cell } from '@/lib/table'
 import { RESEARCH_SERIES } from '@/lib/palettes'
@@ -34,7 +34,7 @@ export const has = (r: Record<string, unknown>, ...fs: string[]) => fs.every((f)
 export function useConcRows(rows: FilterRow[], meta: MetaFile): FilterRow[] {
   return useMemo(() => {
     if (meta.basis !== 'mass') return rows
-    const perFilter = Object.entries(meta.field_units).filter(([, u]) => u === 'µg/filter').map(([f]) => f)
+    const perFilter = Object.entries(meta.field_units).filter(([, u]) => isPerFilter(u)).map(([f]) => f)
     return rows.map((r) => {
       const v = num(r, VOLUME)
       const out: Record<string, unknown> = { ...r }

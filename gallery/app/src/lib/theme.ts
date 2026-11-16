@@ -393,6 +393,12 @@ export function withUnit(field: string, units: Record<string, string> | undefine
   return chemText(`${field} (${prettyUnit(u)})`)
 }
 
+/** the mark the gallery's view puts on the unit of a HIPS field it has linearised (lib/viewFields), and of a ratio that uses one */
+export const LINEARISED_MARK = ', linearised'
+export const HIPS_LINEARISED_MARK = ', HIPS linearised'
+/** a unit without that mark: what two fields are compared by (lib/axes sameUnits), and what decides µg/filter */
+export const baseUnit = (u: string | null | undefined) => (u ?? '').replace(/, (HIPS )?linearised$/, '')
+
 /** A unit as the exports write it, for display: "ug/m3" -> "µg/m³", "ng/m3" -> "ng/m³", "Mm-1" -> "Mm⁻¹" (missing -> ""). */
 export const prettyUnit = (u: string | null | undefined) =>
   (u ?? '').replace(/\bug\//gi, 'µg/').replace(/\/m3\b/g, '/m³').replace(/\bMm-1\b/g, 'Mm⁻¹')

@@ -58,6 +58,11 @@
           "tab": "meeting",
           "page": "hips-linearise",
           "label": "Linearising HIPS at Addis"
+        },
+        {
+          "tab": "meeting",
+          "page": "hips-parts",
+          "label": "HIPS on dark filters, part by part"
         }
       ],
       "evidenceLabel": "artifacts inspected"

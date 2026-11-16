@@ -1,5 +1,5 @@
 import * as d3 from 'd3'
-import { prettyUnit } from './theme.ts'
+import { baseUnit, prettyUnit } from './theme.ts'
 
 /**
  * One axis policy for every chart on the correlation tab, so the scatterplot,
@@ -30,7 +30,8 @@ export interface AxesOpts {
 }
 
 /** a unit as written in the exports or on screen, so 'ug/m3' and 'µg/m³' compare equal */
-const unitKey = (u: string) => prettyUnit(u.replace(/\s+/g, '')).toLowerCase()
+// a linearised HIPS field (lib/viewFields) is still in its own unit, so HIPS BC keeps its 1:1 line against EC
+const unitKey = (u: string) => prettyUnit(baseUnit(u).replace(/\s+/g, '')).toLowerCase()
 /** a pair measured in the same unit (both unitless counts as the same); one with a unit and one without differ */
 export const sameUnits = (a?: string | null, b?: string | null) => (!a && !b) || (!!a && !!b && unitKey(a) === unitKey(b))
 

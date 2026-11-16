@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { parseRatios, ratioKey, ratiosParam, ratioUnit, viewRows, viewUnits } from './viewFields.ts'
+import { hipsFactor, isPerFilter, parseRatios, ratioKey, ratiosParam, ratioUnit, viewRows, viewUnits } from './viewFields.ts'
+import { sameUnits } from './axes.ts'
 
 const units = { 'EC (FTIR)': 'ug/m3', 'PM2.5 mass': 'µg/m³', 'HIPS Fabs': 'Mm-1', 'HIPS BC': 'ug/m3', 'BC (public HIPS)': 'µg/m³', 'Sampled volume': 'm³' }
 const base = { mac: 10, exportMac: 10, basis: 'conc', units, ratios: [] }
@@ -47,4 +48,54 @@ test('ratios use the values after MAC and basis, and skip a zero or missing deno
   assert.equal(z[ratioKey(ratios[0])], null)
   assert.equal(viewUnits({ ...base, ratios })[ratioKey(ratios[0])], 'ratio')
   assert.equal(ratioUnit('ug/m3', 'Mm-1'), 'µg/m³ per Mm⁻¹')
+})
+
+test('HIPS linearised: each filter by its own optical depth, the same factor on Fabs, BC and the public BC', () => {
+  const ceiling = 2.2596
+  const [r] = viewRows([row], { ...base, hipsCeiling: ceiling })
+  // tau = 30 Mm-1 x 7.2 m3 / 353 = 0.6119; factor = 1 / (1 - tau / ceiling)
+  const k = 1 / (1 - (30 * 7.2 / 353) / ceiling)
+  assert.ok(Math.abs(hipsFactor(row, ceiling) - k) < 1e-12)
+  assert.ok(Math.abs(r['HIPS Fabs'] - 30 * k) < 1e-9)
+  assert.ok(Math.abs(r['HIPS BC'] - 3 * k) < 1e-9)
+  assert.ok(Math.abs(r['BC (public HIPS)'] - 3.1 * k) < 1e-9)
+  assert.equal(r['EC (FTIR)'], 2)
+  // half the volume gives half the optical depth and a smaller factor on the same Fabs
+  const [half] = viewRows([{ ...row, 'Sampled volume': 3.6 }], { ...base, hipsCeiling: ceiling })
+  assert.ok(half['HIPS Fabs'] < r['HIPS Fabs'] && half['HIPS Fabs'] > 30)
+  // the MAC still applies, to the linearised absorption
+  const [m] = viewRows([row], { ...base, hipsCeiling: ceiling, mac: 15 })
+  assert.ok(Math.abs(m['HIPS BC'] - (30 * k) / 15) < 1e-9)
+})
+
+test('HIPS linearised: no sampled volume or past the ceiling drops the HIPS fields, never keeps the measured value', () => {
+  const o = { ...base, hipsCeiling: 2.2596 }
+  const [noVolume] = viewRows([{ ...row, 'Sampled volume': null }], o)
+  assert.equal(noVolume['HIPS Fabs'], null)
+  assert.equal(noVolume['HIPS BC'], null)
+  assert.equal(noVolume['BC (public HIPS)'], null)
+  assert.equal(noVolume['EC (FTIR)'], 2)
+  // 120 Mm-1 x 7.2 / 353 = 2.45, past the ceiling
+  const [dark] = viewRows([{ ...row, 'HIPS Fabs': 120 }], o)
+  assert.equal(dark['HIPS Fabs'], null)
+  // a filter with only the public BC is linearised from it (Fabs = BC x 10)
+  const [pub] = viewRows([{ id: 'B', 'BC (public HIPS)': 3, 'Sampled volume': 7.2 }], o)
+  assert.ok(Math.abs(pub['BC (public HIPS)'] - 3 / (1 - (30 * 7.2 / 353) / 2.2596)) < 1e-9)
+  // as measured is untouched
+  assert.equal(viewRows([row], { ...base, hipsCeiling: null })[0], row)
+})
+
+test('HIPS linearised: units say so, and still match their own unit for the 1:1 line and mass per filter', () => {
+  const u = viewUnits({ ...base, hipsCeiling: 2.2596, ratios: [{ num: 'HIPS BC', den: 'EC (FTIR)' }, { num: 'EC (FTIR)', den: 'PM2.5 mass' }] })
+  assert.equal(u['HIPS BC'], 'ug/m3, linearised')
+  assert.equal(u['HIPS Fabs'], 'Mm-1, linearised')
+  assert.equal(u['BC (public HIPS)'], 'µg/m³, linearised')
+  assert.equal(u['EC (FTIR)'], 'ug/m3')
+  assert.equal(u['HIPS BC / EC (FTIR)'], 'ratio, HIPS linearised')
+  assert.equal(u['EC (FTIR) / PM2.5 mass'], 'ratio')
+  assert.ok(sameUnits(u['HIPS BC'], u['EC (FTIR)']))
+  assert.ok(!sameUnits(u['HIPS Fabs'], u['EC (FTIR)']))
+  const mass = viewUnits({ ...base, basis: 'mass', hipsCeiling: 2.2596 })
+  assert.equal(mass['HIPS BC'], 'µg/filter, linearised')
+  assert.ok(isPerFilter(mass['HIPS BC']) && isPerFilter(mass['EC (FTIR)']) && !isPerFilter(mass['HIPS Fabs']))
 })
