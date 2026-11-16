@@ -18,7 +18,7 @@ import { rowsOf } from '@/lib/table'
 import { FONT, INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { Ceil, Linearise } from '@/pages/HipsLinearisePage'
-import { DataTable, Readouts } from '@/pages/hipsLineariseParts'
+import { DataTable, LINEAR, Readouts, STAT_NAME, STATS, type Stat } from '@/pages/hipsLineariseParts'
 
 /**
  * How many decimal places a linearised HIPS BC can carry (the "Linearising HIPS at Addis" page). Two charts on one
@@ -37,14 +37,10 @@ const FILTER_SOURCE = <>research/ftir_hips_chem/workflows/run_addis_reference_cl
 
 /** HIPS BC is Fabs ÷ 10 with Fabs given to 0.1 Mm⁻¹, so two decimals is the finest it is reported to */
 const FINEST = -2
-const LINEAR = RESEARCH_SERIES[0]
 const NOISE = RESEARCH_SERIES[2]
 /** the laboratory's median HIPS detection limit, Mm⁻¹ (docs/filter-optics-reference.md) */
 const DETECTION_LIMIT = 1.6
 
-const STATS = ['median_bc', 'mean_bc'] as const
-type Stat = (typeof STATS)[number]
-const STAT_NAME: Record<Stat, string> = { median_bc: 'Median', mean_bc: 'Mean' }
 const SITE_VIEWS = ['lost', 'all'] as const
 /** sites named on the chart whatever band they fall in: Addis, Delhi and the lightest large site */
 const ALWAYS_NAMED = new Set(['ETAD', 'INDH', 'USPA'])

@@ -10,12 +10,12 @@ import { ScrubField } from '@/components/ScrubField'
 import { useExport } from '@/lib/data'
 import { fmt, signed } from '@/lib/format'
 import { FixedSetNote } from '@/lib/markedRows'
-import { RESEARCH_SERIES } from '@/lib/palettes'
 import { median } from '@/lib/stats'
 import { FONT, INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import { FilterDecimals, SiteDecimals } from '@/pages/HipsDecimals'
-import { DataTable, Readouts } from '@/pages/hipsLineariseParts'
+import { ImproveReach, LevelChoices } from '@/pages/HipsCaveats'
+import { DataTable, LINEAR, MEASURED, Readouts } from '@/pages/hipsLineariseParts'
 import { correction, fitAgainstHips, linearBc, linearise, noiseGain, predictedExponent, ratioMedians, saturate, type LinFilter } from '@/lib/hipsLinearise'
 
 const COMMAND = 'uv run python gallery/data/export_hips_linearise.py'
@@ -23,8 +23,6 @@ const WORKFLOW = 'research/ftir_hips_chem/workflows/run_addis_reference_closure_
 const NOTE_DOC = 'docs/addis-reference-closure-2026-11-10.md'
 const PROVENANCE = <>{WORKFLOW}; summary <code>{NOTE_DOC}</code> and its JSON; per-filter optical depths from the workflow's <code>load()</code> (<code>hips_linearise/linearise.json</code>).</>
 
-const MEASURED = RESEARCH_SERIES[1]
-const LINEAR = RESEARCH_SERIES[0]
 
 type CeilingKey = 'central' | 'lo' | 'hi' | 'era'
 const CEILING_KEYS: readonly CeilingKey[] = ['central', 'lo', 'hi', 'era']
@@ -89,6 +87,8 @@ export function HipsLinearisePage() {
       <AgainstHips data={data} ceil={ceil} />
       <NetworkExponents data={data} />
       <SeasonLot data={data} ceil={ceil} />
+      <ImproveReach data={data} ceil={ceil} />
+      <LevelChoices data={data} />
       <SiteDecimals />
       <FilterDecimals data={data} ceil={ceil} />
       <Limits data={data} />

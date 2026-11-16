@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { correction, fitAgainstHips, linearise, noiseGain, predictedExponent, ratioMedians, saturate } from './hipsLinearise.ts'
+import { correction, fitAgainstHips, linearLevel, linearise, noiseGain, predictedExponent, ratioMedians, saturate } from './hipsLinearise.ts'
 
 const data = JSON.parse(fs.readFileSync(new URL('../../public/data/hips_linearise/linearise.json', import.meta.url), 'utf8'))
 const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b}`)
@@ -44,4 +44,18 @@ test('season and lot medians at the central ceiling match the saved table', () =
 test('the predicted Addis exponent at the central ceiling', () => {
   const r = data.fits_linearised.find((f) => f.which === 'central')
   near(predictedExponent(data.filters.map((f) => f.tau), r.tau_inf), r.predicted_hips_exponent, 1e-3, 'predicted exponent')
+})
+
+test('a site level keeps the filters past the ceiling instead of dropping them', () => {
+  const filters = [{ tau: 0.5, hips_bc: 2 }, { tau: 1, hips_bc: 4 }, { tau: 1.5, hips_bc: 6 }]
+  near(linearLevel(filters, null, 'median'), 4, 1e-12, 'as measured')
+  near(linearLevel(filters, 2, 'median'), 4 * correction(1, 2), 1e-12, 'median at a ceiling above every filter')
+  near(linearLevel(filters, 2, 'mean'), (2 * correction(0.5, 2) + 4 * correction(1, 2) + 6 * correction(1.5, 2)) / 3, 1e-12, 'mean')
+  // one filter past the ceiling: the median is still the middle filter's value, the mean has no finite value
+  near(linearLevel(filters, 1.4, 'median'), 4 * correction(1, 1.4), 1e-12, 'median with one filter past the ceiling')
+  assert.equal(linearLevel(filters, 1.4, 'mean'), Infinity)
+  assert.equal(linearLevel(filters, 0.9, 'median'), Infinity)
+  // the Addis median on the export, at the central ceiling and as measured
+  const central = data.ceilings.find((c) => c.key === 'central').tau_inf
+  assert.ok(linearLevel(data.filters, central, 'median') / linearLevel(data.filters, null, 'median') > 1.6)
 })

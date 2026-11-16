@@ -1,10 +1,20 @@
 import type { ReactNode } from 'react'
+import { RESEARCH_SERIES } from '@/lib/palettes'
 import { FONT } from '@/lib/theme'
 
 /**
- * The pieces the "Linearising HIPS at Addis" page's charts share (pages/HipsLinearisePage.tsx, pages/HipsDecimals.tsx):
+ * The pieces the "Linearising HIPS at Addis" page's charts share (pages/HipsLinearisePage.tsx, pages/HipsDecimals.tsx, pages/HipsCaveats.tsx):
  * a row of headline numbers under a chart, and a plain table.
  */
+
+/** the page's two series: HIPS as measured, and linearised */
+export const MEASURED = RESEARCH_SERIES[1]
+export const LINEAR = RESEARCH_SERIES[0]
+
+/** the site statistic a chart is drawn for (URL `hl.stat`, shared by every chart that offers it) */
+export const STATS = ['median_bc', 'mean_bc'] as const
+export type Stat = (typeof STATS)[number]
+export const STAT_NAME: Record<Stat, string> = { median_bc: 'Median', mean_bc: 'Mean' }
 
 /** a row of headline numbers under a chart */
 export function Readouts({ items }: { items: { label: string; value: ReactNode; color?: string; sub?: string }[] }) {
