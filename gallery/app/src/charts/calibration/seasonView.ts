@@ -1,7 +1,6 @@
-import { demingLambda } from '@/lib/macMath'
-import { regression } from '@/lib/stats'
+import { refitRow as refit } from '@/lib/hipsRun'
 import { localSeasonsFor } from '@/siteSeasons'
-import type { CalibRun, MetaFile, MetricRow, RunEval, SeasonMeta } from '@/lib/types'
+import type { CalibRun, MetaFile, RunEval, SeasonMeta } from '@/lib/types'
 
 /**
  * Season filter for the per-filter calibration section. The explorer labels
@@ -21,26 +20,6 @@ export function runCalendar(site: string | undefined, meta: MetaFile, cal: RunCa
   if (cal !== 'Site local calendar') return meta.season_conventions.dry_feb ?? []
   // Bishoftu has no entry of its own; it shares the Ethiopian (Addis) calendar
   return localSeasonsFor(site ?? null, meta) ?? localSeasonsFor('Addis Ababa', meta) ?? meta.season_conventions.dry_feb ?? []
-}
-
-/** One readout row refitted on a subset, in the explorer's convention: y = prediction, x = ref ÷ MAC. */
-function refit(e: RunEval, idx: number[], row: MetricRow, lambda10: number): MetricRow {
-  const set = row.evaluation_set === 'fixed' ? idx.filter((i) => e.fixed[i]) : idx
-  const mac = row.MAC
-  const xs = set.map((i) => (mac ? e.ref[i] / mac : e.ref[i]))
-  const ys = set.map((i) => e.pred[i])
-  const st = xs.length >= 3 ? regression(xs, ys, { errorsInVariables: true, lambda: demingLambda(mac, lambda10) }) : null
-  const rmse = xs.length ? Math.sqrt(xs.reduce((a, x, k) => a + (ys[k] - x) ** 2, 0) / xs.length) : null
-  return {
-    ...row,
-    n: set.length,
-    R2: st?.r2 ?? null,
-    RMSE: rmse,
-    ols_slope: st?.slope ?? null,
-    ols_intercept: st?.intercept ?? null,
-    deming_slope: st?.demingSlope ?? null,
-    deming_intercept: st?.demingIntercept ?? null,
-  }
 }
 
 /**

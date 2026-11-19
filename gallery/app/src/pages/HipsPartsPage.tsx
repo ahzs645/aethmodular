@@ -282,8 +282,13 @@ function SiteOnCurve({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   const colors = bundle?.colors ?? {}
   const points = useMemo<ScatterPoint[]>(() => rows.flatMap((r) => {
     const k = correction(r.tau, c)
-    return Number.isFinite(k) ? [{ key: r.id, x: r.tau, y: k, color: colors[r.status] ?? INK.muted,
-      tip: [`${r.id} · ${r.date}`, `Fabs ${fmt(r.fabs, 1)} Mm⁻¹ × ${fmt(r.volume, 2)} m³ → τ ${fmt(r.tau, 2)}`, `× ${fmt(k, 2)} → ${fmt(r.fabs * k, 1)} Mm⁻¹`, r.status] }] : []
+    // id + rec: a dot clicks like every filter in the gallery (pinned on every chart, `pin` in a link, its record in the drawer)
+    return Number.isFinite(k) ? [{ id: r.id, key: r.id, site: r.id.split('-')[0], x: r.tau, y: k, color: colors[r.status] ?? INK.muted,
+      tip: [`${r.id} · ${r.date}`, `Fabs ${fmt(r.fabs, 1)} Mm⁻¹ × ${fmt(r.volume, 2)} m³ → τ ${fmt(r.tau, 2)}`, `× ${fmt(k, 2)} → ${fmt(r.fabs * k, 1)} Mm⁻¹`, r.status],
+      rec: { id: r.id, site: r.site, date: r.date, source: "Linearising HIPS · one site's filters on the curve", fields: [
+        ['Status', r.status], ['HIPS Fabs (Mm⁻¹)', r.fabs], ['Sampled volume (m³)', r.volume], ['HIPS optical depth τ', r.tau],
+        ['Ceiling τ∞', fmt(c, 2)], ['Correction factor', `× ${fmt(k, 3)}`], ['HIPS Fabs linearised (Mm⁻¹)', r.fabs * k],
+      ] } }] : []
   }), [rows, c, colors])
   if (!bundle) return <ExportState title="One site's filters on the curve" what="the 11 Nov procedure data" error={error} command={SPEC_MEETINGS.find((m) => m.id === PROCEDURE)?.command} />
   const taus = rows.map((r) => r.tau), med = median(taus)

@@ -717,6 +717,94 @@
    "file": "meetings/ann-20261009.meeting.ts"
   },
   {
+   "title": "What was asked, and what the sweep found",
+   "id": "cl-glance",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "calibration-linearised-20261119",
+   "file": "meetings/calibration-linearised-20261119.meeting.ts"
+  },
+  {
+   "title": "With every IMPROVE filter in training: raw spectra rise from 0.30 to 0.57, VIBES to 0.60, the spline baseline stays under 0.25",
+   "id": "cl-by-k",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "calibration-linearised-20261119",
+   "file": "meetings/calibration-linearised-20261119.meeting.ts"
+  },
+  {
+   "title": "By training set, raw spectra: heavy filters in training raise the slope, a cut-off lowers it, and none passes 0.72",
+   "id": "cl-by-training",
+   "component": "sweep",
+   "tab": "meeting",
+   "meeting": "calibration-linearised-20261119",
+   "file": "meetings/calibration-linearised-20261119.meeting.ts"
+  },
+  {
+   "title": "957 fits against linearised HIPS: the largest slope at MAC 10 is 0.72; at MAC 16.4 the raw-spectra fits reach 1 with an intercept near 0",
+   "id": "cl-plane",
+   "component": "scatter",
+   "tab": "meeting",
+   "meeting": "calibration-linearised-20261119",
+   "file": "meetings/calibration-linearised-20261119.meeting.ts"
+  },
+  {
+   "title": "Closest at MAC 10: raw spectra trained on heavy filters only, 0.72x − 0.05, with more than four times the error on IMPROVE",
+   "id": "cl-best-10",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "calibration-linearised-20261119",
+   "file": "meetings/calibration-linearised-20261119.meeting.ts"
+  },
+  {
+   "title": "Closest at MAC …: raw spectra reach 1.00x + 0.02, and seven of the first eight are raw spectra",
+   "id": "cl-best-urban",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "calibration-linearised-20261119",
+   "file": "meetings/calibration-linearised-20261119.meeting.ts"
+  },
+  {
+   "title": "For comparison, the plain models: raw spectra with every filter read 0.49x + 0.11 at MAC 10 and 0.81x + 0.11 at the urban IMPROVE MAC",
+   "id": "cl-plain",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "calibration-linearised-20261119",
+   "file": "meetings/calibration-linearised-20261119.meeting.ts"
+  },
+  {
+   "title": "Addis slope against the level on IMPROVE: raw-spectra fits within 5 % of thermal EC give slopes of 0.39 to 0.71, median 0.56",
+   "id": "cl-cost",
+   "component": "scatter",
+   "tab": "meeting",
+   "meeting": "calibration-linearised-20261119",
+   "file": "meetings/calibration-linearised-20261119.meeting.ts"
+  },
+  {
+   "title": "One model on 233 Addis filters, against linearised HIPS",
+   "id": "cl-drawn",
+   "component": "crossplot",
+   "tab": "meeting",
+   "meeting": "calibration-linearised-20261119",
+   "file": "meetings/calibration-linearised-20261119.meeting.ts"
+  },
+  {
+   "title": "Calibration tab, the nine saved configurations at Addis: as measured against linearised",
+   "id": "cl-saved",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "calibration-linearised-20261119",
+   "file": "meetings/calibration-linearised-20261119.meeting.ts"
+  },
+  {
+   "title": "With FTIR EC exactly right, the slope at MAC 10 would be 0.53 to 0.76",
+   "id": "cl-mac",
+   "component": "table",
+   "tab": "meeting",
+   "meeting": "calibration-linearised-20261119",
+   "file": "meetings/calibration-linearised-20261119.meeting.ts"
+  },
+  {
    "title": "Per unit of thermal EC, HIPS reads about a third less at Addis optical depth than on light filters",
    "id": "c1110-improve-ratio",
    "component": "sweep",

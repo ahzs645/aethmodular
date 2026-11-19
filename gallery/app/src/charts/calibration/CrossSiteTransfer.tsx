@@ -17,6 +17,7 @@ import { fitLine } from '@/lib/format'
 import { INK, FONT } from '@/lib/theme'
 import type { CalibRun, CalibRunsFile, FilterRow, MetaFile } from '@/lib/types'
 import { cohortColor, deployedECFrom, presetName, useNetworkRows } from './common'
+import { runHipsMark } from '@/lib/hipsRun'
 import { metricRowLive, type KeepIndex } from './runFit'
 import { COHORT, PREPROCESSING, label } from '@/lib/labels'
 import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
@@ -166,6 +167,11 @@ function useRunKeep(): (run: CalibRun) => KeepIndex {
 
 // the readouts this calibration gives every panel; gallery measurements join by filter id
 const REF = 'reference', PRED = 'predicted', RESID = 'residual', DEP = 'deployed'
+/** ', linearised' when every site's HIPS is linearised (lib/hipsRun), and at which sites when the view covers only some */
+const hipsMarkOf = (siteRuns: CalibRun[], runs: CalibRunsFile) => {
+  const on = siteRuns.filter((r) => r.hips_linearised)
+  return !on.length ? '' : on.length === siteRuns.filter((r) => r.ref_kind === 'fabs').length ? ', linearised' : `, linearised at ${on.map((r) => runs.targets[r.target]?.site ?? r.target).join(', ')}`
+}
 const EC_KEYS = [REF, PRED, DEP]
 
 function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, galleryRows = [], sourceRows, galleryMeta }: {
@@ -199,14 +205,14 @@ function SiteMultiples({ runs, siteRuns, mac, at, controls, presetLabel, gallery
     const ids = new Set(siteRuns.flatMap((r) => r.eval.id.flatMap((id) => (id ? [baseFilterId(id)] : []))))
     const mine = galleryRows.filter((r) => ids.has(r.id))
     return [
-      { key: REF, label: `HIPS Fabs ÷ MAC ${mac}`, group: 'This calibration', unit: 'µg/m³' },
+      { key: REF, label: `HIPS Fabs ÷ MAC ${mac}${hipsMarkOf(siteRuns, runs)}`, group: 'This calibration', unit: 'µg/m³' },
       { key: PRED, label: 'Predicted FTIR EC', group: 'This calibration', unit: 'µg/m³' },
       { key: RESID, label: 'Residual, predicted − reference', group: 'This calibration', unit: 'µg/m³' },
       ...(hasDeployed ? [{ key: DEP, label: 'Deployed SPARTAN EC', group: 'This calibration', unit: 'µg/m³' }] : []),
       ...(galleryMeta?.field_groups ?? []).flatMap((g) => g.fields.filter((f) => galleryMeta!.fields.includes(f) && mine.some((r) => typeof r[f] === 'number'))
         .map((f) => ({ key: f, group: g.label, unit: prettyUnit(galleryMeta!.field_units?.[f]) || undefined }))),
     ]
-  }, [siteRuns, galleryRows, galleryMeta, mac, hasDeployed])
+  }, [siteRuns, runs, galleryRows, galleryMeta, mac, hasDeployed])
   const keys = options.map((o) => o.key)
   const [xk, setXk] = useSearchParam<string>('csx', REF, keys)
   const [yk, setYk] = useSearchParam<string>('csy', PRED, keys)
@@ -442,7 +448,7 @@ function TransferTable({ runs, siteRuns, mac, at, presetLabel }: { runs: CalibRu
               return (
                 <tr key={run.target}>
                   <td><span style={{ color: t?.color, fontWeight: 600 }}>{t?.site ?? run.target}</span> <span style={{ color: 'var(--ink-muted)' }}>{t?.code}</span></td>
-                  <td>{run.ref_kind === 'fabs' ? `HIPS Fabs ÷ ${mac}` : 'EC'}</td>
+                  <td>{run.ref_kind === 'fabs' ? `HIPS Fabs ÷ ${mac}${runHipsMark(run)}` : 'EC'}</td>
                   <td>{fit?.m.n ?? run.eval.id.length}</td>
                   <td>{fmt(fit?.slope ?? null, 3)}{showCI && <div className="chart-note">{ci ? `95% [${fmt(ci.slope[0], 3)}, ${fmt(ci.slope[1], 3)}]` : '95% CI unavailable'}</div>}</td>
                   <td style={{ fontWeight: (fit?.intercept ?? 0) < -1 ? 600 : 400 }}>{fmt(fit?.intercept ?? null, 3)}{showCI && <div className="chart-note">{ci ? `95% [${fmt(ci.intercept[0], 3)}, ${fmt(ci.intercept[1], 3)}]` : '95% CI unavailable'}</div>}</td>

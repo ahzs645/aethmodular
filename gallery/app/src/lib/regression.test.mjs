@@ -87,3 +87,25 @@ test('pearson and corrMatrix give regression()’s r, with the same nulls', () =
   }
   assert.equal(pearson([1, 2], [1, 2]), null)
 })
+
+test('corrMatrix reuses a pair only while both its columns are unchanged', () => {
+  let seed = 11
+  const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+  const base = Array.from({ length: 80 }, () => { const a = rand(); return { a, b: a + rand(), c: rand(), d: rand() } })
+  const fields = ['a', 'b', 'c', 'd']
+  const skip = (x, y) => x === y
+  const fresh = (rows) => fields.map((f) => fields.map((g) => {
+    if (skip(f, g)) return null
+    return pearson(rows.map((r) => r[f]), rows.map((r) => r[g]))
+  }))
+  const first = corrMatrix(base, fields, skip)
+  assert.deepEqual(first, fresh(base))
+  // a new array, one column changed in a way that moves r (not a rescale): every pair with it is recomputed
+  const moved = base.map((r, i) => ({ ...r, b: i % 2 ? r.b * 3 : r.b }))
+  const second = corrMatrix(moved, fields, skip)
+  assert.deepEqual(second, fresh(moved))
+  assert.notEqual(second[0][1], first[0][1])
+  assert.equal(second[2][3], first[2][3])
+  // and back: the first matrix again, exactly
+  assert.deepEqual(corrMatrix(base.map((r) => ({ ...r })), fields, skip), first)
+})

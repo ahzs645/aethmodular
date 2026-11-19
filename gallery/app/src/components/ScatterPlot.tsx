@@ -298,12 +298,14 @@ export function ScatterPlot({
       focusR={(p) => Math.max(p.r ?? 3.5, focusR)}
       focus={(p, [cx, cy]) => <Mark shape={p.shape} cx={cx} cy={cy} r={Math.max(p.r ?? 3.5, focusR)} fill={p.hollow ? 'none' : p.color} opacity={p.dim}
         {...dotFill('sparse')} stroke={INK.text} strokeWidth={2} />}
-      tipOf={(p) => (p.tip ? (p.rec || p.open ? [...p.tip, p.id ? 'click to pin it on every chart and open its record' : 'click to open its record'] : p.tip) : null)}
+      tipOf={(p) => (p.tip ? (p.rec || p.open || p.id ? [...p.tip, p.id ? 'click to pin it on every chart and open its record' : 'click to open its record'] : p.tip) : null)}
       pickable={(p) => !!(onPick || p.open || p.rec || keyOf(p))}
       onPick={(p) => {
         if (onPick) { onPick(original?.get(p) ?? p); return }
         const key = keyOf(p)
-        if (p.open) p.open(); else if (p.rec) hl.openRecord(p.rec)
+        // a filter dot with no record of its own still opens the filter: the gallery finds it by its id (App
+        // openRecord: the page's rows, else the network file or pilot export), with nothing from this chart on top
+        if (p.open) p.open(); else if (p.rec) hl.openRecord(p.rec); else if (p.id) hl.openRecord({ id: p.id, source: title ?? 'this chart', site: p.site, fields: [] })
         if (key) hl.setPinned(key)
       }}>
       {fitting && (fit === 'pooled' ? <RegressionLines stats={pooled} x={x} y={y} domain={x.domain()} width={iw} height={ih} />

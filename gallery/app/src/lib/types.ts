@@ -246,6 +246,8 @@ export interface CalibRun {
   q_residual_pct: number | null
   ref_kind: 'fabs' | 'ec'
   eval: RunEval
+  /** set by lib/hipsRun lineariseRun: the run's Fabs is linearised at this ceiling, and this many filters dropped out */
+  hips_linearised?: { ceiling: number; dropped: number }
 }
 
 export interface CohortInfo {

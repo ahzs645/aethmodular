@@ -13,6 +13,8 @@ const cell = (v: FilterRecord['fields'][number][1]) =>
 
 /** The "what this chart knows" table, shared by both drawers. */
 export function RecordSection({ rec }: { rec: FilterRecord }) {
+  // a record that only names the filter (a chart dot with an id and nothing else) adds no section of its own
+  if (!rec.fields.length && !rec.note) return null
   return (
     <section className="drawer-section">
       <h3>From {rec.source}</h3>

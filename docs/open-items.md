@@ -33,6 +33,12 @@ Also: compare settings at a fixed k, never at the k the selection rule picks (it
 and on that one spectrum); and the 3 Nov transfer table's low-k Addis slopes are stale, because the harness now leaves
 the QC-failed spectrum out (k 5 is 0.61, not 0.41). Account: [vibes-settings-2026-11-16.md](vibes-settings-2026-11-16.md);
 gallery Meeting tab, Nov 16.
+19 Nov: the same choices were re-read against linearised HIPS (33 calibrations, 1 to 30 components). None reaches a
+slope of 1 at MAC 10 (largest 0.72); raw spectra keep the intercept near zero at every k and a baseline does not; at the
+urban IMPROVE MAC (16.4) raw-spectra models land on 1.00x + 0.02. So "the k that matches HIPS" is not a criterion once
+HIPS is linearised: judge on intercept and R², and read the slope with the MAC. Still to decide: whether the Calibration
+tab's grid is rerun against linearised HIPS, and what replaces its slope box. Account:
+[calibration-linearised-2026-11-19.md](calibration-linearised-2026-11-19.md); gallery Meeting tab, Nov 19.
 
 ### Decide four season-calendar questions the climate check raised (11 Nov 2026)
 

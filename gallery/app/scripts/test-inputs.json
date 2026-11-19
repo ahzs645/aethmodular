@@ -362,6 +362,13 @@
       ],
       "reason": "Check which sites' linearised BC loses a decimal place on the 11 Nov procedure's saved site statistics."
     },
+    "src/lib/calibrationLinearised.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/meetings/calibration-linearised-20261119.json"
+      ],
+      "reason": "The page's titles quote the sweep's slopes, intercepts and rankings; they must match its committed bundle."
+    },
     "src/lib/vibesSettings.test.mjs": {
       "scope": "public",
       "inputs": [

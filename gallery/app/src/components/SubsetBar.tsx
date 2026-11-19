@@ -148,6 +148,9 @@ export interface SubsetState {
   hipsCeiling?: number | null
   /** what the linearised view did to the filters and sites in view; absent as measured */
   hipsView?: HipsViewState
+  /** on a tab that linearises its own saved filters (Calibration): the scope, and what follows the view there */
+  hipsScope?: HipsScope
+  hipsNote?: string
 }
 
 /**
@@ -422,8 +425,9 @@ export function SubsetBar({
       )}
       {(caps.fields !== 'none' && a.onBasis || caps.mac) && a.onHips && (
         <Row label="HIPS">
-          <HipsControl ceiling={s.hipsCeiling} onHips={a.onHips} scope={s.hipsView?.scope} onScope={a.onHipsScope} />
+          <HipsControl ceiling={s.hipsCeiling} onHips={a.onHips} scope={s.hipsView?.scope ?? s.hipsScope} onScope={a.onHipsScope} />
           {s.hipsCeiling != null && s.hipsView && <HipsViewNote view={s.hipsView} />}
+          {s.hipsCeiling != null && !s.hipsView && s.hipsNote && <span className="method-note" style={{ display: 'block' }}>{s.hipsNote}</span>}
           {explain && <span className="row-note">HIPS reads low on dark filters. Linearised multiplies each filter's HIPS by 1 ÷ (1 − optical depth ÷ ceiling), its optical depth being Fabs × sampled volume ÷ 353, so a light filter barely moves. Every filter also carries its optical depth and expected under-read as measurements (HIPS loading), to plot, colour by or band. Saved fits and meeting figures stay as measured</span>}
         </Row>
       )}

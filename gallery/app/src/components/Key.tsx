@@ -8,7 +8,8 @@ import { Legend, type LegendShape } from '@/components/Legend'
  * research pages already use. New code can call `Legend` directly.
  */
 export type KeyKind = 'dot' | 'square' | 'hollow' | 'diamond' | 'line' | 'dash' | 'bar' | 'faded'
-export interface KeyItem { label: string; color: string; kind?: KeyKind }
+/** `hint`: what the item means, shown when the reader hovers it */
+export interface KeyItem { label: string; color: string; kind?: KeyKind; hint?: string }
 
 /** a Key's diamond is drawn hollow (the marks it names are outlined); the rest are Legend's shapes or aliases */
 const SHAPE: Record<KeyKind, LegendShape> = {
@@ -23,7 +24,7 @@ export function Key({ items, children, relabelFits = false }: {
   relabelFits?: boolean
 }) {
   return (
-    <Legend items={items.map((it) => ({ label: it.label, color: it.color, shape: SHAPE[it.kind ?? 'dot'] }))}
+    <Legend items={items.map((it) => ({ label: it.label, color: it.color, shape: SHAPE[it.kind ?? 'dot'], hint: it.hint }))}
       relabelFits={relabelFits} group={false}>{children}</Legend>
   )
 }

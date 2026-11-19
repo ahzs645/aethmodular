@@ -193,6 +193,13 @@ the committed summary.
 - Axis titles and exports read ", linearised", and the side panel's Plot tab is marked "HIPS lin." while the view is on.
 - It applies on the tabs that load the network rows, which carry the sampled volume. The meeting pages, saved fits
   and precomputed statistics stay as measured, and the HIPS row in the side panel says so.
+- **Calibration tab** (19 Nov): the saved configurations follow the view. Each of the nine keeps every evaluation
+  filter's prediction and Fabs, so the crossplot, the blind-half check and the cross-site transfer are fitted again on
+  each filter's linearised HIPS, with the sampled volume from the public release (`gallery/app/src/lib/hipsRun.ts`).
+  A filter without a sampled volume drops out of those fits (6 of 239 at Addis); the dated series keeps every filter.
+  The grid (specification curve, cutoff and k sweeps, slope and intercept, heatmap) keeps one fitted line per
+  configuration and stays as measured: a per-filter factor cannot be applied to a line, so it needs a rerun that
+  saves per-filter predictions. The section bar says so while the view is on.
 - The per-filter statuses still apply: a linearised Addis filter is `shape only`. The view does not make it usable
   for level.
 

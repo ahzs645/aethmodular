@@ -214,15 +214,25 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
   const edgeTip = (e: Edge) => [`${block.fields[e.a]} — ${block.fields[e.b]}`,
     `r = ${fmt(e.r, 3)} · R² = ${fmt(e.r * e.r, 3)}`, e.r > 0 ? 'rise and fall together' : 'one rises as the other falls']
 
+  // ---- what the layout depends on, as one key: the species, the lines (r to two decimals), the groups and the box.
+  // A new array of rows with the same picture (a MAC drag rescales BC but leaves every r; a ceiling drag nudges a
+  // few in the third decimal) keeps the key, so the layout below is not run again for it (~50 ms each time)
+  const layoutKey = useMemo(() => [
+    nw, netH, k, narrow, threshold, block.fields.join('\u0001'),
+    graph.edges.map((e) => `${e.a}-${e.b}:${e.r.toFixed(2)}`).join(','),
+    (tree?.groupOf ?? []).join(','),
+  ].join('|'), [block, graph, tree, nw, netH, k, narrow, threshold])
+
   // ---- Network: run the force layout to completion synchronously so the positions are
   // deterministic and there is no animation loop. Species with no partner are listed under the
-  // plot instead of floating as loose dots.
+  // plot instead of floating as loose dots. It reads r rounded as in the key, so the layout is a
+  // function of the key alone.
   const network = useMemo(() => {
     const { fields } = block
     const connected = fields.map((_, i) => i).filter((i) => graph.degree[i] > 0)
     const nodes: SimNode[] = connected.map((i) => ({ i }))
     const index = new Map(connected.map((i, k) => [i, k]))
-    const links: SimLink[] = graph.edges.map((e) => ({ source: index.get(e.a)!, target: index.get(e.b)!, r: e.r }))
+    const links: SimLink[] = graph.edges.map((e) => ({ source: index.get(e.a)!, target: index.get(e.b)!, r: Math.round(e.r * 100) / 100 }))
     const gOf = tree?.groupOf ?? []
     // a group's members drift toward the group's middle, so each group reads as one patch of colour
     const pullTogether = (alpha: number) => {
@@ -289,7 +299,7 @@ export function SpeciesGraph({ rows, meta }: { rows: FilterRow[]; meta: MetaFile
     }
     const alone = fields.map((_, i) => i).filter((i) => graph.degree[i] === 0)
     return { pos, label, alone }
-  }, [block, graph, tree, nw, threshold, netH, k, narrow]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [layoutKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- Tree: d3.cluster gives the vertical spread; the horizontal position is the merge
   // height, so the axis reads 1 − |r|

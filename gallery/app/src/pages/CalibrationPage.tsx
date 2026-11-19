@@ -20,9 +20,13 @@ import { SpectraOverlay, type SpectrumSeries } from '@/charts/calibration/Spectr
 import { AnalogLab } from '@/charts/calibration/AnalogLab'
 import { HipsYork } from '@/charts/calibration/HipsYork'
 import { CrossSiteTransfer } from '@/charts/calibration/CrossSiteTransfer'
-import { calibAtMac, cohortColor, configLabel, presetName, type Config } from '@/charts/calibration/common'
+import { calibAtMac, cohortColor, configLabel, presetName, useNetworkRows, type Config } from '@/charts/calibration/common'
 import { runCalendar, seasonalRun } from '@/charts/calibration/seasonView'
 import { useMac } from '@/lib/mac'
+import { baseFilterId } from '@/lib/highlight'
+import type { HipsScope } from '@/lib/hipsLinearise'
+import { lineariseRun, siteInScope } from '@/lib/hipsRun'
+import { VOLUME } from '@/lib/viewFields'
 import { useCountedFilter } from '@/lib/markedRows'
 import { INK } from '@/lib/theme'
 import { usePrefs } from '@/lib/prefs'
@@ -68,9 +72,11 @@ const SPEC_VIEWS = [
   { key: 'orig:only:deriv2', label: '2nd derivative only', group: 'Spline, raw and 2nd derivative' },
 ]
 
-export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null, pmfSel = null, pmfLabelOfDate, galleryRows, sourceRows, galleryMeta }: {
+export function CalibrationPage({ calib, runs: savedRuns, meta, knownIds, seasonSel = null, pmfSel = null, pmfLabelOfDate, galleryRows, sourceRows, galleryMeta, hips }: {
   calib: CalibFile | null
   runs: CalibRunsFile | null
+  /** HIPS linearised (Plot → HIPS): the ceiling, null as measured, and the sites it covers */
+  hips?: { ceiling: number | null; scope: HipsScope }
   meta: MetaFile
   /** the gallery's rows and meta under the reader's view, for the crossplot's explorer panel */
   galleryRows?: FilterRow[]
@@ -84,6 +90,21 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
   pmfLabelOfDate?: (date: string | null | undefined) => string
 }) {
   const { methods } = useRegressions()
+  // the MAC set under Plot → units (lib/mac)
+  const gallery = useMac()
+  // HIPS linearised: a saved run keeps every filter's prediction and Fabs, so it follows the view, each filter by its
+  // own factor from its sampled volume (the public release's rows, loaded for the sites the scope covers). The grid
+  // keeps one fitted line per configuration and stays as measured (lib/hipsRun).
+  const ceiling = hips?.ceiling ?? null, scope = hips?.scope ?? 'all'
+  const hipsCodes = useMemo(() => (ceiling === null || !savedRuns ? [] : [...new Set(Object.values(savedRuns.targets).map((t) => t.code))].filter((code) => siteInScope(code, scope))),
+    [ceiling, scope, savedRuns])
+  const volumes = useNetworkRows(hipsCodes)
+  const lambda10 = calib?.deming_lambda_mac10 ?? gallery.lambda10
+  const runs = useMemo(() => {
+    if (!savedRuns || ceiling === null || !volumes) return savedRuns
+    const volumeOf = (id: string | null) => { const v = id ? volumes.get(baseFilterId(id))?.[VOLUME] : null; return typeof v === 'number' ? v : null }
+    return { ...savedRuns, runs: savedRuns.runs.map((r) => (hipsCodes.includes(savedRuns.targets[r.target]?.code ?? '') ? lineariseRun(r, volumeOf, ceiling, lambda10) : r)) }
+  }, [savedRuns, ceiling, volumes, hipsCodes, lambda10])
   const [cohortPick, setCohortPick] = useSearchParam<string>('calibration.cohort', '')
   const [protocolPick, setProtocol] = useSearchParam<string>('calibration.cv', '')
   const cohorts = useMemo(() => [...new Set([...Object.keys(calib?.cohorts ?? {}), ...(runs?.presets ?? []).map(p => p.cohort)])], [calib, runs])
@@ -92,7 +113,6 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
   const protocol = protocols.includes(protocolPick) ? protocolPick : ''
   // the grid at the MAC set under Plot → units (lib/mac): slopes re-expressed before the estimator projection,
   // so the slope box and the guardrails judge the slope the reader sees
-  const gallery = useMac()
   const atMac = useMemo(() => (calib ? calibAtMac(calib, gallery.mac) : null), [calib, gallery.mac])
   const calibrationViews = useMemo(() => {
     const data = atMac ? calibrationSubset(atMac, cohort) : null
@@ -153,6 +173,13 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
     () => (run ? seasonalRun(run, runSeasons, runKeep, calib?.deming_lambda_mac10 ?? gallery.lambda10, runPmf) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [run, runSeasons, runKeep, calib, pmfSel, pmfLabelOfDate, runSite, gallery.lambda10]
+  )
+  // the dated series draws predictions only, so it keeps every filter of the saved run, with or without a sampled volume
+  const savedRun = savedRuns?.runs.find((r) => r.preset === preset?.key && r.target === target) ?? null
+  const seriesView = useMemo(
+    () => (savedRun ? seasonalRun(savedRun, runSeasons, runKeep, calib?.deming_lambda_mac10 ?? gallery.lambda10, runPmf) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [savedRun, runSeasons, runKeep, calib, pmfSel, pmfLabelOfDate, runSite, gallery.lambda10]
   )
 
   // the filters the crossplot and dated series count: the season and PMF subset, then Filters → excluded's one rule
@@ -217,6 +244,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
           <SectionBar>
             <span className="pill">The grid · {calib.grid.length.toLocaleString()} configuration × site readouts</span>
             <span style={{ color: 'var(--ink-muted)' }}>selected: <strong style={{ color: 'var(--ink-text)' }}>{configLabel(selected, calib)}</strong></span>
+            {ceiling !== null && <span className="method-note">HIPS as measured in the grid: it keeps one fitted line per configuration, and a per-filter correction cannot be applied to a line. The saved configurations below follow the linearised view, and <a href="#tab=meeting&meeting=calibration-linearised-20261119">the 19 Nov sweep</a> refits 33 calibrations against it.</span>}
             {explain && <span style={{ color: 'var(--ink-muted)' }}>MAC {gallery.mac}{gallery.mac !== calib.mac_value ? ` (slopes re-expressed from the export's ${calib.mac_value}; RMSE recomputed from each evaluation set's HIPS BC mean and variance, solved from its saved fits${atMac?.rmse_unmoved ? `, unavailable for ${atMac.rmse_unmoved.toLocaleString()} rows whose set could not be solved` : ''})` : ''} · Deming λ* {calib.deming_lambda_mac10} at MAC 10{gallery.mac !== 10 ? `, ${trim(gallery.lambda, 3)} at MAC ${gallery.mac}` : ''} · slope box {calib.slope_box.join('–')} · IMPROVE cross-validation R² floor {calib.heldout_floor}</span>}
           </SectionBar>
           <EstimatorViews>{() => <SpecCurve
@@ -249,6 +277,9 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
             <span className="control">Saved {label(CV_PROTOCOL_SHORT, runs.mode)}</span>
             <button type="button" className="btn quiet" onClick={openSelections}>Shared selections</button>
             <span style={{ color: 'var(--ink-muted)' }}>{preset ? presetName(preset) : null}{target && <> · {runs.targets[target]?.label ?? target}</>}</span>
+            {ceiling !== null && run && run.ref_kind === 'fabs' && <span className="method-note">{run.hips_linearised
+              ? <>HIPS linearised at a ceiling of {trim(run.hips_linearised.ceiling, 2)}, each filter by its own factor{run.hips_linearised.dropped ? ` · ${run.hips_linearised.dropped} filter${run.hips_linearised.dropped === 1 ? '' : 's'} without a sampled volume or past the ceiling left out` : ''}</>
+              : volumes ? <>HIPS as measured at this site: it is outside the sites the linearised view covers (Plot → HIPS → Apply to)</> : <>loading sampled volumes…</>}</span>}
             <span className="season-row" style={{ color: 'var(--ink-muted)' }}>
               {runKeep || runPmf
                 ? <>{runKeep && <>seasons: <strong style={{ color: 'var(--ink-text)' }}>{[...runKeep].join(', ')}</strong> · </>}{runPmf && <>PMF: <strong style={{ color: 'var(--ink-text)' }}>{runPmf.keep.size === 5 || (runPmf.keep.size === 2 && runPmf.keep.has('Marine') && runPmf.keep.has('Combustion')) ? 'PMF days only (every source)' : [...runPmf.keep].join(', ')}</strong> · </>}crossplot and dated series refitted on these {nRunCounted} filters (change in Filters)</>
@@ -266,7 +297,7 @@ export function CalibrationPage({ calib, runs, meta, knownIds, seasonSel = null,
             <>
               <CVCurve run={run} runs={runs} />
               <RunCrossplot lambda10={calib?.deming_lambda_mac10} run={runView ?? run} runs={runs} meta={meta} knownIds={knownIds} galleryRows={galleryRows} sourceRows={sourceRows} galleryMeta={galleryMeta} />
-              <RunSeries run={runView ?? run} runs={runs} meta={meta} knownIds={knownIds} />
+              <RunSeries run={seriesView ?? savedRun ?? run} runs={runs} meta={meta} knownIds={knownIds} />
               {/* the blind-half readouts are the explorer's own, on every season */}
               <EstimatorViews>{method => <SplitCheck run={projectRun(run, method)} runs={runs} />}</EstimatorViews>
             </>

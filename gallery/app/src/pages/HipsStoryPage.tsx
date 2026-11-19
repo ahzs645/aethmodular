@@ -1,4 +1,5 @@
 import { useMemo, type ReactNode } from 'react'
+import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { ChartFrame, ExplainOnly, Note } from '@/components/ChartFrame'
 import { Select } from '@/components/Controls'
 import { ExportState, LoadState } from '@/components/ExportState'
@@ -10,7 +11,7 @@ import { ScrubField } from '@/components/ScrubField'
 import { useExport } from '@/lib/data'
 import type { FilterRecord } from '@/lib/highlight'
 import { fmt } from '@/lib/format'
-import { correction, EXPECTED_FROM, HIPS_SITE_READINGS, HIPS_STATUSES, SEEN_READING, SHAPE_ONLY_FROM, siteExposure, siteReading, statusOf, underRead, USE_UP_TO, type HipsStatus } from '@/lib/hipsLinearise'
+import { CENTRAL_CEILING, correction, EXPECTED_FROM, HIPS_SITE_READINGS, HIPS_STATUSES, IMPROVE_CEILINGS, SEEN_READING, SHAPE_ONLY_FROM, siteExposure, siteReading, STATUS_USE, statusMeaning, statusOf, underRead, USE_UP_TO, type HipsStatus } from '@/lib/hipsLinearise'
 import { HIPS_RULES, MIN_TEST, networkFilters, ruleFactors, ruleLabel, RULE_KEYS, scoreRule, siteOutcomes, stepAt, type HipsRule, type NetFilter } from '@/lib/hipsRules'
 import { useMac } from '@/lib/mac'
 import { SidebarControls } from '@/lib/pageSidebar'
@@ -149,7 +150,7 @@ export function HipsStoryPage() {
       <NetworkOnCurve net={net} data={data} ceil={ceil} focus={focus} />
 
       <Part>3. Isolating it on SPARTAN: where it is expected, and where a site's own filters show it</Part>
-      <SiteStrips net={net} focus={focus} />
+      <SiteStrips net={net} ceil={ceil} focus={focus} />
       <SiteReadings focus={focus} />
 
       <Part>4. Before and after: the same filters under each rule</Part>
@@ -197,42 +198,108 @@ function NetworkOnCurve({ net, data, ceil, focus }: { net: Network; data: Linear
 }
 
 // ------------------------------------------------------------------ 3. where it is expected, and where it is seen
-/** Each site's filters by expected under-read: the site's median decides "expected", and the spread around it is what a site rule cannot see. */
-function SiteStrips({ net, focus }: { net: Network; focus: Focus }) {
+/** the measures the strips can be read on: all rise with the filter's optical depth, so the rows and their order stay */
+type StripX = 'tau' | 'under' | 'factor' | 'spread'
+const STRIP_X: readonly StripX[] = ['tau', 'under', 'factor', 'spread']
+const STRIP_AXES: AxisOption[] = [
+  { key: 'tau', group: 'Measured', label: 'HIPS optical depth τ of the filter', roles: ['x'], hint: 'measured' },
+  { key: 'under', group: 'From the IMPROVE curve', label: 'Expected under-read of the filter', roles: ['x'], hint: 'τ ÷ 2.26' },
+  { key: 'factor', group: 'From the IMPROVE curve', label: 'Correction factor of the filter', roles: ['x'], hint: 'chosen ceiling' },
+  { key: 'spread', group: 'From the IMPROVE curve', label: 'Uncertainty of the correction (±)', roles: ['x'], hint: '90 % ceilings' },
+]
+/** a value past the ceiling, where a factor has no finite answer: drawn pinned to the right edge */
+const OFF_RIGHT = 1e6
+const CEIL_LO = IMPROVE_CEILINGS.find((c) => c.key === 'lo')!.tau_inf, CEIL_HI = IMPROVE_CEILINGS.find((c) => c.key === 'hi')!.tau_inf
+/** ± share of the central factor: half the factor's range between the two ends of the ceiling's 90 % interval */
+const spreadOf = (tau: number) => {
+  const a = correction(tau, CEIL_LO), b = correction(tau, CEIL_HI)
+  return Number.isFinite(a) && Number.isFinite(b) ? (a - b) / 2 / correction(tau, CENTRAL_CEILING) : NaN
+}
+/** the reference marks, as expected under-reads, with what each one means on hover */
+const STRIP_MARKS = [
+  { share: EXPECTED_FROM, label: 'site: expected', hint: `A site whose median filter under-reads by more than ${EXPECTED_FROM * 100} % is one where the bend is expected (the 11 Nov screen's rule). It says nothing about which of its filters.` },
+  { share: USE_UP_TO, label: 'caution', hint: statusMeaning('caution') },
+  { share: SHAPE_ONLY_FROM, label: 'shape only', hint: statusMeaning('shape only') },
+]
+
+/** Each site's filters by how dark they are: the site's median decides "expected", and the spread around it is what a site rule cannot see. */
+function SiteStrips({ net, ceil, focus }: { net: Network; ceil: Ceil; focus: Focus }) {
   const { filters, exposure, statusColor } = net
+  const [xKey, setX] = useSearchParam<StripX>('hn.strips.x', 'tau', STRIP_X)
+  const c = ceil.ceiling
+  /** the chosen measure of a filter (or a site's median filter) from its optical depth, on the axis's own scale */
+  const axis = useMemo(() => {
+    const finite = (v: number) => (Number.isFinite(v) ? v : OFF_RIGHT)
+    return {
+      tau: { of: (t: number) => t, domain: [0, 0.7 * CENTRAL_CEILING] as [number, number], tick: (v: number) => fmt(v, 1), text: (v: number) => `τ ${fmt(v, 2)}` },
+      under: { of: (t: number) => 100 * underRead(t), domain: [0, 70] as [number, number], tick: (v: number) => `${v} %`, text: (v: number) => `${fmt(v, 0)} %` },
+      factor: { of: (t: number) => finite(correction(t, c)), domain: [1, 3.5] as [number, number], tick: (v: number) => `×${v}`, text: (v: number) => (v >= OFF_RIGHT ? 'past τ∞' : `×${fmt(v, 2)}`) },
+      spread: { of: (t: number) => finite(100 * spreadOf(t)), domain: [0, 30] as [number, number], tick: (v: number) => `±${v} %`, text: (v: number) => (v >= OFF_RIGHT ? 'unbounded' : `±${fmt(v, 0)} %`) },
+    }[xKey]
+  }, [xKey, c])
   const sites = useMemo(() => [...exposure.values()].sort((a, b) => b.underRead - a.underRead), [exposure])
   const row = useMemo(() => new Map(sites.map((s, i) => [s.code, i])), [sites])
   const points = useMemo<ScatterPoint[]>(() => withFocus(filters.map((f) => {
-    const u = underRead(f.tau), status = statusOf(u)
-    return { id: f.id, key: f.id, site: f.code, x: 100 * u, y: row.get(f.code)! + 0.5 + jitter(f.id), color: statusColor(status), r: 2.2,
-      tip: [`${f.id} · ${short(f.code)} · ${f.date}`, `τ ${fmt(f.tau, 2)} → expected under-read ${pct(u)}`, status],
-      rec: filterRecord(f, 'how dark each site\'s filters are', [['Status', status], ['Site median filter under-reads', pct(exposure.get(f.code)?.underRead ?? NaN)]]) }
-  }), focus.site), [filters, row, statusColor, exposure, focus.site])
-  const bands = useMemo(() => sites.map((s) => ({ key: s.code, label: `${short(s.code)} · ${pct(s.underRead)}`,
-    color: focus.site === s.code ? INK.accent : s.expected ? INK.text : INK.muted })), [sites, focus.site])
-  const children = ({ x, y }: ScatterScales) => <g pointerEvents="none">
-    {sites.map((s, i) => <line key={s.code} x1={x(100 * s.underRead)} x2={x(100 * s.underRead)} y1={y(i + 0.1)} y2={y(i + 0.9)} stroke={INK.text} strokeWidth={2} />)}
-    {[[100 * EXPECTED_FROM, 'site: expected'], [100 * USE_UP_TO, 'caution'], [100 * SHAPE_ONLY_FROM, 'shape only']].map(([at, label]) =>
-      <text key={label} x={x(at as number) + 4} y={-3} fontSize={10.5} fontFamily={FONT.mono} fill={INK.muted}>{label}</text>)}
-  </g>
+    const u = underRead(f.tau), status = statusOf(u), k = correction(f.tau, c), sp = spreadOf(f.tau)
+    const factorText = Number.isFinite(k) ? `× ${fmt(k, 2)} at τ∞ ${fmt(c, 2)}` : `past the ceiling ${fmt(c, 2)}`
+    const spreadText = Number.isFinite(sp) ? `known to ±${fmt(100 * sp, 0)} %` : 'not bounded by the ceiling interval'
+    return { id: f.id, key: f.id, site: f.code, x: axis.of(f.tau), y: row.get(f.code)! + 0.5 + jitter(f.id), color: statusColor(status), r: 2.2,
+      tip: [`${f.id} · ${short(f.code)} · ${f.date}`, `τ ${fmt(f.tau, 2)} → expected under-read ${pct(u)}`, `factor ${factorText}, ${spreadText}`, `${status}: use for ${STATUS_USE[status]}`],
+      rec: filterRecord(f, 'how dark each site\'s filters are', [['Status', status], ['Use for', STATUS_USE[status]], ['Correction factor', Number.isFinite(k) ? fmt(k, 3) : 'past the ceiling'],
+        ['Correction known to', Number.isFinite(sp) ? `±${fmt(100 * sp, 1)} %` : 'not bounded'], ['Site median filter under-reads', pct(exposure.get(f.code)?.underRead ?? NaN)]]) }
+  }), focus.site), [filters, row, statusColor, exposure, focus.site, axis, c])
+  const bands = useMemo(() => sites.map((s) => ({ key: s.code, label: `${short(s.code)} · ${axis.text(axis.of(s.medianTau))}`,
+    color: focus.site === s.code ? INK.accent : s.expected ? INK.text : INK.muted })), [sites, focus.site, axis])
+  const marks = STRIP_MARKS.map((m) => ({ ...m, at: axis.of(m.share * CENTRAL_CEILING) }))
+  /** a second scale along the top: the expected under-read, wherever the bottom axis is something else */
+  const top = xKey === 'under' ? [] : [0, 10, 20, 30, 40, 50, 60, 70].map((u) => ({ u, at: axis.of((u / 100) * CENTRAL_CEILING) }))
+  const children = ({ x, y }: ScatterScales) => {
+    const [d0, d1] = x.domain()
+    return <g>
+      <g pointerEvents="none">
+        {sites.map((s, i) => <line key={s.code} x1={x(Math.min(d1, axis.of(s.medianTau)))} x2={x(Math.min(d1, axis.of(s.medianTau)))} y1={y(i + 0.1)} y2={y(i + 0.9)} stroke={INK.text} strokeWidth={2} />)}
+        {top.filter((t) => t.at >= d0 && t.at <= d1).map((t) => <g key={t.u} transform={`translate(${x(t.at)},0)`}>
+          <line y1={0} y2={-4} stroke={INK.muted} />
+          <text y={-7} textAnchor="middle" fontSize={10} fontFamily={FONT.mono} fill={INK.muted}>{t.u}%</text>
+        </g>)}
+        {top.length > 0 && <text x={-16} y={-7} textAnchor="end" fontSize={10} fontFamily={FONT.mono} fill={INK.muted}>expected under-read</text>}
+      </g>
+      {marks.filter((m) => m.at >= d0 && m.at <= d1).map((m, i, shown) => {
+        // a label that would run into the one before it (the marks crowd on the uncertainty axis) goes up a row
+        const up = i > 0 && x(m.at) - x(shown[i - 1].at) < 7 * shown[i - 1].label.length + 8 && i % 2 === 1
+        return <text key={m.label} x={x(m.at) + 4} y={(top.length ? -21 : -3) - (up ? 12 : 0)} fontSize={10.5} fontFamily={FONT.mono} fill={INK.muted}
+          style={{ cursor: 'help' }}><title>{m.hint}</title>{m.label}</text>
+      })}
+    </g>
+  }
   const expected = new Set(sites.filter((s) => s.expected).map((s) => s.code))
   const darkAtLight = filters.filter((f) => !expected.has(f.code) && underRead(f.tau) > USE_UP_TO).length
   const lightAtDark = filters.filter((f) => expected.has(f.code) && underRead(f.tau) <= EXPECTED_FROM).length
   const atExpected = filters.filter((f) => expected.has(f.code)).length
+  const lines = 'Lines at the 10 % mark (the bend is expected at a site whose median filter is past it), 20 % and 30 % (a filter\'s status); hover a status in the key, or a line\'s name, for what it allows.'
+  const subtitle = {
+    tau: `HIPS optical depth of every filter (Fabs × its sampled volume ÷ 353), the measurement itself, one row per site, darkest first; the bar is the site's median filter, and the row's label gives it. Along the top: the under-read the IMPROVE curve expects at the central ceiling (τ ÷ ${fmt(CENTRAL_CEILING, 2)}). ${lines}`,
+    under: `Expected under-read (optical depth ÷ ${fmt(CENTRAL_CEILING, 2)}, the central ceiling) of every filter, one row per site, darkest first; the bar is the site's median filter, and the row's label gives it. ${lines}`,
+    factor: `The factor 1 / (1 − τ/τ∞) that linearises each filter, at the chosen ceiling (τ∞ ${fmt(c, 2)}, Page options), one row per site, darkest first; the bar is the site's median filter. A filter past the ceiling has no finite factor and sits on the right edge. ${lines}`,
+    spread: `How well each filter's correction is known: half the range of its factor between the two ends of the ceiling's 90 % interval (${fmt(CEIL_LO, 2)} and ${fmt(CEIL_HI, 2)}), as a share of its factor at the central ceiling. This is what the statuses measure. A filter darker than ${fmt(CEIL_LO, 2)} is not bounded and sits on the right edge. ${lines}`,
+  }[xKey]
   return (
     <ChartFrame id="hn-strips" title="How dark each site's filters are — a site is read by its median filter, and its filters spread well to either side of it"
-      subtitle="Expected under-read (optical depth ÷ 2.26, the central ceiling) of every filter, one row per site, darkest first; the bar is the site's median filter, and the row's label gives it. Lines at 10 % (the bend is expected at a site past it), 20 % and 30 % (a filter's status)."
-      provenance={SOURCE}>
-      <ScatterPlot points={points} yBands={bands} bandLabelSize={11} xDomain={[0, 70]} nice={false} outside="pin" height={sites.length * 19}
-        margin={{ top: 18, right: 24, bottom: 46, left: 150 }} xLabel="Expected under-read of the filter" xFormat={(v) => `${v} %`}
-        refX={[100 * EXPECTED_FROM, 100 * USE_UP_TO, 100 * SHAPE_ONLY_FROM]} density="dense" note={false}>{children}</ScatterPlot>
+      subtitle={subtitle} provenance={SOURCE}>
+      <AxisChoices options={STRIP_AXES} x={[xKey, (v) => setX(v as StripX)]} noun="measures">
+        <ScatterPlot points={points} yBands={bands} bandLabelSize={11} xDomain={axis.domain} nice={false} outside="pin" height={sites.length * 19}
+          margin={{ top: top.length ? 48 : 30, right: 24, bottom: 46, left: 150 }} xLabel={STRIP_AXES.find((o) => o.key === xKey)!.label} xFormat={axis.tick} pick="x"
+          refX={marks.map((m) => m.at)} density="dense" note={false}>{children}</ScatterPlot>
+      </AxisChoices>
       <FocusNote focus={focus} filters={filters} />
-      <Key items={[...HIPS_STATUSES.map((s) => ({ label: s, color: statusColor(s), kind: 'dot' as const })), { label: 'the site\'s median filter', color: INK.text, kind: 'bar' as const }]} />
+      <Key items={[...HIPS_STATUSES.map((s) => ({ label: s, color: statusColor(s), kind: 'dot' as const, hint: statusMeaning(s) })),
+        { label: 'the site\'s median filter', color: INK.text, kind: 'bar' as const, hint: 'Half the site\'s filters are lighter than this and half darker. The site is "expected" when it is past the 10 % mark.' }]} />
       <Readouts items={[
         { label: 'Sites where it is expected', value: `${expected.size} of ${sites.length}`, sub: `${atExpected.toLocaleString()} of ${filters.length.toLocaleString()} filters` },
         { label: 'Light filters at those sites', value: lightAtDark.toLocaleString(), sub: `under ${pct(EXPECTED_FROM)}, at a site past it` },
         { label: 'Dark filters at the other sites', value: darkAtLight.toLocaleString(), sub: `past ${pct(USE_UP_TO)}, at a site under ${pct(EXPECTED_FROM)}` },
       ]} />
+      <Note explain>A status says how well a filter's correction is known, not how large it is: the IMPROVE ceilings (1.71 to 2.70) agree on a light filter's factor and part fast on a dark one. Choose the axis by clicking its title. Optical depth is the measurement and needs no ceiling; the under-read and the factor read it through the curve; the uncertainty is what the statuses are set on.</Note>
       <Note explain>This is why the correction is made per filter: a site's median says how much of its record is affected, but not which of its filters. A rule that works by site treats the dark filters of a light site as clean, and one factor per site treats every filter of a row as if it sat on the bar.</Note>
     </ChartFrame>
   )

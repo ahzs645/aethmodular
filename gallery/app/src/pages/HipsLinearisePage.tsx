@@ -62,7 +62,8 @@ const bendLabel = (k: string, network: NetworkView) => k === 'ec' && network !==
 const SPARTAN_BEND_VIEWS = ['groups', 'filters'] as const
 const SPARTAN_BEND_COLOR = RESEARCH_SERIES[2]
 const SPARTAN_GROUP_PREFIX = 'spartan/'
-const HAS_IMPROVE_GROUPS = import.meta.env.VITE_PUBLIC_BUILD !== '1'
+/** the IMPROVE groups' samples ship only with the research build (the public one has the medians alone) */
+export const HAS_IMPROVE_GROUPS = import.meta.env.VITE_PUBLIC_BUILD !== '1'
 /** every x-y chart on the page is a square plot area this wide at most (as the gallery's crossplots are) */
 export const SIDE = 480
 /** a site's exponent is read when its 95 % interval is narrower than this (12 of the 23 sites) */
@@ -266,7 +267,7 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   }
   const under = ({ x, y, iw, ih }: ScatterScales) => {
     if (!canonical) return null
-    if (!showImprove) return <Marker orient="h" at={y(c)} from={0} to={iw} color={MEASURED} label={`IMPROVE ceiling τ∞ = ${fmt(c, 2)}`} />
+    // SPARTAN alone gets the same reference as IMPROVE: its curves are IMPROVE's (thermal EC), drawn here to compare FTIR EC against
     const maxLoading = x.domain()[1]
     const xs = range(0, maxLoading, 0.5)
     return <g>
@@ -274,7 +275,7 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
       <g clipPath={`url(#${clip})`}>
         <rect x={0} y={y(hi)} width={iw} height={y(lo) - y(hi)} fill={MEASURED} opacity={0.1} />
         <text x={iw - 6} y={y(hi) - 6} textAnchor="end" fontSize={10.5} fontFamily={FONT.mono} fill={INK.muted}>Addis filters, τ {fmt(lo, 2)}–{fmt(hi, 2)}</text>
-        <Marker orient="h" at={y(c)} from={0} to={iw} color={MEASURED} label={`ceiling τ∞ = ${fmt(c, 2)}`} />
+        <Marker orient="h" at={y(c)} from={0} to={iw} color={MEASURED} label={`${showImprove ? '' : 'IMPROVE '}ceiling τ∞ = ${fmt(c, 2)}`} />
         <path d={pathOf([[x(0), y(0)], [x(maxLoading), y(a * maxLoading)]])} fill="none" stroke={LINEAR} strokeWidth={2} strokeDasharray="6 4" />
         <path d={pathOf(xs.map((v) => [x(v), y(saturate(a * v, c))]))} fill="none" stroke={MEASURED} strokeWidth={2} />
       </g>
@@ -311,7 +312,7 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
         ? `The IMPROVE curves and the τ construction are drawn on EC against optical depth only. IMPROVE's groups carry TOR EC loading, τ and Fabs ÷ EC, so they show on EC against τ or Fabs ÷ EC; PM2.5, iron and Fabs are SPARTAN's (each filter's concentration × its sampled volume). Click an axis title to change it.${showSpartan ? ` ${spartanDescription}` : ''}`
         : bothNetworks
         ? `The grey dots and reference curves come from IMPROVE thermal EC (TOR). SPARTAN is overlaid at its FTIR-derived EC loading for visual comparison. ${spartanDescription}`
-        : showSpartan ? `${spartanDescription} Optical depth uses measured HIPS Fabs and sampled volume. The dashed line marks the IMPROVE optical-depth ceiling.`
+        : showSpartan ? `${spartanDescription} Optical depth uses measured HIPS Fabs and sampled volume. The reference is IMPROVE's, as on the IMPROVE view: the dashed blue line is the proportional response (a = ${fmt(a, 4)} µg⁻¹), the orange curve the fitted saturating response, the dashed orange line its ceiling, and the shaded band the Addis filters' τ range. Move the measured τ to trace the conversion to linearised τ.`
         : `Each grey dot is the median of one IMPROVE group, binned by the previous sample’s TOR EC loading at the same site (${primary.samples.toLocaleString()} samples at ${primary.sites} sites in the parent population). Dot size shows group sample count.${HAS_IMPROVE_GROUPS ? ' Click a dot to see its samples.' : ''} The dashed blue line shows a proportional response with a = ${fmt(a, 4)} µg⁻¹ (${fmt(primary.unsaturated_fabs_over_ec, 1)} m²/g on light filters). The orange curve shows the fitted saturating response. Move the measured τ to trace the conversion to linearised τ.`}
       provenance={<>{showImprove && PROVENANCE}{showSpartan && <> <code>spartan_reference.json</code> · paired FTIR EC, HIPS Fabs and sampled volume by filter ID.</>}</>}
       controls={<>
@@ -327,8 +328,8 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
             options={['none', ...spartanGroups.map((p) => p.binKey)]} onChange={pickSpartanGroup}
             optionLabel={(key) => { const g = spartanGroups.find((p) => p.binKey === key)?.bin; return g ? loadingRange(g) : 'None' }} />}
         </>}
+        {canonical && <span className="control" title="The measured HIPS optical depth the construction follows: drag sideways across the Addis range or click to type">Measured τ <ScrubField label="Measured τ" value={t} min={0.05} max={+hi.toFixed(2)} step={0.01} width={96} format={(v) => fmt(v, 2)} onChange={(v) => setTau(String(+v.toFixed(2)))} /></span>}
         {showImprove && canonical && <>
-          <span className="control" title="The measured HIPS optical depth the construction follows: drag sideways across the Addis range or click to type">Measured τ <ScrubField label="Measured τ" value={t} min={0.05} max={+hi.toFixed(2)} step={0.01} width={96} format={(v) => fmt(v, 2)} onChange={(v) => setTau(String(+v.toFixed(2)))} /></span>
           <Select label="IMPROVE group" value={selected?.key ?? 'none'} options={['none', ...points.map((p) => p.key)]} onChange={pickGroup}
             optionLabel={(key) => points.find((p) => p.key === key)?.details[0] ?? 'None'} />
         </>}
@@ -340,7 +341,7 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
             : { xInclude: [0], yInclude: [0], xClip: [0, 0.995] as [number, number], yClip: [0, 0.995] as [number, number] })}
           maxSide={SIDE} outside={showSpartan ? 'pin' : 'clip'} note={showSpartan && !showSpartanGroups ? 'mark' : false} under={under} onPick={pickPoint}>
           {(scales) => <>
-            {showImprove && construction(scales)}
+            {construction(scales)}
             {showImprove && selected && <PinRing cx={scales.x(selected.x)} cy={scales.y(selected.y)} r={selected.r} />}
             {showSpartan && selectedSpartan && <PinRing cx={scales.x(selectedSpartan.x)} cy={scales.y(selectedSpartan.y)} r={selectedSpartan.r} />}
           </>}
@@ -348,7 +349,7 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
         </AxisChoices>
         <Key items={[
           ...(showImprove && improveHasAxes ? [{ label: 'IMPROVE group medians (TOR EC)', color: INK.muted, kind: 'dot' as const }] : []),
-          ...(showImprove && canonical ? [{ label: 'IMPROVE proportional response', color: LINEAR, kind: 'dash' as const },
+          ...(canonical ? [{ label: 'IMPROVE proportional response', color: LINEAR, kind: 'dash' as const },
             { label: 'IMPROVE saturating fit', color: MEASURED, kind: 'line' as const },
             { label: 'Addis τ range', color: MEASURED, kind: 'faded' as const }] : []),
           ...(showSpartan && spartanMarks.length && !grp ? [{ label: spartanLabel, color: SPARTAN_BEND_COLOR, kind: showSpartanGroups ? 'square' as const : 'dot' as const }] : []),
@@ -378,14 +379,14 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
           <button type="button" className="btn" onClick={() => setSampleDrawer('IMPROVE')}>{bothNetworks ? 'View IMPROVE group samples' : 'View group samples'}</button>
           {sampleDrawer === 'IMPROVE' && <ImproveGroupDrawer key={selected.key} group={selected} onClose={closeSamples} />}
         </>}
-        {canonical && <><Readouts items={[
-          { label: 'Measured τ', value: fmt(t, 2), color: MEASURED },
-          { label: 'Linearised τ', value: Number.isFinite(tl) ? fmt(tl, 2) : '—', color: LINEAR },
-          { label: 'Correction ×', value: Number.isFinite(tl) ? fmt(tl / t, 2) : '—' },
-          { label: 'Noise amplified ×', value: Number.isFinite(tl) ? fmt(noiseGain(t, c), 1) : '—', sub: '1 / (1 − τ/τ∞)²' },
-        ]} />
-        <Note>Set the ceiling under Page options. The noise factor is the slope of the inverse, 1 / (1 − τ/τ∞)². At 70 % of the ceiling it is about 11.</Note></>}
       </>}
+      {canonical && <><Readouts items={[
+        { label: 'Measured τ', value: fmt(t, 2), color: MEASURED },
+        { label: 'Linearised τ', value: Number.isFinite(tl) ? fmt(tl, 2) : '—', color: LINEAR },
+        { label: 'Correction ×', value: Number.isFinite(tl) ? fmt(tl / t, 2) : '—' },
+        { label: 'Noise amplified ×', value: Number.isFinite(tl) ? fmt(noiseGain(t, c), 1) : '—', sub: '1 / (1 − τ/τ∞)²' },
+      ]} />
+      <Note>Set the ceiling under Page options. The noise factor is the slope of the inverse, 1 / (1 − τ/τ∞)². At 70 % of the ceiling it is about 11.{!showImprove && ' The curves and the construction are IMPROVE\'s, fitted on thermal (TOR) EC; SPARTAN is drawn against FTIR EC, so a gap between its filters and the curves is partly the difference between the two ECs.'}</Note></>}
     </ChartFrame>
   )
 }
@@ -393,7 +394,7 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
 const GROUP_PAGE_SIZE = 50
 const loadingRange = (g: LoadingGroup) => g.upper == null ? `≥ ${fmt(g.lower, 1)} µg` : `${fmt(g.lower, 1)}–<${fmt(g.upper, 1)} µg`
 
-function ImproveGroupDrawer({ group, onClose }: { group: { key: string; n: number; details: string[] }; onClose: () => void }) {
+export function ImproveGroupDrawer({ group, onClose }: { group: { key: string; n: number; details: string[] }; onClose: () => void }) {
   const { data, error } = useExport<LoadingGroup>(`research/hips_linearise_groups/${group.key}.json.gz`, (d) =>
     d.rows.length === group.n ? null : 'sample count differs from the plotted group')
   return <LoadingGroupDrawer network="IMPROVE" details={group.details} data={data} onClose={onClose}
@@ -432,11 +433,14 @@ function LoadingGroupDrawer({ network, details, data, onClose, pending, onOpenFi
         <Select label="Site" value={site} options={['all', ...bySite.keys()]}
           optionLabel={(code) => code === 'all' ? `All ${bySite.size} sites` : `${code} (${bySite.get(code)?.length.toLocaleString()})`}
           onChange={(value) => { setSite(value); setPage(0) }} />
-        <input type="search" aria-label="Search by site code or date" placeholder="Site code or YYYY-MM-DD" value={search}
-          onChange={(event) => { setSearch(event.target.value); setPage(0) }} />
-        <StepButton dir="prev" label="Previous sample page" disabled={page === 0} onClick={() => setPage(page - 1)} />
-        <span role="status">{matches.length ? `${(start + 1).toLocaleString()}–${end.toLocaleString()} of ${matches.length.toLocaleString()}` : 'No matching samples'}</span>
-        <StepButton dir="next" label="Next sample page" disabled={end >= matches.length} onClick={() => setPage(page + 1)} />
+        {/* the gallery's labelled field, as the Site box beside it (label in muted text, the box in .select) */}
+        <label className="control">Search <input className="select" type="search" aria-label="Search by site code or date" placeholder="Site or YYYY-MM-DD" style={{ width: 150 }} value={search}
+          onChange={(event) => { setSearch(event.target.value); setPage(0) }} /></label>
+        <span className="control">
+          <StepButton dir="prev" label="Previous sample page" disabled={page === 0} onClick={() => setPage(page - 1)} />
+          <span role="status">{matches.length ? `${(start + 1).toLocaleString()}–${end.toLocaleString()} of ${matches.length.toLocaleString()}` : 'No matching samples'}</span>
+          <StepButton dir="next" label="Next sample page" disabled={end >= matches.length} onClick={() => setPage(page + 1)} />
+        </span>
       </div>
       <DrawerScroll label={`Samples in this ${network} group`}><table className="placement group-rows">
         <thead><tr>{onOpenFilter && <th scope="col">Filter</th>}<th scope="col">Sample date</th><th scope="col" className="num">Previous {ec} (µg)</th><th scope="col" className="num">{ec} (µg)</th><th scope="col" className="num">HIPS τ</th></tr></thead>
@@ -519,11 +523,19 @@ export function CorrectionPlot({ points, ceiling, lo, hi, median: med, medianLab
   }
   const children = ({ x, y, iw }: ScatterScales) => {
     if (med == null || !Number.isFinite(mc)) return null
-    // the label sits right of the median line, or left of it when the line is in the right part of the plot
+    // the label sits in the empty space above the curve, on a leader from the median point: right of it, or left when
+    // the point is in the right part of the plot; a halo in the panel colour keeps it legible over the band and dots
     const flip = x(med) > iw * 0.55
+    const px = x(med), py = y(mc), ly = Math.max(14, py - 72)
     return <g pointerEvents="none">
-      <line x1={x(med)} x2={x(med)} y1={y(0.9)} y2={y(mc)} stroke={INK.text} strokeDasharray="3 3" />
-      {medianLabel && <text x={x(med) + (flip ? -6 : 6)} y={y(mc) + (flip ? -10 : 28)} textAnchor={flip ? 'end' : 'start'} fontSize={11} fontFamily={FONT.mono} fill={INK.text}>{medianLabel}</text>}
+      <line x1={px} x2={px} y1={y(0.9)} y2={py} stroke={INK.text} strokeDasharray="3 3" />
+      <line x1={x(0)} x2={px} y1={py} y2={py} stroke={INK.text} strokeDasharray="3 3" />
+      <circle cx={px} cy={py} r={5} fill="none" stroke={INK.text} strokeWidth={1.75} />
+      {medianLabel && <>
+        <path d={`M${px},${py - 6}V${ly + 4}h${flip ? -6 : 6}`} fill="none" stroke={INK.text} strokeWidth={1} />
+        <text x={px + (flip ? -9 : 9)} y={ly + 8} textAnchor={flip ? 'end' : 'start'} fontSize={11.5} fontWeight={600} fontFamily={FONT.mono}
+          fill={INK.text} stroke={INK.panel} strokeWidth={4} strokeLinejoin="round" paintOrder="stroke">{medianLabel}</text>
+      </>}
     </g>
   }
   return <ScatterPlot points={points} xLabel="Measured HIPS optical depth τ" yLabel="Correction factor τ_lin / τ" xDomain={[0, 1.6]} yDomain={[0.9, 4.2]} nice={false}

@@ -1,16 +1,19 @@
-import { useId, useMemo } from 'react'
+import { useId, useMemo, useState } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Note } from '@/components/ChartFrame'
+import { Select } from '@/components/Controls'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { Marker } from '@/components/RefLines'
-import { ScatterPlot, type ScatterPoint, type ScatterScales } from '@/components/ScatterPlot'
+import { ScatterPlot, type ScatterScales } from '@/components/ScatterPlot'
 import { writeAt } from '@/lib/claimDigits'
 import { fmt, pct } from '@/lib/format'
+import { PinRing } from '@/lib/highlight'
 import { linearLevel } from '@/lib/hipsLinearise'
 import { FixedSetNote } from '@/lib/markedRows'
 import { FONT, INK } from '@/lib/theme'
-import type { Ceil, Linearise } from '@/pages/HipsLinearisePage'
+import { HAS_IMPROVE_GROUPS, ImproveGroupDrawer, type Ceil, type Linearise } from '@/pages/HipsLinearisePage'
+import { useSearchParam } from '@/lib/url'
 import { LINEAR, MEASURED, Readouts, STAT_NAME, useStat } from '@/pages/hipsLineariseParts'
 
 /**
@@ -43,10 +46,22 @@ export function ImproveReach({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   const taus = useMemo(() => data.filters.map((f) => f.tau), [data])
   const bins = useMemo(() => d3.bin().domain([0, TAU_MAX]).thresholds(d3.range(BIN, TAU_MAX, BIN))(taus), [taus])
   const beyond = taus.filter((t) => t > reach).length, beyondAny = taus.filter((t) => t > reachAny).length
-  const points = useMemo<ScatterPoint[]>(() => data.strata.map((s) => ({
-    x: s.tau, y: s.fabs_over_ec, color: INK.muted, r: 3 + Math.sqrt(s.n) / 40, opacity: 0.85,
-    tip: [`IMPROVE group, optical depth ${fmt(s.tau, 2)}`, `Fabs ÷ TOR EC ${fmt(s.fabs_over_ec, 1)} m²/g`, `TOR EC on the filter ${fmt(s.loading_ug, 1)} µg`, `${s.n.toLocaleString()} samples`],
-  })), [data])
+  // the same IMPROVE groups as The bend, keyed the same way (1-based, in the export's order) and picked by the same
+  // URL key (`hl.group`), so a group chosen on either chart is the one ringed on both; a click opens its samples
+  const [group, setGroup] = useSearchParam<string>('hl.group', 'none')
+  const [drawer, setDrawer] = useState(false)
+  const points = useMemo(() => data.strata.map((s, i) => {
+    const details = [`TOR EC ${fmt(s.loading_ug, 1)} µg`, `optical depth τ ${fmt(s.tau, 3)}`, `Fabs ÷ EC ${fmt(s.fabs_over_ec, 1)} m²/g`, `${s.n.toLocaleString()} samples`]
+    return { key: String(i + 1), n: s.n, details, x: s.tau, y: s.fabs_over_ec, color: INK.muted, r: 3 + Math.sqrt(s.n) / 40, opacity: 0.85,
+      tip: [`IMPROVE group, optical depth ${fmt(s.tau, 2)}`, `Fabs ÷ TOR EC ${fmt(s.fabs_over_ec, 1)} m²/g`, `TOR EC on the filter ${fmt(s.loading_ug, 1)} µg`, `${s.n.toLocaleString()} samples`,
+        HAS_IMPROVE_GROUPS ? 'Click to view the samples in this group' : 'Click to select or clear this group'] }
+  }), [data])
+  const selected = points.find((p) => p.key === group)
+  const pickGroup = (key: string) => {
+    const next = !HAS_IMPROVE_GROUPS && key === group ? 'none' : key
+    setGroup(next)
+    setDrawer(HAS_IMPROVE_GROUPS && next !== 'none')
+  }
   // the saturating response, as absorption per unit of EC: the light-filter value falling in a straight line to 0 at the ceiling
   const response = (t: number, k: number) => Math.max(0, light * (1 - t / k))
   const clip = useId()
@@ -75,9 +90,18 @@ export function ImproveReach({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   return (
     <ChartFrame id="hl-reach" title={`IMPROVE's darker filters read ${pct(loss)} lower per unit of EC, and ${pct(beyond / taus.length)} of Addis filters are darker than any of them — HIPS absorption per unit of thermal EC against optical depth, IMPROVE 2005–2025`}
       subtitle={`Each grey dot is the median of one IMPROVE group (${primary.samples.toLocaleString()} samples at ${primary.sites} sites); size ∝ samples. Height is HIPS absorption per unit of thermal (TOR) EC on the filter: a HIPS that kept up would stay level. The blue line is the fitted response at the chosen ceiling, solid where IMPROVE has filters and dashed where it does not. The bars along the bottom count the Addis filters at each optical depth (their height is a count, not a value on the left axis). Shaded: darker than IMPROVE's darkest group.`}
-      provenance={SOURCE}>
+      provenance={SOURCE}
+      controls={<Select label="IMPROVE group" value={selected?.key ?? 'none'} options={['none', ...points.map((p) => p.key)]} onChange={pickGroup}
+        optionLabel={(key) => points.find((p) => p.key === key)?.details[0] ?? 'None'} title="The IMPROVE group in focus, shared with The bend: click a dot to pick it" />}>
       <ScatterPlot points={points} xLabel="HIPS optical depth τ" yLabel="Fabs ÷ TOR EC (m²/g)" xDomain={[0, TAU_MAX]} yDomain={[0, 15]} nice={false}
-        height={340} outside="clip" note={false} under={under} />
+        height={340} outside="clip" note={false} under={under} onPick={(p) => p.key && pickGroup(p.key)}>
+        {({ x, y }) => selected && <PinRing cx={x(selected.x)} cy={y(selected.y)} r={selected.r} />}
+      </ScatterPlot>
+      {selected && <div role="status">
+        <p className="chart-note"><strong>IMPROVE group median</strong> · {selected.details.join(' · ')}</p>
+        {HAS_IMPROVE_GROUPS && <button type="button" className="btn" onClick={() => setDrawer(true)}>View group samples</button>}
+        {HAS_IMPROVE_GROUPS && drawer && <ImproveGroupDrawer key={selected.key} group={selected} onClose={() => setDrawer(false)} />}
+      </div>}
       <Key items={[{ label: 'IMPROVE group medians (size ∝ samples)', color: INK.muted, kind: 'dot' }, { label: `fitted response, ceiling ${fmt(c, 2)}`, color: LINEAR, kind: 'line' },
         { label: 'beyond IMPROVE: extrapolated', color: LINEAR, kind: 'dash' }, { label: `ceiling ${fmt(lo, 2)} to ${fmt(hi, 2)} (90 %)`, color: LINEAR, kind: 'faded' },
         { label: 'Addis filters (count)', color: MEASURED, kind: 'bar' }]} />

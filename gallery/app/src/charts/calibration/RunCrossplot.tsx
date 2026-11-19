@@ -13,6 +13,7 @@ import { ScatterLayer } from '@/components/ScatterLayer'
 import { fidProps } from '@/lib/filterEdits'
 import { Crossplot } from '@/components/Crossplot'
 import { fmt } from '@/lib/stats'
+import { runHipsMark } from '@/lib/hipsRun'
 import { INK, MARGIN, withUnit } from '@/lib/theme'
 import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { useSearchParam } from '@/lib/url'
@@ -78,7 +79,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
   // filters carry a value, so the test-set switch is moot
   const o = useChartOptions('run-crossplot', [
     // the crossplot's x (the HIPS reference or the deployed SPARTAN EC), picked from its axis title
-    { key: 'x', axis: 'x', label: 'Crossplot x', choices: XMODES.map((v) => ({ value: v, label: v === 'reference' ? 'HIPS reference (Fabs ÷ MAC)' : 'Deployed SPARTAN EC' })), default: 'reference', hidden: 'reference', when: (c) => !!c.hasDeployed },
+    { key: 'x', axis: 'x', label: 'Crossplot x', choices: XMODES.map((v) => ({ value: v, label: v === 'reference' ? `HIPS reference (Fabs ÷ MAC${runHipsMark(run)})` : 'Deployed SPARTAN EC' })), default: 'reference', hidden: 'reference', when: (c) => !!c.hasDeployed },
     { key: 'set', label: 'Test set', choices: SETS, default: 'fixed', hidden: 'fixed', when: (c) => !!c.hasFixed && c.x !== 'deployed EC',
       title: 'fixed = the filters with a deployed EC (Addis fixed-190); all = every filter with a reference' },
     // only groups that are not seasons take the set's colours: no picker when every group is a season
@@ -132,7 +133,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
   const rPad = Math.max(0.2, ((rExt[1] ?? 1) - (rExt[0] ?? 0)) * 0.08)
   // the residual panel matches the crossplot's size so the pair reads side by side on one x scale
   const ry = d3.scaleLinear().domain([Math.min(0, rExt[0] ?? 0) - rPad, Math.max(0, rExt[1] ?? 1) + rPad]).range([S, 0]).nice()
-  const xLabel = useDeployed ? 'deployed SPARTAN EC (µg/m³)' : isFabs ? `HIPS Fabs ÷ MAC ${mac} (µg/m³)` : 'reference EC (µg/m³)'
+  const xLabel = useDeployed ? 'deployed SPARTAN EC (µg/m³)' : isFabs ? `HIPS Fabs ÷ MAC ${mac}${runHipsMark(run)} (µg/m³)` : 'reference EC (µg/m³)'
   const groups = [...new Set(run.eval.group)]
   const target = runs.targets[run.target]
 
@@ -215,7 +216,7 @@ export function RunCrossplot({ run, runs, meta, knownIds, lambda10: lambdaProp, 
   return (
     <ChartFrame
       id="run-crossplot"
-      title={`Crossplot — predicted EC vs ${useDeployed ? 'deployed EC' : 'HIPS reference'} at ${target?.site ?? run.target}`}
+      title={`Crossplot — predicted EC vs ${useDeployed ? 'deployed EC' : `HIPS reference${runHipsMark(run)}`} at ${target?.site ?? run.target}`}
       subtitle="Every test-set filter under this configuration, coloured by season. The regression fits selected in the sidebar use the displayed filters and MAC. The residual panel shows whether the calibration's error is a constant offset (a flat band) or tracks loading (a slope)."
       provenance={`calibration_explorer /api/run · ${run.n_cohort} calibration cohort filters, ${run.k} PLS factors${run.k !== run.auto_k ? ` (rule ${run.auto_k})` : ''} · site-grouped CV`}
       controls={o.controls()}

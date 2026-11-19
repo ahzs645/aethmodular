@@ -1370,7 +1370,10 @@ export default function App() {
 
     const state: SubsetState = {
       pagePreset: openPreset && { label: openPreset.preset.label, at: sameSamples(samplesNow, openPreset.preset.samples) && !dropIds.size && !keepIds },
-      basis, mac: viewOpts.mac, exportMac, hipsCeiling: hipsOn ? hipsCeiling : null, hipsView,
+      // the Calibration tab linearises its saved runs itself, from each evaluation filter's Fabs and sampled volume
+      basis, mac: viewOpts.mac, exportMac, hipsCeiling: hipsOn || tab === 'calibration' ? hipsCeiling : null, hipsView,
+      hipsScope: tab === 'calibration' ? hipsScope : undefined,
+      hipsNote: tab === 'calibration' ? 'The saved configurations follow it: the crossplot, the blind-half check and the cross-site transfer are fitted again on each filter\'s linearised HIPS. The grid keeps one fitted line per configuration and stays as measured.' : undefined,
       pmfNote: chartTab && pmfSiteInView ? (pmfOnly ? `Only ${pmf?.site_name ?? 'the PMF site'}'s filters with a PMF day (${pmf?.n ?? 0} days) are drawn; sites without PMF are hidden.` : `Narrows ${pmf?.site_name ?? 'the PMF site'}'s filters only (${pmf?.n ?? 0} PMF days); other sites are unaffected.`) + ' Each source\'s share is also a measurement (PMF sources), and the scatterplot can colour by PMF source (Colour → Value).' : undefined,
       pmfOnly,
       withVolume: basis === 'mass' ? [inViewRows.filter((r) => typeof r[VOLUME] === 'number').length, inViewRows.length] : undefined,
@@ -1688,7 +1691,7 @@ export default function App() {
         {tab === 'blanks' && <BlanksPage />}
         {tab === 'experimental' && <ExperimentalPage experiment={experiment} onPick={setExperiment} />}
         {tab === 'baseline' && (calibrationLoading ? <p>Loading calibration data…</p> : <BaselineComparisonPage mac={viewOpts.mac} demingLambda={demingLambda(viewOpts.mac, data.calibration?.deming_lambda_mac10 ?? LAMBDA_10)} />)}
-        {tab === 'calibration' && (calibrationLoading ? <p>Loading calibration data…</p> : <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} meta={drawerMeta} galleryRows={paintedSourceRows} sourceRows={rawSourceRows} galleryMeta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />)}
+        {tab === 'calibration' && (calibrationLoading ? <p>Loading calibration data…</p> : <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} hips={{ ceiling: hipsCeiling, scope: hipsScope }} meta={drawerMeta} galleryRows={paintedSourceRows} sourceRows={rawSourceRows} galleryMeta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />)}
         {tab === 'dashboard' && <DashboardPage dash={dash} setDash={setDash} filters={dashFilters} onScope={setDashScope} onPickSite={pickDashSite} display={<DisplayToggles />}
           data={{ rows, measured: measuredRows, referenceRows: dashboardReferenceRows, meta, axes,
             provenance: { generated: data.filters.generated, source: data.filters.source, mac: viewOpts.mac, basis, baseline: ftirBaseline, calendar: convention, estimators, sourceMode: spartanSource.source, network: net, publicSources: netData.data?.publicStatus ?? [] },

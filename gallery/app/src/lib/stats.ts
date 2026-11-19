@@ -377,18 +377,48 @@ export function spearman(xs: readonly Num[], ys: readonly Num[], opts: MinN = {}
  */
 export function corrMatrix(rows: Record<string, unknown>[], fields: string[], skip: (a: string, b: string) => boolean): (number | null)[][] {
   const cols = fields.map((f) => rows.map((r) => { const v = r[f]; return typeof v === 'number' && Number.isFinite(v) ? v : NaN }))
+  // each column's contents as a key: a pair whose two columns are unchanged since an earlier matrix (a MAC or
+  // ceiling drag rescales a few fields; the correlogram and the species network ask for the same pairs) reuses its r
+  const keys = cols.map(columnKey)
   const m: (number | null)[][] = fields.map(() => fields.map(() => null))
   const xs: number[] = [], ys: number[] = []
   for (let i = 0; i < fields.length; i++) {
     for (let j = i; j < fields.length; j++) {
       if (skip(fields[i], fields[j])) continue
-      xs.length = 0; ys.length = 0
-      const a = cols[i], b = cols[j]
-      for (let k = 0; k < a.length; k++) if (a[k] === a[k] && b[k] === b[k]) { xs.push(a[k]); ys.push(b[k]) }
-      m[i][j] = m[j][i] = pearson(xs, ys)
+      const key = keys[i] < keys[j] ? `${keys[i]}|${keys[j]}` : `${keys[j]}|${keys[i]}`
+      let r = PAIR_R.get(key)
+      if (r === undefined) {
+        xs.length = 0; ys.length = 0
+        const a = cols[i], b = cols[j]
+        for (let k = 0; k < a.length; k++) if (a[k] === a[k] && b[k] === b[k]) { xs.push(a[k]); ys.push(b[k]) }
+        r = pearson(xs, ys)
+        if (PAIR_R.size >= PAIR_R_MAX) PAIR_R.delete(PAIR_R.keys().next().value!)
+        PAIR_R.set(key, r)
+      }
+      m[i][j] = m[j][i] = r
     }
   }
   return m
+}
+
+/** r by the contents of its two columns (columnKey), oldest dropped first: enough for a few sites' matrices */
+const PAIR_R = new Map<string, number | null>()
+const PAIR_R_MAX = 20000
+const F64 = new Float64Array(1), U32 = new Uint32Array(F64.buffer)
+/**
+ * A column's contents as a short string: its length and two independent 32-bit hashes of every value's bits
+ * (NaN, a missing value, hashes as one value). Two different columns sharing both hashes is a 1 in 2⁶⁴ chance.
+ */
+function columnKey(col: readonly number[]): string {
+  let h1 = 0x811c9dc5, h2 = 0x01000193 ^ col.length
+  for (let k = 0; k < col.length; k++) {
+    const v = col[k]
+    if (v !== v) { h1 = Math.imul(h1 ^ 0x7ff8, 16777619); h2 = Math.imul(h2 ^ 0x2545f491, 2246822519); continue }
+    F64[0] = v
+    h1 = Math.imul(h1 ^ U32[0], 16777619); h1 = Math.imul(h1 ^ U32[1], 16777619)
+    h2 = Math.imul(h2 ^ U32[1], 2246822519); h2 = Math.imul((h2 << 13) | (h2 >>> 19), 3266489917) ^ U32[0]
+  }
+  return `${col.length}:${(h1 >>> 0).toString(36)}:${(h2 >>> 0).toString(36)}`
 }
 
 /** Five-number summary + outliers, matching matplotlib's boxplot whiskers. */

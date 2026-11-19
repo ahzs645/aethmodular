@@ -36,6 +36,8 @@ export interface LegendItem {
   shape?: LegendShape
   /** shown after the label in muted mono, e.g. "n=190" */
   detail?: string
+  /** what the item means, shown on hover (the item's tooltip) */
+  hint?: string
 }
 
 /**
@@ -145,7 +147,7 @@ export function Legend({
         onMouseLeave={leave}
         onFocus={onHover ? () => onHover(it.label) : undefined}
         onBlur={leave}
-        title={[group ? `${group} · ${text}` : '', onToggle ? (off ? 'click to show' : 'click to hide') : '',
+        title={[it.hint ?? '', group ? `${group} · ${text}` : '', onToggle ? (off ? 'click to show' : 'click to hide') : '',
           onHover ? (held ? 'shift-click to let go' : 'shift-click to hold this view') : ''].filter(Boolean).join(' — ') || undefined}
         role={onToggle ? 'button' : undefined}
         aria-pressed={onToggle ? !off : undefined}

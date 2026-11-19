@@ -44,6 +44,37 @@ export const HIPS_STATUSES = ['use, linearised', 'caution', 'shape only'] as con
 export type HipsStatus = typeof HIPS_STATUSES[number]
 export const statusOf = (share: number): HipsStatus => (share <= USE_UP_TO ? 'use, linearised' : share <= SHAPE_ONLY_FROM ? 'caution' : 'shape only')
 
+/** what a filter of each status may be used for (docs/hips-loading-protocol.md, step 1) */
+export const STATUS_USE: Record<HipsStatus, string> = {
+  'use, linearised': 'level and shape',
+  caution: 'shape; quote a level only with its range',
+  'shape only': 'rank order, timing, season; not a level',
+}
+
+/** a filter's factor at the lowest and highest of the IMPROVE ceilings, for a filter at this expected under-read */
+export const factorRange = (share: number): [number, number] => {
+  const ks = IMPROVE_CEILINGS.map((c) => correction(share * CENTRAL_CEILING, c.tau_inf))
+  return [Math.min(...ks), Math.max(...ks)]
+}
+
+/**
+ * What a status means, for a hover: its marks, the factor at the central ceiling, and how far the IMPROVE ceilings
+ * (1.71 to 2.70) move that factor. The status says how well the correction is known, not how large it is.
+ */
+export function statusMeaning(s: HipsStatus): string {
+  const f = (v: number) => v.toFixed(2)
+  const tau = (share: number) => f(share * CENTRAL_CEILING)
+  const k = (share: number) => f(correction(share * CENTRAL_CEILING, CENTRAL_CEILING))
+  const span = (share: number) => { const [a, b] = factorRange(share); return `×${f(a)} to ×${f(b)}` }
+  const use = USE_UP_TO * 100, shape = SHAPE_ONLY_FROM * 100
+  const body = s === 'use, linearised'
+    ? `Expected under-read up to ${use} % (τ up to ${tau(USE_UP_TO)}). Factor up to ×${k(USE_UP_TO)} at the central ceiling; at ${use} % the IMPROVE ceilings give ${span(USE_UP_TO)}.`
+    : s === 'caution'
+      ? `Expected under-read ${use} to ${shape} % (τ ${tau(USE_UP_TO)} to ${tau(SHAPE_ONLY_FROM)}). Factor ×${k(USE_UP_TO)} to ×${k(SHAPE_ONLY_FROM)} at the central ceiling; at ${shape} % the IMPROVE ceilings give ${span(SHAPE_ONLY_FROM)}.`
+      : `Expected under-read over ${shape} % (τ over ${tau(SHAPE_ONLY_FROM)}). Factor over ×${k(SHAPE_ONLY_FROM)}, and the ceilings part fast: ${span(SHAPE_ONLY_FROM)} at ${shape} %, ${span(0.5)} at 50 %.`
+  return `${s}: ${body} Use for ${STATUS_USE[s]}.`
+}
+
 /**
  * Which sites the gallery's linearised view corrects (lib/viewFields, `hipsat` in a link):
  *   all        every filter, each by its own factor (a light filter's factor is close to 1)
