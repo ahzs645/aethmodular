@@ -20,6 +20,7 @@ class SiteCorrections:
     """
     Main class for applying site-specific corrections to aethalometer data.
     """
+
     
     def __init__(self, site_code: str = None, verbose: bool = True):
         """
@@ -43,6 +44,7 @@ class SiteCorrections:
         Returns:
             pd.DataFrame: Corrected DataFrame
         """
+        self.corrections_applied.clear()
         df_corrected = df.copy()
         
         # Site-specific corrections
@@ -67,6 +69,7 @@ class SiteCorrections:
         Returns:
             pd.DataFrame: Corrected DataFrame with Ethiopia fixes
         """
+        self.corrections_applied.clear()
         df_corrected = df.copy()
         
         # Apply loading compensation fix for each wavelength
@@ -83,9 +86,24 @@ class SiteCorrections:
                     optimize_k=True
                 )
                 
-                self.corrections_applied.append(f'Ethiopia_{wl}_loading_compensation')
-        
         return df_corrected
+
+    @staticmethod
+    def _loading_values(bc1: pd.Series, atn: pd.Series, k: float) -> Tuple[pd.Series, pd.Series]:
+        """Legacy formula, with unavailable output at nonfinite/nonpositive denominators.
+
+        ATN <= 3 retains BC1 as before. Invalid values are not a basis for
+        declaring a correction applied, and are never converted to infinity.
+        """
+        if not np.isfinite(k):
+            raise ValueError("Loading coefficient must be finite")
+        with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
+            denominator = 1 - atn * k
+            denominator = denominator.where(np.isfinite(denominator))
+            safe_denominator = denominator.where(denominator > 0)
+            corrected = bc1.where(atn <= 3, bc1 / safe_denominator)
+        valid = np.isfinite(bc1) & np.isfinite(atn) & np.isfinite(corrected)
+        return denominator, corrected.where(valid)
     
     def _apply_manual_loading_compensation_ethiopia(self, 
                                                  df: pd.DataFrame, 
@@ -108,51 +126,68 @@ class SiteCorrections:
                 print(f"    ⚠️ Skipping {wl}: Missing columns {missing_cols}")
             return df
         
+        bc1 = pd.to_numeric(df[f'{wl} BC1'], errors='coerce')
+        atn = pd.to_numeric(df[f'{wl} ATN1'], errors='coerce')
+        reported_k = pd.to_numeric(df[f'{wl} K'], errors='coerce')
+
         # Step 1: Calculate median K for manual correction
-        mask_atn = df[f'{wl} ATN1'] > 3
+        mask_atn = np.isfinite(atn) & (atn > 3) & np.isfinite(reported_k)
         if mask_atn.sum() == 0:
             if self.verbose:
-                print(f"    ⚠️ No data with ATN1 > 3 for {wl}")
+                print(f"    ⚠️ Skipping {wl}: No finite K values with finite ATN1 > 3")
             return df
         
-        median_k = df[mask_atn][f'{wl} K'].median()
+        median_k = reported_k[mask_atn].median()
+        if not np.isfinite(median_k):
+            if self.verbose:
+                print(f"    ⚠️ Skipping {wl}: Median K is nonfinite")
+            return df
         
         if self.verbose:
             print(f"    📈 {wl} median K: {median_k:.6f}")
         
-        # Step 2: Create corrected denominator and BCc
-        df[f'{wl} denominator_manual'] = 1 - df[f'{wl} ATN1'] * median_k
-        
-        # Apply manual loading compensation
-        df[f'{wl} BCc_manual'] = df[f'{wl} BC1'].where(
-            df[f'{wl} ATN1'] <= 3,
-            df[f'{wl} BC1'] / df[f'{wl} denominator_manual']
-        )
+        # Step 2: Evaluate the median-K correction without changing the original BCc.
+        denominator_manual, manual = self._loading_values(bc1, atn, median_k)
+        corrected = manual
+        optimized = None
+        denominator_optimized = None
         
         # Step 3: Optional K optimization
         if optimize_k:
             try:
                 optimal_k = self._optimize_k_value(df, wavelength)
+                denominator_optimized, optimized = self._loading_values(bc1, atn, optimal_k)
+                if not (optimized.notna() & (atn > 3)).any():
+                    raise ValueError("No finite compensated values in the loaded region")
                 if self.verbose:
                     print(f"    🎯 {wl} optimal K: {optimal_k:.6f}")
-                
-                # Apply optimized correction
-                df[f'{wl} denominator_optimized'] = 1 - df[f'{wl} ATN1'] * optimal_k
-                df[f'{wl} BCc_optimized'] = df[f'{wl} BC1'].where(
-                    df[f'{wl} ATN1'] <= 3,
-                    df[f'{wl} BC1'] / df[f'{wl} denominator_optimized']
-                )
-                
-                # Use optimized as default corrected BCc
-                df[f'{wl} BCc_corrected'] = df[f'{wl} BCc_optimized']
+                corrected = optimized
                 
             except Exception as e:
+                optimized = None
+                denominator_optimized = None
                 if self.verbose:
                     print(f"    ⚠️ K optimization failed for {wl}: {e}")
-                    print(f"    🔄 Using median K correction")
-                df[f'{wl} BCc_corrected'] = df[f'{wl} BCc_manual']
+                    if (manual.notna() & (atn > 3)).any():
+                        print("    🔄 Using median K correction")
+
+        if not (corrected.notna() & (atn > 3)).any():
+            if self.verbose:
+                print(f"    ⚠️ Skipping {wl}: No finite loading-compensated values")
+            return df
+
+        df[f'{wl} denominator_manual'] = denominator_manual
+        df[f'{wl} BCc_manual'] = manual
+        if optimized is not None:
+            df[f'{wl} denominator_optimized'] = denominator_optimized
+            df[f'{wl} BCc_optimized'] = optimized
         else:
-            df[f'{wl} BCc_corrected'] = df[f'{wl} BCc_manual']
+            # A new median fallback must not look accompanied by an optimum
+            # retained from an earlier run. A skipped channel stays unchanged.
+            df.drop(columns=[f'{wl} denominator_optimized', f'{wl} BCc_optimized'],
+                    errors='ignore', inplace=True)
+        df[f'{wl} BCc_corrected'] = corrected
+        self.corrections_applied.append(f'Ethiopia_{wl}_loading_compensation')
         
         return df
     
@@ -163,28 +198,57 @@ class SiteCorrections:
                          tolerance: float = 4e-4) -> float:
         """
         Optimize K value to minimize correlation between BCc and ATN1.
-        Uses golden section search.
+        Uses the legacy golden section search on a finite, nonsingular domain.
+        This decorrelation criterion is a diagnostic, not independent validation
+        of a loading coefficient. Unidentifiable objectives raise ValueError.
         """
+        try:
+            bounds = np.asarray(k_range, dtype=float)
+            tolerance = float(tolerance)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("K search bounds and tolerance must be numeric") from exc
+        if bounds.shape != (2,) or not np.isfinite(bounds).all() or bounds[0] >= bounds[1]:
+            raise ValueError("K search bounds must be finite and strictly increasing")
+        with np.errstate(over='ignore', invalid='ignore'):
+            interval = bounds[1] - bounds[0]
+        if not np.isfinite(interval):
+            raise ValueError("K search interval must be finite")
+        if not np.isfinite(tolerance) or not 0 < tolerance < interval:
+            raise ValueError("K search tolerance must be positive and smaller than the search interval")
+
+        bc1 = pd.to_numeric(df[f'{wavelength} BC1'], errors='coerce')
+        atn = pd.to_numeric(df[f'{wavelength} ATN1'], errors='coerce')
+        paired = np.isfinite(bc1) & np.isfinite(atn)
+        bc1, atn = bc1[paired], atn[paired]
+        if len(bc1) < 10:
+            raise ValueError("K optimization needs at least 10 finite BC1/ATN1 pairs")
+        if bc1.nunique() < 2 or atn.nunique() < 2:
+            raise ValueError("K optimization needs varying BC1 and ATN1 values")
+        loaded_atn = atn[atn > 3]
+        if loaded_atn.empty:
+            raise ValueError("K optimization needs observations with ATN1 > 3")
+        # A pole changes the sample and invalidates the search's smooth-domain
+        # assumption. Do not silently select a different population at each k.
+        for bound in bounds:
+            with np.errstate(over='ignore', invalid='ignore'):
+                denominator = 1 - loaded_atn * bound
+            if not (np.isfinite(denominator) & (denominator > 0)).all():
+                raise ValueError("K search interval reaches a nonfinite or nonpositive loading denominator")
         
         def objective_function(k):
             """Calculate absolute correlation between BCc and ATN1 for given k"""
-            df_temp = df.copy()
-            wl = wavelength
-            
-            # Apply k correction
-            df_temp[f'{wl} denominator_temp'] = 1 - df_temp[f'{wl} ATN1'] * k
-            df_temp[f'{wl} BCc_temp'] = df_temp[f'{wl} BC1'].where(
-                df_temp[f'{wl} ATN1'] <= 3,
-                df_temp[f'{wl} BC1'] / df_temp[f'{wl} denominator_temp']
-            )
-            
-            # Calculate correlation
-            mask = df_temp[f'{wl} BCc_temp'].notna() & df_temp[f'{wl} ATN1'].notna()
-            if mask.sum() < 10:  # Not enough data
-                return 1.0
-                
-            corr = abs(df_temp.loc[mask, f'{wl} BCc_temp'].corr(df_temp.loc[mask, f'{wl} ATN1']))
-            return corr if not pd.isna(corr) else 1.0
+            _, values = self._loading_values(bc1, atn, k)
+            if values.isna().any() or values.nunique() < 2:
+                raise ValueError("K objective is undefined for the finite paired population")
+            with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
+                corr = abs(values.corr(atn))
+            if not np.isfinite(corr):
+                raise ValueError("K objective correlation is nonfinite")
+            return corr
+
+        scores = [objective_function(k) for k in np.linspace(bounds[0], bounds[1], 5)]
+        if np.ptp(scores) <= 16 * np.finfo(float).eps:
+            raise ValueError("K objective is constant over the search interval")
         
         # Golden section search
         def golden_section_search(f, a, b, tol=tolerance, max_iter=100):
@@ -204,7 +268,9 @@ class SiteCorrections:
             
             return (b + a) / 2
         
-        return golden_section_search(objective_function, k_range[0], k_range[1])
+        optimum = golden_section_search(objective_function, bounds[0], bounds[1])
+        objective_function(optimum)  # also validate the returned point
+        return optimum
     
     def validate_corrections(self, 
                            df_original: pd.DataFrame, 
