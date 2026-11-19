@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "id": "shlipak_2026_addis",
+  "citation": {
+    "title": "Spatial and Temporal Trends of Ambient PM2.5 and Source-Apportioned Black Carbon in Addis Ababa, Ethiopia",
+    "doi": "10.1021/acsestair.6c00140",
+    "url": "https://doi.org/10.1021/acsestair.6c00140",
+    "supporting_information_url": "https://pubs.acs.org/doi/suppl/10.1021/acsestair.6c00140/suppl_file/ea6c00140_si_001.pdf"
+  },
+  "timezone": "Africa/Addis_Ababa",
+  "start_local": "2022-04-01T00:00:00+03:00",
+  "end_local_exclusive": "2025-04-01T00:00:00+03:00",
+  "instrument_model": "MA350",
+  "inlet": "no_size_selective_inlet",
+  "raw_time_resolution_seconds": 60,
+  "comparison_time_resolution": "hourly",
+  "season_calendar": "belg_feb",
+  "seasons": {
+    "Bega": [10, 11, 12, 1],
+    "Belg": [2, 3, 4, 5],
+    "Kiremt": [6, 7, 8, 9]
+  },
+  "source_model": {
+    "alpha_fossil": 1.0,
+    "alpha_biomass": 2.0,
+    "paper_wavelength_pair_nm": null,
+    "paper_fraction_aggregation": null
+  },
+  "reported": {
+    "central": {"label": "Central", "bc_mean_ug_m3": 3.73, "bc_sd_ug_m3": 4.0, "bc_max_ug_m3": 56.63, "completeness_percent": 93.9},
+    "jacros": {"label": "Jacros", "bc_mean_ug_m3": 7.67, "bc_sd_ug_m3": 7.27, "bc_max_ug_m3": 113.50, "completeness_percent": 93.9},
+    "biomass_bc_percent_discussion": 5.8
+  },
+  "event_dates_local": {
+    "Meskel": ["2022-09-26", "2023-09-27", "2024-09-26"],
+    "Hidar Sitaten": ["2022-11-21", "2023-11-22", "2024-11-21"]
+  },
+  "unresolved_for_exact_reproduction": [
+    "Supporting-information status bits, flow, temperature, leak, loading and noise QC thresholds",
+    "Final source-model wavelength pair, correction recipe, clipping and uncertainty settings",
+    "Minute-to-hour aggregation, within-hour completeness and deployment completeness denominator",
+    "Aggregation and population behind the reported overall source fractions",
+    "Exact event-exclusion windows for each reported climatology"
+  ],
+  "scope": "Descriptive comparison of explicitly identified deployments and previously quality-controlled hourly data; overlapping observations are not independent validation."
+}

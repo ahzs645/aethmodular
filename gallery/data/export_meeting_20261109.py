@@ -12,7 +12,7 @@ from an export that already exists; nothing is refitted.
   scoreboard (12,386 common IMPROVE filters, fixed k 18, five site folds) and the saved Addis
   fits of each candidate against HIPS optical BC and the aethalometer.
 - gallery/app/public/data/meetings/ann-20261009.json: Addis vs IMPROVE loading.
-- gallery/app/public/data/meetings/meeting-20261028.json: EC share of PM2.5, and the Addis
+- gallery/app/public/data/meetings/meeting-20261028.json: optical BC / TOR EC shares of PM2.5, and the Addis
   slope/intercept by season for five ways of choosing calibration filters.
 - git log: commits per week since 31 Aug 2026, and whether a manuscript draft exists.
 
@@ -69,6 +69,7 @@ COLORS = {
     "Anchored + EPO": "#7A4FA3", "HIPS optical BC itself": "#5B5852",
     "Addis": "#C49442", "IMPROVE": "#8a8f98",
     "Done": "#27AE60", "On track": "#2C6E9E", "Not started": "#B23327", "Waiting on others": "#8F8C84",
+    "Proposed": "#2C6E9E",
     "Analysis and tooling": "#2C6E9E",
 }
 
@@ -95,11 +96,13 @@ ec_share = spec.loc[spec.population.isin(keep)].assign(
     network=lambda d: d.population.map(keep), ec_share=lambda d: 100 * d.EC)[["population", "network", "ec_share", "OC / EC"]]
 addis_share = ec_share.loc[ec_share.network.eq("Addis"), "ec_share"]
 library_share = float(ec_share.loc[ec_share.population.eq("IMPROVE, all library"), "ec_share"].iloc[0])
-text_domain = f"""**Addis is outside what the IMPROVE library has seen.** In µg/m³ the Addis median is
+text_domain = f"""**Addis has much higher optical loading than the IMPROVE library.** Using HIPS Fabs / MAC 10 as
+an optical BC equivalent, in µg/m³ the Addis median is
 {conc['Addis median'] / conc['IMPROVE median']:.0f}× the IMPROVE median; per filter, which is what FTIR sees, it is
 {mass['Addis median'] / mass['IMPROVE median']:.0f}×, and {mass['% of Addis above IMPROVE p99']:.0f} % of Addis filters are still above the IMPROVE
-99th percentile. EC is {addis_share.min():.0f}–{addis_share.max():.0f} % of Addis PM2.5 by season against about {library_share:.0f} % across the
-IMPROVE library. A calibration cannot be checked on a composition it never trained on."""
+99th percentile. HIPS optical BC (Fabs / MAC 10) is {addis_share.min():.0f}–{addis_share.max():.0f} % of Addis PM2.5 by historical
+`dry_feb` season, against a TOR EC share of about {library_share:.0f} % across the IMPROVE library. These are different measurement
+bases: the loading contrast and estimated EC shares flag transfer risk, but do not independently establish Addis EC composition."""
 
 # ---------------------------------------------------------------- 2. preprocessing on the Addis cross-plots
 af = pd.DataFrame(closeout["addis_fits"])
@@ -112,26 +115,33 @@ hb = addis.loc[addis.comparator.eq(COMPARATORS["hips_bc"])].set_index("candidate
 ae = addis.loc[addis.comparator.eq(COMPARATORS["aeth_ir"])].set_index("candidate")
 pub, spl = hb.loc["SPARTAN published"], hb.loc["Spline baseline"]
 hips_vs_aeth = af.loc[af.model.eq("HIPS BC") & af.x.eq("aeth_ir")].iloc[0]
-text_preprocess = f"""**Baseline correction is the largest single improvement, and it is not a fix.** Against HIPS optical BC
+text_preprocess = f"""**Saved recalibrations have smaller HIPS intercepts.** Against HIPS optical BC
 (MAC 10), the SPARTAN published product has intercept {pub.intercept:.2f} µg/m³ and slope {pub.slope:.2f} (n = {pub.n:.0f});
-the spline-baselined calibration moves that to {spl.intercept:.2f} and {spl.slope:.2f} (n = {spl.n:.0f}).
+the spline-baselined calibration gives {spl.intercept:.2f} and {spl.slope:.2f} (n = {spl.n:.0f}). These are different complete
+pipelines and filter populations; this descriptive comparison does not isolate the effect of baseline correction.
 
-**The aethalometer does not separate the candidates.** Against it, most intercepts are already near zero (published
+**Near-zero aethalometer intercepts do not identify an accurate EC calibration.** Against it, most intercepts are already near zero (published
 {ae.loc['SPARTAN published', 'intercept']:+.2f}, PTFE-anchored VIBES {ae.loc['PTFE-anchored VIBES', 'intercept']:+.2f}; production VIBES
 {ae.loc['Production VIBES', 'intercept']:+.2f} µg/m³), while HIPS optical BC against the same aethalometer has intercept
 {hips_vs_aeth.intercept:+.2f} (n = {hips_vs_aeth.n:.0f}). Which measurement carries the offset stays open: agreement between optical
-methods is a diagnostic, **not** proof of correct EC, and no Addis filter has thermal (TOR) EC."""
+methods is a diagnostic, **not** proof of correct EC. No paired thermal (TOR) EC reference is available for this Addis SPARTAN cohort."""
 
 # ---------------------------------------------------------------- 3. seasons
 cals = table(m1028, "cals")
 COLORS.update({k: v for k, v in m1028["colors"].items() if k in set(cals.calibration)})
 seasonal = cals.loc[cals.calibration.eq("spectral look-alikes (Figure 9)")].set_index("season")
 allimp = cals.loc[cals.calibration.eq("all IMPROVE (Figure 7)")].set_index("season")
-text_seasons = f"""**The seasons fail differently.** With the same baseline-corrected all-IMPROVE calibration the Addis slope is
+text_seasons = f"""**The saved seasonal results use `dry_feb`: Dry Oct–Feb, Belg Mar–May, Kiremt Jun–Sep.**
+With the same baseline-corrected all-IMPROVE calibration the Addis slope is
 {allimp.loc['Dry', 'slope']:.2f} in Dry, {allimp.loc['Belg', 'slope']:.2f} in Belg and {allimp.loc['Kiremt', 'slope']:.2f} in Kiremt. Choosing each season's own spectral
-look-alikes lifts Kiremt to {seasonal.loc['Kiremt', 'slope']:.2f} but leaves Dry at {seasonal.loc['Dry', 'slope']:.2f} and Belg at {seasonal.loc['Belg', 'slope']:.2f}, and no other
-choice of calibration filters (lowest OC/EC, urban IMPROVE) brings Dry or Belg near 1. Per µg of EC, Addis carries far less
-organic absorbance than its IMPROVE look-alikes, least in Dry: the likely cause is **composition, not concentration**."""
+look-alikes gives Kiremt {seasonal.loc['Kiremt', 'slope']:.2f}, Dry {seasonal.loc['Dry', 'slope']:.2f} and Belg {seasonal.loc['Belg', 'slope']:.2f} against HIPS optical BC.
+A slope near one is optical agreement, not validated EC.
+
+**The Belg interpretation depends on the calendar.** In the recorded February sensitivity on the same 189-filter poster cohort,
+moving February into Belg (`belg_feb`, the calendar used by Shlipak et al. 2026) changes the season-specific look-alike slope
+from 0.32 to 0.67 and the within-Belg organic-signal Pearson r from 0.63 to 0.13. The chart retains the historical `dry_feb`
+values; it is not a rerun under `belg_feb`. Composition remains a hypothesis to test alongside loading, calibration selection
+and optical-response assumptions. See the documented February sensitivity in `docs/site-seasonality.md`."""
 
 # ---------------------------------------------------------------- 4. the source scoreboard
 sb = pd.DataFrame(closeout["scoreboard"]).assign(candidate=lambda d: d.model.map(CANDIDATES))
@@ -164,20 +174,21 @@ commits = pd.DataFrame({"week": [f"{w:%b} {w.day}" for w in weeks],
 peak = commits.loc[commits.commits.idxmax()]
 since_oct = int(commits.loc[weeks >= pd.Timestamp("2026-10-05"), "commits"].sum())
 draft_suffixes = {".docx", ".doc", ".tex", ".qmd", ".md", ".rmd"}
-drafts = [p for p in (ROOT / "manuscript").rglob("*")
-          if p.is_file() and p.suffix.lower() in draft_suffixes and "citations" not in p.parts and p.name != "README.md"]
-text_time = f"""**The analysis is closed; the writing has not started.** {since_oct} commits since 5 Oct, {peak.commits} of them in the week of
-{peak.week}, almost all analysis, gallery and release work. {"A manuscript draft is in the repository." if drafts else
-"The repository holds no manuscript draft: `manuscript/` has citation tooling only."} The supervisor's definition of finished is the
-**chapter written and the paper ready**, so the next six weeks go to writing."""
+drafts = [p for p in map(Path, git("ls-files", "manuscript").splitlines())
+          if p.suffix.lower() in draft_suffixes and "citations" not in p.parts and p.name != "README.md"]
+text_time = f"""**The existing-data closeout is recorded; manuscript progress needs a separate check.** {since_oct} commits since 5 Oct,
+{peak.commits} of them in the week of {peak.week}. Commit counts describe repository activity, not time spent or writing elsewhere.
+{"A manuscript draft is tracked in the repository." if drafts else "No manuscript draft is tracked in the repository."}
+This does not establish whether an external draft exists. The supervisor's endpoint is the **chapter written and the paper ready**;
+the writing dates below are proposals to agree, not verified commitments or evidence that writing has not begun."""
 
 # ---------------------------------------------------------------- 6. schedule and decisions
 milestones = pd.DataFrame([
     ("Existing-data investigation closed out (reproducible release)", "7 Nov 2026", "Done"),
     ("AAAR poster presented", "late Oct 2026", "Done"),
-    ("Paper 1 outline to Ann", "~20 Nov 2026", "Not started"),
-    ("Paper 1 full draft to Ann", "early Dec 2026", "Not started"),
-    ("Paper and thesis chapter to the supervisor", "~18 Dec 2026", "Not started"),
+    ("Paper 1 outline to Ann", "~20 Nov 2026", "Proposed"),
+    ("Paper 1 full draft to Ann", "early Dec 2026", "Proposed"),
+    ("Paper and thesis chapter to the supervisor", "~18 Dec 2026", "Proposed"),
     ("End-of-semester status to the supervisor", "end Dec 2026", "On track"),
     ("Go/no-go on Addis and choice of next objective", "Jan 2027 at the latest", "On track"),
     ("Next committee meeting", "by ~Apr 2027", "Not started"),
@@ -186,17 +197,17 @@ milestones = pd.DataFrame([
 ], columns=["milestone", "due", "status"])
 
 claims = pd.DataFrame([
-    ("Absolute EC accuracy at Addis", "No Addis filter has thermal (TOR) EC; HIPS / MAC 10 is an optical equivalent"),
+    ("Absolute EC accuracy for this Addis cohort", "No paired TOR EC reference is available for this SPARTAN cohort; HIPS / MAC 10 is an optical equivalent"),
     ("A near-zero aethalometer intercept proves correct EC", "Agreement between two optical methods, not a thermal reference"),
-    ("A seasonal residual identifies its chemical cause", "The residuals are diagnostics; composition is the leading explanation"),
+    ("A seasonal residual identifies its chemical cause", "Diagnostics depend on the calendar and cohort; composition remains a hypothesis"),
     ("One preprocessing method wins", "Each metric names a different best candidate; no significance test"),
     ("Three Adama TOR pairs validate a method", "Different site, lot and sampler; provisional mapping"),
     ("MAC 10 is the Addis value", "A convention; the MAC is part of the slope problem, the calibration the intercept"),
 ], columns=["do not claim", "why"])
 
 text_next = """**Proposed position for the December–January decision: a defensible pathway exists.** Write paper 1 on the
-existing-data result now: why an IMPROVE-trained FTIR EC calibration does not transfer to Addis, how much preprocessing and
-cohort choice recover, the seasonal structure, and the compositional explanation, with absolute accuracy stated as the open
+existing-data result now: limitations in transferring an IMPROVE-trained FTIR EC calibration to Addis, how preprocessing and
+cohort choice change optical agreement, the calendar-dependent seasonal structure, and composition as a hypothesis, with absolute accuracy stated as the open
 limit. The incoming Addis TOR filters then become the validation step, not a prerequisite. Agree what agreement would count as
 evidence before they arrive.
 

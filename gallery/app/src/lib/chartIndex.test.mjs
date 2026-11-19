@@ -13,4 +13,9 @@ test('the ⌘K chart index matches the source (run npm run index:charts after ad
     'vibes-validation-traces', 'vibes-validation-blanks', 'vibes-validation-runtime', 'vibes-validation-reference']) {
     assert.ok(saved.charts.some((c) => c.id === id && c.tab === 'baseline'), `Shared figure ${id} must be searchable on Baselines`)
   }
+  for (const suffix of ['benchmarks', 'timeline', 'seasons', 'diurnal', 'events', 'readiness']) {
+    const id = `aeth-addis-study-${suffix}`
+    assert.ok(saved.charts.some(c => c.id === id && c.tab === 'aethalometer' && c.page === 'addis-study'),
+      `Study figure ${id} must open its section page`)
+  }
 })

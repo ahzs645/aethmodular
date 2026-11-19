@@ -1,9 +1,27 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-import { EVIDENCE_LABELS, filterHistory, historyMermaid, historyNeighborhood, inspectHistoryExports } from './investigationHistory.ts'
+import { combineInvestigationHistories, EVIDENCE_LABELS, filterHistory, historyMermaid, historyNeighborhood, inspectHistoryExports } from './investigationHistory.ts'
+import { ADDIS_STUDY_HISTORY } from '../sections/instruments/study/history.ts'
 
 const history = JSON.parse(fs.readFileSync(new URL('../sections/research/history.generated.json', import.meta.url), 'utf8'))
+
+test('public study history is independently discoverable and combines without inventing edges', () => {
+  assert.equal(combineInvestigationHistories([]), undefined)
+  const publicHistory = combineInvestigationHistories([ADDIS_STUDY_HISTORY])
+  assert.equal(publicHistory.records.length, 1)
+  const study = publicHistory.records[0]
+  assert.equal(study.evidence, 'diagnostic')
+  assert.equal(study.evidenceLabel, 'Saved-export comparison')
+  assert.ok(study.charts.some(c => c.tab === 'aethalometer' && c.page === 'addis-study'
+    && c.primaryExports.includes('aethalometer/addis-study.json')))
+  assert.deepEqual(publicHistory.edges, [])
+  const combined = combineInvestigationHistories([ADDIS_STUDY_HISTORY, history])
+  assert.equal(combined.records.length, history.records.length + 1)
+  assert.equal(new Set(combined.records.map(r => r.id)).size, combined.records.length)
+  assert.deepEqual(combined.edges, history.edges)
+  assert.ok(combined.families.some(f => f.id === study.family))
+})
 
 test('the research index preserves source gaps, evidence states and documented claim corrections', () => {
   const ids = new Set(history.records.map(r => r.id))

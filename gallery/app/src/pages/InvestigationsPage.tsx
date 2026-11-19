@@ -38,7 +38,7 @@ export function InvestigationsPage({ areas, onOpen, history, canOpen = () => tru
           const rest = a.pages.length - LISTED
           return (
             <section key={a.tab} className="panel area-card">
-              <button type="button" className="area-card-head" onClick={() => onOpen(a.tab)} title={`Open ${a.label}`}>
+              <button type="button" className="area-card-head" onClick={() => onOpen(a.tab, a.pages[0]?.key)} title={`Open ${a.label}`}>
                 <strong>{a.label}</strong>
                 <span className="area-card-n">{a.pages.length} {a.pages.length === 1 ? 'page' : 'pages'}</span>
               </button>
@@ -48,7 +48,7 @@ export function InvestigationsPage({ areas, onOpen, history, canOpen = () => tru
                   <li key={p.key}><button type="button" className="area-card-link" title={p.title} onClick={() => onOpen(a.tab, p.key)}>{p.label}</button></li>
                 ))}
               </ul>
-              <button type="button" className="btn area-card-open" onClick={() => onOpen(a.tab)}>
+              <button type="button" className="btn area-card-open" onClick={() => onOpen(a.tab, a.pages[0]?.key)}>
                 {rest > 0 ? `Open · ${rest} more ${rest === 1 ? 'page' : 'pages'}` : 'Open'} ›
               </button>
             </section>
