@@ -1,3 +1,4 @@
+import '@/lib/maplibreWorker' // MapLibre 6's tile worker, set before any map exists
 import { forwardRef, useContext, useMemo, useEffect, useImperativeHandle, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from 'react'
 import { Map as ToolkitMap, MapControls, fitMapToPoints, geojsonBasemapStyle, useMap, type FitMapToPointsOptions, type LngLatPoint, type MapRef } from '@pgmaps/geo-toolkit/map'
 import '@pgmaps/geo-toolkit/styles.css'
