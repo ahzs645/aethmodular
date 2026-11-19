@@ -64,7 +64,7 @@ def forbidden_pattern() -> re.Pattern:
     """Machine paths, Drive mounts, GitHub tokens, and this machine's own account names.
 
     The account names (login and git email) are read at run time so they never appear in
-    this public script. A bare "@gmail.com" is not blocked: third-party licence headers in
+    this public script. A name right after "github.com/" is the public owner of a linked repo and passes. A bare "@gmail.com" is not blocked: third-party licence headers in
     the bundle (e.g. lzma's author address) legitimately contain one.
     """
     import getpass
@@ -75,8 +75,10 @@ def forbidden_pattern() -> re.Pattern:
     if email:
         terms |= {email, email.split("@")[0]}
     names = "|".join(re.escape(t) for t in sorted(terms) if len(t) >= 4)
+    # the gallery links to its own public source repo (github.com/<owner>/aethmodular/blob/...); the owner in a
+    # GitHub URL is public, so it is allowed there and nowhere else
     return re.compile(r"/Users/|GoogleDrive-|gh[op]_[A-Za-z0-9]{20,}" +
-                      (rf"|(?<!\w)(?:{names})(?!\w)" if names else ""), re.IGNORECASE)
+                      (rf"|(?<!github\.com/)(?<!\w)(?:{names})(?!\w)" if names else ""), re.IGNORECASE)
 
 
 FORBIDDEN = forbidden_pattern()
