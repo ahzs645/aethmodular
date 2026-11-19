@@ -4,7 +4,8 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { correction, DEPOSIT_AREA_CM2, fitAgainstHips, IMPROVE_CEILINGS, linearLevel, linearise, noiseGain, opticalDepth, predictedExponent, previousLoadingGroups, ratioMedians, saturate } from './hipsLinearise.ts'
+import { CENTRAL_CEILING, correction, DEPOSIT_AREA_CM2, EXPECTED_FROM, fitAgainstHips, HIPS_SITE_READINGS, IMPROVE_CEILINGS, linearLevel, linearise, noiseGain, opticalDepth, parseHipsScope, predictedExponent, previousLoadingGroups, ratioMedians, saturate, scopeSites, SEEN_SITES, siteExposure, statusOf, underRead } from './hipsLinearise.ts'
+import { HIPS_TAU, HIPS_UNDER_READ, withHipsLoading } from './viewFields.ts'
 
 const data = JSON.parse(fs.readFileSync(new URL('../../public/data/hips_linearise/linearise.json', import.meta.url), 'utf8'))
 const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b}`)
@@ -83,4 +84,59 @@ test('the ceilings the gallery-wide view offers are the committed IMPROVE ones, 
   for (const c of data.ceilings) near(IMPROVE_CEILINGS.find((k) => k.key === c.key).tau_inf, c.tau_inf, 1e-9, `ceiling ${c.key}`)
   // each Addis filter's tau from its HIPS BC (x MAC) and volume, as the workflow's load() saved it
   for (const f of data.filters.filter((x) => x.volume_known).slice(0, 40)) near(opticalDepth(f.hips_bc * data.mac, f.volume_m3), f.tau, 2e-3, `tau of ${f.id}`)
+})
+
+// The linearised view can cover every site, the sites where the bend is expected, or those where it is seen. The
+// readings are the 11 Nov screen's (docs/hips-network-2026-11-11.json, bundled as hipsSites.json; read here from the
+// procedure page's bundle, which carries the same tables), and "expected" is recomputed in the browser from the
+// filters themselves, so it must give the screen's own list on the same table.
+const procedure = JSON.parse(fs.readFileSync(new URL('../../public/data/meetings/hips-procedure-20261111.json', import.meta.url), 'utf8')).tables
+const recordsOf = (t) => t.code.map((_, i) => Object.fromEntries(Object.keys(t).map((k) => [k, t[k][i]])))
+const screen = { identified: recordsOf(procedure.found), checked: recordsOf(procedure.checked) }
+const spartan = JSON.parse(fs.readFileSync(new URL('../../public/data/spartan_reference.json', import.meta.url), 'utf8'))
+
+test('the bundled site readings are the 11 Nov screen\'s', () => {
+  assert.equal(HIPS_SITE_READINGS.length, screen.identified.length)
+  const checked = new Map(screen.checked.map((r) => [r.code, r]))
+  for (const r of screen.identified) {
+    const own = HIPS_SITE_READINGS.find((x) => x.code === r.code)
+    assert.equal(own.reading, r.reading, `${r.code} reading`)
+    assert.equal(own.verdict, checked.get(r.code).verdict, `${r.code} verdict`)
+    near(own.expected_under_read, r.expected_under_read, 1e-4, `${r.code} under-read`)
+  }
+  // the screen's ceiling is the central one: Addis's median filter, read back through it
+  near(HIPS_SITE_READINGS[0].expected_under_read, underRead(HIPS_SITE_READINGS[0].median_tau, CENTRAL_CEILING), 1e-4, 'the screen\'s ceiling')
+  assert.deepEqual([...SEEN_SITES].sort(), ['BDDU', 'CHTS', 'CLST', 'ETAD', 'INDH', 'TWKA', 'ZAJB', 'ZAPR'])
+})
+
+test('each site\'s exposure from its own filters gives the screen\'s medians and the same expected sites', () => {
+  const rows = withHipsLoading(spartan.rows.filter((r) => !r.excluded))
+  const exposure = siteExposure(rows.map((r) => ({ code: r.code, tau: r[HIPS_TAU] })))
+  assert.equal(exposure.size, screen.identified.length)
+  for (const r of screen.identified) {
+    const e = exposure.get(r.code)
+    assert.equal(e.n, r.filters, `${r.code} filters`)
+    near(e.medianTau, r.median_tau, 1e-4, `${r.code} median optical depth`)
+    near(e.underRead, r.expected_under_read, 1e-4, `${r.code} expected under-read`)
+    assert.equal(e.expected, r.expected_under_read > EXPECTED_FROM, `${r.code} expected`)
+    // every site the screen calls expected and seen is one the rule calls expected
+    if (SEEN_SITES.has(r.code)) assert.ok(e.expected, `${r.code} is seen, so expected`)
+  }
+  assert.equal(scopeSites('all', exposure), null)
+  assert.equal(scopeSites('expected', exposure).size, screen.identified.filter((r) => r.expected_under_read > EXPECTED_FROM).length)
+  assert.deepEqual([...scopeSites('seen', exposure)].sort(), [...SEEN_SITES].sort())
+  // a site that is not on file is in no scope, and an IMPROVE site has no reading, so "seen" leaves it as measured
+  const light = siteExposure([{ code: 'ACAD1', tau: 0.05 }, { code: 'ACAD1', tau: 0.07 }, { code: 'DARK1', tau: 0.6 }, { code: 'DARK1', tau: NaN }])
+  assert.deepEqual([...scopeSites('expected', light)], ['DARK1'])
+  assert.equal(light.get('DARK1').n, 1)
+  assert.equal(scopeSites('seen', light).size, 0)
+  // the per-filter field is the under-read in percent at the central ceiling
+  const addis = rows.find((r) => r.code === 'ETAD' && r[HIPS_TAU] > 0)
+  near(addis[HIPS_UNDER_READ], 100 * underRead(addis[HIPS_TAU]), 1e-9, 'under-read field')
+})
+
+test('statuses and scopes', () => {
+  assert.deepEqual([0.1, 0.2, 0.25, 0.3, 0.31].map(statusOf), ['use, linearised', 'use, linearised', 'caution', 'caution', 'shape only'])
+  near(underRead(CENTRAL_CEILING * 2), 1, 1e-12, 'past the ceiling')
+  assert.deepEqual(['expected', 'seen', 'all', null, 'nonsense'].map(parseHipsScope), ['expected', 'seen', 'all', 'all', 'all'])
 })

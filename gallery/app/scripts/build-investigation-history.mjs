@@ -116,6 +116,7 @@ const chartGroups = [
   [['addis_feb_season_sensitivity_20261028'], 'experimental', 'fixes', 'February calendar sensitivity'],
   [['addis_reference_closure_20261110'], 'meeting', 'hips-linearise', 'Linearising HIPS at Addis'],
   [['addis_reference_closure_20261110'], 'meeting', 'hips-parts', 'HIPS on dark filters, part by part'],
+  [['addis_reference_closure_20261110'], 'meeting', 'hips-story', 'Linearising HIPS across SPARTAN'],
   [['season_composition_20261103'], 'experimental', 'season', 'Season or composition?'],
   [['vibes_newton_refit_20261103'], 'experimental', 'vibes-newton', 'VIBES solved to convergence'],
   [['vibes_newton_refit_20261103', 'vibes_rank_tau_ec_20261116'], 'meeting', 'vibes-settings-20261116', 'Which VIBES setting: solver, rank and tau'],

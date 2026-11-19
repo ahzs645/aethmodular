@@ -24,7 +24,7 @@ import { SitePicker, type SiteItem } from '@/components/SitePicker'
 import { Combobox } from '@/components/Combobox'
 import { useRatios } from '@/components/RatioDialog'
 import { MAC_CHOICES, type Basis } from '@/lib/viewFields'
-import { CENTRAL_CEILING, IMPROVE_CEILINGS } from '@/lib/hipsLinearise'
+import { CENTRAL_CEILING, EXPECTED_FROM, HIPS_SCOPES, IMPROVE_CEILINGS, type HipsScope } from '@/lib/hipsLinearise'
 import { Select } from '@/components/Controls'
 import { SeasonEditor } from '@/components/SeasonEditor'
 import { DynamicSeasonEditor } from '@/components/DynamicSeasonEditor'
@@ -146,8 +146,18 @@ export interface SubsetState {
   withVolume?: [number, number]
   /** the ceiling HIPS is linearised with (lib/viewFields), null as measured */
   hipsCeiling?: number | null
-  /** filters in view whose HIPS could be linearised, of those in view with HIPS */
-  withHips?: [number, number]
+  /** what the linearised view did to the filters and sites in view; absent as measured */
+  hipsView?: HipsViewState
+}
+
+/**
+ * The linearised view over what is in view: the filters with HIPS that were linearised, those at a site outside the
+ * scope (kept as measured) and those that dropped out; and each site with HIPS, darkest first, with the under-read
+ * expected of its median filter, whether the scope covers it, and the 11 Nov screen's reading where it has one.
+ */
+export interface HipsViewState {
+  scope: HipsScope; linearised: number; asMeasured: number; dropped: number
+  sites: { name: string; underRead: number; on: boolean; reading?: string }[]
 }
 
 export interface SubsetActions {
@@ -200,6 +210,7 @@ export interface SubsetActions {
   onSsr?: (v: SsrHide) => void
   onMac?: (mac: number | null) => void
   onHips?: (ceiling: number | null) => void
+  onHipsScope?: (scope: HipsScope) => void
 }
 
 /** The calendar picker's wording lives with the calendars (lib/seasons). */
@@ -411,11 +422,9 @@ export function SubsetBar({
       )}
       {(caps.fields !== 'none' && a.onBasis || caps.mac) && a.onHips && (
         <Row label="HIPS">
-          <HipsControl ceiling={s.hipsCeiling} onHips={a.onHips} />
-          {s.hipsCeiling != null && s.withHips && <span className="method-note" style={{ display: 'block' }}>
-            {s.withHips[0].toLocaleString()} of {s.withHips[1].toLocaleString()} filters with HIPS in view are linearised; the rest have no sampled volume or sit past the ceiling and drop out of the HIPS fields. Saved fits and precomputed statistics stay as measured
-          </span>}
-          {explain && <span className="row-note">HIPS reads low on dark filters. Linearised multiplies each filter's HIPS by 1 ÷ (1 − optical depth ÷ ceiling), its optical depth being Fabs × sampled volume ÷ 353. Saved fits and meeting figures stay as measured</span>}
+          <HipsControl ceiling={s.hipsCeiling} onHips={a.onHips} scope={s.hipsView?.scope} onScope={a.onHipsScope} />
+          {s.hipsCeiling != null && s.hipsView && <HipsViewNote view={s.hipsView} />}
+          {explain && <span className="row-note">HIPS reads low on dark filters. Linearised multiplies each filter's HIPS by 1 ÷ (1 − optical depth ÷ ceiling), its optical depth being Fabs × sampled volume ÷ 353, so a light filter barely moves. Every filter also carries its optical depth and expected under-read as measurements (HIPS loading), to plot, colour by or band. Saved fits and meeting figures stay as measured</span>}
         </Row>
       )}
       {/* a page's unit choice that rides on the MAC (lib/pageSidebar PlotControls) */}
@@ -871,10 +880,15 @@ const HIPS_VIEWS = ['As measured', 'Linearised'] as const
  * HIPS as measured or linearised (lib/viewFields, lib/hipsLinearise), with the IMPROVE ceiling to linearise with. On
  * its own "HIPS" row under the MAC, here and in App's PageSidebar, so every tab sets it the same way.
  */
-export function HipsControl({ ceiling, onHips }: { ceiling?: number | null; onHips: (ceiling: number | null) => void }) {
+export function HipsControl({ ceiling, onHips, scope = 'all', onScope }: {
+  ceiling?: number | null; onHips: (ceiling: number | null) => void
+  /** the sites the view covers (lib/hipsLinearise HIPS_SCOPES), with its setter where the tab can change it */
+  scope?: HipsScope; onScope?: (scope: HipsScope) => void
+}) {
   const on = ceiling != null
   const key = IMPROVE_CEILINGS.find((c) => c.tau_inf === ceiling)?.key ?? 'central'
-  return (
+  // two controls, so the sites choice wraps under the ceiling in the narrow side panel
+  return (<>
     <span className="control">
       <Segmented value={on ? 'Linearised' : 'As measured'} options={HIPS_VIEWS as any}
         onChange={(v: string) => onHips(v === 'Linearised' ? CENTRAL_CEILING : null)}
@@ -883,6 +897,36 @@ export function HipsControl({ ceiling, onHips }: { ceiling?: number | null; onHi
         onChange={(k) => onHips(IMPROVE_CEILINGS.find((c) => c.key === k)?.tau_inf ?? CENTRAL_CEILING)}
         optionLabel={(k) => IMPROVE_CEILINGS.find((c) => c.key === k)?.label ?? k}
         title="The IMPROVE ceiling: the central fit of all sites 2005–2025, both ends of its 90 % interval, or the 2015–2025 fit (the period that contains the SPARTAN record)" />}
+    </span>
+    {on && onScope && <span className="control">
+      <Select label="Apply to" value={scope} options={HIPS_SCOPES.map((x) => x.key)}
+        onChange={(k) => onScope(k as HipsScope)} optionLabel={(k) => HIPS_SCOPES.find((x) => x.key === k)?.label ?? k}
+        title={`Which sites are linearised. All sites: every filter by its own factor, which is close to 1 on a light filter. Where expected: only the sites whose median filter is expected to under-read by more than ${EXPECTED_FROM * 100} %. Where seen: only the sites whose own filters also show the bend (expected and seen in the 11 Nov screen; SPARTAN only). The other sites keep HIPS as measured.`} />
+    </span>}
+  </>)
+}
+
+const pct = (share: number) => `${Math.round(share * 100)} %`
+const SHOWN_SITES = 8
+const listSites = (sites: HipsViewState['sites']) =>
+  sites.slice(0, SHOWN_SITES).map((x) => `${x.name} (${pct(x.underRead)})`).join(', ') + (sites.length > SHOWN_SITES ? ` and ${sites.length - SHOWN_SITES} more` : '')
+
+/** what the linearised view did in this view: the filters on each side of it, and under a scope the sites on each side */
+function HipsViewNote({ view }: { view: HipsViewState }) {
+  const total = view.linearised + view.asMeasured + view.dropped
+  const on = view.sites.filter((x) => x.on), off = view.sites.filter((x) => !x.on)
+  const rule = view.scope === 'seen' ? 'whose own filters show the bend' : `whose median filter is expected to under-read by more than ${EXPECTED_FROM * 100} %`
+  return (
+    <span className="method-note" style={{ display: 'block' }}>
+      {view.linearised.toLocaleString()} of {total.toLocaleString()} filters with HIPS in view are linearised
+      {view.asMeasured > 0 && `; ${view.asMeasured.toLocaleString()} at sites outside the choice stay as measured`}
+      {view.dropped > 0 && `; ${view.dropped.toLocaleString()} have no sampled volume or sit past the ceiling and drop out of the HIPS fields`}.
+      {view.scope !== 'all' && <>
+        {' '}Linearised, the sites {rule}: {on.length ? listSites(on) : 'none in view'}.
+        {off.length > 0 && <> As measured: {listSites(off)}.</>}
+        {' '}In brackets, the under-read expected of the site's median filter.
+      </>}
+      {' '}Saved fits and precomputed statistics stay as measured
     </span>
   )
 }

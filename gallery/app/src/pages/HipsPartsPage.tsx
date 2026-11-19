@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { ChartFrame, ExplainOnly, Note } from '@/components/ChartFrame'
-import { Select } from '@/components/Controls'
 import { ExportState, LoadState } from '@/components/ExportState'
 import { BundleContext, Figure, type FigureSpec, type MeetingBundle } from '@/components/Figure'
 import { Key } from '@/components/Key'
@@ -14,7 +13,8 @@ import { Markdown } from '@/lib/markdown'
 import { median, quantile } from '@/lib/stats'
 import { rowsOf } from '@/lib/table'
 import { INK } from '@/lib/theme'
-import { useSearchParam } from '@/lib/url'
+import { useFirstSampleSite } from '@/lib/gallerySamples'
+import { SitePicker, usePageSite } from '@/lib/siteFocus'
 import { SPEC_MEETINGS } from '@/meetings'
 import { AgainstHips, Bend, CeilingOptions, COMMAND, CorrectionCurve, CorrectionPlot, Limits, PROVENANCE, SeasonLot, SIDE, WORKFLOW, Worked, pathOf, range, useCeiling, type Ceil, type Linearise } from '@/pages/HipsLinearisePage'
 import { ImproveReach, LevelChoices } from '@/pages/HipsCaveats'
@@ -27,6 +27,7 @@ const NETWORK = 'hips-network-20261111'
 const PROCEDURE = 'hips-procedure-20261111'
 const SEASONS = 'hips-seasons-20261111'
 const ADDIS = 'Addis Ababa, Ethiopia'
+const ADDIS_CODE = 'ETAD'
 
 /** a figure declared on another meeting page: its id there, with an optional patch and the bundle text shown under "?" */
 type Borrowed = string | { id: string; patch?: Partial<FigureSpec>; about?: string }
@@ -178,13 +179,16 @@ function usePoints() {
   const sites = useMemo(() => {
     const by = new Map<string, number[]>()
     for (const r of all) by.set(r.site, [...(by.get(r.site) ?? []), r.tau])
-    return [...by].map(([site, taus]) => ({ site, tau: median(taus) })).sort((a, b) => b.tau - a.tau)
+    // a site's code is its filter ids' prefix (ETAD-0017 → ETAD), so the choice is the gallery's page site (psite)
+    const code = new Map(all.map((r) => [r.site, r.id.split('-')[0]]))
+    return [...by].map(([site, taus]) => ({ site, code: code.get(site) ?? site, name: site, tau: median(taus) })).sort((a, b) => b.tau - a.tau)
   }, [all])
-  const [chosen, setSite] = useSearchParam<string>('hw.site', ADDIS)
-  const site = sites.some((s) => s.site === chosen) ? chosen : sites[0]?.site ?? ADDIS
+  // the gallery's page site (lib/siteFocus `psite`), first the Samples' first site; `hw.site` (a name) is the old key
+  const pick = usePageSite(sites, { legacy: ['hw.site'], prefer: useFirstSampleSite() ?? ADDIS_CODE })
+  const site = pick.site?.name ?? ADDIS
   const rows = useMemo(() => all.filter((r) => r.site === site), [all, site])
-  const control = <Select label="Site" value={site} options={sites.map((s) => s.site)} onChange={setSite}
-    optionLabel={(o) => `${o} · τ ${fmt(sites.find((s) => s.site === o)?.tau, 2)}`} />
+  const control = <SitePicker as="select" {...pick.picker} optionLabel={(c) => { const s = sites.find((x) => x.code === c); return s ? `${s.site} · τ ${fmt(s.tau, 2)}` : c }}
+    title="The gallery's page site (psite): the other one-site charts on this page follow it" />
   return { bundle, error, all, rows, site, control }
 }
 

@@ -49,6 +49,8 @@ const FIELDS: Record<string, string> = {
   'OC (TOR)': 'Organic carbon by thermal/optical reflectance on the IMPROVE quartz filter.',
   'PM2.5 mass': 'The filter\'s weighed PM2.5 mass per cubic metre of air.',
   'Sampled volume': 'Air drawn through the filter, m³ (SPARTAN about 7, IMPROVE about 33 a day).',
+  'HIPS optical depth': 'How dark the filter is to HIPS: Fabs × sampled volume ÷ 353 (the 3.53 cm² deposit). HIPS reads low as this rises.',
+  'HIPS expected under-read': 'The share of the absorption on the filter that HIPS is expected not to report: optical depth ÷ 2.26, the IMPROVE ceiling, in percent. Up to 20 % a linearised value is used, to 30 % with caution, beyond that for shape only.',
   'OP': 'TOR optically detected pyrolysis: char formed during analysis, subtracted from EC1 + EC2 + EC3.',
   'Alkane CH': 'FTIR functional group: aliphatic C-H bonds.',
   'Alcohol COH': 'FTIR functional group: alcohol C-OH.',
@@ -62,7 +64,7 @@ export function describeField(f: string): string {
   const i = f.indexOf(' / ')
   if (i > 0) return `${f}: ${f.slice(0, i)} divided by ${f.slice(i + 3)} on the same filter.`
   if (/\((ERA5|station)\)$/.test(f)) return `${f}: weather averaged over the filter's sampling window.`
-  if (/\(aethalometer\)$/.test(f)) return `${f}: the MA350 aethalometer's daily bins averaged over the filter's sampling window, weighted by overlap.`
+  if (/\(aethalometer\)$/.test(f)) return `${f}: the MA350 aethalometer's daily bins averaged over the filter's sampling window, weighted by overlap. The daily bins are the legacy 9 AM aggregates, whose match to each filter window is unverified (docs/matched-sample-audit-2026-09-10.md); Addis ran at a 55:45 flow split, not the 75:25 target.`
   if (/\(AERONET\)$/.test(f)) return `${f}: the sun photometer's retrievals averaged over the filter's sampling window (column, daylight and clear sky only).`
   if (/^(EC[123]|OC[1-4])$/.test(f)) return `${f}: a TOR thermal fraction (carbon evolved at one temperature step).`
   if (f.endsWith('(element)')) return `${f}: the element by XRF/ICP-MS, distinct from the ion of the same name.`

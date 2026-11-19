@@ -67,6 +67,10 @@ becomes the standard step before any use of HIPS, and whether its thresholds of 
 at 6 of the 12 sites that can be read. Unexplained: Santiago and Talca stay far more compressed after correcting, Addis
 (0.84) and Delhi (0.92) somewhat, and Johannesburg and Taipei are over-corrected. Account and limits: [hips-network-2026-11-11.md](hips-network-2026-11-11.md); gallery
 Meeting tab, Nov 11.
+On (4), 19 Nov: of five ways to apply the correction, only per filter removes the bend without a step; one factor per
+site moves the level and leaves each site's exponent unchanged, and a 20 % cut-off on filters puts a × 1.25 step in the
+response. "Sites where seen" (8 sites) is the conservative alternative. Account: [hips-linearise-rules-2026-11-19.md](hips-linearise-rules-2026-11-19.md);
+gallery Meeting tab, Nov 19, and side panel, Plot, HIPS, Apply to.
 
 ### Decide what the Addis offset finding changes (10 Nov 2026)
 

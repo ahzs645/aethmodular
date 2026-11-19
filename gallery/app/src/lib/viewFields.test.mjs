@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { hipsFactor, isPerFilter, parseRatios, ratioKey, ratiosParam, ratioUnit, viewRows, viewUnits } from './viewFields.ts'
+import { HIPS_TAU, HIPS_UNDER_READ, hipsFactor, hipsTau, isPerFilter, parseRatios, ratioKey, ratiosParam, ratioUnit, viewRows, viewUnits, withHipsLoading } from './viewFields.ts'
+import { baseUnit } from './theme.ts'
 import { sameUnits } from './axes.ts'
 
 const units = { 'EC (FTIR)': 'ug/m3', 'PM2.5 mass': 'µg/m³', 'HIPS Fabs': 'Mm-1', 'HIPS BC': 'ug/m3', 'BC (public HIPS)': 'µg/m³', 'Sampled volume': 'm³' }
@@ -98,4 +99,45 @@ test('HIPS linearised: units say so, and still match their own unit for the 1:1 
   const mass = viewUnits({ ...base, basis: 'mass', hipsCeiling: 2.2596 })
   assert.equal(mass['HIPS BC'], 'µg/filter, linearised')
   assert.ok(isPerFilter(mass['HIPS BC']) && isPerFilter(mass['EC (FTIR)']) && !isPerFilter(mass['HIPS Fabs']))
+})
+
+test('HIPS linearised at some sites: the others keep HIPS as measured, and the units say which sites', () => {
+  const ceiling = 2.2596, k = 1 / (1 - (30 * 7.2 / 353) / ceiling)
+  const dark = { ...row, id: 'D', code: 'DARK' }, light = { ...row, id: 'L', code: 'LITE' }
+  const o = { ...base, hipsCeiling: ceiling, hipsScope: 'seen', hipsSites: new Set(['DARK']) }
+  const [d, l] = viewRows([dark, light], o)
+  assert.ok(Math.abs(d['HIPS BC'] - 3 * k) < 1e-9)
+  // outside the scope: the same object, nothing dropped, even without a sampled volume
+  assert.equal(l, light)
+  const [noVolume] = viewRows([{ ...light, 'Sampled volume': null }], o)
+  assert.equal(noVolume['HIPS BC'], 3)
+  // the MAC still applies on both sides
+  const [dm, lm] = viewRows([dark, light], { ...o, mac: 15 })
+  assert.ok(Math.abs(dm['HIPS BC'] - (30 * k) / 15) < 1e-9)
+  assert.equal(lm['HIPS BC'], 2)
+  // no sites named: every site, as before
+  assert.ok(Math.abs(viewRows([light], { ...o, hipsSites: null })[0]['HIPS BC'] - 3 * k) < 1e-9)
+  const u = viewUnits({ ...o, ratios: [{ num: 'HIPS BC', den: 'EC (FTIR)' }] })
+  assert.equal(u['HIPS BC'], 'ug/m3, linearised where seen')
+  assert.equal(u['HIPS BC / EC (FTIR)'], 'ratio, HIPS linearised where seen')
+  assert.equal(baseUnit(u['HIPS BC']), 'ug/m3')
+  assert.ok(sameUnits(u['HIPS BC'], u['EC (FTIR)']))
+  assert.equal(viewUnits({ ...o, hipsScope: 'expected' })['HIPS Fabs'], 'Mm-1, linearised where expected')
+  assert.equal(viewUnits({ ...o, hipsScope: 'all' })['HIPS Fabs'], 'Mm-1, linearised')
+})
+
+test('HIPS loading: the optical depth and expected under-read of each filter with HIPS and a sampled volume', () => {
+  const tau = 30 * 7.2 / 353
+  assert.ok(Math.abs(hipsTau(row) - tau) < 1e-12)
+  const [r, noVolume, pub, negative] = withHipsLoading([row, { ...row, 'Sampled volume': null }, { id: 'B', 'BC (public HIPS)': 3, 'Sampled volume': 7.2 }, { ...row, 'HIPS Fabs': -1 }])
+  assert.ok(Math.abs(r[HIPS_TAU] - tau) < 1e-12)
+  assert.ok(Math.abs(r[HIPS_UNDER_READ] - 100 * tau / 2.2596) < 1e-9)
+  assert.equal(r['HIPS Fabs'], 30)
+  assert.equal(HIPS_TAU in noVolume, false)
+  assert.ok(Math.abs(pub[HIPS_TAU] - tau) < 1e-12)
+  assert.equal(HIPS_TAU in negative, false)
+  // the fields are read off the measured Fabs: the linearised view leaves them alone
+  const [lin] = viewRows([r], { ...base, hipsCeiling: 2.2596 })
+  assert.equal(lin[HIPS_TAU], r[HIPS_TAU])
+  assert.equal(lin[HIPS_UNDER_READ], r[HIPS_UNDER_READ])
 })

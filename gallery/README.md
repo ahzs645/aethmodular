@@ -456,6 +456,15 @@ menu, the ⌘K search and the Investigations cards of a local build. A public bu
 `app/src/experiments/index.ts`), and the menu lists them only while one is open. Set
 `VITE_SHOW_EXPERIMENTAL=1` to list them there too; a local build always lists them.
 
+### HIPS linearised: which sites, and the story page
+
+The Plot side panel's HIPS row linearises HIPS on every chart tab (`hips=<ceiling>`), and **Apply to** chooses the
+sites it covers (`hipsat=expected|seen`; absent, all sites). Every network row with a sampled volume also carries
+`HIPS optical depth` and `HIPS expected under-read` as fields (group "HIPS loading"). The Meeting page "Linearising
+HIPS across SPARTAN" (`meeting=hips-story`, `pages/HipsStoryPage.tsx`, `lib/hipsRules.ts`) compares five ways of
+applying the correction on the same filters. The site readings it uses are bundled as `src/lib/hipsSites.json`,
+written by `gallery/data/export_hips_linearise.py`. Account: `docs/hips-linearise-rules-2026-11-19.md`.
+
 ### Publishing
 
 `python3 gallery/share/publish_pages.py` publishes the public site

@@ -339,12 +339,21 @@
       ],
       "reason": "Regenerates the investigation-history catalog from the research notebooks and their git history (scripts/build-investigation-history.mjs --check); a gallery-only deploy checkout has neither."
     },
+    "src/lib/hipsRules.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/spartan_reference.json"
+      ],
+      "reason": "Recompute each SPARTAN site's exponent as measured and linearised, and what each rule of applying the linearisation does, from the public SPARTAN table."
+    },
     "src/lib/hipsLinearise.test.mjs": {
       "scope": "public",
       "inputs": [
-        "gallery/app/public/data/hips_linearise/linearise.json"
+        "gallery/app/public/data/hips_linearise/linearise.json",
+        "gallery/app/public/data/spartan_reference.json",
+        "gallery/app/public/data/meetings/hips-procedure-20261111.json"
       ],
-      "reason": "Recompute the closure workflow's saved Addis fits, season ratios and predicted exponent from the per-filter optical depths."
+      "reason": "Recompute the closure workflow's saved Addis fits, season ratios and predicted exponent from the per-filter optical depths, and the 11 Nov screen's per-site readings from the SPARTAN table."
     },
     "src/lib/claimDigits.test.mjs": {
       "scope": "public",

@@ -3,7 +3,7 @@
   "sections": {
     "instruments": {
       "label": "Instruments",
-      "public": "unlisted",
+      "public": true,
       "tabs": [
         "aethalometer"
       ],

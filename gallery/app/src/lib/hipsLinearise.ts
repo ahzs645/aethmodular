@@ -7,6 +7,7 @@
  * so the page can follow any ceiling the reader picks.
  */
 import { bisectRight, group } from 'd3'
+import SITE_READINGS from './hipsSites.json' with { type: 'json' }
 import { deming, median, medianSorted } from './stats.ts'
 
 /** deposit area of the 25 mm PTFE filter HIPS reads, cm² (hips_loading.DEPOSIT_AREA_CM2) */
@@ -27,6 +28,77 @@ export const CENTRAL_CEILING: number = IMPROVE_CEILINGS[0].tau_inf
 
 /** HIPS optical depth of a filter from Fabs (Mm⁻¹) and its sampled volume (m³): the laboratory's own HIPS τ */
 export const opticalDepth = (fabs: number, volume: number): number => (fabs * volume) / (100 * DEPOSIT_AREA_CM2)
+
+/** the share of the absorption on the filter HIPS does not report, τ/τ∞ (hips_loading.under_read): 0 to 1 */
+export const underRead = (tau: number, ceiling: number = CENTRAL_CEILING): number => Math.min(1, Math.max(0, tau / ceiling))
+
+/**
+ * The 11 Nov protocol's marks (hips_loading.py, docs/hips-loading-protocol.md), all on the expected under-read at
+ * the central ceiling: a filter is used linearised up to 20 %, with caution to 30 %, and for shape only beyond; the
+ * bend is expected at a site whose median filter under-reads by more than 10 %.
+ */
+export const USE_UP_TO = 0.20
+export const SHAPE_ONLY_FROM = 0.30
+export const EXPECTED_FROM = 0.10
+export const HIPS_STATUSES = ['use, linearised', 'caution', 'shape only'] as const
+export type HipsStatus = typeof HIPS_STATUSES[number]
+export const statusOf = (share: number): HipsStatus => (share <= USE_UP_TO ? 'use, linearised' : share <= SHAPE_ONLY_FROM ? 'caution' : 'shape only')
+
+/**
+ * Which sites the gallery's linearised view corrects (lib/viewFields, `hipsat` in a link):
+ *   all        every filter, each by its own factor (a light filter's factor is close to 1)
+ *   expected   the sites where the bend is expected: the median filter under-reads by more than 10 %
+ *   seen       the sites whose own filters show it as well ("expected and seen" in the 11 Nov screen)
+ * The other sites keep HIPS as measured.
+ */
+export const HIPS_SCOPES = [
+  { key: 'all', label: 'All sites', mark: '' },
+  { key: 'expected', label: 'Where expected', mark: ' where expected' },
+  { key: 'seen', label: 'Where seen', mark: ' where seen' },
+] as const
+export type HipsScope = typeof HIPS_SCOPES[number]['key']
+export const parseHipsScope = (v: string | null | undefined): HipsScope => (v === 'expected' || v === 'seen' ? v : 'all')
+
+/** a SPARTAN site as the 11 Nov screen read it (hips_loading.identify and check; hipsSites.json, written by gallery/data/export_hips_linearise.py) */
+export interface SiteReading {
+  code: string; site: string; filters: number; median_tau: number; expected_under_read: number; tested_filters: number
+  /** b in Fabs ∝ (FTIR EC)^b on the site's own filters, with its 95 % interval, and what the curve predicts; null where too few filters */
+  exponent: number | null; exponent_lo: number | null; exponent_hi: number | null; exponent_predicted: number | null
+  reading: string
+  /** the same exponent after linearising, and the check's verdict */
+  exponent_after: number | null; verdict: string | null
+}
+export const HIPS_SITE_READINGS: readonly SiteReading[] = SITE_READINGS.sites
+export const SEEN_READING = 'expected and seen'
+/** the SPARTAN sites whose own filters show the bend */
+export const SEEN_SITES: ReadonlySet<string> = new Set(HIPS_SITE_READINGS.filter((s) => s.reading === SEEN_READING).map((s) => s.code))
+const READING_OF = new Map(HIPS_SITE_READINGS.map((s) => [s.code, s]))
+export const siteReading = (code: string): SiteReading | undefined => READING_OF.get(code)
+
+export interface SiteExposure { code: string; n: number; medianTau: number; underRead: number; expected: boolean }
+
+/**
+ * How dark each site's filters are, from the filters themselves: the median optical depth and the under-read the
+ * curve expects of it at the central ceiling. `expected` is the protocol's rule (hips_loading.identify), so on the
+ * SPARTAN table it gives the sites the 11 Nov screen calls expected (hipsLinearise.test.mjs), and it reads an
+ * IMPROVE site, or a site added since, the same way.
+ */
+export function siteExposure(filters: Iterable<{ code: string; tau: number }>): Map<string, SiteExposure> {
+  const by = new Map<string, number[]>()
+  for (const f of filters) if (Number.isFinite(f.tau) && f.tau > 0) { const own = by.get(f.code); if (own) own.push(f.tau); else by.set(f.code, [f.tau]) }
+  const out = new Map<string, SiteExposure>()
+  for (const [code, taus] of by) {
+    const medianTau = median(taus), share = underRead(medianTau)
+    out.set(code, { code, n: taus.length, medianTau, underRead: share, expected: share > EXPECTED_FROM })
+  }
+  return out
+}
+
+/** the site codes a scope linearises, of the sites on file; null for every site */
+export function scopeSites(scope: HipsScope, exposure: ReadonlyMap<string, SiteExposure>): Set<string> | null {
+  if (scope === 'all') return null
+  return new Set([...exposure.values()].filter((s) => (scope === 'seen' ? SEEN_SITES.has(s.code) : s.expected)).map((s) => s.code))
+}
 
 interface LoadingSample { id: string; site: string; date: string; loading: number; tau: number }
 export type LoadingGroupSample = [site: string, date: string, previousLoading: number, loading: number, tau: number, id?: string]

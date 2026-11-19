@@ -236,8 +236,10 @@ STEPS: tuple[Step, ...] = (
          "IMPROVE HIPS at EC = 0, curvature, blank domain (ftir_26, ftir_37)", "research/improve_origin/",
          (drive("FTIR/local_db/tables/results_tor.csv"),)),
     Step("hips-linearise", "export", ("gallery/data/export_hips_linearise.py",),
-         "Linearising HIPS at Addis: per-filter optical depths and the 10 Nov closure summary (committed inputs only)",
-         "hips_linearise/", (repo("docs/addis-reference-closure-2026-11-10.json"),)),
+         "Linearising HIPS at Addis: per-filter optical depths and the 10 Nov closure summary, and each SPARTAN site's "
+         "reading from the 11 Nov screen for the linearised view (committed inputs only)",
+         "hips_linearise/, src/lib/hipsSites.json",
+         (repo("docs/addis-reference-closure-2026-11-10.json"), repo("docs/hips-network-2026-11-11.json"))),
     Step("hips-linearise-groups", "research", ("gallery/data/export_hips_linearise.py", "--improve-groups"),
          "IMPROVE sample members of the saved HIPS bend groups (local research data)", "research/hips_linearise_groups/",
          (repo("docs/addis-reference-closure-2026-11-10.json"), ftir_table("results_tor.csv"), ftir_table("results_hips.csv"))),
@@ -553,9 +555,9 @@ def private_sections() -> dict[str, dict]:
     return {k: s for k, s in json.loads(SECTIONS.read_text())["sections"].items() if not s.get("public")}
 
 
-def unlisted_sections() -> dict[str, dict]:
-    """Sections a public build compiles and publishes but leaves out of its menu (sections.json "unlisted")."""
-    return {k: s for k, s in json.loads(SECTIONS.read_text())["sections"].items() if s.get("public") == "unlisted"}
+def published_sections() -> dict[str, dict]:
+    """Flagged sections a public build compiles and publishes: listed ("public": true) or left out of the menu ("unlisted")."""
+    return {k: s for k, s in json.loads(SECTIONS.read_text())["sections"].items() if s.get("public")}
 
 
 def section_markers(sections: dict[str, dict] | None = None) -> dict[str, set[str]]:
@@ -574,10 +576,10 @@ def section_markers(sections: dict[str, dict] | None = None) -> dict[str, set[st
 
 def check_public(source_only: bool = False) -> int:
     """Build with VITE_PUBLIC_BUILD=1 and confirm no private section's data paths are in the bundle, then
-    confirm the publish packer leaves the private data folders out of the archive. An unlisted section
-    must be the other way round: its data paths in the bundle and its data in the archive."""
+    confirm the publish packer leaves the private data folders out of the archive. A published section
+    (listed or unlisted) must be the other way round: its data paths in the bundle and its data in the archive."""
     markers = section_markers()
-    shown = section_markers(unlisted_sections())
+    shown = section_markers(published_sections())
     problems = [f"section {k} has no data-path literals to check" for k, m in {**markers, **shown}.items() if not m]
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "site"
@@ -594,7 +596,7 @@ def check_public(source_only: bool = False) -> int:
             problems += [f"{key}: {m} is in the public bundle" for m in leaked]
         for key, ms in shown.items():
             missing = sorted(m for m in ms if m not in bundle)
-            print(f"unlisted section {key}: {len(ms)} data paths checked, {len(missing)} missing from the public bundle")
+            print(f"published section {key}: {len(ms)} data paths checked, {len(missing)} missing from the public bundle")
             problems += [f"{key}: {m} is not in the public bundle" for m in missing]
         if source_only:
             for p in problems:
@@ -613,11 +615,11 @@ def check_public(source_only: bool = False) -> int:
         leaked = [n for n in names if any(n == d or n.startswith(d + "/") for d in dirs)]
         print(f"publish archive: {len(names)} files, {len(leaked)} from private sections")
         problems += [f"archive carries {n}" for n in leaked[:10]]
-        for key, s in unlisted_sections().items():
+        for key, s in published_sections().items():
             n = sum(any(x.startswith(d.strip("/") + "/") for d in s.get("data", [])) for x in names)
-            print(f"publish archive: {n} files from unlisted section {key}")
+            print(f"publish archive: {n} files from published section {key}")
             if not n:
-                problems.append(f"archive carries no data for unlisted section {key}")
+                problems.append(f"archive carries no data for published section {key}")
     for p in problems:
         print("PROBLEM:", p)
     print("public build: OK" if not problems else "public build: NOT OK")

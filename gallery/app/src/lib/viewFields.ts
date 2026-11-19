@@ -14,10 +14,15 @@
  *   Fabs, HIPS BC and the public HIPS BC of each filter are multiplied by 1 / (1 − τ/τ∞), τ = Fabs × sampled volume
  *   ÷ 353. A filter without a sampled volume, or at or past the ceiling, has no linearised value and drops out of
  *   the HIPS fields rather than keep its measured one beside corrected filters. Units carry ", linearised".
+ *   The view can cover every site or only those the bend affects (lib/hipsLinearise HIPS_SCOPES): a site outside
+ *   keeps HIPS as measured, and the units then say which sites, ", linearised where seen".
+ * - HIPS loading: every filter with HIPS and a sampled volume carries its optical depth and the under-read the
+ *   IMPROVE curve expects of it, as fields of their own (withHipsLoading), so any chart can show, colour by or
+ *   band which filters the bend affects, whether or not the view corrects them.
  * - Ratios: numerator / denominator on the same filter, after the steps above.
  */
-import { correction, opticalDepth } from './hipsLinearise.ts'
-import { baseUnit, HIPS_LINEARISED_MARK, LINEARISED_MARK, prettyUnit } from './theme.ts'
+import { correction, HIPS_SCOPES, opticalDepth, underRead, type HipsScope } from './hipsLinearise.ts'
+import { baseUnit, HIPS_LINEARISED_MARK, LINEARISED_MARK, linearisedScope, prettyUnit } from './theme.ts'
 
 export interface RatioDef { num: string; den: string }
 export type Basis = 'conc' | 'mass'
@@ -31,6 +36,11 @@ const HIPS_FABS = 'HIPS Fabs'
 const PUBLIC_BC = 'BC (public HIPS)'
 /** the fields the linearised view changes */
 export const HIPS_VIEW_FIELDS: readonly string[] = [HIPS_FABS, HIPS_BC, PUBLIC_BC]
+/** how dark a filter is to HIPS, and the share of its absorption the IMPROVE curve expects HIPS not to report (withHipsLoading) */
+export const HIPS_TAU = 'HIPS optical depth'
+export const HIPS_UNDER_READ = 'HIPS expected under-read'
+export const HIPS_LOADING_GROUP = 'HIPS loading'
+export const HIPS_LOADING_UNITS: Record<string, string> = { [HIPS_TAU]: '', [HIPS_UNDER_READ]: '%' }
 
 export const ratioKey = (d: RatioDef) => `${d.num} / ${d.den}`
 
@@ -73,8 +83,8 @@ const tidy = prettyUnit
 export function ratioUnit(num: string | undefined, den: string | undefined): string {
   const a = tidy(baseUnit(num)), b = tidy(baseUnit(den))
   const unit = a === b ? 'ratio' : a && b ? `${a} per ${b}` : 'ratio'
-  // a ratio of a linearised HIPS field says so
-  return num !== baseUnit(num) || den !== baseUnit(den) ? unit + HIPS_LINEARISED_MARK : unit
+  // a ratio of a linearised HIPS field says so, and at which sites
+  return num !== baseUnit(num) || den !== baseUnit(den) ? unit + HIPS_LINEARISED_MARK + (linearisedScope(num) || linearisedScope(den)) : unit
 }
 
 /** µg on the filter (the mass-per-filter view), linearised or not */
@@ -90,13 +100,20 @@ export interface ViewOptions {
   ratios: RatioDef[]
   /** linearise HIPS with this ceiling τ∞ (lib/hipsLinearise); null or absent: HIPS as measured */
   hipsCeiling?: number | null
+  /** which sites that covers (lib/hipsLinearise HIPS_SCOPES): 'all' or absent, every site */
+  hipsScope?: HipsScope
+  /** the site codes it covers under that scope (hipsLinearise scopeSites); null or absent: every site */
+  hipsSites?: ReadonlySet<string> | null
 }
 
 /** field units after the view: concentrations become µg per filter, ratios get their own */
 export function viewUnits(o: ViewOptions): Record<string, string> {
   const out: Record<string, string> = { ...o.units }
   if (o.basis === 'mass') for (const [f, u] of Object.entries(o.units)) if (isConcentration(u)) out[f] = 'µg/filter'
-  if (o.hipsCeiling != null) for (const f of HIPS_VIEW_FIELDS) if (out[f]) out[f] += LINEARISED_MARK
+  if (o.hipsCeiling != null) {
+    const mark = LINEARISED_MARK + (HIPS_SCOPES.find((x) => x.key === (o.hipsScope ?? 'all'))?.mark ?? '')
+    for (const f of HIPS_VIEW_FIELDS) if (out[f]) out[f] += mark
+  }
   for (const d of o.ratios) out[ratioKey(d)] = ratioUnit(out[d.num], out[d.den])
   return out
 }
@@ -105,24 +122,47 @@ type Row = Record<string, unknown>
 import { isFiniteNumber as num } from './stats.ts'
 
 /**
+ * A filter's HIPS optical depth, τ = Fabs × sampled volume ÷ 353; the public BC is Fabs / exportMac, so it stands in
+ * for a missing Fabs. NaN when the filter has no HIPS or no sampled volume.
+ */
+export function hipsTau(r: Row, exportMac = 10): number {
+  const v = r[VOLUME]
+  const fabs = num(r[HIPS_FABS]) ? (r[HIPS_FABS] as number) : num(r[PUBLIC_BC]) ? (r[PUBLIC_BC] as number) * exportMac : null
+  return fabs !== null && num(v) && v > 0 ? opticalDepth(fabs, v) : NaN
+}
+
+/**
  * The factor that linearises one filter's HIPS at a ceiling: 1 / (1 − τ/τ∞) with τ from its Fabs and sampled volume.
  * NaN when the filter has no HIPS, no sampled volume, or sits at or past the ceiling.
  */
 export function hipsFactor(r: Row, ceiling: number, exportMac = 10): number {
-  const v = r[VOLUME]
-  const fabs = num(r[HIPS_FABS]) ? (r[HIPS_FABS] as number) : num(r[PUBLIC_BC]) ? (r[PUBLIC_BC] as number) * exportMac : null
-  return fabs !== null && num(v) && v > 0 ? correction(opticalDepth(fabs, v), ceiling) : NaN
+  const tau = hipsTau(r, exportMac)
+  return Number.isFinite(tau) ? correction(tau, ceiling) : NaN
+}
+
+/**
+ * The rows with each filter's HIPS loading as two fields: its optical depth, and the under-read expected of it at
+ * the central IMPROVE ceiling in percent (the protocol's statuses are marks on it: 20 % and 30 %). They are read off
+ * the measured Fabs, so they do not move with the linearised view. A filter with a negative Fabs has neither.
+ */
+export function withHipsLoading<R extends Row>(rows: R[], exportMac = 10): R[] {
+  return rows.map((r) => {
+    const tau = hipsTau(r, exportMac)
+    return Number.isFinite(tau) && tau > 0 ? { ...r, [HIPS_TAU]: tau, [HIPS_UNDER_READ]: 100 * underRead(tau) } : r
+  })
 }
 
 /** one row under the view; the same object when nothing changes */
 export function viewRow<R extends Row>(r: R, o: ViewOptions, concFields: string[]): R {
   const macChanged = o.mac !== o.exportMac
   const ceiling = o.hipsCeiling ?? null
-  if (!macChanged && o.basis === 'conc' && !o.ratios.length && ceiling === null) return r
+  // a site outside the view's scope keeps HIPS as measured
+  const linear = ceiling !== null && (o.hipsSites == null || o.hipsSites.has(r.code as string))
+  if (!macChanged && o.basis === 'conc' && !o.ratios.length && !linear) return r
   const out: Row = { ...r }
-  if (ceiling !== null) {
+  if (linear) {
     // the filter's own factor, from its own optical depth; the public BC is Fabs / exportMac, so it stands in for a missing Fabs
-    const k = hipsFactor(r, ceiling, o.exportMac)
+    const k = hipsFactor(r, ceiling!, o.exportMac)
     const ok = Number.isFinite(k)
     if (HIPS_FABS in r) out[HIPS_FABS] = ok && num(r[HIPS_FABS]) ? (r[HIPS_FABS] as number) * k : null
     if (HIPS_BC in r || HIPS_FABS in r) out[HIPS_BC] = ok && num(r[HIPS_FABS]) ? ((r[HIPS_FABS] as number) * k) / o.mac : null

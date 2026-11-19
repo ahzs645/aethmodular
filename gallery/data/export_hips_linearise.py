@@ -16,8 +16,11 @@ filter in the browser at whichever ceiling the reader picks, with the same formu
 All inputs are committed (the closeout, filters.json, the unified filter dataset, the closure summary); no
 Drive and no aethalometer data are needed.
 
-Writes gallery/app/public/data/hips_linearise/linearise.json. With --improve-groups, exports just the
-group members from the local TOR and HIPS tables, under the private research data folder.
+Writes gallery/app/public/data/hips_linearise/linearise.json, and gallery/app/src/lib/hipsSites.json: the
+11 Nov screen's reading of each SPARTAN site (docs/hips-network-2026-11-11.json, hips_loading.identify and
+check), which the gallery's linearised view uses to correct only the sites where the bend is seen
+(lib/viewFields). With --improve-groups, exports just the group members from the local TOR and HIPS
+tables, under the private research data folder.
 """
 
 from __future__ import annotations
@@ -41,6 +44,9 @@ import run_addis_reference_closure_20261110 as closure  # noqa: E402
 
 OUT = ROOT / "gallery/app/public/data/hips_linearise"
 GROUP_OUT = OUT.parent / "research/hips_linearise_groups"
+# the 11 Nov network screen's summary (run_hips_network_20261111.py) and the per-site readings the app bundles
+NETWORK_SUMMARY = ROOT / "docs/hips-network-2026-11-11.json"
+SITES_OUT = ROOT / "gallery/app/src/lib/hipsSites.json"
 # the ceilings the page offers: the central IMPROVE fit, both ends of its 90 % interval, and the later era
 ERA = "2015–2025"
 
@@ -89,6 +95,20 @@ def export_improve_groups(saved: list[dict]) -> None:
         for file in Path(staging).iterdir():
             file.replace(GROUP_OUT / file.name)
     print(f"wrote {len(strata)} IMPROVE groups with {strata['n'].sum():,} samples")
+
+
+def export_sites() -> int:
+    """Each SPARTAN site's reading from the 11 Nov screen: is the bend expected there, and do its own filters show it."""
+    summary = json.loads(NETWORK_SUMMARY.read_text())
+    checked = {r["code"]: r for r in summary["checked"]}
+    keep = ("code", "site", "filters", "median_tau", "expected_under_read", "tested_filters", "exponent", "exponent_lo", "exponent_hi",
+            "exponent_predicted", "reading")
+    sites = [{**{k: clean(r.get(k)) for k in keep}, "exponent_after": clean(checked.get(r["code"], {}).get("exponent_after")),
+              "verdict": checked.get(r["code"], {}).get("verdict")} for r in summary["identified"]]
+    payload = {"source": "docs/hips-network-2026-11-11.json (identified, checked); gallery/data/export_hips_linearise.py",
+               "ceiling": summary["ceiling"]["central"], "sites": sites}
+    SITES_OUT.write_text(json.dumps(payload, indent=1, ensure_ascii=False) + "\n")
+    return len(sites)
 
 
 def main() -> int:
@@ -143,6 +163,7 @@ def main() -> int:
     }
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "linearise.json").write_text(json.dumps(payload, separators=(",", ":"), ensure_ascii=False))
+    print(f"wrote {SITES_OUT}: {export_sites()} SPARTAN sites with a reading")
     with_ftir = int(filters["ftir"].notna().sum())
     print(f"wrote {OUT / 'linearise.json'}: {len(filters)} Addis filters ({with_ftir} with published FTIR EC), "
           f"{len(strata)} IMPROVE strata, {len(network)} network sites")

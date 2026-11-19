@@ -153,7 +153,7 @@ The Drive files the exporters read, relative to the root:
 | 25 | `research-spartan-improve` | export | SPARTAN vs IMPROVE from the notebooks' tracked tables<br>`gallery/data/export_research_spartan_improve.py` | `research/spartan_improve/` | — | — |
 | 26 | `research-improve-envelope` | export | The IMPROVE network in loading space (IMPROVE data-use condition applies)<br>`gallery/data/export_research_improve_envelope.py` | `research/improve_envelope/` | Drive: Improve/IMPROVE_chem-mass-fabs_2026-04-22.xlsx | — |
 | 27 | `research-improve-origin` | export | IMPROVE HIPS at EC = 0, curvature, blank domain (ftir_26, ftir_37)<br>`gallery/data/export_research_improve_origin.py` | `research/improve_origin/` | Drive: FTIR/local_db/tables/results_tor.csv | — |
-| 28 | `hips-linearise` | export | Linearising HIPS at Addis: per-filter optical depths and the 10 Nov closure summary (committed inputs only)<br>`gallery/data/export_hips_linearise.py` | `hips_linearise/` | docs/addis-reference-closure-2026-11-10.json | — |
+| 28 | `hips-linearise` | export | Linearising HIPS at Addis: per-filter optical depths and the 10 Nov closure summary, and each SPARTAN site's reading from the 11 Nov screen for the linearised view (committed inputs only)<br>`gallery/data/export_hips_linearise.py` | `hips_linearise/, src/lib/hipsSites.json` | docs/addis-reference-closure-2026-11-10.json<br>docs/hips-network-2026-11-11.json | — |
 | 29 | `hips-linearise-groups` | research | IMPROVE sample members of the saved HIPS bend groups (local research data)<br>`gallery/data/export_hips_linearise.py --improve-groups` | `research/hips_linearise_groups/` | docs/addis-reference-closure-2026-11-10.json<br>FTIR local database: tables/results_tor.csv<br>FTIR local database: tables/results_hips.csv | — |
 | 30 | `research-spectral` | export | The spectral and calibration diagnostics (1617 band, MAC choice, applicability, network map, …) (recomputes spartan_ec 08 where $AETHMODULAR_DRIVE_ROOT holds University/Research/Grad/Data/Davis Data)<br>`gallery/data/export_research_spectral.py` | `research/spectral/` | — | — |
 | 31 | `research-holdout-fabs` | export | Fabs of ftir_36/39's 40 locked holdout filters, rebuilt from the raw HIPS and checked against ftir_36's fits, so the Applicability page follows the MAC<br>`gallery/data/export_holdout_fabs.py` | `research/spectral/holdout_fabs.json` | Drive: DAVIS/SPARTAN HIPS pulls/spartan_hips_raw_all.csv<br>Drive: Spartan/SPARTAN_HIPS_Batch1-51.v2.csv<br>Drive: DAVIS/ETAD FTIR/ETAD_metadata.csv<br>Drive: DAVIS/SPARTAN FTIR pulls/INDH/INDH_filters.csv | research-spectral |
@@ -195,11 +195,11 @@ The Drive files the exporters read, relative to the root:
 ## 3. What the data folders hold, and the public flag
 
 `gallery/app/src/sections/sections.json` marks each **section** public, unlisted or private.
-Instruments is unlisted and Research is private:
+Instruments is public (listed since 18 Nov 2026; unlisted 27 Oct to 18 Nov) and Research is private:
 
 | Section | Tab | Data folder | Size (27 Oct 2026) |
 |---|---|---|---|
-| `instruments` (unlisted) | Aethalometer (Overview, Against the filters, Sources, Data quality, Diurnal) | `public/data/aethalometer/` | 9.4 MB (2.7 MB gzipped) |
+| `instruments` (public) | Aethalometer (Overview, Against the filters, Sources, Data quality, Diurnal) | `public/data/aethalometer/` | 9.4 MB (2.7 MB gzipped) |
 | `research` (private) | Research diagnostics (18 pages) | `public/data/research/` | 0.5 MB (0.1 MB gzipped) |
 
 AERONET (`public/data/aeronet/`, 5.9 MB) is public.
@@ -223,7 +223,8 @@ one is open. Its per-filter fields (the aethalometer's BCc and AAE columns) join
 field pickers only in a full build. Unlisted is not private: the data is in the public release.
 
 `aeth gallery check-public` proves it on the current tree. It builds with the flag, checks that
-none of a private section's data paths are in the bundle (and that every unlisted section's are),
+none of a private section's data paths are in the bundle (and that every published section's, listed
+or unlisted, are),
 and checks that the publish packer's archive carries none of a private section's files. To publish
 a section, set `"public": true` or `"unlisted"` and run the check.
 

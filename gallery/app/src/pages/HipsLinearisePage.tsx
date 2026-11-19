@@ -1,6 +1,7 @@
-import { useId, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { group as groupBy, rollup } from 'd3'
 import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
+import { AxisChoices, type AxisOption } from '@/components/AxisChoices'
 import { Segmented, Select } from '@/components/Controls'
 import { DrawerScroll, DrawerShell } from '@/components/DrawerShell'
 import { LoadState } from '@/components/ExportState'
@@ -11,7 +12,13 @@ import { IdentityLine, Marker, RefLine } from '@/components/RefLines'
 import { ScatterPlot, type ScatterPoint, type ScatterScales } from '@/components/ScatterPlot'
 import { ScrubField } from '@/components/ScrubField'
 import { StepButton } from '@/components/StepButton'
-import { useExport } from '@/lib/data'
+import { useChartGrouping } from '@/components/GroupingDialog'
+import { useExport, useLoaded } from '@/lib/data'
+import { loadSpartanIndex } from '@/lib/spartan'
+import { NETWORK_VIEWS, networkOfView, useFirstSampleSite, useGalleryNetwork, viewOfNetwork, type NetworkView } from '@/lib/gallerySamples'
+import { NO_BAND_COLOR } from '@/lib/groupings'
+import { ALL_SITES, SitePicker, usePageSite } from '@/lib/siteFocus'
+import type { FilterRow } from '@/lib/types'
 import { fmt, signed } from '@/lib/format'
 import { PinRing, useHighlightActions } from '@/lib/highlight'
 import { ExcludedNote, FixedSetNote, useExclusionSplit } from '@/lib/markedRows'
@@ -38,7 +45,20 @@ const HIPS_SERIES = ['measured', 'linearised'] as const
 const HIPS_VIEWS = ['both', ...HIPS_SERIES] as const
 const SITE_VIEWS = ['clear', 'all'] as const
 type BendSampleNetwork = 'IMPROVE' | 'SPARTAN'
-const BEND_NETWORKS = ['IMPROVE', 'SPARTAN', 'Both'] as const
+/** the bend's axes: x is a loading on the filter, y an optical quantity; (EC, τ) is the view the curves are drawn in */
+type BendX = 'ec' | 'pm' | 'fe'
+type BendY = 'tau' | 'fabs' | 'mac'
+const BEND_X: readonly BendX[] = ['ec', 'pm', 'fe']
+const BEND_Y: readonly BendY[] = ['tau', 'fabs', 'mac']
+const BEND_AXES: AxisOption[] = [
+  { key: 'ec', group: 'On the filter (µg)', label: 'EC on the filter (µg)', roles: ['x'], hint: 'IMPROVE: TOR · SPARTAN: FTIR' },
+  { key: 'pm', group: 'On the filter (µg)', label: 'PM2.5 on the filter (µg)', roles: ['x'], hint: 'SPARTAN only' },
+  { key: 'fe', group: 'On the filter (µg)', label: 'Iron on the filter (µg)', roles: ['x'], hint: 'SPARTAN only' },
+  { key: 'tau', group: 'HIPS', label: 'HIPS optical depth τ', roles: ['y'] },
+  { key: 'fabs', group: 'HIPS', label: 'HIPS Fabs (Mm⁻¹)', roles: ['y'], hint: 'SPARTAN only' },
+  { key: 'mac', group: 'HIPS', label: 'Fabs ÷ EC (m²/g)', roles: ['y'] },
+]
+const bendLabel = (k: string, network: NetworkView) => k === 'ec' && network !== 'Both' ? `${network === 'IMPROVE' ? 'TOR' : 'FTIR'} EC on the filter (µg)` : BEND_AXES.find((o) => o.key === k)?.label ?? k
 const SPARTAN_BEND_VIEWS = ['groups', 'filters'] as const
 const SPARTAN_BEND_COLOR = RESEARCH_SERIES[2]
 const SPARTAN_GROUP_PREFIX = 'spartan/'
@@ -127,8 +147,20 @@ export function CeilingOptions({ ceil }: { ceil: Ceil }) {
 export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   const [tauText, setTau] = useSearchParam<string>('hl.tau', '0.97')
   const [group, setGroup] = useSearchParam<string>('hl.group', 'none')
-  const [network, setNetwork] = useSearchParam<(typeof BEND_NETWORKS)[number]>('hl.bend.network', 'IMPROVE', BEND_NETWORKS)
-  const [site, setSite] = useSearchParam<string>('hl.bend.site', 'all')
+  // the network is the gallery's (lib/gallerySamples; the HIPS pages open on IMPROVE); `hl.bend.network` is the old key
+  const { network: galleryNetwork, setNetwork: setGalleryNetwork } = useGalleryNetwork()
+  const network = viewOfNetwork(galleryNetwork)
+  const setNetwork = (v: NetworkView) => setGalleryNetwork(networkOfView(v))
+  const [legacyNetwork, setLegacyNetwork] = useSearchParam<string>('hl.bend.network', '')
+  useEffect(() => {
+    if (!(NETWORK_VIEWS as readonly string[]).includes(legacyNetwork)) return
+    setGalleryNetwork(networkOfView(legacyNetwork as NetworkView))
+    setLegacyNetwork('')
+  }, [legacyNetwork]) // eslint-disable-line react-hooks/exhaustive-deps
+  const [xKey, setX] = useSearchParam<BendX>('hl.bend.x', 'ec', BEND_X)
+  const [yKey, setY] = useSearchParam<BendY>('hl.bend.y', 'tau', BEND_Y)
+  /** the view the IMPROVE curves, the construction and the loading groups are drawn in */
+  const canonical = xKey === 'ec' && yKey === 'tau'
   const [spartanView, setSpartanView] = useSearchParam<(typeof SPARTAN_BEND_VIEWS)[number]>('hl.bend.spartan', 'groups', SPARTAN_BEND_VIEWS)
   const [spartanGroup, setSpartanGroup] = useSearchParam<string>('hl.bend.group', 'none')
   const [sampleDrawer, setSampleDrawer] = useState<BendSampleNetwork | null>(null)
@@ -141,21 +173,40 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   const spartanRows = useMemo(() => (spartan?.rows ?? []).flatMap((row) => {
     const ec = row['EC (FTIR)'], fabs = row['HIPS Fabs'], volume = row['Sampled volume']
     if (!isFiniteNumber(ec) || !isFiniteNumber(fabs) || fabs <= 0 || !isFiniteNumber(volume) || volume <= 0) return []
-    return [{ row, fabs, volume, x: ec * volume, y: opticalDepth(fabs, volume) }]
+    const pm = row['PM2.5 mass'], fe = row['Iron']
+    // every quantity the axes offer, per filter (loadings in µg; Fabs ÷ EC in m²/g)
+    const values: Record<BendX | BendY, number> = { ec: ec * volume, pm: isFiniteNumber(pm) ? pm * volume : NaN, fe: isFiniteNumber(fe) ? fe * volume : NaN,
+      tau: opticalDepth(fabs, volume), fabs, mac: ec > 0 ? fabs / ec : NaN }
+    return [{ row, fabs, volume, values, x: values.ec, y: values.tau }]
   }), [spartan])
-  const sites = useMemo(() => new Map(spartanRows.map(({ row }) => [row.code, row.site])), [spartanRows])
-  const activeSite = sites.has(site) ? site : 'all'
+  // the site is the gallery's page site (lib/siteFocus `psite`), first the Samples' first site; `hl.bend.site` is the old key
+  const names = useSpartanNames()
+  const siteList = useMemo(() => [...new Map(spartanRows.map(({ row }) => [row.code, { code: row.code, name: names.get(row.code) ?? row.site }])).values()]
+    .sort((a, b) => a.name.localeCompare(b.name)), [spartanRows, names])
+  const firstSample = useFirstSampleSite()
+  const sitePick = usePageSite(siteList, { legacy: ['hl.bend.site'], prefer: firstSample ?? ALL_SITES, all: `All ${siteList.length} sites` })
+  const activeSite = sitePick.all ? 'all' : sitePick.code
   const siteRows = useMemo(() => spartanRows.filter(({ row }) => activeSite === 'all' || row.code === activeSite), [spartanRows, activeSite])
-  const spartanPoints = useMemo(() => siteRows
-    .map<ScatterPoint>(({ row, fabs, volume, x, y }) => ({
-      id: row.id, key: row.id, x, y, color: SPARTAN_BEND_COLOR, r: 3, opacity: 0.65,
-      tip: [row.id, `${row.site} · ${row.date}`, `FTIR EC ${fmt(x, 2)} µg`, `HIPS optical depth τ ${fmt(y, 3)}`],
-      rec: { id: row.id, site: row.site, date: row.date, source: 'The bend · SPARTAN', fields: [
-        ['FTIR EC loading (µg)', x], ['HIPS optical depth τ', y], ['Sampled volume (m³)', volume], ['HIPS Fabs (Mm⁻¹)', fabs],
+  // the reader's grouping (lib/groupings, `grp` in a link) colours the individual filters; URL `hl-bend.group`
+  const groupRows = useMemo(() => siteRows.map(({ row }) => row as unknown as FilterRow), [siteRows])
+  const { grp, picker: groupingPicker, missingNote } = useChartGrouping('hl-bend', groupRows, () => setSpartanView('filters'))
+  const spartanPoints = useMemo(() => siteRows.flatMap<ScatterPoint>(({ row, fabs, volume, values }) => {
+    const x = values[xKey], y = values[yKey]
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return []
+    const band = grp?.labelOf(row as unknown as FilterRow) ?? null
+    const site = names.get(row.code) ?? row.site
+    return [{
+      id: row.id, key: row.id, x, y, color: grp ? (band ? grp.colorOf(band) : NO_BAND_COLOR) : SPARTAN_BEND_COLOR, r: 3, opacity: 0.65,
+      tip: [row.id, `${site} · ${row.date}`, `${bendLabel(xKey, 'SPARTAN')} ${fmt(x, 2)}`, `${bendLabel(yKey, 'SPARTAN')} ${fmt(y, 3)}`, ...(grp ? [`${grp.labels.length ? band ?? 'No data' : ''}`] : [])],
+      rec: { id: row.id, site, date: row.date, source: 'The bend · SPARTAN', fields: [
+        ['FTIR EC loading (µg)', values.ec], ['HIPS optical depth τ', values.tau], ['Sampled volume (m³)', volume], ['HIPS Fabs (Mm⁻¹)', fabs],
+        ['PM2.5 loading (µg)', values.pm], ['Iron loading (µg)', values.fe], ['Fabs ÷ EC (m²/g)', values.mac],
       ] },
-    })), [siteRows])
+    }]
+  }), [siteRows, xKey, yKey, grp, names])
   const { counted, nOut } = useExclusionSplit(siteRows, ({ row }) => row.id)
-  const showSpartanGroups = spartanView === 'groups' && !!data.loading_edges_ug?.length
+  // the loading groups bin by EC loading and take median τ: drawn only in the (EC, τ) view, and not under a grouping
+  const showSpartanGroups = spartanView === 'groups' && !!data.loading_edges_ug?.length && canonical && !grp
   const spartanGroups = useMemo(() => {
     if (!showSpartanGroups || !data.loading_edges_ug) return []
     return previousLoadingGroups(counted.map(({ row, x, y }) => ({ id: row.id, site: row.code, date: row.date, loading: x, tau: y })), data.loading_edges_ug).map((bin) => {
@@ -191,18 +242,21 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   const points = useMemo(() => data.strata.map((s, i) => {
     const details = [`TOR EC ${fmt(s.loading_ug, 1)} µg`, `optical depth τ ${fmt(s.tau, 3)}`, `Fabs ÷ EC ${fmt(s.fabs_over_ec, 1)} m²/g`, `${s.n.toLocaleString()} samples`]
     return {
-      key: String(i + 1), x: s.loading_ug, y: s.tau, n: s.n, color: INK.muted, r: 3 + Math.sqrt(s.n) / 40, opacity: 0.85,
+      key: String(i + 1), x: s.loading_ug, y: yKey === 'mac' ? s.fabs_over_ec : s.tau, n: s.n, color: INK.muted, r: 3 + Math.sqrt(s.n) / 40, opacity: 0.85,
       details, tip: ['IMPROVE group median', ...details, HAS_IMPROVE_GROUPS ? 'Click to view the samples in this group' : 'Click to select or clear this group'],
     }
-  }), [data.strata])
-  const selected = points.find((p) => p.key === group)
+  }), [data.strata, yKey])
+  /** IMPROVE's groups carry TOR EC loading, τ and Fabs ÷ EC only */
+  const improveHasAxes = xKey === 'ec' && yKey !== 'fabs'
+  const selected = improveHasAxes ? points.find((p) => p.key === group) : undefined
   const pickGroup = (key: string) => {
     setGroup(key)
     setSampleDrawer(HAS_IMPROVE_GROUPS && key !== 'none' ? 'IMPROVE' : null)
   }
   const spartanMarks = showSpartanGroups ? spartanGroups : spartanPoints
-  const plotPoints = useMemo(() => bothNetworks ? [...points, ...spartanMarks] : showImprove ? points : spartanMarks,
-    [bothNetworks, showImprove, points, spartanMarks])
+  const improveMarks = improveHasAxes ? points : []
+  const plotPoints = useMemo(() => bothNetworks ? [...improveMarks, ...spartanMarks] : showImprove ? improveMarks : spartanMarks,
+    [bothNetworks, showImprove, improveMarks, spartanMarks])
   const pickPoint = ({ key, rec }: ScatterPoint) => {
     if (rec) { closeSamples(); openRecord(rec); return }
     if (!key) return
@@ -210,6 +264,7 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
     else pickGroup(!HAS_IMPROVE_GROUPS && key === group ? 'none' : key)
   }
   const under = ({ x, y, iw, ih }: ScatterScales) => {
+    if (!canonical) return null
     if (!showImprove) return <Marker orient="h" at={y(c)} from={0} to={iw} color={MEASURED} label={`IMPROVE ceiling τ∞ = ${fmt(c, 2)}`} />
     const maxLoading = x.domain()[1]
     const xs = range(0, maxLoading, 0.5)
@@ -225,7 +280,7 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
     </g>
   }
   const construction = ({ x, y, iw }: ScatterScales) => {
-    if (!Number.isFinite(tl)) return null
+    if (!Number.isFinite(tl) || !canonical) return null
     const onChart = x(L) < iw - 4
     // labels go left of the construction when it sits in the right part of the plot (a phone, a high ceiling)
     const flip = x(L) > iw - 110
@@ -247,34 +302,41 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
     ? `SPARTAN groups use the IMPROVE loading bins and FTIR EC from the previous eligible date at that site, within ${SPARTAN_LOADING_MAX_GAP_DAYS} days. If several filters share that date, their median sets the bin. Click a square to see its filters by site.`
     : 'Each SPARTAN dot is an individual filter. FTIR EC loading is the reported concentration multiplied by sampled volume. Click a dot to open its filter record.'
   return (
-    <ChartFrame id="hl-bend" title={network === 'IMPROVE' ? 'The bend — HIPS optical depth against thermal EC on the filter, IMPROVE 2005–2025'
+    <ChartFrame id="hl-bend" title={!canonical ? `The bend, other axes — ${bendLabel(yKey, network)} against ${bendLabel(xKey, network)}, ${network === 'Both' ? 'IMPROVE and SPARTAN' : network}`
+      : network === 'IMPROVE' ? 'The bend — HIPS optical depth against thermal EC on the filter, IMPROVE 2005–2025'
       : bothNetworks ? 'The bend — HIPS optical depth against EC on the filter, IMPROVE and SPARTAN'
       : 'The bend — HIPS optical depth against FTIR EC on the filter, SPARTAN'}
-      subtitle={bothNetworks
+      subtitle={!canonical
+        ? `The IMPROVE curves and the τ construction are drawn on EC against optical depth only. IMPROVE's groups carry TOR EC loading, τ and Fabs ÷ EC, so they show on EC against τ or Fabs ÷ EC; PM2.5, iron and Fabs are SPARTAN's (each filter's concentration × its sampled volume). Click an axis title to change it.${showSpartan ? ` ${spartanDescription}` : ''}`
+        : bothNetworks
         ? `The grey dots and reference curves come from IMPROVE thermal EC (TOR). SPARTAN is overlaid at its FTIR-derived EC loading for visual comparison. ${spartanDescription}`
         : showSpartan ? `${spartanDescription} Optical depth uses measured HIPS Fabs and sampled volume. The dashed line marks the IMPROVE optical-depth ceiling.`
         : `Each grey dot is the median of one IMPROVE group, binned by the previous sample’s TOR EC loading at the same site (${primary.samples.toLocaleString()} samples at ${primary.sites} sites in the parent population). Dot size shows group sample count.${HAS_IMPROVE_GROUPS ? ' Click a dot to see its samples.' : ''} The dashed blue line shows a proportional response with a = ${fmt(a, 4)} µg⁻¹ (${fmt(primary.unsaturated_fabs_over_ec, 1)} m²/g on light filters). The orange curve shows the fitted saturating response. Move the measured τ to trace the conversion to linearised τ.`}
       provenance={<>{showImprove && PROVENANCE}{showSpartan && <> <code>spartan_reference.json</code> · paired FTIR EC, HIPS Fabs and sampled volume by filter ID.</>}</>}
       controls={<>
-        <Segmented label="Network" value={network} options={BEND_NETWORKS} onChange={(value) => { setNetwork(value); closeSamples() }} />
-        {showSpartan && sites.size > 0 && <>
-          <Select label="SPARTAN site" value={activeSite} options={['all', ...sites.keys()]}
-            onChange={(value) => { setSite(value); closeSamples() }} optionLabel={(code) => sites.get(code) ?? `All ${sites.size} sites`} />
-          {!!data.loading_edges_ug?.length && <Segmented label="SPARTAN view" value={spartanView} options={SPARTAN_BEND_VIEWS}
+        <Segmented label="Network" value={network} options={NETWORK_VIEWS} onChange={(value) => { setNetwork(value); closeSamples() }}
+          title="The gallery's network (Samples): on this page it stays with the page" />
+        {showSpartan && siteList.length > 0 && <>
+          <SitePicker label="SPARTAN site" as="select" {...sitePick.picker} onChange={(value) => { sitePick.set(value); closeSamples() }}
+            title="The gallery's page site (psite): the other one-site charts on this page follow it" />
+          {groupingPicker}
+          {!!data.loading_edges_ug?.length && canonical && !grp && <Segmented label="SPARTAN view" value={spartanView} options={SPARTAN_BEND_VIEWS}
             optionLabel={(value) => value === 'groups' ? 'Group medians' : 'Individual filters'} onChange={(value) => { setSpartanView(value); closeSamples() }} />}
           {showSpartanGroups && <Select label="SPARTAN group" value={selectedSpartan?.binKey ?? 'none'}
             options={['none', ...spartanGroups.map((p) => p.binKey)]} onChange={pickSpartanGroup}
             optionLabel={(key) => { const g = spartanGroups.find((p) => p.binKey === key)?.bin; return g ? loadingRange(g) : 'None' }} />}
         </>}
-        {showImprove && <>
+        {showImprove && canonical && <>
           <span className="control" title="The measured HIPS optical depth the construction follows: drag sideways across the Addis range or click to type">Measured τ <ScrubField label="Measured τ" value={t} min={0.05} max={+hi.toFixed(2)} step={0.01} width={96} format={(v) => fmt(v, 2)} onChange={(v) => setTau(String(+v.toFixed(2)))} /></span>
           <Select label="IMPROVE group" value={selected?.key ?? 'none'} options={['none', ...points.map((p) => p.key)]} onChange={pickGroup}
             optionLabel={(key) => points.find((p) => p.key === key)?.details[0] ?? 'None'} />
         </>}
       </>}>
       {plotPoints.length > 0 && <>
-        <ScatterPlot points={plotPoints} xLabel={bothNetworks ? 'EC on the filter (µg)' : `${showImprove ? 'TOR' : 'FTIR'} EC on the filter (µg)`}
-          yLabel="HIPS optical depth τ" xDomain={showSpartan ? spartanDomain : [0, 90]} yDomain={[0, 3.4]} nice={false}
+        <AxisChoices options={BEND_AXES} x={[xKey, (v) => setX(v as BendX)]} y={[yKey, (v) => setY(v as BendY)]} noun="quantities">
+        <ScatterPlot points={plotPoints} xLabel={bendLabel(xKey, network)} yLabel={bendLabel(yKey, network)} pick swap="hl-bend"
+          {...(canonical ? { xDomain: showSpartan ? spartanDomain : [0, 90] as [number, number], yDomain: [0, 3.4] as [number, number], nice: false }
+            : { xInclude: [0], yInclude: [0], xClip: [0, 0.995] as [number, number], yClip: [0, 0.995] as [number, number] })}
           maxSide={SIDE} outside={showSpartan ? 'pin' : 'clip'} note={showSpartan && !showSpartanGroups ? 'mark' : false} under={under} onPick={pickPoint}>
           {(scales) => <>
             {showImprove && construction(scales)}
@@ -282,14 +344,19 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
             {showSpartan && selectedSpartan && <PinRing cx={scales.x(selectedSpartan.x)} cy={scales.y(selectedSpartan.y)} r={selectedSpartan.r} />}
           </>}
         </ScatterPlot>
+        </AxisChoices>
         <Key items={[
-          ...(showImprove ? [{ label: 'IMPROVE group medians (TOR EC)', color: INK.muted, kind: 'dot' as const },
-            { label: 'IMPROVE proportional response', color: LINEAR, kind: 'dash' as const },
+          ...(showImprove && improveHasAxes ? [{ label: 'IMPROVE group medians (TOR EC)', color: INK.muted, kind: 'dot' as const }] : []),
+          ...(showImprove && canonical ? [{ label: 'IMPROVE proportional response', color: LINEAR, kind: 'dash' as const },
             { label: 'IMPROVE saturating fit', color: MEASURED, kind: 'line' as const },
             { label: 'Addis τ range', color: MEASURED, kind: 'faded' as const }] : []),
-          ...(showSpartan && spartanMarks.length ? [{ label: spartanLabel, color: SPARTAN_BEND_COLOR, kind: showSpartanGroups ? 'square' as const : 'dot' as const }] : []),
+          ...(showSpartan && spartanMarks.length && !grp ? [{ label: spartanLabel, color: SPARTAN_BEND_COLOR, kind: showSpartanGroups ? 'square' as const : 'dot' as const }] : []),
+          ...(showSpartan && grp ? [...grp.labels.map((label) => ({ label: `SPARTAN · ${label}`, color: grp.colorOf(label), kind: 'dot' as const })),
+            { label: 'SPARTAN · no data', color: NO_BAND_COLOR, kind: 'dot' as const }] : []),
         ]} />
+        {showSpartan && missingNote('drawn in grey')}
       </>}
+      {showImprove && !improveHasAxes && !showSpartan && <Empty>IMPROVE's groups carry TOR EC loading, optical depth and Fabs ÷ EC only. Choose SPARTAN or Both for PM2.5, iron or Fabs, or click an axis title to go back.</Empty>}
       {showSpartan && (!spartan ? <LoadState what="SPARTAN filter measurements" error={spartanError} /> : spartanMarks.length === 0 && <Empty>{showSpartanGroups
         ? 'No eligible SPARTAN sample pairs at this site. Choose Individual filters to see its measurements.'
         : 'No paired SPARTAN FTIR EC, HIPS Fabs and sampled volume measurements.'}</Empty>)}
@@ -310,13 +377,13 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
           <button type="button" className="btn" onClick={() => setSampleDrawer('IMPROVE')}>{bothNetworks ? 'View IMPROVE group samples' : 'View group samples'}</button>
           {sampleDrawer === 'IMPROVE' && <ImproveGroupDrawer key={selected.key} group={selected} onClose={closeSamples} />}
         </>}
-        <Readouts items={[
+        {canonical && <><Readouts items={[
           { label: 'Measured τ', value: fmt(t, 2), color: MEASURED },
           { label: 'Linearised τ', value: Number.isFinite(tl) ? fmt(tl, 2) : '—', color: LINEAR },
           { label: 'Correction ×', value: Number.isFinite(tl) ? fmt(tl / t, 2) : '—' },
           { label: 'Noise amplified ×', value: Number.isFinite(tl) ? fmt(noiseGain(t, c), 1) : '—', sub: '1 / (1 − τ/τ∞)²' },
         ]} />
-        <Note>Set the ceiling under Page options. The noise factor is the slope of the inverse, 1 / (1 − τ/τ∞)². At 70 % of the ceiling it is about 11.</Note>
+        <Note>Set the ceiling under Page options. The noise factor is the slope of the inverse, 1 / (1 − τ/τ∞)². At 70 % of the ceiling it is about 11.</Note></>}
       </>}
     </ChartFrame>
   )
@@ -499,52 +566,131 @@ export function CorrectionCurve({ data, ceil }: { data: Linearise; ceil: Ceil })
 }
 
 // ------------------------------------------------------------------ 4. FTIR EC against HIPS
+type HipsY = 'ftir' | 'pm25'
+const HIPS_Y: readonly HipsY[] = ['ftir', 'pm25']
+const HIPS_Y_AXES: AxisOption[] = [
+  { key: 'ftir', group: 'On the y axis', label: 'FTIR EC (µg/m³)', roles: ['y'], hint: 'SPARTAN published' },
+  { key: 'pm25', group: 'On the y axis', label: 'PM2.5 mass (µg/m³)', roles: ['y'] },
+]
+const ADDIS_CODE = 'ETAD'
+/** a site needs this many filters with FTIR EC, HIPS Fabs and a sampled volume to be offered */
+const MIN_SITE_FILTERS = 20
+
+/** SPARTAN site names by code (the network index): spartan_reference.json names only the four focus sites */
+function useSpartanNames() {
+  const { data: index } = useLoaded('spartan-index', loadSpartanIndex)
+  return useMemo(() => new Map((index?.sites ?? []).map((s) => [s.code, s.name])), [index])
+}
+
+/** the filters "Stretch the HIPS axis" draws at a site: Addis is the closure workflow's set; any other site is rebuilt from the public SPARTAN rows */
+function useHipsSiteFilters(data: Linearise) {
+  const { data: spartan } = useExport<SpartanReference>('spartan_reference.json')
+  const bySite = useMemo(() => {
+    const out = new Map<string, { name: string; filters: LinFilter[] }>()
+    for (const row of spartan?.rows ?? []) {
+      const ec = row['EC (FTIR)'], fabs = row['HIPS Fabs'], volume = row['Sampled volume'], pm = row['PM2.5 mass']
+      if (!isFiniteNumber(ec) || !isFiniteNumber(fabs) || fabs <= 0 || !isFiniteNumber(volume) || volume <= 0) continue
+      const site = out.get(row.code) ?? { name: row.site, filters: [] }
+      site.filters.push({ id: row.id, season: '', lot: null, tau: opticalDepth(fabs, volume), volume_m3: volume, volume_known: true,
+        hips_bc: fabs / data.mac, ftir: ec, pm25: isFiniteNumber(pm) ? pm : null })
+      out.set(row.code, site)
+    }
+    return out
+  }, [spartan, data.mac])
+  const refById = useMemo(() => new Map((spartan?.rows ?? []).map((r) => [r.id, r])), [spartan])
+  const names = useSpartanNames()
+  const sites = useMemo(() => {
+    const list = [...bySite].filter(([code, s]) => code === ADDIS_CODE || s.filters.length >= MIN_SITE_FILTERS)
+      .map(([code, s]) => ({ code, name: names.get(code) ?? s.name, n: code === ADDIS_CODE ? data.filters.filter((f) => f.ftir != null).length : s.filters.length }))
+    if (!list.some((s) => s.code === ADDIS_CODE)) list.push({ code: ADDIS_CODE, name: 'Addis Ababa', n: data.filters.filter((f) => f.ftir != null).length })
+    return list.sort((a, b) => a.name.localeCompare(b.name))
+  }, [bySite, data.filters, names])
+  return { bySite, refById, sites, loaded: !!spartan }
+}
+
 export function AgainstHips({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   const [view, setView] = useSearchParam<(typeof HIPS_VIEWS)[number]>('hl.hips', 'both', HIPS_VIEWS)
+  const [yKey, setY] = useSearchParam<HipsY>('hl.hips.y', 'ftir', HIPS_Y)
   const c = ceil.ceiling
+  // the site is the gallery's page site (psite), first the Samples' first site; Addis keeps the closure workflow's filters and λ
+  const { bySite, refById, sites } = useHipsSiteFilters(data)
+  const sitePick = usePageSite(sites, { prefer: useFirstSampleSite() ?? ADDIS_CODE })
+  const code = sitePick.code || ADDIS_CODE
+  const addis = code === ADDIS_CODE
+  const siteName = sites.find((s) => s.code === code)?.name ?? 'Addis Ababa'
+  const siteFilters = useMemo(() => (addis ? data.filters : bySite.get(code)?.filters ?? []), [addis, data.filters, bySite, code])
+  // another site's filters follow Filters → excluded; the Addis set is the workflow's own
+  const { counted, nOut } = useExclusionSplit(addis ? [] : siteFilters, (f) => f.id)
+  const filters = addis ? siteFilters : counted
+  /** the Addis Deming λ is the closure workflow's (FTIR EC on HIPS); every other site and PM2.5 use λ = 1 */
+  const lambda = addis && yKey === 'ftir' ? data.lambda : 1
+  // the y the fit and the points read: FTIR EC or PM2.5 (fitAgainstHips reads `ftir`)
+  const yFilters = useMemo(() => filters.map((f) => (yKey === 'ftir' ? f : { ...f, ftir: f.pm25 })), [filters, yKey])
+  const yLabel = HIPS_Y_AXES.find((o) => o.key === yKey)!.label
+  const yName = yKey === 'ftir' ? 'FTIR EC' : 'PM2.5'
+  const groupRows = useMemo(() => yFilters.flatMap((f) => { const r = refById.get(f.id); return r ? [r as unknown as FilterRow] : [] }), [yFilters, refById])
+  const { grp, picker: groupingPicker, missingNote } = useChartGrouping('hl-against-hips', groupRows)
   const series = useMemo(() => HIPS_SERIES.filter((s) => view === 'both' || view === s).map((key) => {
     const lin = key === 'linearised'
     return { key, lin, label: lin ? 'Linearised' : 'As measured', color: lin ? LINEAR : MEASURED,
-      fit: fitAgainstHips(data.filters, data.lambda, lin ? c : null) }
-  }), [data.filters, data.lambda, c, view])
-  const shown = useMemo(() => data.filters.filter((f) => f.ftir != null), [data])
+      fit: fitAgainstHips(yFilters, lambda, lin ? c : null) }
+  }), [yFilters, lambda, c, view])
+  const shown = useMemo(() => yFilters.filter((f) => f.ftir != null), [yFilters])
   const points = useMemo<ScatterPoint[]>(() => series.flatMap(({ key, lin, label, color }) => shown.flatMap((f) => {
     const xl = linearBc(f, c), x = lin ? xl : f.hips_bc
-    return Number.isFinite(x) ? [{ id: f.id, key: `${f.id}/${key}`, x, y: f.ftir!, color, hollow: lin,
-      tip: [`${f.id} · ${label}`, `${f.season}${f.lot ? ` · lot ${f.lot}` : ''}`, `FTIR EC ${fmt(f.ftir, 2)} µg/m³`,
-        `HIPS BC ${fmt(f.hips_bc, 2)} → linearised ${fmt(xl, 2)} µg/m³`, `τ ${fmt(f.tau, 2)}`] }] : []
-  })), [shown, c, series])
-  const domain = useMemo<[number, number]>(() => [0, Math.max(24, Math.ceil(Math.max(...points.map(({ x, y }) => Math.max(x, y))) / 6) * 6)], [points])
-  const top = useMemo(() => 1.08 * Math.max(...shown.map((f) => f.ftir!)), [shown])
+    const ref = refById.get(f.id)
+    const band = grp && ref ? grp.labelOf(ref as unknown as FilterRow) : null
+    return Number.isFinite(x) ? [{ id: f.id, key: `${f.id}/${key}`, x, y: f.ftir!, color: grp ? (band ? grp.colorOf(band) : NO_BAND_COLOR) : color, hollow: lin,
+      tip: [`${f.id} · ${label}`, addis ? `${f.season}${f.lot ? ` · lot ${f.lot}` : ''}` : `${siteName}${ref ? ` · ${ref.date}` : ''}`, `${yName} ${fmt(f.ftir, 2)} µg/m³`,
+        `HIPS BC ${fmt(f.hips_bc, 2)} → linearised ${fmt(xl, 2)} µg/m³`, `τ ${fmt(f.tau, 2)}`, ...(grp ? [band ?? 'No data'] : [])] }] : []
+  })), [shown, c, series, grp, refById, addis, siteName, yName])
+  // FTIR EC against HIPS BC is one quantity twice: one square range with the 1:1 line (Addis keeps its 24 µg/m³).
+  // PM2.5 is not, so each axis takes its own range.
+  const span = (top: number, floor: number): [number, number] => { const step = top > 12 ? 6 : 2; return [0, Math.max(floor, Math.ceil(top / step) * step)] }
+  const domain = useMemo<[number, number]>(() => span(Math.max(0, ...points.map(({ x, y }) => (yKey === 'ftir' ? Math.max(x, y) : x))), addis && yKey === 'ftir' ? 24 : 2), [points, addis, yKey])
+  const yDomain = useMemo<[number, number]>(() => (yKey === 'ftir' ? domain : span(Math.max(0, ...points.map(({ y }) => y)), 2)), [points, yKey, domain])
+  const top = useMemo(() => 1.08 * Math.max(0, ...shown.map((f) => f.ftir!)), [shown])
   const band = useMemo(() => data.ceilings.filter(({ key }) => key === 'lo' || key === 'hi')
-    .map(({ tau_inf }) => fitAgainstHips(data.filters, data.lambda, tau_inf)), [data.ceilings, data.filters, data.lambda])
+    .map(({ tau_inf }) => fitAgainstHips(yFilters, lambda, tau_inf)), [data.ceilings, yFilters, lambda])
   const children = ({ x, y }: ScatterScales) => series.map(({ key, fit, lin, color }) => {
     if (!fit || fit.slope <= 0) return null
     const x0 = Math.max(domain[0], -fit.intercept / fit.slope)
-    const x1 = Math.min(domain[1], (Math.min(domain[1], top) - fit.intercept) / fit.slope)
+    const x1 = Math.min(domain[1], (Math.min(yDomain[1], top) - fit.intercept) / fit.slope)
     if (x1 < x0) return null
     return <g key={key} pointerEvents="none">
       <line x1={x(x0)} y1={y(fit.slope * x0 + fit.intercept)} x2={x(x1)} y2={y(fit.slope * x1 + fit.intercept)} stroke={color} strokeWidth={2} strokeDasharray={lin ? '5 3' : undefined} />
       <circle cx={x(x0)} cy={y(fit.slope * x0 + fit.intercept)} r={5} fill="none" stroke={color} strokeWidth={2} />
     </g>
   })
+  const story = addis && yKey === 'ftir'
   return (
-    <ChartFrame id="hl-against-hips" title="Stretch the HIPS axis back out and the negative intercept disappears — SPARTAN published FTIR EC against HIPS BC, Addis Ababa"
-      subtitle={`The ${shown.length} Addis filters keep the same FTIR EC on the y-axis. In Both, each filter appears at its measured and linearised HIPS BC where available. The Deming fits use λ = ${data.lambda}, with linearisation at the page’s selected ceiling.`}
-      provenance={PROVENANCE}
-      controls={<Segmented label="HIPS" value={view} options={HIPS_VIEWS} onChange={setView} optionLabel={(o) => o === 'measured' ? 'As measured' : o === 'linearised' ? 'Linearised' : 'Both'} />}>
-      <ScatterPlot points={points} xLabel="HIPS BC (µg/m³)" yLabel="FTIR EC (µg/m³)"
-        xDomain={domain} yDomain={domain} nice={false} maxSide={SIDE} outside="pin" note={false}
-        under={({ x, y }) => <><RefLine orient="h" at={y(0)} from={x(0)} to={x(domain[1])} />
-          <IdentityLine x1={x(0)} y1={y(0)} x2={x(domain[1])} y2={y(domain[1])} /></>}>{children}</ScatterPlot>
+    <ChartFrame id="hl-against-hips" title={story ? 'Stretch the HIPS axis back out and the negative intercept disappears — SPARTAN published FTIR EC against HIPS BC, Addis Ababa'
+      : `Stretch the HIPS axis back out — ${yKey === 'ftir' ? 'SPARTAN published FTIR EC' : 'PM2.5 mass'} against HIPS BC, ${siteName}`}
+      subtitle={`The ${shown.length} ${siteName.split(',')[0]} filters keep the same ${yName} on the y-axis. In Both, each filter appears at its measured and linearised HIPS BC where available. The Deming fits use λ = ${lambda}${lambda === 1 && addis ? ' (the closure λ is for FTIR EC)' : lambda === 1 ? ' (the closure λ was set for Addis, so it is not reused here)' : ''}, with linearisation at the page’s selected ceiling.${addis ? '' : ` HIPS BC is the public Fabs ÷ MAC ${data.mac}, optical depth from Fabs × sampled volume.`}`}
+      provenance={<>{PROVENANCE}{!addis && <> Other sites: <code>spartan_reference.json</code> (public FTIR EC, HIPS Fabs, sampled volume, PM2.5).</>}</>}
+      controls={<>
+        <SitePicker as="select" {...sitePick.picker} optionLabel={(v) => { const s = sites.find((x) => x.code === v); return s ? `${s.name} (${s.n})` : v }}
+          title="The gallery's page site (psite): the other one-site charts on this page follow it" />
+        <Segmented label="HIPS" value={view} options={HIPS_VIEWS} onChange={setView} optionLabel={(o) => o === 'measured' ? 'As measured' : o === 'linearised' ? 'Linearised' : 'Both'} />
+        {groupingPicker}
+      </>}>
+      <AxisChoices options={HIPS_Y_AXES} y={[yKey, (v) => setY(v as HipsY)]} noun="measurements">
+        <ScatterPlot points={points} xLabel="HIPS BC (µg/m³)" yLabel={yLabel} pick="y" swap="hl-against-hips"
+          xDomain={domain} yDomain={yDomain} nice={false} maxSide={SIDE} outside="pin" note={false}
+          under={({ x, y }) => <><RefLine orient="h" at={y(0)} from={x(0)} to={x(domain[1])} />
+            {yKey === 'ftir' && <IdentityLine x1={x(0)} y1={y(0)} x2={x(domain[1])} y2={y(domain[1])} />}</>}>{children}</ScatterPlot>
+      </AxisChoices>
       <Key items={[...series.flatMap(({ label, lin, color }) => [
-        { label: `HIPS ${label.toLowerCase()}`, color, kind: lin ? 'hollow' as const : 'dot' as const },
+        { label: `HIPS ${label.toLowerCase()}`, color: grp ? INK.muted : color, kind: lin ? 'hollow' as const : 'dot' as const },
         { label: `${label} Deming fit`, color, kind: lin ? 'dash' as const : 'line' as const },
-      ]), { label: '1:1', color: INK.identity, kind: 'dash' }]} />
+      ]), ...(grp ? [...grp.labels.map((label) => ({ label, color: grp.colorOf(label), kind: 'dot' as const })), { label: 'No data', color: NO_BAND_COLOR, kind: 'dot' as const }] : []),
+      ...(yKey === 'ftir' ? [{ label: '1:1', color: INK.identity, kind: 'dash' as const }] : [])]} />
+      {missingNote('drawn in grey')}
       <Readouts items={series.map(({ label, fit, color }) => ({ label, value: eq(fit), color,
         sub: fit ? `Intercept ${signed(fit.intercept, 2)} µg/m³ · n = ${fit.n}` : undefined }))} />
-      <Note explain>Why this happens: when the high end of the x axis is squashed, a straight line through the cloud has to be steep, and a steep line through the middle of the data crosses zero far below the origin. Straighten the axis and the line flattens and passes through the origin. Across the ceiling's 90 % interval the linearised intercept runs from {signed(band[0]?.intercept, 2)} to {signed(band[1]?.intercept, 2)}, which cannot be told apart from zero.</Note>
-      <FixedSetNote what="the closure workflow's counted Addis filters with a published FTIR EC" />
+      {story ? <Note explain>Why this happens: when the high end of the x axis is squashed, a straight line through the cloud has to be steep, and a steep line through the middle of the data crosses zero far below the origin. Straighten the axis and the line flattens and passes through the origin. Across the ceiling's 90 % interval the linearised intercept runs from {signed(band[0]?.intercept, 2)} to {signed(band[1]?.intercept, 2)}, which cannot be told apart from zero.</Note>
+        : <Note>Across the ceiling's 90 % interval the linearised intercept here runs from {signed(band[0]?.intercept, 2)} to {signed(band[1]?.intercept, 2)} µg/m³.{addis ? '' : ' The ceiling is IMPROVE\'s; the 11 Nov network page checks it against each site\'s own filters.'}</Note>}
+      {addis ? <FixedSetNote what="the closure workflow's counted Addis filters with a published FTIR EC" /> : <ExcludedNote count={nOut} />}
     </ChartFrame>
   )
 }

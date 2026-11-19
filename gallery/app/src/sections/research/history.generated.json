@@ -41,6 +41,31 @@
   ],
   "records": [
     {
+      "id": "vibes_rank_tau_ec_20261116",
+      "title": "VIBES rank and tau: how far fixed-model EC moves (16 Nov 2026)",
+      "family": "recent",
+      "source": "research/ftir_hips_chem/vibes_rank_tau_ec_20261116.ipynb",
+      "sourceAvailable": true,
+      "sourceDate": "2026-11-16",
+      "tracked": true,
+      "evidence": "saved",
+      "summary": "Every network scan saved under the 87-blank background was refitted to convergence at ranks 10, 20, 40 and 70 and tau 0.05, 0.1 and 0.2 by workflows/run_vibes_rank_tau_ec_20261116.py. EC is read with the frozen k 4 IMPROVE model, which was trained on spectra corrected at rank 70 and tau 0.1. Nothing is refitted here. What this can and cannot show. A change in EC here is the cost of correcting a spectrum one way and calibrating another way. It does not say which setting gives the best EC. That needs the calibration refitted at each setting. EC is in µg per filter; the bundle has no sampled volumes. What it shows (4,376 scans, all certified at all 12 settings; 3,626 are PM2.5). - Rank 40 gives the same EC as rank 70. Median change 0.01 %, largest 0.03 µg. - Rank 20 is close, rank 10 is not. Rank 20 moves EC by a median 0.5 %. Rank 10 moves it by 3 %, and 17 % of scans move by more than 10 %. - tau moves every scan a little. Median 1.2 % at tau 0.05 and 2.0 % at tau 0.2; 3 % and 6 % of scans move by more than 10 %. - For scale, the solver switch moves the median scan by 0.003 %, and the 97 early stops by a median 5 %. - Neither check that needs no calibration picks another setting. Repeat scans agree about as well at every setting. Field blanks are tightest at rank 70 and spread out as the rank falls. - The fitted noise level follows tau. Its median roughly doubles each time tau d",
+      "caveats": [],
+      "charts": [
+        {
+          "tab": "meeting",
+          "page": "vibes-settings-20261116",
+          "label": "Which VIBES setting: solver, rank and tau"
+        }
+      ],
+      "notebook": {
+        "cells": 27,
+        "executed": 27,
+        "outputs": 27,
+        "errors": 0
+      }
+    },
+    {
       "id": "addis_reference_closure_20261110",
       "title": "Linearising HIPS at Addis: the IMPROVE thermal-EC ceiling and the Addis intercept",
       "family": "blanks",
@@ -63,6 +88,11 @@
           "tab": "meeting",
           "page": "hips-parts",
           "label": "HIPS on dark filters, part by part"
+        },
+        {
+          "tab": "meeting",
+          "page": "hips-story",
+          "label": "Linearising HIPS across SPARTAN"
         }
       ],
       "evidenceLabel": "artifacts inspected"
@@ -2966,31 +2996,6 @@
         }
       ],
       "evidenceLabel": "external completion artifacts verified"
-    },
-    {
-      "id": "vibes_rank_tau_ec_20261116",
-      "title": "VIBES rank and tau: how far fixed-model EC moves (16 Nov 2026)",
-      "family": "recent",
-      "source": "research/ftir_hips_chem/vibes_rank_tau_ec_20261116.ipynb",
-      "sourceAvailable": true,
-      "sourceDate": null,
-      "tracked": false,
-      "evidence": "saved",
-      "summary": "Every network scan saved under the 87-blank background was refitted to convergence at ranks 10, 20, 40 and 70 and tau 0.05, 0.1 and 0.2 by workflows/run_vibes_rank_tau_ec_20261116.py. EC is read with the frozen k 4 IMPROVE model, which was trained on spectra corrected at rank 70 and tau 0.1. Nothing is refitted here. What this can and cannot show. A change in EC here is the cost of correcting a spectrum one way and calibrating another way. It does not say which setting gives the best EC. That needs the calibration refitted at each setting. EC is in µg per filter; the bundle has no sampled volumes. What it shows (4,376 scans, all certified at all 12 settings; 3,626 are PM2.5). - Rank 40 gives the same EC as rank 70. Median change 0.01 %, largest 0.03 µg. - Rank 20 is close, rank 10 is not. Rank 20 moves EC by a median 0.5 %. Rank 10 moves it by 3 %, and 17 % of scans move by more than 10 %. - tau moves every scan a little. Median 1.2 % at tau 0.05 and 2.0 % at tau 0.2; 3 % and 6 % of scans move by more than 10 %. - For scale, the solver switch moves the median scan by 0.003 %, and the 97 early stops by a median 5 %. - Neither check that needs no calibration picks another setting. Repeat scans agree about as well at every setting. Field blanks are tightest at rank 70 and spread out as the rank falls. - The fitted noise level follows tau. Its median roughly doubles each time tau d",
-      "caveats": [],
-      "charts": [
-        {
-          "tab": "meeting",
-          "page": "vibes-settings-20261116",
-          "label": "Which VIBES setting: solver, rank and tau"
-        }
-      ],
-      "notebook": {
-        "cells": 27,
-        "executed": 27,
-        "outputs": 27,
-        "errors": 0
-      }
     }
   ],
   "edges": [

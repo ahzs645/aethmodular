@@ -166,6 +166,30 @@ the committed summary.
 
 - A filter without a sampled volume, or at or past the ceiling, drops out of the HIPS fields. It never keeps its
   measured value beside corrected filters.
+- **Apply to** chooses the sites it covers (`#hipsat=expected` or `seen` in a link; absent, all sites):
+
+  | Choice | Sites linearised | On the 11 Nov table |
+  |---|---|---|
+  | All sites (default) | every site, each filter by its own factor | 30 |
+  | Where expected | sites whose median filter is expected to under-read by more than 10 % | 17, Addis Ababa down to Beijing |
+  | Where seen | sites whose own filters also show the bend ("expected and seen" in step 1) | 8: Addis Ababa, Dhaka, Johannesburg, Delhi, Santiago, Pretoria, Kaohsiung, Beijing |
+
+  A site outside the choice keeps HIPS as measured, units read ", linearised where expected" or ", linearised
+  where seen", and the side panel lists the sites on each side with the under-read expected of their median filter.
+  "Where expected" is recomputed from the filters loaded, so it also reads an IMPROVE site; "where seen" comes from
+  the screen's table (`gallery/app/src/lib/hipsSites.json`, written by `gallery/data/export_hips_linearise.py`), which
+  has no IMPROVE sites. The choice is by site, never by filter: a cut-off on single filters would put a step in the
+  response at the cut-off, and the factor of a light filter is already close to 1.
+- The Meeting page **Linearising HIPS across SPARTAN** (`#tab=meeting&meeting=hips-story`) walks through it on the
+  whole network: the effect, the fix, where it is expected and seen, and the same 3,733 filters before and after under
+  five rules (every filter, sites where expected, sites where seen, filters past a cut-off, one factor per site). Its
+  ceiling and rule are in Page options (`?hl.ceil=`, `?hn.rule=`, `?hn.cut=`); the code is `lib/hipsRules.ts`. What
+  it shows: one factor per site moves a site's level and leaves its exponent unchanged, and a cut-off on filters puts
+  a step of × 1.25 in the response at 20 %. Account: [hips-linearise-rules-2026-11-19.md](hips-linearise-rules-2026-11-19.md).
+- Every filter with HIPS and a sampled volume carries two measurements, in the pickers under **HIPS loading**:
+  `HIPS optical depth` and `HIPS expected under-read` (optical depth ÷ 2.26, in percent). Plot them, colour by them,
+  or band them at 20 % and 30 % (Plot, Groupings) to see the statuses of step 1 on any chart. They are read off the
+  measured Fabs and do not move with the view.
 - Axis titles and exports read ", linearised", and the side panel's Plot tab is marked "HIPS lin." while the view is on.
 - It applies on the tabs that load the network rows, which carry the sampled volume. The meeting pages, saved fits
   and precomputed statistics stay as measured, and the HIPS row in the side panel says so.

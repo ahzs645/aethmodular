@@ -3,6 +3,7 @@ import { RegressionProvider, RegressionControls, parseEstimators, estimatorParam
 import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useGalleryData } from '@/hooks/useGalleryData'
 import { replacePublicFilter, supplementFilter } from '@/lib/filterMerge'
+import { GallerySamplesProvider, MEETING_PRESETS } from '@/lib/gallerySamples'
 import { useSpartanSource } from '@/lib/spartanSource'
 import { SpartanDataProvider } from '@/components/SpartanDataSettings'
 import { HighlightProvider, baseFilterId, type FilterRecord, useHighlightActions } from '@/lib/highlight'
@@ -33,7 +34,8 @@ import { HeaderMore } from '@/components/HeaderMore'
 import { LINK_PROBLEM_EVENT, clearLinkProblem, currentView, isEmbed, isEmbedChart, linkProblem, viewHref } from '@/lib/views'
 import { useExport } from '@/lib/data'
 import { customSeasonMeta, customSeasonsParam, parseCustomSeasons } from '@/components/SeasonEditor'
-import { HipsControl, MacControl, Row, SideDock, SubsetBar, type SubsetActions, type SubsetCaps, type SubsetState } from '@/components/SubsetBar'
+import { HipsControl, MacControl, Row, SideDock, SubsetBar, type HipsViewState, type SubsetActions, type SubsetCaps, type SubsetState } from '@/components/SubsetBar'
+import { parseHipsScope, scopeSites, siteExposure, siteReading, type HipsScope } from '@/lib/hipsLinearise'
 import { ExportSitesProvider } from '@/lib/exportSites'
 import { SampleDrawer } from '@/components/SampleDrawer'
 import { RecordDrawer } from '@/components/RecordDrawer'
@@ -55,7 +57,7 @@ import { MarkedRowsProvider } from '@/lib/markedRows'
 import { GroupDrawer } from '@/components/GroupDrawer'
 import { HIDDEN_DUPLICATES } from '@/fieldLineage'
 import { PageSidebarProvider, PageSidebarSlot, SidebarControls, usePageSidebarNote, usePageTab } from '@/lib/pageSidebar'
-import { RATIO_GROUP, RATIO_PRESETS, VOLUME, parseRatios, ratioKey, ratiosParam, viewRows, viewUnits, type Basis, type RatioDef } from '@/lib/viewFields'
+import { HIPS_LOADING_GROUP, HIPS_LOADING_UNITS, HIPS_TAU, RATIO_GROUP, RATIO_PRESETS, VOLUME, withHipsLoading, parseRatios, ratioKey, ratiosParam, viewRows, viewUnits, type Basis, type RatioDef } from '@/lib/viewFields'
 import { RatiosProvider } from '@/components/RatioDialog'
 import { GroupingsProvider } from '@/components/GroupingDialog'
 import { groupingsParam, mergeGroupings, parseGroupings, readSavedGroupings, writeSavedGroupings, type GroupingDef } from '@/lib/groupings'
@@ -92,6 +94,7 @@ const SectionPage = lazyView(() => import('@/pages/SectionPage').then(m => m.Sec
 const SatoshiFollowupPage = lazyView(() => import('@/pages/SatoshiFollowupPage').then(m => m.SatoshiFollowupPage))
 const HipsLinearisePage = lazyView(() => import('@/pages/HipsLinearisePage').then(m => m.HipsLinearisePage))
 const HipsPartsPage = lazyView(() => import('@/pages/HipsPartsPage').then(m => m.HipsPartsPage))
+const HipsStoryPage = lazyView(() => import('@/pages/HipsStoryPage').then(m => m.HipsStoryPage))
 const MeetingSpecPage = lazyView(() => import('@/pages/MeetingSpecPage').then(m => m.MeetingSpecPage))
 const BlanksPage = lazyView(() => import('@/pages/BlanksPage').then(m => m.BlanksPage))
 const ExperimentalPage = lazyView(() => import('@/pages/ExperimentalPage').then(m => m.ExperimentalPage))
@@ -142,7 +145,7 @@ const TABS = [
   { key: 'investigations', label: 'Investigations', title: 'Research timeline, experiment connections and evidence graphs, plus the investigation areas' },
   { key: 'availability', label: 'Data availability', title: 'Notebook coverage analyses, product inventory, sample-day overlap and filter history' },
   { key: 'weather', label: 'Weather', title: 'Weather over each filter’s sampling window: ERA5 at every SPARTAN site, the airport station at Addis' },
-  { key: 'aethalometer', label: 'Aethalometer', title: 'MA350 aethalometers at the focus sites (Instruments section; unlisted in public builds)' },
+  { key: 'aethalometer', label: 'Aethalometer', title: 'MA350 aethalometers at the focus sites (Instruments section)' },
   { key: 'research', label: 'Research diagnostics', title: 'Notebook analyses brought into the gallery (Research section; private in public builds)' },
   { key: 'ml', label: 'Machine learning', title: 'The notebooks’ model-fitting results, as they ran: static (Machine learning section; private in public builds)' },
   { key: 'aeronet', label: 'AERONET', title: 'The sun photometer column over each filter’s sampling window: AOD, absorption AOD and SSA at every SPARTAN site with a station' },
@@ -171,7 +174,7 @@ const SHOW_EXPERIMENTAL = import.meta.env.VITE_PUBLIC_BUILD !== '1' || import.me
 /** a public build's tabs of sections marked "unlisted": compiled, but like Experimental they open from a link
  *  (#tab=aethalometer), and the menu shows their group only while one is open. Any other build lists them. */
 const UNLISTED = new Set<string>(import.meta.env.VITE_PUBLIC_BUILD === '1'
-  ? Object.values(SECTIONS_MANIFEST.sections).filter((s) => s.public === 'unlisted').flatMap((s) => s.tabs) : [])
+  ? Object.values(SECTIONS_MANIFEST.sections as Record<string, { public: boolean | 'unlisted'; tabs: string[] }>).filter((s) => s.public === 'unlisted').flatMap((s) => s.tabs) : [])
 /** a public build also leaves the Census out of the menu, the search and the Investigations cards (#tab=census still opens it) */
 const PUBLIC_UNLISTED = import.meta.env.VITE_PUBLIC_BUILD === '1' ? ['census'] : []
 /** tabs the menu, the ⌘K search and the Investigations cards leave out unless one is open */
@@ -187,6 +190,7 @@ const MEETINGS: { key: string; label: string; title?: string }[] = [
   { key: 'satoshi', date: '2026-10-02', title: 'Satoshi’s 2 Oct questions: analog overlap, the swap test, VIP, the fit ladder and the envelope' },
   { key: 'hips-linearise', date: '2026-11-10', title: 'Linearising HIPS at Addis: the IMPROVE bend, the inversion, the correction on every filter and the intercept it removes, at any ceiling' },
   { key: 'hips-parts', date: '2026-11-16', title: 'HIPS on dark filters, part by part: where IMPROVE shows it, what linearising does to a filter, Addis, and how it is made for every SPARTAN site' },
+  { key: 'hips-story', date: '2026-11-19', title: 'Linearising HIPS across SPARTAN: the effect, the fix, where it is expected and seen, and the same filters before and after when it is applied per filter or per site' },
   ...SPEC_MEETINGS.map((m) => ({ key: m.id, date: m.date, title: m.title })),
 ].sort((a, b) => b.date.localeCompare(a.date)).map(({ date, ...m }) => ({ ...m, label: meetingLabel(date) }))
 type MeetingKey = string
@@ -253,7 +257,9 @@ const NAV_TABS = TABS.filter((t) => shared(t.key) && !('hidden' in t && t.hidden
 const tabFromParams = (p: URLSearchParams): TabKey =>
   p.get('tab') === 'satoshi' && shared('meeting') ? 'meeting' : isTab(p.get('tab')) ? p.get('tab') as TabKey : LANDING_TAB
 /** the open page of a flagged section, with the Samples it is presented on (lib/samplePresets); null elsewhere */
-const presetPage = (tab: string, page: string) => {
+const presetPage = (tab: string, page: string, meeting = '') => {
+  // a meeting page with its own Samples (lib/gallerySamples MEETING_PRESETS: the HIPS pages)
+  if (tab === 'meeting') { const preset = MEETING_PRESETS[meeting]; return preset ? { scope: `meeting/${meeting}`, preset } : null }
   const t = SECTION_TABS.get(tab)
   const key = t?.pages.some((p) => p.key === page) ? page : t ? defaultPage(t.pages) : ''
   const preset = t?.pages.find((p) => p.key === key)?.samples
@@ -315,6 +321,7 @@ const parseWhy = (v: string | null): Record<string, string> => {
 const parseMac = (v: string | null): number | null => { const n = Number(v); return v && Number.isFinite(n) && n > 0 ? n : null }
 /** `hips` in the URL: the ceiling HIPS is linearised with (lib/viewFields, lib/hipsLinearise); absent: HIPS as measured */
 const parseCeiling = (v: string | null): number | null => { const n = Number(v); return v && Number.isFinite(n) && n >= 1 && n <= 5 ? n : null }
+/** `hipsat` in the URL: the sites that view covers (lib/hipsLinearise HIPS_SCOPES); absent: every site */
 
 const parseSpartanSel = (v: string | null): string[] | 'all' | null =>
   v == null || v === '' ? null : v === '*' ? 'all' : v === '-' ? [] : v.split(',').filter(Boolean)
@@ -411,7 +418,7 @@ export default function App() {
   const builderEnabled = useChartBuilderEnabled()
   const navTabs = useMemo(() => NAV_TABS.filter(t => t.key !== 'builder' || builderEnabled), [builderEnabled])
   // a link that does not say which samples it wants opens on the page's own (lib/samplePresets)
-  const init = useMemo(() => { const p = readParams(); return withPreset(p, presetPage(tabFromParams(p), p.get('aep') ?? '')?.preset) }, [])
+  const init = useMemo(() => { const p = readParams(); return withPreset(p, presetPage(tabFromParams(p), p.get('aep') ?? '', meetingFromParams(p))?.preset) }, [])
   const [tab, setTab] = useState<TabKey>(() => tabFromParams(init))
   const [dashboardCalibration, setDashboardCalibration] = useState(false)
   const { data, error, calibrationLoading, calibrationError, retryCalibration } = useGalleryData(
@@ -531,6 +538,7 @@ export default function App() {
   const [mac, setMac] = useState<number | null>(() => parseMac(init.get('mac')))
   const [basis, setBasis] = useState<Basis>(init.get('basis') === 'mass' ? 'mass' : 'conc')
   const [hipsCeiling, setHipsCeiling] = useState<number | null>(() => parseCeiling(init.get('hips')))
+  const [hipsScope, setHipsScope] = useState<HipsScope>(() => parseHipsScope(init.get('hipsat')))
   // meeting pages: as presented (default) or following the gallery (lib/presentation); ?mview=exploring
   const [presentation, setPresentation] = useSearchParam<Presentation>('mview', 'presented', ['presented', 'exploring'])
   // one chart at a time (lib/singleView); the Dashboard presents its own way
@@ -630,7 +638,7 @@ export default function App() {
     incl: !includeExcluded && inclIds.size ? [...inclIds].join(',') : null,
   }), [convention, customSeasons, rainRule, calVariants, activeSeasons, activeSites, network, spartanSel, improveSites, pmfScheme, activePmf, seasonsOn, pmfOn, pmfOnly, ssrHide, dateRange, exclMode, includeExcluded, inclIds])
   const samplesNow = useMemo(() => samplesIn({ get: (k) => sampleValues[k] ?? null }), [sampleValues])
-  const openPreset = useMemo(() => presetPage(tab, sectionPage), [tab, sectionPage])
+  const openPreset = useMemo(() => presetPage(tab, sectionPage, meeting), [tab, sectionPage, meeting])
 
   // set the Samples from a URL's keys (a link, a page's preset, a remembered set); hand exclusions stay as they are
   const applySamples = useCallback((p: URLSearchParams) => {
@@ -698,20 +706,21 @@ export default function App() {
       mac: mac !== null ? String(mac) : null,
       basis: basis === 'mass' ? 'mass' : null,
       hips: hipsCeiling !== null ? String(hipsCeiling) : null,
+      hipsat: hipsCeiling !== null && hipsScope !== 'all' ? hipsScope : null,
       pin: pinnedId,
       eq: axes.identity ? null : '0',
       ax: axes.mode !== DEFAULT_AXES.mode ? axes.mode : null,
       log: axes.log ? '1' : null,
       pax: PAX_PARAM[axes.panels ?? 'Shared'],
     })
-  }, [tab, meeting, sec, experiment, sectionPage, estimators, showCI, sampleValues, samplesNow, openPreset, siteSeasons, siteRules, dropIds, dropWhyParam, keepIds, ftirBaseline, xField, yField, field, dash, ratios, groupings, mac, basis, hipsCeiling, pinnedId, axes])
+  }, [tab, meeting, sec, experiment, sectionPage, estimators, showCI, sampleValues, samplesNow, openPreset, siteSeasons, siteRules, dropIds, dropWhyParam, keepIds, ftirBaseline, xField, yField, field, dash, ratios, groupings, mac, basis, hipsCeiling, hipsScope, pinnedId, axes])
 
   // A pasted link, the back button, or an edited hash should all apply —
   // not just the hash that was there on first load.
   useEffect(() => {
     const onHash = () => {
       const p = readParams()
-      const page = presetPage(tabFromParams(p), p.get('aep') ?? '')
+      const page = presetPage(tabFromParams(p), p.get('aep') ?? '', meetingFromParams(p))
       linkSamples.current = linkSetsSamples(p) ? { scope: page?.scope ?? '', samples: samplesIn(p) } : null
       setEstimators(parseEstimators(p.get('fits')))
       setShowCI(p.get('ci') === '1')
@@ -738,6 +747,7 @@ export default function App() {
       setMac(parseMac(p.get('mac')))
       setBasis(p.get('basis') === 'mass' ? 'mass' : 'conc')
       setHipsCeiling(parseCeiling(p.get('hips')))
+      setHipsScope(parseHipsScope(p.get('hipsat')))
       setPinnedId(p.get('pin'))
       setAxes({
         identity: p.get('eq') !== '0',
@@ -752,6 +762,8 @@ export default function App() {
 
   // The network only applies on the chart tabs; everything else always shows the focus sites.
   const net: Network = (NETWORK_TABS as readonly string[]).includes(tab) ? network : 'focus'
+  // the Samples for pages without the Samples panel (lib/gallerySamples): the meeting pages' network and sites
+  const gallerySamples = useMemo(() => ({ network, setNetwork, spartanSites: spartanSel }), [network, spartanSel])
   const spartanSource = useSpartanSource()
   const netData = useNetworkData(net, improveSites, spartanSel ?? data?.meta.sites.map(s => s.code) ?? [], spartanSource.source, spartanSource.revision)
   // the chosen network's sites, rows and fields: independent of which sites are picked, so a site
@@ -832,7 +844,8 @@ export default function App() {
   useEffect(() => {
     if (!data || (netView && !netView.fields.length)) return
     // weather and AERONET fields (lib/weather, lib/aeronet) load on their own, after this first check, so they are known by name
-    const ok = (f: string) => activeFields.includes(f) || ratioFields.includes(f) || isPmfField(f) || /\((ERA5|station|AERONET|aethalometer)\)$/.test(f)
+    // so are the HIPS loading fields, which the network rows are given (lib/viewFields withHipsLoading)
+    const ok = (f: string) => activeFields.includes(f) || ratioFields.includes(f) || isPmfField(f) || /\((ERA5|station|AERONET|aethalometer)\)$/.test(f) || (!!netView && f in HIPS_LOADING_UNITS)
     const d = NETWORK_DEFAULTS[net]
     if (!ok(xField)) setXField(ok(d.x) ? d.x : activeFields[0])
     if (!ok(yField)) setYField(ok(d.y) ? d.y : activeFields[1] ?? activeFields[0])
@@ -953,6 +966,8 @@ export default function App() {
     [dateRange]
   )
 
+  // the reader's view (lib/viewFields): MAC, mass per filter, ratios; the drawer keeps the exported values
+  const exportMac = data?.meta.mac_value ?? 10
   // Rows after the exclusion toggle and calendar relabel — the brush draws these.
   const rawSourceRows = useMemo(() => {
     const base = netBase ? netBase.rows : focusRows
@@ -976,17 +991,21 @@ export default function App() {
       const a = instrumentFields.rows[r.id]
       return a ? { ...r, ...Object.fromEntries(instrumentFields.fields.map((f, i) => [f, a[i]])) } : r
     })
-    return withPmf(withSections, data?.pmf ?? null, pmfScheme)
-  }, [netBase, focusRows, weather, aeronet, instrumentFields, data, pmfScheme, baselines])
-  // the reader's view (lib/viewFields): MAC, mass per filter, ratios; the drawer keeps the exported values
-  const exportMac = data?.meta.mac_value ?? 10
+    const withSources = withPmf(withSections, data?.pmf ?? null, pmfScheme)
+    // the network rows carry the sampled volume, so each filter gets its HIPS optical depth and expected under-read
+    return netBase ? withHipsLoading(withSources, exportMac) : withSources
+  }, [netBase, focusRows, weather, aeronet, instrumentFields, data, pmfScheme, baselines, exportMac])
   // HIPS linearised (lib/hipsLinearise) needs each filter's sampled volume, which the network rows carry and the
   // bundled focus rows do not, so it applies on the network tabs; the other tabs stay as measured and say so
   const hipsOn = hipsCeiling !== null && net !== 'focus'
+  // how dark each loaded site's filters are (the export's exclusions left out, as in the 11 Nov screen), and the
+  // sites the view's scope covers: every site, those where the bend is expected, or those where it is seen
+  const hipsExposure = useMemo(() => siteExposure(netBase ? rawSourceRows.filter((r) => !r.excluded && r.code).map((r) => ({ code: r.code as string, tau: r[HIPS_TAU] as number })) : []), [netBase, rawSourceRows])
+  const hipsSites = useMemo(() => (hipsOn ? scopeSites(hipsScope, hipsExposure) : null), [hipsOn, hipsScope, hipsExposure])
   const viewOpts = useMemo(() => ({
-    mac: mac ?? exportMac, exportMac, basis, ratios: ratioView.all, hipsCeiling: hipsOn ? hipsCeiling : null,
+    mac: mac ?? exportMac, exportMac, basis, ratios: ratioView.all, hipsCeiling: hipsOn ? hipsCeiling : null, hipsScope: hipsOn ? hipsScope : 'all' as const, hipsSites,
     units: { ...(netBase ? netBase.field_units : data?.meta.field_units ?? {}), ...(weather?.field_units ?? {}), ...(aeronet?.field_units ?? {}), ...(instrumentFields?.field_units ?? {}), [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3', [FTIR_VARIANT.anchored]: 'ug/m3', [FTIR_VARIANT.epo]: 'ug/m3' },
-  }), [mac, exportMac, basis, hipsOn, hipsCeiling, ratioView, netBase, data, weather, aeronet, instrumentFields])
+  }), [mac, exportMac, basis, hipsOn, hipsCeiling, hipsScope, hipsSites, ratioView, netBase, data, weather, aeronet, instrumentFields])
   const plainSourceRows = useMemo(() => viewRows(rawSourceRows, viewOpts), [rawSourceRows, viewOpts])
   // the site colours go on last, so a site pick repaints the rows without rebuilding them; the
   // lookups, counts and drawers (colours from meta.sites) take the rows unpainted
@@ -1004,7 +1023,7 @@ export default function App() {
   const dashboardReferenceRows = useMemo(() => plainSourceRows.map(r => ({ ...r, season: seasonForFilter(r) })), [plainSourceRows, seasonForFilter])
   const paintedSourceRows = useMemo(() => (tab === 'meeting' || tab === 'calibration' || tab === 'dashboard' ? paintRows(sourceRows, paint) : sourceRows), [tab, sourceRows, paint])
   // a meeting page as presented: the reader's ratios, but MAC as exported and µg/m³
-  const presentOpts = useMemo(() => ({ ...viewOpts, mac: exportMac, basis: 'conc' as const, hipsCeiling: null }), [viewOpts, exportMac])
+  const presentOpts = useMemo(() => ({ ...viewOpts, mac: exportMac, basis: 'conc' as const, hipsCeiling: null, hipsScope: 'all' as const, hipsSites: null }), [viewOpts, exportMac])
   const presentRows = useMemo(() => (tab === 'meeting' && presentation === 'presented' ? paintRows(viewRows(rawSourceRows, presentOpts), paint) : paintedSourceRows),
     [tab, presentation, rawSourceRows, presentOpts, paintedSourceRows, paint])
   const sourceById = useMemo(() => new Map(sourceRows.map((r) => [r.id, r])), [sourceRows])
@@ -1020,13 +1039,20 @@ export default function App() {
   const baseRows = useMemo(() => paintRows(plainBaseRows, paint), [plainBaseRows, paint])
   // how many filters in view carry each ratio, for the pickers' counts and the dialog
   const inViewRows = useMemo(() => (netView ? baseRows.filter((r) => netView.chosenNames.has(r.site)) : baseRows), [baseRows, netView])
-  // HIPS linearised: how many of the filters in view with HIPS got a linearised value (the rest have no sampled volume or sit past the ceiling)
-  const withHips = useMemo<[number, number] | undefined>(() => {
+  // HIPS linearised: of the filters in view with HIPS, how many got a linearised value, how many sit at a site outside
+  // the scope and stay as measured, and how many dropped out (no sampled volume, or past the ceiling); then the
+  // sites in view on either side of the scope, darkest first
+  const hipsView = useMemo<HipsViewState | undefined>(() => {
     if (!hipsOn) return undefined
     const hasHips = (r: FilterRow) => typeof r['HIPS Fabs'] === 'number' || typeof r['BC (public HIPS)'] === 'number'
     const measured = new Set(rawSourceRows.filter(hasHips).map((r) => r.id))
-    return [inViewRows.filter(hasHips).length, inViewRows.filter((r) => measured.has(r.id)).length]
-  }, [hipsOn, rawSourceRows, inViewRows])
+    const own = inViewRows.filter((r) => measured.has(r.id))
+    const inScope = (r: FilterRow) => !hipsSites || hipsSites.has(r.code as string)
+    const linearised = own.filter((r) => inScope(r) && hasHips(r)).length, asMeasured = own.filter((r) => !inScope(r)).length
+    const sites = (netView?.chosen ?? []).flatMap((x) => { const e = hipsExposure.get(x.code); return e ? [{ name: x.name, underRead: e.underRead, on: !hipsSites || hipsSites.has(x.code), reading: siteReading(x.code)?.reading }] : [] })
+      .sort((a, b) => b.underRead - a.underRead)
+    return { scope: hipsScope, linearised, asMeasured, dropped: own.length - linearised - asMeasured, sites }
+  }, [hipsOn, hipsScope, hipsSites, hipsExposure, rawSourceRows, inViewRows, netView])
   const ratioCoverage = useMemo(() => Object.fromEntries(ratioFields.map((f) => [f, inViewRows.filter((r) => typeof r[f] === 'number').length])), [ratioFields, inViewRows])
   const countRatio = useCallback((d: RatioDef) =>
     inViewRows.filter((r) => typeof r[d.num] === 'number' && typeof r[d.den] === 'number' && r[d.den] !== 0).length, [inViewRows])
@@ -1225,6 +1251,13 @@ export default function App() {
   // the ChemSpec carbon restates EC / OC (FTIR): keep the values in the rows, out of every picker
   meta.fields = meta.fields.filter((f) => !HIDDEN_DUPLICATES.includes(f))
   meta.field_groups = (meta.field_groups ?? []).map((g) => ({ ...g, fields: g.fields.filter((f) => !HIDDEN_DUPLICATES.includes(f)) })).filter((g) => g.fields.length)
+  // each filter's HIPS loading (lib/viewFields withHipsLoading) joins the pickers where the rows carry a sampled volume
+  const loadingPresent = netView ? Object.keys(HIPS_LOADING_UNITS).filter((f) => sourceRows.some((r) => typeof r[f] === 'number')) : []
+  if (loadingPresent.length) {
+    meta.fields = [...meta.fields, ...loadingPresent.filter((f) => !meta.fields.includes(f))]
+    meta.field_units = { ...meta.field_units, ...HIPS_LOADING_UNITS }
+    meta.field_groups = [...(meta.field_groups ?? []).filter((g) => g.label !== HIPS_LOADING_GROUP), { label: HIPS_LOADING_GROUP, fields: loadingPresent }]
+  }
   // the weather fields join the pickers as their own group, after the measured ones
   if (weather) {
     const present = weather.fields.filter((f) => sourceRows.some((r) => typeof r[f] === 'number'))
@@ -1337,7 +1370,7 @@ export default function App() {
 
     const state: SubsetState = {
       pagePreset: openPreset && { label: openPreset.preset.label, at: sameSamples(samplesNow, openPreset.preset.samples) && !dropIds.size && !keepIds },
-      basis, mac: viewOpts.mac, exportMac, hipsCeiling: hipsOn ? hipsCeiling : null, withHips,
+      basis, mac: viewOpts.mac, exportMac, hipsCeiling: hipsOn ? hipsCeiling : null, hipsView,
       pmfNote: chartTab && pmfSiteInView ? (pmfOnly ? `Only ${pmf?.site_name ?? 'the PMF site'}'s filters with a PMF day (${pmf?.n ?? 0} days) are drawn; sites without PMF are hidden.` : `Narrows ${pmf?.site_name ?? 'the PMF site'}'s filters only (${pmf?.n ?? 0} PMF days); other sites are unaffected.`) + ' Each source\'s share is also a measurement (PMF sources), and the scatterplot can colour by PMF source (Colour → Value).' : undefined,
       pmfOnly,
       withVolume: basis === 'mass' ? [inViewRows.filter((r) => typeof r[VOLUME] === 'number').length, inViewRows.length] : undefined,
@@ -1422,6 +1455,7 @@ export default function App() {
       onSsr: setSsrHide,
       onMac: setMac,
       onHips: setHipsCeiling,
+      onHipsScope: setHipsScope,
       onConvention: (v) => {
         setConvention(v)
         setActiveSeasons(null)
@@ -1618,16 +1652,17 @@ export default function App() {
       {/* the address is set in the click, not after an await: a window opened later counts as a popup and is blocked */}
       {isEmbed() && !isEmbedChart() && <a className="embed-open" href="#" target="_blank" rel="noopener" onClick={(e) => { e.currentTarget.href = viewHref(currentView()) }}>Open in the gallery ↗</a>}
       {(NETWORK_TABS as readonly string[]).includes(tab) && <BrushBar onKeep={keepFilters} onDrop={dropFilters} />}
+      <GallerySamplesProvider value={gallerySamples}>
       <Shell nav={nav} dash={tab === 'dashboard'} onDash={toggleDash} editsBadge={!subset}>
         {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
         {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting' || tab === 'experimental' || tab === 'similarity' || tab === 'ml')
           && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'}
-            label={tab === 'similarity' ? 'Target' : tab === 'meeting' && ['hips-linearise', 'hips-parts'].includes(meeting) ? 'Page' : 'Samples'}
+            label={tab === 'similarity' ? 'Target' : tab === 'meeting' && ['hips-linearise', 'hips-parts', 'hips-story'].includes(meeting) ? 'Page' : 'Samples'}
             // the tabs whose charts read HIPS BC get the MAC on a Plot tab, as the Samples-panel tabs do
             mac={tab === 'ml' || tab === 'experimental' || tab === 'meeting' ? {
               value: viewOpts.mac, exportMac, onMac: setMac,
               note: tab === 'meeting' && presentation === 'presented' ? `As presented draws the export's MAC (${exportMac}); switch the meeting figures to Exploring to use this one.` : undefined,
-              hipsCeiling, onHips: setHipsCeiling,
+              hipsCeiling, onHips: setHipsCeiling, hipsScope, onHipsScope: setHipsScope,
             } : undefined} />)}
         {netData.error && (NETWORK_TABS as readonly string[]).includes(tab) && <div className="network-data-error" role="alert"><strong>The selected network data could not be loaded.</strong> {netData.error}
           <button className="btn" type="button" onClick={() => setNetwork('focus')}>Open bundled focus sites</button></div>}
@@ -1647,6 +1682,7 @@ export default function App() {
             : meeting === 'satoshi' ? <SatoshiFollowupPage />
             : meeting === 'hips-linearise' ? <HipsLinearisePage />
             : meeting === 'hips-parts' ? <HipsPartsPage />
+            : meeting === 'hips-story' ? <HipsStoryPage />
             : <MeetingSpecPage key={meeting} spec={SPEC_MEETINGS.find((m) => m.id === meeting) ?? SPEC_MEETINGS[0]} />}
         </PresentationProvider>}
         {tab === 'blanks' && <BlanksPage />}
@@ -1719,6 +1755,7 @@ export default function App() {
             </p>
           ))}
       </Shell>
+      </GallerySamplesProvider>
     </MarkedRowsProvider>
     </FilterEditsProvider>
     </MacProvider>
@@ -1823,7 +1860,7 @@ function PageSidebar({ fits, label = 'Samples', mac }: {
   /** the gallery's MAC: given, the sidebar has a Plot tab (the fits and the MAC) beside the page's own controls */
   mac?: { value: number; exportMac: number; onMac: (mac: number | null) => void; note?: string
     /** HIPS as measured or linearised (lib/viewFields): set here too, though this tab's own figures stay as measured */
-    hipsCeiling?: number | null; onHips?: (ceiling: number | null) => void }
+    hipsCeiling?: number | null; onHips?: (ceiling: number | null) => void; hipsScope?: HipsScope; onHipsScope?: (scope: HipsScope) => void }
 }) {
   const [open, setOpen] = useSidePanelOpen()
   const [chosenView, setView] = useSidePanelView()
@@ -1859,7 +1896,7 @@ function PageSidebar({ fits, label = 'Samples', mac }: {
           {explain && <span className="row-note">MAC scales the slope of a fit against HIPS BC; the intercept barely moves (exactly unchanged for OLS)</span>}
         </Row>}
         {mac?.onHips && view === 'plot' && <Row label="HIPS">
-          <HipsControl ceiling={mac.hipsCeiling} onHips={mac.onHips} />
+          <HipsControl ceiling={mac.hipsCeiling} onHips={mac.onHips} scope={mac.hipsScope} onScope={mac.onHipsScope} />
           {mac.hipsCeiling != null && <span className="method-note" style={{ display: 'block' }}>This tab's figures are precomputed, or its filters carry no sampled volume, so it shows HIPS as measured. The chart tabs follow the linearised view.</span>}
         </Row>}
       </aside>
