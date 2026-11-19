@@ -19,7 +19,7 @@ import { SPEC_MEETINGS } from '@/meetings'
 import { AgainstHips, Bend, CeilingOptions, COMMAND, CorrectionCurve, CorrectionPlot, Limits, PROVENANCE, SeasonLot, SIDE, WORKFLOW, Worked, pathOf, range, useCeiling, type Ceil, type Linearise } from '@/pages/HipsLinearisePage'
 import { ImproveReach, LevelChoices } from '@/pages/HipsCaveats'
 import { FilterDecimals, SiteDecimals } from '@/pages/HipsDecimals'
-import { LINEAR, MEASURED, Readouts } from '@/pages/hipsLineariseParts'
+import { LINEAR, MEASURED, Readouts, StatOptions } from '@/pages/hipsLineariseParts'
 
 /** the meeting pages this one borrows figures from (src/meetings/<id>.meeting.ts, data/meetings/<id>.json) */
 const CLOSURE = 'closure-20261110'
@@ -84,6 +84,7 @@ export function HipsPartsPage() {
   return (
     <PageToc>
       <CeilingOptions ceil={ceil} />
+      <StatOptions />
       <Figure kind="table" id="hw-parts" title="HIPS reads low on dark filters, part by part — where it is seen, what linearising does, Addis, and every SPARTAN site"
         subtitle={`One curve, measured on IMPROVE against thermal EC (ceiling ${band}), read backwards on each filter. The ceiling in Page options drives every interactive chart on this page.`}
         columns={[{ key: 'part', label: 'Part' }, { key: 'question', label: 'Question' }, { key: 'shows', label: 'What it shows' }]}

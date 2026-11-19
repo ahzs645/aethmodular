@@ -8,6 +8,7 @@ import { Key } from '@/components/Key'
 import { fmt } from '@/lib/format'
 import { ExcludedNote, useMarkedRows } from '@/lib/markedRows'
 import { INK, BLANK_LINE_COLOR } from '@/lib/theme'
+import { SidebarControls } from '@/lib/pageSidebar'
 import { useSearchParam } from '@/lib/url'
 
 import type { SectionPageProps } from '../../types'
@@ -90,7 +91,9 @@ export function BlankLines({ rows }: SectionPageProps) {
   )
 
   const byKey = new Map(lines.map((l) => [l.key, l])), focusByKey = new Map(focus.map((l) => [l.key, l])), netByKey = new Map(network.map((l) => [l.key, l]))
-  const setControl = <Segmented label="Blank lines" value={set} options={['network', 'focus'] as const} onChange={setSet} optionLabel={(o) => SET_LABEL[o]} />
+  // which blank lines every chart on the page is drawn with: one setting, in Page options
+  const setControl = <SidebarControls title="Blank lines"><Segmented value={set} options={['network', 'focus'] as const} onChange={setSet} optionLabel={(o) => SET_LABEL[o]}
+    title="The per-line blank fits every chart below uses: the explorer's network fits over every SPARTAN blank, or refits on the focus-site field blanks exported here" /></SidebarControls>
   const setNote = useNet
     ? `Per-line refits are the explorer's (calibration_runs.json hips.blanks: hips_lab.blank_lines over every SPARTAN FB and LB blank, ftir_47's LINE_FIT); the lot-pooled curves can only be refitted from the ${blanks.length} focus-site field blanks exported here.`
     : `Every refit uses the ${blanks.length} field blanks of the four focus sites (hips_optics/filters.json), not ftir_47's network FB + LB set: lines with fewer than five such blanks get no refit.`
@@ -153,10 +156,11 @@ export function BlankLines({ rows }: SectionPageProps) {
 
   return (
     <>
+      {setControl}
       <ChartFrame id="bl-lines" title="Field blanks' T1 against R1, by deployed calibration line"
         subtitle={`One panel per PTFE lot. Field blanks coloured by the deployed line they were reduced with; dashed: the shipped line over its blanks' R1 range; solid: the per-line quadratic refit; dotted black: one quadratic through all the lot's blanks; dash-dot grey: the lot-pooled linear. In a lot with several lines the blanks of successive calibrations sit in different R1 bands, so a pooled curve threads between them and bends where no blank exists. ${setNote}`}
         provenance={`${NB47} [8] (blank_lines_per_lot.png)`}
-        controls={<>{setControl}<Toggle label="Samples" checked={withSamples === '1'} onChange={(v) => setWithSamples(v ? '1' : '0')} title="draw the lot's samples in view, hollow" /></>}>
+        controls={<><Toggle label="Samples" checked={withSamples === '1'} onChange={(v) => setWithSamples(v ? '1' : '0')} title="draw the lot's samples in view, hollow" /></>}>
         {!blanks.length ? <Empty>No field blanks with a deployed line in the optics export.</Empty> : <FacetGrid items={facets} minCell={320} render={(f, w) => (
           <div style={{ width: w }}>
             <Crossplot sameScale={false} fit={false} maxSide={w - 72} domain={f.x} yDomain={f.y} xLabel="Blank R1 (counts)" yLabel="Blank T1 (counts)"
@@ -211,7 +215,7 @@ export function BlankLines({ rows }: SectionPageProps) {
 
       <ChartFrame id="bl-exposure" title="Which sites the construction moves — |ΔFabs| against the deployed line, and samples outside their own line's blanks"
         subtitle={`Samples in view on a refitted line. Left: median |ΔFabs| from the deployed line under the per-line linear (hollow), per-line quadratic (filled) and lot-pooled quadratic (red square) refits; the tooltip has the p90. Right: the share of samples whose R1 is below (purple: heavier than any blank of their line) or above (orange) their own line's blank R1 range. ${setNote}`}
-        provenance={`${NB47} [11] (network_site_exposure.png; network_site_table.csv)`} controls={setControl}>
+        provenance={`${NB47} [11] (network_site_exposure.png; network_site_table.csv)`}>
         {!expRows.length ? <Empty>No samples in view on a refitted line.</Empty> : <IntervalStrip blocks={[{ key: 'sites', rows: expRows }]} labelWidth={110} noteWidth={50} minPanelWidth={240}
           panels={[{ label: 'Median |ΔFabs| vs deployed line (Mm⁻¹)', domain: [0, Math.max(0.5, ...sitesHere.flatMap((s) => MARKS.map((m) => s.med[m.c])).filter(Number.isFinite)) * 1.1] },
             { label: 'Samples outside own line\'s blank R1 range (%)', domain: [0, Math.max(10, ...sitesHere.map((s) => 100 * Math.max(s.below, s.above))) * 1.1] }]} />}
@@ -236,7 +240,7 @@ export function BlankLines({ rows }: SectionPageProps) {
       <ChartFrame id="bl-fabs" title={`The Fabs each line implies — ${site || 'no site in view'}`}
         subtitle={`Each sample's Fabs recomputed as 100·ln(top / T1)·A / V with top the chosen curve at its R1 (its own line's refit, or its lot's pooled quadratic), minus the shipped deployed-line Fabs, against R1 and coloured by line; the bars along the top are each line's blank R1 range, so a sample left of its bar is heavier than any blank its line was fitted on. The table gives the median Fabs per line under every construction (ftir_47's Pasadena breakdown, for any site). Fabs in Mm⁻¹, before any MAC. ${setNote}`}
         provenance={`${NB47} [16] (pasadena_per_line_breakdown.csv) and §2`}
-        controls={<><SitePick value={site} options={sites} onChange={setSite} /><Segmented label="Recomputed with" value={cons} options={['line_lin', 'line_quad', 'lot_quad'] as const} onChange={setCons} optionLabel={(o) => CONSTRUCTION_LABEL[o]} />{setControl}</>}>
+        controls={<><SitePick value={site} options={sites} onChange={setSite} /><Segmented label="Recomputed with" value={cons} options={['line_lin', 'line_quad', 'lot_quad'] as const} onChange={setCons} optionLabel={(o) => CONSTRUCTION_LABEL[o]} /></>}>
         {!siteExps.length ? <Empty>No {site} samples in view with a deployed line, a shipped Fabs and a sampled volume: pick {OPTICS_SITES} under Samples.</Empty> : <>
           {!fabsPts.length ? <Empty>No {site} sample is on a line with a {CONSTRUCTION_LABEL[cons]} refit under the {SET_LABEL[set]}.</Empty> :
             <Crossplot sameScale={false} fit={false} maxSide={520} domain={[Math.floor((r1Lo - 5) / 10) * 10, Math.ceil((r1Hi + 5) / 10) * 10]} yDomain={[-dMax, dMax]}

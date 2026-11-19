@@ -9,6 +9,7 @@ import { SweepPlot } from '@/components/SweepPlot'
 import { fmt } from '@/lib/format'
 import { useMac } from '@/lib/mac'
 import { INK } from '@/lib/theme'
+import { SidebarControls } from '@/lib/pageSidebar'
 import { useSearchParam } from '@/lib/url'
 
 import type { SectionPageProps } from '../../types'
@@ -172,7 +173,12 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
     ['OM loading (µg/cm²)', addis.map((e) => e.omLoad)], ['PM2.5 loading (µg/cm²)', addis.map((e) => e.pmLoad)]] as const).map(([q, v]) => ({ q, ...windowOf([...v]) }))
 
   const siteLabel = site || 'no site in view'
-  const residControls = <><SitePick value={site} options={sites} onChange={setSite} /><Segmented label="Residual" value={resid} options={['relative', 'absolute'] as const} onChange={setResid} /></>
+  // the site and the residual every one-site chart below is drawn for: one setting each, in Page options
+  const pageControls = <SidebarControls title="HIPS envelope">
+    <SitePick value={site} options={sites} onChange={setSite} />
+    <Segmented label="Residual" value={resid} options={['relative', 'absolute'] as const} onChange={setResid}
+      title="The HIPS residual against FTIR EC the residual charts use: relative to EC, or in µg/m³" />
+  </SidebarControls>
 
   const lotCols = [
     { key: 'k', label: 'Group', value: (r: ReturnType<typeof groupBy>[number]) => r.k },
@@ -187,6 +193,7 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
 
   return (
     <>
+      {pageControls}
       <ChartFrame id="he-optics" title="Raw HIPS optical coordinates — samples against field blanks"
         subtitle={`Left: the HIPS transmittance (t) and reflectance (r) proxies of every sample (filled) and field blank (hollow), coloured by site. Right: HIPS optical depth tau, samples and blanks, median with p05–p95. If Addis is a boundary case it should separate here, not only in Fabs / MAC.${meta.basis === 'mass' ? ` ${BASIS_NOTE}` : ''}`}
         provenance={`${ENVELOPE_NB} (§1 optical regime)`}>
@@ -229,8 +236,7 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
 
       <ChartFrame id="he-bins" title={`Does the residual change with deposited EC? — ${siteLabel}, by EC-loading sextile`}
         subtitle={`Filters in six equal-count bins of EC surface loading; the median ${residLabel} per bin, with its interquartile range. Compression at high loading would bend the residual down as loading rises.`}
-        provenance={`${ENVELOPE_NB} (§4 Addis binned median test)`}
-        controls={<><SitePick value={site} options={sites} onChange={setSite} /><Segmented label="Residual" value={resid} options={['relative', 'absolute'] as const} onChange={setResid} /></>}>
+        provenance={`${ENVELOPE_NB} (§4 Addis binned median test)`}>
         {bins.length < 3 ? <Empty>Too few {site} filters in view with an EC loading: pick a site with HIPS Fabs, FTIR EC and a sampled volume.</Empty> : <Grid>
           <SweepPlot series={[{ id: 'b', label: 'median residual', color: colorOfSite(site), interval: 'whisker', points: bins.map((b) => {
             const v = b.map(residOf)
@@ -260,9 +266,9 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
           bars={screen.map((s) => ({ key: s.label, label: s.label, value: s.rho! ** 2, signed: s.rho, note: `ρ ${fmt(s.rho, 2)}`, tip: [s.label, `Spearman ρ ${fmt(s.rho, 3)}`, `n ${s.n}`] }))} />}
       </ChartFrame>
 
-      <ResidualCrossplots env={siteEnv} site={site} relative={resid === 'relative'} mac={mac} seasons={seasons} controls={residControls} />
+      <ResidualCrossplots env={siteEnv} site={site} relative={resid === 'relative'} mac={mac} seasons={seasons} />
 
-      <ResidualSsa env={siteEnv} site={site} relative={resid === 'relative'} mac={mac} seasons={seasons} controls={residControls} />
+      <ResidualSsa env={siteEnv} site={site} relative={resid === 'relative'} mac={mac} seasons={seasons} />
 
       <ChartFrame id="he-lots" title={`Lot and calibration screen — ${siteLabel}`}
         subtitle="The relative residual and tau by filter lot, by the HIPS calibration line a filter was read against, and by HIPS analysis month. A lot or calibration mechanism would show as a jump between groups. A quick screen, not the blank audit of hips_offset_narrative.ipynb."
@@ -274,7 +280,7 @@ export function HipsEnvelope({ rows: viewRows, meta }: SectionPageProps) {
         <SitesNote sites={rowSites} why="the lot, calibration line and analysis month are in the HIPS optics export only, so this screen stays on the four focus sites" />
       </ChartFrame>
 
-      <TauByLine pairs={pairs} site={site} others={rowSites} palette={palette} controls={<SitePick value={site} options={sites} onChange={setSite} />} />
+      <TauByLine pairs={pairs} site={site} others={rowSites} palette={palette} />
 
       <ChartFrame id="he-rt" title="SPARTAN R1 / T1 — the Warren Figure 2 analog, samples against field blanks"
         subtitle="Raw HIPS reflectance R1 against transmittance T1 per site: samples hollow grey, field blanks in the site colour, with the blanks' OLS line where there are at least three. Closer in spirit to Warren et al. Figure 2 than the IMPROVE FED ratios, but still not its registered detector record."

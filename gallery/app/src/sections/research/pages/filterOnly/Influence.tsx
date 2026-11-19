@@ -4,15 +4,15 @@
  */
 import { useMemo, type ReactNode } from 'react'
 import type { ScalePoint } from 'd3'
-import { ChartFrame, Empty, Note, Segmented, Select } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note, Select } from '@/components/ChartFrame'
 import { IntervalStrip, type IntervalRow } from '@/components/IntervalStrip'
 import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { fitSummary, fmt, signed } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
-import { evaluate, fitTraining, inPopulation, pairedInfluence, type FPoint, type Scheme } from '../../common/filterOnly'
-import { FoExcludedNote, NB_STAB, NO_FILTERS, SCHEMES, SOURCE, barLayer, popLabel, schemeLabel, shortQ, siteColor, type Settings } from './data'
+import { evaluate, fitTraining, inPopulation, pairedInfluence, type FPoint } from '../../common/filterOnly'
+import { FoExcludedNote, NB_STAB, NO_FILTERS, SOURCE, barLayer, popLabel, schemeLabel, shortQ, siteColor, type Settings } from './data'
 
 /** the filter left out, in the link as fo.omit (the release's ETAD-0037 by default; the first in view when Samples leaves that out) */
 export function useOmitted(points: FPoint[], fallback: string): [FPoint | null, (id: string) => void, string[]] {
@@ -79,7 +79,7 @@ export function CoefficientInfluence({ points, s, meta, omitDefault }: { points:
 /** stability 09: MAE on the same withheld filters with and without the left-out filter in training */
 export function CommonFilterInfluence({ points, s, meta, omitDefault }: { points: FPoint[]; s: Settings; meta: MetaFile; omitDefault: string }) {
   const [omitted, setOmit, ids] = useOmitted(points, omitDefault)
-  const [scheme, setScheme] = useSearchParam<Scheme>('fo.common.split', 'leave_quarter_out', SCHEMES)
+  const scheme = s.scheme
   const rows = useMemo(() => {
     if (!omitted) return []
     const diag = points.filter((p) => p.site === omitted.site), cohort = diag.filter((p) => inPopulation(p, s.population))
@@ -94,7 +94,7 @@ export function CommonFilterInfluence({ points, s, meta, omitDefault }: { points
       subtitle={`${omitted?.site ?? ''} · ${popLabel(s.population)} population · ${schemeLabel(scheme).toLowerCase()} · MAE after omitting ${omitted?.id ?? 'the filter'} minus MAE with it, on filters predicted both ways; negative = lower error after omission`}
       provenance={<>{NB_STAB} figure 09 (ETAD-0037)</>} source={`${SOURCE}/Influence.tsx › CommonFilterInfluence`}
       tip={<>At the release's settings (with Filters → excluded: Include) the ETAD-0037 comparison covers the same 189 other filters; leave-quarter-out MAE changes by only −0.0049 Mm⁻¹. Predictions in its own withheld quarter do not change, because it was already absent from that training. Later-period common-filter MAE worsens by +0.172 Mm⁻¹ after omission, mostly in the first evaluated later quarter.</>}
-      controls={<><OmitPick value={omitted?.id ?? ''} ids={ids} points={points} onChange={setOmit} /><Segmented label="Split" value={scheme} options={SCHEMES} onChange={setScheme} optionLabel={schemeLabel} /></>}>
+      controls={<><OmitPick value={omitted?.id ?? ''} ids={ids} points={points} onChange={setOmit} /></>}>
       {rows.length
         ? <SweepPlot series={series} xScale="point" height={250} xFormat={(v) => (v === 'All common filters' ? 'All' : shortQ(v))} yLabel={`MAE change after omission (${s.u})`} reference={0}
             background={barLayer(rows.map((r, i) => ({ x: r.block, y: r.change * s.k, color, faint: i > 0 })))}

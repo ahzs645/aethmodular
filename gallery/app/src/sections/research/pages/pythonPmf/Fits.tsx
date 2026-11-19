@@ -25,7 +25,7 @@ import { useSearchParam } from '@/lib/url'
 import { DataTable, shortSeason, useInSamples, useSiteNames } from '../../common/ui'
 import { gapAfter } from '../../common/pythonPmf'
 import {
-  CasePick, FACTOR_COLOR, FACTORS, REPORT, addisCalendar, archivedFor, caseFilterAt, caseFilters, caseLabel, closest, factorName, noCaseFilters, tableRows, useProfiles,
+  FACTOR_COLOR, FACTORS, REPORT, addisCalendar, archivedFor, caseFilterAt, caseFilters, caseLabel, closest, factorName, noCaseFilters, tableRows, useProfiles,
   type CaseFilter, type PmfCase, type PythonPmfExport,
 } from './data'
 import { RESEARCH_SERIES } from '@/lib/palettes'
@@ -50,7 +50,7 @@ function withGap(wn: readonly number[], ys: readonly (readonly number[])[], step
 
 // --------------------------------------------------------------------------------------------- 1. profiles
 
-export function Profiles({ data, c, setCase }: { data: PythonPmfExport; c: PmfCase; setCase: (k: string) => void }) {
+export function Profiles({ data, c }: { data: PythonPmfExport; c: PmfCase }) {
   const { data: prof, error } = useProfiles()
   const [scale, setScale] = useSearchParam<'sum' | 'peak'>('ppmf-profiles.scale', 'sum', ['sum', 'peak'])
   const archived = archivedFor(data, c.key)
@@ -74,7 +74,6 @@ export function Profiles({ data, c, setCase }: { data: PythonPmfExport; c: PmfCa
       subtitle={`Each factor's normalised spectral shape (H, rows summing to one${scale === 'peak' ? '; here each scaled to its own peak' : '; drawn as ‰ of the profile per channel'}) over the two modelled windows, 4000–2500 and 2300–1520 cm⁻¹ (the CO₂ window between is not fitted, shaded). ${boot ? `The band is the segmented block bootstrap's 5–95 % per channel (${accepted?.resamples ?? 20} resamples, only accepted factor mappings: ${accepted?.accepted.map((a, i) => `F${i + 1} ${a}`).join(', ')} of ${accepted?.resamples ?? 20}); a central 90 % empirical spread, not a confidence interval.` : 'No bootstrap was run for this case (the package resampled ETAD 246 and ETAD 102, robust).'} Factor numbers are display coordinates, not sources${archived.size ? '; the closest archived KF factor is given as descriptive context only' : ''}.`}
       provenance={<>Reproduces the profile panels of {REPORT} §3 (analysis/figures/{c.key}_profiles_and_contributions.png where saved) and §7. Data: python_pmf/results/{c.folder}/{c.key}/k05/profiles.csv{boot ? `, results/uncertainty/${c.key.replace('_huber', '')}_bootstrap/ensemble.npz` : ''} → <code>research/python_pmf/profiles.json</code>.</>}
       controls={<>
-        <CasePick data={data} value={c} onChange={setCase} />
         <Segmented label="Scale" value={scale} options={['sum', 'peak'] as const} onChange={setScale} optionLabel={(o) => (o === 'sum' ? '‰ of profile' : 'Own peak = 1')} />
       </>}>
       {!prof ? <LoadState what="the profiles" error={error} /> : <>
@@ -90,7 +89,7 @@ export function Profiles({ data, c, setCase }: { data: PythonPmfExport; c: PmfCa
 
 // --------------------------------------------------------------------------------------------- 2. contributions
 
-export function Contributions({ data, c, setCase, rows, meta }: { data: PythonPmfExport; c: PmfCase; setCase: (k: string) => void; rows: FilterRow[]; meta: MetaFile }) {
+export function Contributions({ data, c, rows, meta }: { data: PythonPmfExport; c: PmfCase; rows: FilterRow[]; meta: MetaFile }) {
   const calendar = useMemo(() => addisCalendar(meta), [meta])
   const items = useMemo(() => caseFilters(data, c.key, calendar), [data, c.key, calendar])
   const placed = useInSamples(items, caseFilterAt, useSiteNames(rows, meta))
@@ -127,8 +126,7 @@ export function Contributions({ data, c, setCase, rows, meta }: { data: PythonPm
   return (
     <ChartFrame id="ppmf-contributions" title={`Contributions over time — ${placed.length < items.length ? 'the modelled filters in these Samples' : 'every modelled filter'}, ${caseLabel(c)}`}
       subtitle={`Each filter's contribution G to each factor at its sampling date (${split.counted.length} of ${items.length} filters drawn; dots coloured by the season of the date under your Addis calendar${c.cohort === 'etbi53' ? ', which Bishoftu, 45 km away, takes too' : ''}). The line breaks across sampling gaps longer than 14 days, the package's own segment rule. G is summed-channel spectral amplitude per sampled m³, not µg/m³: no factor here has a mass calibration.${noGallery ? ` ${noGallery} of these filters have no gallery row (${c.cohort === 'etbi53' ? 'Bishoftu is not a gallery site' : 'sampled after the gallery\'s Addis series ends'}); they are drawn, and count, but cannot be excluded except by hand.` : ''}`}
-      provenance={<>Reproduces the contribution panels of {REPORT} §3. Data: python_pmf/results/{c.folder}/{c.key}/k05/contributions.csv → <code>research/python_pmf/python_pmf.json</code>.</>}
-      controls={<CasePick data={data} value={c} onChange={setCase} />}>
+      provenance={<>Reproduces the contribution panels of {REPORT} §3. Data: python_pmf/results/{c.folder}/{c.key}/k05/contributions.csv → <code>research/python_pmf/python_pmf.json</code>.</>}>
       {!items.length ? <Empty>No contributions for this case.</Empty> : !placed.length ? <Empty>{noCaseFilters(c)}</Empty> : <>
         <FacetGrid items={panels} minCell={300} maxCols={1} title={(p) => factorName(p.k)} note={(p) => closest(p.m)}
           render={(p, w) => <SweepPlot series={p.series} marks={p.marks} xScale="time" xDomain={xDomain} yLabel="G" height={130} width={w} include={[0]}
@@ -200,7 +198,7 @@ export function Floor({ data }: { data: PythonPmfExport }) {
   )
 }
 
-export function Residuals({ data, c, setCase }: { data: PythonPmfExport; c: PmfCase; setCase: (k: string) => void }) {
+export function Residuals({ data, c }: { data: PythonPmfExport; c: PmfCase }) {
   const { data: prof, error } = useProfiles()
   const regions = tableRows(data, 'regions').filter((r) => r.case === c.key)
   const plots = useMemo(() => {
@@ -215,8 +213,7 @@ export function Residuals({ data, c, setCase }: { data: PythonPmfExport; c: PmfC
   return (
     <ChartFrame id="ppmf-residuals" title={`Where the misfit sits — residuals by wavenumber and spectral region, ${caseLabel(c)}`}
       subtitle="Top: the mean scaled residual (X − GH)/U at each channel over the case's filters. Bottom: the share of filters whose input is negative at that channel. The fit undershoots most where the input goes negative (above 3500 cm⁻¹ and 1700–2300 cm⁻¹): the model cannot follow a signed baseline. The table is the package's summary by broad region."
-      provenance={<>Reproduces {REPORT} §4 (spectral-region diagnostics). Data: python_pmf/results/{c.folder}/{c.key}/k05/feature_residuals.csv and analysis/spectral_region_residuals.csv.</>}
-      controls={<CasePick data={data} value={c} onChange={setCase} />}>
+      provenance={<>Reproduces {REPORT} §4 (spectral-region diagnostics). Data: python_pmf/results/{c.folder}/{c.key}/k05/feature_residuals.csv and analysis/spectral_region_residuals.csv.</>}>
       {!plots ? <LoadState what="the residuals" error={error} /> : <>
         <SpectrumPlot series={plots.mean} window={WINDOW} height={200} regions={[GAP]} zeroLine hover="readout" yLabel="mean (X − GH)/U" readoutFormat={(v) => fmt(v, 2)} />
         <SpectrumPlot series={plots.neg} window={WINDOW} height={150} regions={[GAP]} hover="readout" yLabel="% filters X < 0" includeZero readoutFormat={(v) => `${fmt(v, 0)} %`} />

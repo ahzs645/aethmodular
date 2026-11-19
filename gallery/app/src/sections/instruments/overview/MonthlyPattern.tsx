@@ -42,8 +42,8 @@ export function MonthlyPattern({ s, meta, screen }: { s: Series; meta: MetaFile;
 }
 
 /** The same, one channel, a panel per instrument, each on its own site's calendar. */
-export function MonthlyBySite({ series, meta, screen, channel, setChannel }: {
-  series: Series[]; meta: MetaFile; screen: Screen; channel: Channel; setChannel: (c: Channel) => void
+export function MonthlyBySite({ series, meta, screen, channel }: {
+  series: Series[]; meta: MetaFile; screen: Screen; channel: Channel
 }) {
   const [stat, setStat] = useSearchParam<MonthStat>('aeom', 'mean', ['mean', 'median'])
   const items = useMemo(() => series.filter((s) => s.days.length).map((s) => ({
@@ -54,7 +54,6 @@ export function MonthlyBySite({ series, meta, screen, channel, setChannel }: {
       subtitle={`Daily ${channelName(channel, meta)} BCc grouped by calendar month (the day each bin's middle falls on): ${MONTH_STAT_LABEL[stat].toLowerCase()}. Each panel has its own y-axis and its site's season calendar (the strip under the months), so read the shape of the year, not heights across panels. Screen: ${SCREEN_TEXT[screen]}.`}
       provenance={PROVENANCE}
       controls={<>
-        <Segmented label="Wavelength" value={channel} options={CHANNELS} onChange={setChannel} />
         <Segmented label="Statistic" value={stat} options={['mean', 'median'] as MonthStat[]} onChange={setStat} optionLabel={(o) => MONTH_STAT_LABEL[o]} />
       </>}>
       <div className="chart-wrap">

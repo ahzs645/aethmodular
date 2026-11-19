@@ -137,6 +137,8 @@ const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(
 
 // research-spectra: `provenance` (which notebook a figure stands in for) passes through to its ChartFrame
 export function Figure(props: FigureSpec & { about?: ReactNode; provenance?: ReactNode; aside?: ReactNode
+  /** ahead of the figure's own options in its options row: a choice the page holds for a group of figures, shown as a note */
+  lead?: ReactNode
   /** what a chart with no rows says, where the reader can do something about it (e.g. which Samples to pick) */
   empty?: ReactNode }) {
   let spec: FigureSpec = props
@@ -164,7 +166,8 @@ export function Figure(props: FigureSpec & { about?: ReactNode; provenance?: Rea
   // a faceted crossplot offers the gallery's Panel axes (lib/panelAxes) while it draws more than one panel
   const panelAxes = spec.kind === 'crossplot' && !!spec.facet && uniq(rows, spec.facet).length > 1
   const facetDim = spec.kind === 'crossplot' ? facetDimOf(spec.facet) : null
-  const controls = (spec.choose?.length || variants.length || panelAxes) ? <>{(spec.choose?.length || variants.length) ? o.controls() : null}{panelAxes && <PanelAxesControl dims={facetDim ? [facetDim] : []} />}</> : undefined
+  const own = (spec.choose?.length || variants.length || panelAxes) ? <>{(spec.choose?.length || variants.length) ? o.controls() : null}{panelAxes && <PanelAxesControl dims={facetDim ? [facetDim] : []} />}</> : undefined
+  const controls = props.lead || own ? <>{props.lead}{own}</> : undefined
 
   const Custom = spec.kind === 'custom' ? CUSTOM.get(spec.component) : null
   const body = spec.kind === 'custom'

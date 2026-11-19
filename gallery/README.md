@@ -384,6 +384,13 @@ drawn) and, when the open page has any, the page's own controls. A page puts a s
 `lib/siteFocus`) sits first on that tab. On tabs without the Samples panel (Baselines, Meeting, Blanks) the same
 controls go in App's sidebar, and with no dock at all (an embed) they render where they are written.
 
+A setting that drives more than one chart on a page (one URL key read by several charts: the HIPS ceiling, rule and
+site statistic, the aethalometer wavelength, a research page's site or case) goes there once, not in each chart's
+options row; a chart's options keep only what changes that chart alone. The same holds for a group of charts drawn
+from one table (`components/PredictionDiagnostics`: one choice per group, under the group's name, and each chart
+says which rows it draws in its options row). The exception is Panel axes
+(`lib/panelAxes`), the gallery's one setting that every multi-panel chart offers on purpose.
+
 Notes under a chart are either data caveats (always shown) or reading guidance, provenance and method remarks,
 which use `<Note explain>` (or the `legend-note` class) and show only with **Explain** on. Longer explanations,
 such as how per-site fits are drawn, live in this README rather than under every chart.

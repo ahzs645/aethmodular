@@ -98,6 +98,8 @@ export type Unit = 'fabs' | 'bc'
 export interface Settings {
   population: Population
   minTrain: number
+  /** how a quarter is withheld, on every chart that scores held-out predictions (URL `fo.split`) */
+  scheme: Scheme
   unit: Unit
   /** multiply an Fabs-unit value by this for display (1, or 1 / MAC) */
   k: number
@@ -108,30 +110,37 @@ export interface Settings {
 
 const POP_KEYS = POPULATIONS.map((p) => p.key)
 const MIN_OPTIONS = ['5', '10', '20']
+/** the split was each chart's own until 19 Nov 2026: a link that set one still opens on it */
+const SPLIT_LEGACY = ['fo.mae.split', 'fo.bias.split', 'fo.pair.split', 'fo.scat.split', 'fo.range.split', 'fo.meta.split', 'fo.common.split']
+const useSplit = () => useSearchParam<Scheme>('fo.split', 'leave_quarter_out', SCHEMES, { legacy: SPLIT_LEGACY })
 
-/** the page-wide settings, in the link as fo.pop, fo.min and fo.unit */
+/** the page-wide settings, in the link as fo.pop, fo.min, fo.split and fo.unit */
 export function useSettings(): Settings {
   const [population] = useSearchParam<Population>('fo.pop', 'diagnostic', POP_KEYS)
   const [min] = useSearchParam<string>('fo.min', String(MIN_TRAIN), MIN_OPTIONS)
   const [unit] = useSearchParam<Unit>('fo.unit', 'fabs', ['fabs', 'bc'])
+  const [scheme] = useSplit()
   const { mac } = useMac()
-  return { population, minTrain: Number(min), unit, k: unit === 'bc' ? 1 / mac : 1, u: unit === 'bc' ? 'µg/m³' : 'Mm⁻¹', mac }
+  return { population, minTrain: Number(min), scheme, unit, k: unit === 'bc' ? 1 / mac : 1, u: unit === 'bc' ? 'µg/m³' : 'Mm⁻¹', mac }
 }
 
 /**
- * the page-wide settings in the dock: population and minimum training n on the Page tab, HIPS units on the Plot tab
+ * the page-wide settings in the dock: population, minimum training n and the split on the Page tab, HIPS units on the Plot tab
  * under the MAC that "BC" divides by (lib/pageSidebar)
  */
 export function SettingsControls() {
   const [population, setPopulation] = useSearchParam<Population>('fo.pop', 'diagnostic', POP_KEYS)
   const [min, setMin] = useSearchParam<string>('fo.min', String(MIN_TRAIN), MIN_OPTIONS)
   const [unit, setUnit] = useSearchParam<Unit>('fo.unit', 'fabs', ['fabs', 'bc'])
+  const [scheme, setScheme] = useSplit()
   return <>
     <SidebarControls title="Filter-only transfer limits">
       <Select label="Population" value={population} options={POP_KEYS} onChange={(v) => setPopulation(v as Population)} optionLabel={(o) => POPULATIONS.find((p) => p.key === o)!.label}
         title="Which filters every chart on the page refits on" />
       <Segmented label="Min training n" value={min} options={MIN_OPTIONS} onChange={setMin} optionLabel={(o) => (o === String(MIN_TRAIN) ? `${o} (release)` : o)}
         title="The fewest training filters a quarter needs before it is evaluated" />
+      <Segmented label="Split" value={scheme} options={SCHEMES} onChange={setScheme} optionLabel={schemeLabel}
+        title="How each quarter is withheld, on every chart that scores held-out predictions: leave-quarter-out trains on every other quarter; later-period only on filters reported before the quarter. The ID-11 charts are later-period only, and the population charts show both." />
     </SidebarControls>
     <PlotControls>
       <Row label="HIPS as">

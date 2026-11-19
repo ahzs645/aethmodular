@@ -12,8 +12,8 @@ import { fmt, signed } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
 import { useSearchParam } from '@/lib/url'
-import { summarize, type Block, type Model, type Scheme } from '../../common/filterOnly'
-import { FoExcludedNote, MODEL_LABEL, NB_PROP, NB_STAB, NO_FILTERS, SCHEMES, SOURCE, barLayer, blocksOf, popLabel, schemeLabel, shortQ, siteColor, statusText, type Settings, type SiteRun } from './data'
+import { summarize, type Block, type Model } from '../../common/filterOnly'
+import { FoExcludedNote, MODEL_LABEL, NB_PROP, NB_STAB, NO_FILTERS, SOURCE, barLayer, blocksOf, popLabel, schemeLabel, shortQ, siteColor, statusText, type Settings, type SiteRun } from './data'
 
 const GREY = '#8a8a8a'
 const MODEL_STYLE: Record<Model, { color?: string; dash?: string }> = { median: { color: '#b8b8b8', dash: '2 3' }, proportional: { color: GREY, dash: '6 3' }, ols: {} }
@@ -27,13 +27,9 @@ const naMarks = (blocks: Block[]) => ({ x, ih }: { x: unknown; ih: number }) => 
   return <g>{blocks.filter((b) => b.status !== 'evaluated').map((b) => <text key={b.block} x={sx(b.block) ?? 0} y={ih - 4} textAnchor="middle" fontSize={9} fill={INK.muted}>{b.testN ? 'NA' : '–'}</text>)}</g>
 }
 
-function SchemePick({ id, value, onChange }: { id: string; value: Scheme; onChange: (s: Scheme) => void }) {
-  return <Segmented label="Split" value={value} options={SCHEMES} onChange={onChange} optionLabel={schemeLabel} title={`${id}: leave-quarter-out trains on every other quarter; later-period only on filters reported before the quarter`} />
-}
-
 /** stability 01 / 06 and proportionality 03: held-out MAE by quarter, OLS against the median (and the proportional fit) */
 export function QuarterMae({ runs, s, meta }: { runs: SiteRun[]; s: Settings; meta: MetaFile }) {
-  const [scheme, setScheme] = useSearchParam<Scheme>('fo.mae.split', 'leave_quarter_out', SCHEMES)
+  const scheme = s.scheme
   const [models, setModels] = useSearchParam<'two' | 'three'>('fo.mae.models', 'two', ['two', 'three'])
   const shown: Model[] = models === 'three' ? ['median', 'proportional', 'ols'] : ['median', 'ols']
   return (
@@ -42,8 +38,7 @@ export function QuarterMae({ runs, s, meta }: { runs: SiteRun[]; s: Settings; me
       provenance={<>{NB_STAB} figures 01 (leave quarter out) and 06 (later period); {NB_PROP} figure 03 (three models, later period)</>}
       source={`${SOURCE}/Quarters.tsx › QuarterMae`}
       tip={<>At the release's settings (with Filters → excluded: Include): Addis improves on the training median in all eight withheld quarters, MAE 3.94 against 8.89 Mm⁻¹; in the later-period scheme it evaluates 155 filters at 4.27 against 9.33 Mm⁻¹ with mean error +2.26, and Delhi keeps a strong negative bias. With three models, Addis's intercept model wins all six supported later quarters. The two schemes evaluate different filters, so their MAEs are not an algorithm comparison.</>}
-      controls={<><SchemePick id="MAE" value={scheme} onChange={setScheme} />
-        <Segmented label="Models" value={models} options={['two', 'three'] as const} onChange={setModels} optionLabel={(o) => (o === 'two' ? 'OLS and median' : 'Add proportional')} /></>}>
+      controls={<><Segmented label="Models" value={models} options={['two', 'three'] as const} onChange={setModels} optionLabel={(o) => (o === 'two' ? 'OLS and median' : 'Add proportional')} /></>}>
       <Key items={shown.map((m) => ({ label: MODEL_LABEL[m], color: m === 'ols' ? INK.text : MODEL_STYLE[m].color!, kind: m === 'ols' ? 'line' : 'dash' }))} />
       {!runs.length ? <Empty>{NO_FILTERS}</Empty> : <FacetGrid items={runs} minCell={290} maxCols={2} title={(r) => r.site} site={(r) => r.site}
         note={(r) => { const sm = summarize(blocksOf(r, scheme)); return `MAE ${fmt(sm.filters.mae.ols * s.k, 2)} vs ${fmt(sm.filters.mae.median * s.k, 2)} · n ${sm.filters.n}` }}
@@ -63,14 +58,13 @@ export function QuarterMae({ runs, s, meta }: { runs: SiteRun[]; s: Settings; me
 
 /** stability 02 and proportionality 02: mean signed error (prediction − reported HIPS) by quarter */
 export function QuarterBias({ runs, s, meta }: { runs: SiteRun[]; s: Settings; meta: MetaFile }) {
-  const [scheme, setScheme] = useSearchParam<Scheme>('fo.bias.split', 'leave_quarter_out', SCHEMES)
+  const scheme = s.scheme
   return (
     <ChartFrame id="fo-bias" title="Signed error by quarter — the bias that remains after choosing the model form"
       subtitle={`${popLabel(s.population)} population · ${schemeLabel(scheme).toLowerCase()} · mean of prediction − reported HIPS; positive = overprediction`}
       provenance={<>{NB_STAB} figure 02 (OLS bars); {NB_PROP} figure 02 (proportional against intercept)</>}
       source={`${SOURCE}/Quarters.tsx › QuarterBias`}
-      tip={<>At the release's settings (with Filters → excluded: Include), Addis's aggregate bias is near zero but its quarter biases run from −4.11 to +2.30 Mm⁻¹: opposing errors cancel in the overall mean. Bias persists with either model form. Beijing 2024Q3 stays in and has no test EC beyond its training range; the five non-positive EC predictions are kept and no prediction is clipped.</>}
-      controls={<SchemePick id="Bias" value={scheme} onChange={setScheme} />}>
+      tip={<>At the release's settings (with Filters → excluded: Include), Addis's aggregate bias is near zero but its quarter biases run from −4.11 to +2.30 Mm⁻¹: opposing errors cancel in the overall mean. Bias persists with either model form. Beijing 2024Q3 stays in and has no test EC beyond its training range; the five non-positive EC predictions are kept and no prediction is clipped.</>}>
       <Key items={[{ label: 'OLS with intercept (bars)', color: INK.text, kind: 'bar' }, { label: MODEL_LABEL.proportional, color: GREY, kind: 'dash' }]} />
       {!runs.length ? <Empty>{NO_FILTERS}</Empty> : <FacetGrid items={runs} minCell={290} maxCols={2} title={(r) => r.site} site={(r) => r.site}
         note={(r) => { const sm = summarize(blocksOf(r, scheme)); return `overall ${signed(sm.filters.mse.ols * s.k, 2)} ${s.u}` }}
@@ -92,13 +86,12 @@ export function QuarterBias({ runs, s, meta }: { runs: SiteRun[]; s: Settings; m
 
 /** proportionality 01: MAE(proportional) − MAE(intercept) on identical withheld filters */
 export function PairedProportional({ runs, s, meta }: { runs: SiteRun[]; s: Settings; meta: MetaFile }) {
-  const [scheme, setScheme] = useSearchParam<Scheme>('fo.pair.split', 'leave_quarter_out', SCHEMES)
+  const scheme = s.scheme
   return (
     <ChartFrame id="fo-paired" title="Intercept against proportionality — does an intercept improve prediction beyond Fabs ∝ EC?"
       subtitle={`${popLabel(s.population)} population · ${schemeLabel(scheme).toLowerCase()} · MAE of the through-origin fit minus MAE of OLS on the same filters; positive favours the intercept`}
       provenance={<>{NB_PROP} figure 01</>} source={`${SOURCE}/Quarters.tsx › PairedProportional`}
-      tip={<>At the release's settings (with Filters → excluded: Include), Addis improves by 7.64 Mm⁻¹ overall and wins all eight quarters. Other sites are less consistent; Delhi's aggregate favours proportional prediction despite three quarter-level intercept wins. These are statistical coefficients, not physical MAC estimates.</>}
-      controls={<SchemePick id="Paired" value={scheme} onChange={setScheme} />}>
+      tip={<>At the release's settings (with Filters → excluded: Include), Addis improves by 7.64 Mm⁻¹ overall and wins all eight quarters. Other sites are less consistent; Delhi's aggregate favours proportional prediction despite three quarter-level intercept wins. These are statistical coefficients, not physical MAC estimates.</>}>
       {!runs.length ? <Empty>{NO_FILTERS}</Empty> : <FacetGrid items={runs} minCell={290} maxCols={2} title={(r) => r.site} site={(r) => r.site}
         note={(r) => { const sm = summarize(blocksOf(r, scheme)); return `${signed((sm.filters.mae.proportional - sm.filters.mae.ols) * s.k, 2)} overall · ${sm.interceptBetterBlocks}/${sm.evaluatedBlocks} quarters` }}
         render={(r, w) => {

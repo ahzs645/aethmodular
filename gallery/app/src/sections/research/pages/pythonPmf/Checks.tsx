@@ -24,7 +24,7 @@ import { BASIS_NOTE, DataTable, useConcRows, useInSamples, useSiteNames } from '
 import { archivedMatch, baseId, disagrees, qcCell, scores, type Scores } from '../../common/pythonPmf'
 import { pearson } from '@/lib/stats'
 import {
-  CasePick, FACTOR_COLOR, FACTORS, REPORT, archivedFor, caseFilterAt, caseFilters, caseLabel, caseSite, closest, factorName, noCaseFilters, tableRows,
+  FACTOR_COLOR, FACTORS, REPORT, archivedFor, caseFilterAt, caseFilters, caseLabel, caseSite, closest, factorName, noCaseFilters, tableRows,
   type PmfCase, type PythonPmfExport,
 } from './data'
 import { RESEARCH_SERIES } from '@/lib/palettes'
@@ -108,7 +108,7 @@ export function HeldOut({ data }: { data: PythonPmfExport }) {
 
 // --------------------------------------------------------------------------------------------- 6. new vs archived
 
-export function Archived({ data, c, setCase, archived }: { data: PythonPmfExport; c: PmfCase | null; setCase: (k: string) => void; archived: PmfFile | null }) {
+export function Archived({ data, c, archived }: { data: PythonPmfExport; c: PmfCase | null; archived: PmfFile | null }) {
   const [factor, setFactor] = useSearchParam<string>('ppmf-kf.factor', '1', ['1', '2', '3', '4', '5'])
   const counts = useCountedFilter()
   const matches = c ? archivedFor(data, c.key) : new Map()
@@ -138,7 +138,6 @@ export function Archived({ data, c, setCase, archived }: { data: PythonPmfExport
       subtitle={`Each new factor's contribution against the archived KF factor (µg/m³, the gallery's pmf.json) the package matched it to, on the ${row?.n ?? 0} common filters in view that count (the archived solution's 102). The one-to-one assignment was chosen to maximise these same correlations, so they are descriptive best matches, not an independent recovery test, and no archived label or mass coefficient is carried onto a new factor. r is live; the package's (all 102 counted) is beside it${allCount ? ', and equal here' : ''}.`}
       provenance={<>Reproduces {REPORT} §6 (the archived-pattern table). Data: python_pmf/analysis/historical_factor_pattern_matches.csv; the archived contributions from <code>public/data/pmf.json</code>. Live r: common/pythonPmf.ts archivedMatch.</>}
       controls={<>
-        <CasePick data={data} value={c} onChange={setCase} etadOnly />
         <Segmented label="Factor" value={factor} options={['1', '2', '3', '4', '5']} onChange={setFactor} optionLabel={(o) => `F${o}`} />
       </>}>
       {!c ? <Empty>The archived solution covers Addis only: pick an ETAD cohort.</Empty> : !archived ? <Empty>Loading the archived solution (pmf.json)…</Empty> : !placed.length ? <Empty>{noCaseFilters(c)}</Empty> : <>
@@ -172,7 +171,7 @@ function Matrix({ rows, cols, cell, picked, onPick }: { rows: string[]; cols: Va
     legend={{ scheme: colours.scheme, label: 'Pearson r', format: (v) => fmt(v, 1) }} />
 }
 
-export function Measurements({ data, c, setCase, rows: viewRows, meta }: { data: PythonPmfExport; c: PmfCase | null; setCase: (k: string) => void; rows: FilterRow[]; meta: MetaFile }) {
+export function Measurements({ data, c, rows: viewRows, meta }: { data: PythonPmfExport; c: PmfCase | null; rows: FilterRow[]; meta: MetaFile }) {
   const mac = useMac()
   const rows = useConcRows(viewRows, meta)
   const markedAll = useConcRows(useMarkedRows(), meta)
@@ -215,7 +214,6 @@ export function Measurements({ data, c, setCase, rows: viewRows, meta }: { data:
       subtitle={`Pearson r of each factor's contribution with the gallery's own measurements of the same filter (joined by base id), on ${view === 'view' ? `the ${siteWord} rows in view` : 'the package\'s 102 comparison filters among the rows in view'} that count: your dates, seasons and exclusions apply. HIPS BC follows your MAC (r does not: it is scale-free, so BC at any MAC gives Fabs's r). Shared seasonality and correlated sources make strong correlations easy, so these are supporting context, not source identification. ${addis ? 'Hover a cell for the package\'s own value (its 102 filters, HIPS Fabs and gravimetric PM2.5); click one to draw it.' : 'The package saved no such table for Bishoftu. Click a cell to draw it.'}`}
       provenance={<>Extends {REPORT} §6 (analysis/supporting_variable_correlations.csv) to the gallery's measurements. Live r: common/pythonPmf.ts pearson.</>}
       controls={<>
-        <CasePick data={data} value={c} onChange={setCase} />
         {addis && <Segmented label="Filters" value={set} options={['view', 'p102'] as const} onChange={setSet} optionLabel={(o) => (o === 'view' ? 'Addis rows in view' : 'Package\'s 102')} />}
       </>}>
       {!c ? <Empty>Pick a cohort.</Empty> : !joined.counted.length ? <Empty>No {siteWord} rows in view join this case's filters: pick {caseSite(c)} in the Samples panel, widen its dates and seasons, or pick another cohort.</Empty> : <>

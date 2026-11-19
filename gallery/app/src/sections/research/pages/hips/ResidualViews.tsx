@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo } from 'react'
 import { ChartFrame, Empty, Select } from '@/components/ChartFrame'
 import { Crossplot } from '@/components/Crossplot'
 import { FacetGrid } from '@/components/FacetGrid'
@@ -30,8 +30,6 @@ const PANELS: { key: string; label: string; value: (e: Envelope) => number | nul
 interface Common {
   env: Envelope[]; site: string; relative: boolean; mac: number
   seasons: { name: string; color: string }[]
-  /** the page's site and residual pickers */
-  controls: ReactNode
 }
 
 const residOf = (e: Envelope, relative: boolean) => (relative ? e.relResid : e.resid)
@@ -45,7 +43,7 @@ function useMarkedEnv(site: string, mac: number): Envelope[] {
 }
 
 /** addis_06 c14: the residual against loading, composition and optical depth, one panel each with its OLS line */
-export function ResidualCrossplots({ env, site, relative, mac, seasons, controls }: Common) {
+export function ResidualCrossplots({ env, site, relative, mac, seasons }: Common) {
   const colorOf = (e: Envelope) => namedColor(seasons, e.row.season)
   const markedEnv = useMarkedEnv(site, mac)
   const xy = (es: Envelope[], p: (typeof PANELS)[number]) => es.flatMap((e) => { const x = p.value(e), y = residOf(e, relative); return finite(x) && finite(y) ? [{ e, x, y }] : [] })
@@ -58,7 +56,7 @@ export function ResidualCrossplots({ env, site, relative, mac, seasons, controls
   return (
     <ChartFrame id="he-resid-cross" title={`The residual against loading, composition and optical depth — ${site || 'no site in view'}`}
       subtitle={`Each filter's ${relative ? 'relative' : 'absolute'} residual, HIPS BC (Fabs / ${mac}) − FTIR EC, against six candidate drivers, coloured by season, with the OLS line (scipy linregress) and its r. Optical loading should structure the residual through tau, t or EC loading; a composition artefact (Pandey, Lack, Cappa) through OC / EC or OC loading. The ρ² screen above ranks the same pairs.`}
-      provenance={`${ENVELOPE_NB} (c14, Addis residual cross-plots)`} controls={controls}>
+      provenance={`${ENVELOPE_NB} (c14, Addis residual cross-plots)`}>
       {env.length < 5 ? <Empty>Too few {site} filters in view with both HIPS and FTIR EC: pick a site with both.</Empty> : <FacetGrid items={drawn} minCell={260} itemKey={(p) => p.key} render={(p, w) => (
         <div style={{ width: w }}>
           <Crossplot sameScale={false} fit={false} maxSide={w - 72} xLabel={p.label} yLabel={relative ? 'Relative residual' : 'Residual (µg/m³)'}
@@ -76,7 +74,7 @@ export function ResidualCrossplots({ env, site, relative, mac, seasons, controls
 }
 
 /** addis_06 c22: the residual against the AERONET inversion's SSA on the filter's day, 675 nm by default (nearest HIPS's 633 nm) */
-export function ResidualSsa({ env, site, relative, mac, seasons, controls }: Common) {
+export function ResidualSsa({ env, site, relative, mac, seasons }: Common) {
   const [wl, setWl] = useSearchParam<string>('he.ssa', '675', SSA_BY_WAVELENGTH.map(([w]) => String(w)))
   const field = SSA_BY_WAVELENGTH.find(([w]) => String(w) === wl)?.[1] ?? SSA_BY_WAVELENGTH[1][1]
   const colorOf = (e: Envelope) => namedColor(seasons, e.row.season)
@@ -90,7 +88,7 @@ export function ResidualSsa({ env, site, relative, mac, seasons, controls }: Com
     <ChartFrame id="he-resid-ssa" title={`The residual against AERONET single-scattering albedo — ${site || 'no site in view'}`}
       subtitle={`${residLabel(relative)} at MAC ${mac} against the AERONET inversion's SSA at ${wl} nm matched to the filter (Level 1.5 unless the AERONET tab says otherwise), coloured by season, with the OLS line. Pandey et al. (2019) motivate the test: a filter artefact that depends on the aerosol's scattering would make the residual track SSA. The inversion is uncertain below AOD 440 = 0.4, so few days qualify.`}
       provenance={`${ENVELOPE_NB} (c22, AERONET SSA hook) · AERONET fields as on the AERONET tab`}
-      controls={<>{controls}<Select label="SSA wavelength (nm)" value={wl} options={SSA_BY_WAVELENGTH.map(([w]) => String(w))} onChange={setWl} /></>}>
+      controls={<><Select label="SSA wavelength (nm)" value={wl} options={SSA_BY_WAVELENGTH.map(([w]) => String(w))} onChange={setWl} /></>}>
       {pts.length < 3 ? <Empty>{pts.length} {site} filters in view have an AERONET SSA at {wl} nm. The AERONET fields load with the sites' stations; try another wavelength or site.</Empty> : <>
         <Crossplot sameScale={false} fit={false} maxSide={420} domain={[lo, Math.max(1, ...pts.map((q) => q.x))]} xLabel={`SSA ${wl} nm (AERONET)`} yLabel={relative ? 'Relative residual' : 'Residual (µg/m³)'}
           title={fit ? `n ${fit.n} · r ${fmt(fit.r, 2)} · slope ${fmt(fit.slope, 2)} per unit SSA` : `n ${pts.length}`}

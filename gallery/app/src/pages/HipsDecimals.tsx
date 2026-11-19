@@ -18,7 +18,7 @@ import { rowsOf } from '@/lib/table'
 import { FONT, INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import type { Ceil, Linearise } from '@/pages/HipsLinearisePage'
-import { DataTable, LINEAR, Readouts, STAT_NAME, STATS, type Stat } from '@/pages/hipsLineariseParts'
+import { DataTable, LINEAR, Readouts, STAT_NAME, useStat } from '@/pages/hipsLineariseParts'
 
 /**
  * How many decimal places a linearised HIPS BC can carry (the "Linearising HIPS at Addis" page). Two charts on one
@@ -87,7 +87,7 @@ function PlaceBands({ y, iw }: Pick<ScatterScales, 'y' | 'iw'>) {
 // ------------------------------------------------------------------ every site: what its BC can be written to
 export function SiteDecimals() {
   const { data, error } = useExport<MeetingBundle>(PROCEDURE, (b) => (b.tables?.traced && b.tables?.found ? null : 'no "traced" or "found" table'))
-  const [stat, setStat] = useSearchParam<Stat>('hl.stat', 'median_bc', STATS)
+  const [stat] = useStat()
   const [view, setView] = useSearchParam<(typeof SITE_VIEWS)[number]>('hl.digits', 'lost', SITE_VIEWS)
   const sites = useMemo<SiteRow[]>(() => {
     if (!data) return []
@@ -131,8 +131,6 @@ export function SiteDecimals() {
       subtitle={`Each dot is one SPARTAN site. Its height is half the range that the IMPROVE ceiling's 90 % interval (1.82 to 2.70) puts on the site's linearised ${name.toLowerCase()} BC. The last digit worth writing is the one that uncertainty starts in: 1 µg/m³ or more leaves whole numbers, 0.1 to 1 leaves one decimal. HIPS BC is reported to two decimals, so anything above the lowest band has lost a digit.`}
       provenance={PROCEDURE_SOURCE}
       controls={<>
-        <Segmented label="Statistic" value={stat} options={STATS} onChange={setStat} optionLabel={(o) => `${STAT_NAME[o]} BC`}
-          title="The site statistic the range is taken on. A mean leans on the darkest filters, where the correction is least known, so it loses more." />
         <Segmented label="Table" value={view} options={SITE_VIEWS} onChange={setView}
           optionLabel={(o) => (o === 'lost' ? `Sites that lose a digit (${lost.length})` : `All (${sites.length})`)} />
       </>}>
@@ -198,7 +196,6 @@ export function FilterDecimals({ data, ceil }: { data: Linearise; ceil: Ceil }) 
       provenance={FILTER_SOURCE}
       controls={<>
         <span className="control" title="The noise of one HIPS reading before linearising, in absorption units: drag sideways or click to type. ÷ 10 gives µg/m³.">Reading noise ± <ScrubField label="Reading noise" value={noise} min={0.1} max={10} step={0.1} width={96} unit="Mm⁻¹" format={(v) => fmt(v, 1)} onChange={(v) => setNoise(String(+v.toFixed(1)))} /></span>
-        {ceil.control}
       </>}>
       <ScatterPlot points={points} xLabel="Measured HIPS optical depth τ" yLabel="± on linearised BC (µg/m³)" yScale="log"
         xDomain={[0.4, 1.6]} yDomain={[0.05, 50]} nice={false} height={340} outside="pin" note={false}

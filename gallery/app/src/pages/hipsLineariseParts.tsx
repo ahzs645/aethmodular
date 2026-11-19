@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
+import { Segmented } from '@/components/Controls'
+import { SidebarControls } from '@/lib/pageSidebar'
 import { RESEARCH_SERIES } from '@/lib/palettes'
+import { useSearchParam } from '@/lib/url'
 import { FONT } from '@/lib/theme'
 
 /**
@@ -15,6 +18,16 @@ export const LINEAR = RESEARCH_SERIES[0]
 export const STATS = ['median_bc', 'mean_bc'] as const
 export type Stat = (typeof STATS)[number]
 export const STAT_NAME: Record<Stat, string> = { median_bc: 'Median', mean_bc: 'Mean' }
+export const useStat = () => useSearchParam<Stat>('hl.stat', 'median_bc', STATS)
+
+/** the statistic, in Page options: one setting for every chart drawn on a site's median or mean BC */
+export function StatOptions() {
+  const [stat, setStat] = useStat()
+  return <SidebarControls title="Site statistic">
+    <div role="group" aria-label="Site statistic"><Segmented value={stat} options={STATS} onChange={setStat} optionLabel={(o) => `${STAT_NAME[o]} BC`}
+      title="The site statistic the level and decimals charts are drawn on. A mean leans on the darkest filters, where the ceiling matters most and the correction is least known, so it spreads further and loses more digits than a median." /></div>
+  </SidebarControls>
+}
 
 /** a row of headline numbers under a chart */
 export function Readouts({ items }: { items: { label: string; value: ReactNode; color?: string; sub?: string }[] }) {

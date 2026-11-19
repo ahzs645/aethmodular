@@ -1,7 +1,8 @@
 import { fmt, pct } from '@/lib/format'
 import type { SectionPageProps } from '../../types'
 import { PageIntro, Waiting } from './spectralCommon'
-import { EXPORTER, REPORT, useArchived, useCase, usePythonPmf } from './pythonPmf/data'
+import { SidebarControls } from '@/lib/pageSidebar'
+import { CasePick, EXPORTER, REPORT, useArchived, useCase, usePythonPmf } from './pythonPmf/data'
 import { Contributions, Floor, Profiles, RankScreen, Residuals } from './pythonPmf/Fits'
 import { Archived, HeldOut, Inventory, Measurements, Sensitivity } from './pythonPmf/Checks'
 
@@ -22,6 +23,7 @@ export function PythonPmf({ rows, meta }: SectionPageProps) {
   const p = data.heldout_pooled
   const primary = data.cases.find((x) => x.key === 'etad246_huber')!
   return <>
+    <SidebarControls title="PMF case"><CasePick data={data} value={c} onChange={setCase} /></SidebarControls>
     <PageIntro id="ppmf-intro" title="Python PMF (Oct 2026) — an independent PMF of the Addis and Bishoftu spectra" data={data}
       notebooks={`the python_pmf package (30 Oct 2026): ${REPORT}, its saved results under results/ and analysis/`}>
       <p>An independent Python implementation of uncertainty-weighted PMF (ordinary and Huber robust losses, nonnegative G and H, signed X), run on
@@ -40,16 +42,16 @@ export function PythonPmf({ rows, meta }: SectionPageProps) {
         the gallery's HIPS BC, FTIR EC/OC/OM and PM2.5 of the same filters; <strong>8</strong> whether the factors survive changes of loss, blank treatment, baseline and cohort;
         <strong> 9</strong> which filters the PMF holds, and where that disagrees with the gallery's exclusions. Charts 2, 5, 6 and 7 follow Samples (sites, dates, seasons), Filters → excluded and your hand
         exclusions (their statistics are recomputed on the filters in view that count, and equal the package's when every filter counts), and chart 9 lists the filters in view; charts 1, 3, 4 and 8 are the package's saved fits.
-        One case picker (cohort × loss/preparation) drives charts 1, 2, 4, 6 and 7; chart 6 is Addis only, since the archived solution is.</p>
+        One case picker in Page options (cohort × loss/preparation) drives charts 1, 2, 4, 6 and 7; chart 6 is Addis only, since the archived solution is.</p>
     </PageIntro>
-    <Profiles data={data} c={c} setCase={setCase} />
-    <Contributions data={data} c={c} setCase={setCase} rows={rows} meta={meta} />
+    <Profiles data={data} c={c} />
+    <Contributions data={data} c={c} rows={rows} meta={meta} />
     <RankScreen data={data} />
     <Floor data={data} />
-    <Residuals data={data} c={c} setCase={setCase} />
+    <Residuals data={data} c={c} />
     <HeldOut data={data} />
-    <Archived data={data} c={ce} setCase={setCase} archived={archived} />
-    <Measurements data={data} c={c} setCase={setCase} rows={rows} meta={meta} />
+    <Archived data={data} c={ce} archived={archived} />
+    <Measurements data={data} c={c} rows={rows} meta={meta} />
     <Sensitivity data={data} />
     <Inventory data={data} rows={rows} meta={meta} />
   </>

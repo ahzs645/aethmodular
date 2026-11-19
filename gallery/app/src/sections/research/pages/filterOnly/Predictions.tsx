@@ -2,30 +2,28 @@
  * The filter-level charts: held-out predictions against reported HIPS (stability 05), training against test EC
  * ranges (stability 07) and held-out errors by the EC source rows' CalibrationSetId (stability 08).
  */
-import { ChartFrame, Empty, Note, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty, Note } from '@/components/ChartFrame'
 import { Crossplot, type CrossPoint } from '@/components/Crossplot'
 import { IntervalStrip, type IntervalBlock } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { fmt, signed } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
-import { useSearchParam } from '@/lib/url'
 import { quantile } from '@/lib/stats'
 import { Grid } from '../../common/ui'
-import { heldOutPrediction, inPopulation, quarterIndex, type Scheme } from '../../common/filterOnly'
-import { FoExcludedNote, useFoMarked, NB_STAB, NO_FILTERS, SCHEMES, SOURCE, blocksOf, popLabel, schemeLabel, siteColor, type Settings, type SiteRun } from './data'
+import { heldOutPrediction, inPopulation, quarterIndex } from '../../common/filterOnly'
+import { FoExcludedNote, useFoMarked, NB_STAB, NO_FILTERS, SOURCE, blocksOf, popLabel, schemeLabel, siteColor, type Settings, type SiteRun } from './data'
 
 /** stability 05: each filter's prediction with its own quarter withheld, against its reported HIPS */
 export function HeldOutScatter({ runs, s, meta }: { runs: SiteRun[]; s: Settings; meta: MetaFile }) {
-  const [scheme, setScheme] = useSearchParam<Scheme>('fo.scat.split', 'leave_quarter_out', SCHEMES)
+  const scheme = s.scheme
   const label = s.unit === 'bc' ? `HIPS BC at MAC ${fmt(s.mac, 1)} (µg/m³)` : 'HIPS Fabs (Mm⁻¹)'
   const marked = useFoMarked()
   return (
     <ChartFrame id="fo-scatter" title="Held-out predictions — block-specific errors remain"
       subtitle={`${popLabel(s.population)} population · ${schemeLabel(scheme).toLowerCase()} · OLS prediction with the filter's quarter withheld · 1:1 reference, no fitted line`}
       provenance={<>{NB_STAB} figure 05</>} source={`${SOURCE}/Predictions.tsx › HeldOutScatter`}
-      tip={<>Each prediction comes from a fit that never saw the filter's quarter. The 1:1 line compares predicted and reported HIPS in the same units; no regression is fitted to this comparison. FTIR-predicted EC itself is not established as an independent reference.</>}
-      controls={<Segmented label="Split" value={scheme} options={SCHEMES} onChange={setScheme} optionLabel={schemeLabel} />}>
+      tip={<>Each prediction comes from a fit that never saw the filter's quarter. The 1:1 line compares predicted and reported HIPS in the same units; no regression is fitted to this comparison. FTIR-predicted EC itself is not established as an independent reference.</>}>
       {!runs.length ? <Empty>{NO_FILTERS}</Empty> : <Grid min={300}>
         {runs.map((r) => {
           const color = siteColor(meta, r.site)
@@ -50,7 +48,7 @@ export function HeldOutScatter({ runs, s, meta }: { runs: SiteRun[]; s: Settings
 
 /** stability 07: each withheld quarter's EC range against its training range, with the count outside */
 export function ConcentrationRanges({ runs, meta, s }: { runs: SiteRun[]; meta: MetaFile; s: Settings }) {
-  const [scheme, setScheme] = useSearchParam<Scheme>('fo.range.split', 'leave_quarter_out', SCHEMES)
+  const scheme = s.scheme
   const blocks: IntervalBlock[] = runs.map((r) => {
     const color = siteColor(meta, r.site)
     return { key: r.site, title: r.site, color, rows: blocksOf(r, scheme).filter((b) => b.testN > 0).map((b) => {
@@ -68,8 +66,7 @@ export function ConcentrationRanges({ runs, meta, s }: { runs: SiteRun[]; meta: 
     <ChartFrame id="fo-ranges" title="Training and test EC ranges — how far each withheld quarter reaches beyond its training"
       subtitle={`${popLabel(s.population)} population · ${schemeLabel(scheme).toLowerCase()} · FTIR-predicted EC range of each quarter's training (grey) and test (site colour) filters, dot at the median`}
       provenance={<>{NB_STAB} figure 07</>} source={`${SOURCE}/Predictions.tsx › ConcentrationRanges`}
-      tip={<>"Outside" counts test filters below the lowest or above the highest training EC; they are kept. Different ranges can change how hard prediction is, and a zero count does not make the distributions comparable or the EC precise.</>}
-      controls={<Segmented label="Split" value={scheme} options={SCHEMES} onChange={setScheme} optionLabel={schemeLabel} />}>
+      tip={<>"Outside" counts test filters below the lowest or above the highest training EC; they are kept. Different ranges can change how hard prediction is, and a zero count does not make the distributions comparable or the EC precise.</>}>
       <Key items={[{ label: 'Training EC range', color: '#9a9a9a', kind: 'line' }, { label: 'Test EC range', color: INK.text, kind: 'line' }]} />
       {!runs.length ? <Empty>{NO_FILTERS}</Empty> : <IntervalStrip blocks={blocks} labelWidth={84} noteWidth={92} rowHeight={22} panels={[{ label: 'FTIR-predicted EC (µg/m³)' }]} />}
       <FoExcludedNote s={s} />
@@ -79,7 +76,7 @@ export function ConcentrationRanges({ runs, meta, s }: { runs: SiteRun[]; meta: 
 
 /** stability 08: held-out OLS errors grouped by the CalibrationSetId reported on each filter's EC_ftir rows */
 export function MetadataErrors({ runs, meta, s }: { runs: SiteRun[]; meta: MetaFile; s: Settings }) {
-  const [scheme, setScheme] = useSearchParam<Scheme>('fo.meta.split', 'leave_quarter_out', SCHEMES)
+  const scheme = s.scheme
   const blocks: IntervalBlock[] = runs.map((r) => {
     const color = siteColor(meta, r.site)
     const preds = blocksOf(r, scheme).flatMap((b) => b.preds).filter((q) => Number.isFinite(q.err.ols))
@@ -99,8 +96,7 @@ export function MetadataErrors({ runs, meta, s }: { runs: SiteRun[]; meta: MetaF
     <ChartFrame id="fo-metadata" title="Errors by reported calibration-set identifier — the identifiers track different filter groups"
       subtitle={`${popLabel(s.population)} population · ${schemeLabel(scheme).toLowerCase()} · held-out OLS prediction − reported HIPS; square at the median, bar the interquartile range, thin line the 1.5 × IQR whiskers`}
       provenance={<>{NB_STAB} figure 08</>} source={`${SOURCE}/Predictions.tsx › MetadataErrors`}
-      tip={<>CalibrationSetId values come from the filters' own EC_ftir source rows. At Addis, ID 17 covers 34 early filters through 22 March 2023 and ID 11 the 156 later ones from 29 March, so date and identifier cannot be separated. The IDs are not documented FTIR model versions, LotId is not a confirmed batch, and ChemSpec method codes 217/218 are not used in their place.</>}
-      controls={<Segmented label="Split" value={scheme} options={SCHEMES} onChange={setScheme} optionLabel={schemeLabel} />}>
+      tip={<>CalibrationSetId values come from the filters' own EC_ftir source rows. At Addis, ID 17 covers 34 early filters through 22 March 2023 and ID 11 the 156 later ones from 29 March, so date and identifier cannot be separated. The IDs are not documented FTIR model versions, LotId is not a confirmed batch, and ChemSpec method codes 217/218 are not used in their place.</>}>
       {!runs.length ? <Empty>{NO_FILTERS}</Empty> : <IntervalStrip blocks={blocks} labelWidth={84} noteWidth={56} rowHeight={24} panels={[{ label: `Prediction − HIPS (${s.u})`, reference: 0 }]} />}
       <Note>The notebook draws these as box plots; here the box is the bar and the whiskers the thin line, with the same 1.5 × IQR rule.</Note>
       <FoExcludedNote s={s} />

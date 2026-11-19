@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { IntervalStrip, type IntervalBlock, type IntervalMark, type IntervalRow } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { fmt, signed } from '@/lib/format'
@@ -7,7 +7,7 @@ import { INK } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
 import type { MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
-import { CHANNELS, DOW, SCREEN_TEXT, channelName, instColor, type Channel, type Screen, type Series } from './data'
+import { DOW, SCREEN_TEXT, channelName, instColor, type Channel, type Screen, type Series } from './data'
 import { summarize, weekendEffect, type Day, type WeekendEffect } from './stats'
 
 const weekdayColor = () => INK.accent
@@ -32,8 +32,8 @@ const PROVENANCE = 'addis_02_temporal_patterns_daily.ipynb Task 2 (weekend effec
  * season, and the weekend's mean against the weekdays' (the notebook's "reduction", with a Welch
  * test where it used Student's).
  */
-export function WeeklyPattern({ s, meta, screen, channel, setChannel }: {
-  s: Series; meta: MetaFile; screen: Screen; channel: Channel; setChannel: (c: Channel) => void
+export function WeeklyPattern({ s, meta, screen, channel }: {
+  s: Series; meta: MetaFile; screen: Screen; channel: Channel
 }) {
   const blocks = useMemo<IntervalBlock[]>(() => groups(s.days, meta, s.inst.site).map((g) => {
     const get = (d: Day) => d.bc[channel]
@@ -52,8 +52,7 @@ export function WeeklyPattern({ s, meta, screen, channel, setChannel }: {
   return (
     <ChartFrame id="aeth-overview-weekly" title={`${s.inst.site} · weekdays and weekends — ${channel} BCc by day of the week and season`}
       subtitle={`Left: daily ${channelName(channel, meta)} BCc of ${s.inst.label} on each day of the week (the day each bin's middle falls on), by season: median and interquartile range, mean (open circle). Right: the weekend's mean against the weekdays', as a percentage of the weekday mean, with a 95 % interval from the Welch standard error. The notebook reported the same difference as a reduction with Student's t-test; daily values are autocorrelated, so both the interval and p are optimistic. Screen: ${SCREEN_TEXT[screen]}.`}
-      provenance={PROVENANCE}
-      controls={<Segmented label="Wavelength" value={channel} options={CHANNELS} onChange={setChannel} />}>
+      provenance={PROVENANCE}>
       <div className="chart-wrap">
         {!blocks.length ? <Empty>No daily bins in this span.</Empty> : (
           <IntervalStrip blocks={blocks} labelWidth={150} rowHeight={16} noteWidth={74} minPanelWidth={220}
@@ -66,8 +65,8 @@ export function WeeklyPattern({ s, meta, screen, channel, setChannel }: {
 }
 
 /** The weekend effect at every instrument, by season. */
-export function WeeklyBySite({ series, meta, screen, channel, setChannel }: {
-  series: Series[]; meta: MetaFile; screen: Screen; channel: Channel; setChannel: (c: Channel) => void
+export function WeeklyBySite({ series, meta, screen, channel }: {
+  series: Series[]; meta: MetaFile; screen: Screen; channel: Channel
 }) {
   const blocks = useMemo<IntervalBlock[]>(() => series.filter((s) => s.days.length).map((s) => ({
     key: s.inst.code, title: s.inst.code === s.inst.siteCode ? s.inst.site : s.inst.label, color: instColor(meta, s.inst),
@@ -80,8 +79,7 @@ export function WeeklyBySite({ series, meta, screen, channel, setChannel }: {
   return (
     <ChartFrame id="aeth-overview-weekly-sites" title={`Weekends against weekdays — ${channel} BCc at each instrument, by season`}
       subtitle={`The weekend's mean daily ${channelName(channel, meta)} BCc against the weekdays' (Mon–Fri), as a percentage of the weekday mean, in each site's seasons and over all days, with a 95 % interval from the Welch standard error (optimistic: days are autocorrelated). Days are dated by the middle of their 24 h bin. Screen: ${SCREEN_TEXT[screen]}.`}
-      provenance={PROVENANCE}
-      controls={<Segmented label="Wavelength" value={channel} options={CHANNELS} onChange={setChannel} />}>
+      provenance={PROVENANCE}>
       <div className="chart-wrap">
         {!blocks.length ? <Empty>No daily bins in this span.</Empty>
           : <IntervalStrip blocks={blocks} labelWidth={170} rowHeight={18} noteWidth={74} panels={[{ label: 'Weekend − weekdays (% of weekday mean)', reference: 0, format: (v) => `${v > 0 ? '+' : ''}${Math.round(v)}` }]} />}

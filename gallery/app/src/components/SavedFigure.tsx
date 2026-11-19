@@ -1,5 +1,5 @@
 /** Saved-table figures share availability, exclusions and provenance; Figure owns all rendering. */
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { Figure, type FigureSpec } from '@/components/Figure'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { baseFilterId } from '@/lib/highlight'
@@ -15,6 +15,8 @@ type SavedSpec<T> = T extends FigureSpec ? Omit<T, 'data' | 'markedData' | 'tabl
   bundle: ExportedTables; table: string
   /** Physical filter IDs or MediaIds; omit for fitted summaries/reference spectra. */
   filterIdColumn?: string
+  /** Figure's `lead`: a note ahead of the figure's own options */
+  lead?: ReactNode
 } : never
 
 export function SavedFigure({ bundle, table, filterIdColumn, ...spec }: SavedSpec<FigureSpec>) {

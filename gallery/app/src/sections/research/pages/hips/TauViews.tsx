@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { Crossplot } from '@/components/Crossplot'
 import { Key } from '@/components/Key'
@@ -27,7 +26,7 @@ const keyOf = (o: Optics) => { const ref = refOf(o); return ref ? lineKey(ref) :
  * intercepts would differ; the notebook found them within 0.53–0.58 at Addis. The lines are in the optics export only,
  * so this stays on its four focus sites; `others` are the sites in view it cannot draw.
  */
-export function TauByLine({ pairs, site, others, palette, controls }: { pairs: Paired[]; site: string; others: string[]; palette: LinePalette; controls: ReactNode }) {
+export function TauByLine({ pairs, site, others, palette }: { pairs: Paired[]; site: string; others: string[]; palette: LinePalette }) {
   const here = pairs.filter((p) => p.r.site === site && p.o.tau !== null)
   // Filters → excluded: Mark: the site's excluded filters on the tau–EC crossplot, as ×
   const markedHere = useMarkedPairs().filter((p) => p.r.site === site && p.o.tau !== null)
@@ -41,7 +40,7 @@ export function TauByLine({ pairs, site, others, palette, controls }: { pairs: P
   return (
     <ChartFrame id="he-tau-lines" title={`HIPS tau through time, by calibration line — ${site || 'no site in view'}`}
       subtitle="Left: each filter's HIPS optical depth on its sampling date, coloured by the deployed calibration line (lot · Intercept + Slope·R1) it was read against. Right: tau against FTIR EC with one OLS line per line. A jump in tau where the line changes, or a different intercept per line, would put the Addis floor in the calibration; parallel lines with one floor put it in the samples."
-      provenance={`${NARRATIVE_NB} [10] (Addis tau floor; coefficient-family timeline and tau regressions)`} controls={controls}>
+      provenance={`${NARRATIVE_NB} [10] (Addis tau floor; coefficient-family timeline and tau regressions)`}>
       {here.length < 3 ? <Empty>{others.includes(site) ? `${site}'s deployed calibration lines are not in the HIPS optics export: pick ${OPTICS_SITES}.` : `Too few ${site} filters with a HIPS tau in view: pick ${OPTICS_SITES} under Samples.`}</Empty> : <>
         <Grid>
           <SweepPlot xLabel="Sampling date" yLabel="HIPS tau" height={300} include={[0]}

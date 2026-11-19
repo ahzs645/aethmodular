@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react'
 import * as d3 from 'd3'
-import { ChartFrame, Empty, Segmented } from '@/components/ChartFrame'
+import { ChartFrame, Empty } from '@/components/ChartFrame'
 import { XAxis, YAxis } from '@/components/Axes'
 import { Panels } from '@/components/Panels'
 import { histogramSeries, SweepPlot, type SweepSeries } from '@/components/SweepPlot'
@@ -10,7 +10,7 @@ import { FONT, INK } from '@/lib/theme'
 import { seasonOnly } from '@/lib/seasons'
 import type { MetaFile } from '@/lib/types'
 import { seasonsForSite } from '@/siteSeasons'
-import { CHANNELS, DOW, MONTH_NAME, SCREEN_TEXT, channelName, type Channel, type Screen, type Series } from './data'
+import { DOW, MONTH_NAME, SCREEN_TEXT, channelName, type Channel, type Screen, type Series } from './data'
 import { dayToDay, quantileSorted, summarize } from './stats'
 
 interface Bar { key: string; label: string; value: number; color: string; tip: string[] }
@@ -67,8 +67,8 @@ const xRange = (h: SweepSeries[]): [number, number] | undefined => {
  * High-BC days and the day-to-day change at one site (addis_02_daily Tasks 4 and 5): when the days
  * above the 95th percentile fall, by season and weekday, and how much BCc moves from one day to the next.
  */
-export function Episodes({ s, meta, screen, channel, setChannel }: {
-  s: Series; meta: MetaFile; screen: Screen; channel: Channel; setChannel: (c: Channel) => void
+export function Episodes({ s, meta, screen, channel }: {
+  s: Series; meta: MetaFile; screen: Screen; channel: Channel
 }) {
   const panels = useMemo(() => {
     const get = (d: (typeof s.days)[number]) => d.bc[channel]
@@ -96,8 +96,7 @@ export function Episodes({ s, meta, screen, channel, setChannel }: {
   return (
     <ChartFrame id="aeth-overview-episodes" title={`${s.inst.site} · high days and day-to-day change — ${channel} BCc`}
       subtitle={panels ? `Top: the ${panels.nHigh} days whose daily ${channelName(channel, meta)} BCc is above its 95th percentile (${fmt(panels.p95, 2)} µg/m³ over ${panels.n} days in the span), counted by season and by day of the week. Bottom: the change from one day to the next (only between consecutive bins, ${panels.nPairs} pairs), its mean by month and its distribution (bins beyond ±3 SD folded into the end bars, as the notebook clipped). The daily files of Beijing, Delhi and JPL hold only days near a filter sample, so their pairs come from short runs. Screen: ${SCREEN_TEXT[screen]}.` : undefined}
-      provenance="addis_02_temporal_patterns_daily.ipynb Tasks 4 (extreme days) and 5 (day-to-day rate of change) for every site · gallery/data/export_aethalometer.py"
-      controls={<Segmented label="Wavelength" value={channel} options={CHANNELS} onChange={setChannel} />}>
+      provenance="addis_02_temporal_patterns_daily.ipynb Tasks 4 (extreme days) and 5 (day-to-day rate of change) for every site · gallery/data/export_aethalometer.py">
       <div className="chart-wrap">
         {!panels ? <Empty>Too few days with {channel} BCc in this span.</Empty> : (
           // four different charts (counts, means, a histogram): a composite, two columns at most

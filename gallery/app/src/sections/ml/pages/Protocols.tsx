@@ -159,11 +159,11 @@ export function Protocols(_props: SectionPageProps) {
   const airspecMarked = airspecOf(airspecSplit.marked)
 
   return <>
-    <PredictionDiagnostics bundle={currentPredictions} table="predictions" id="ml-protocols-current" mac={m.mac} domain={false}
+    <PredictionDiagnostics bundle={currentPredictions} table="predictions" id="ml-protocols-current" group="Current calibration runs" mac={m.mac} domain={false}
       choose={[{ column: 'site', label: 'Test set' }, { column: 'model', label: 'Calibration' }]} />
-    <PredictionDiagnostics bundle={data} table="domain_locked" id="ml-protocols-domain-locked" mac={m.mac}
+    <PredictionDiagnostics bundle={data} table="domain_locked" id="ml-protocols-domain-locked" group="Locked models" mac={m.mac}
       choose={[{ column: 'model', label: 'Model' }]} />
-    <PredictionDiagnostics bundle={data} table="residuals_by_mode" id="ml-protocols-domain-mode" mac={m.mac}
+    <PredictionDiagnostics bundle={data} table="residuals_by_mode" id="ml-protocols-domain-mode" group="Residuals by protocol" mac={m.mac}
       choose={[{ column: 'spectra', label: 'Spectra' }, { column: 'mode', label: 'Protocol' }]} />
     <SavedFigure bundle={data} table="boot_draws_locked" kind="ecdf" id="ml-protocols-bootstrap-draws" value="intercept" series="model"
       xLabel="Addis intercept (µg/m³, fitted at MAC 10)" title="Site-cluster bootstrap intercept distribution" />

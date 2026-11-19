@@ -66,8 +66,8 @@ export function SeasonalSpread({ s, meta, screen }: { s: Series; meta: MetaFile;
 
 type Scale = 'abs' | 'rel'
 /** The sites side by side: one channel's daily distribution by season, a block per instrument. */
-export function SeasonalSpreadBySite({ series, meta, screen, channel, setChannel }: {
-  series: Series[]; meta: MetaFile; screen: Screen; channel: Channel; setChannel: (c: Channel) => void
+export function SeasonalSpreadBySite({ series, meta, screen, channel }: {
+  series: Series[]; meta: MetaFile; screen: Screen; channel: Channel
 }) {
   const [scale, setScale] = useSearchParam<Scale>('aeos', 'abs', ['abs', 'rel'])
   const blocks = useMemo<IntervalBlock[]>(() => series.filter((s) => s.days.length).map((s) => {
@@ -87,7 +87,6 @@ export function SeasonalSpreadBySite({ series, meta, screen, channel, setChannel
       subtitle={`Daily ${channelName(channel, meta)} BCc in each site's seasons and over all days: median and interquartile range, mean (open circle), 10–90 % range. ${scale === 'rel' ? "Divided by the instrument's median over all days, so the seasonal swing compares across sites whatever their level. " : ''}Screen: ${SCREEN_TEXT[screen]}.`}
       provenance={PROVENANCE}
       controls={<>
-        <Segmented label="Wavelength" value={channel} options={CHANNELS} onChange={setChannel} />
         <Segmented label="Scale" value={scale} options={['abs', 'rel'] as Scale[]} onChange={setScale} optionLabel={(o) => (o === 'abs' ? 'µg/m³' : 'Relative to median')} />
       </>}>
       <div className="chart-wrap">

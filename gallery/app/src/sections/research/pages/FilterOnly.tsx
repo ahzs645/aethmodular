@@ -4,7 +4,7 @@ import type { SectionPageProps } from '../../types'
 import { Agreement } from './filterOnly/Agreement'
 import { COMMAND, FoMarkedProvider, SettingsControls, useFilterOnly, useRuns, useSettings } from './filterOnly/data'
 import { CoefficientInfluence, CommonFilterInfluence } from './filterOnly/Influence'
-import { Id11Errors, Id11Support } from './filterOnly/Id11'
+import { Id11Errors, Id11SiteOptions, Id11Support } from './filterOnly/Id11'
 import { DenominatorSensitivity, PopulationHeat, PopulationModels, Weighting } from './filterOnly/Populations'
 import { ConcentrationRanges, HeldOutScatter, MetadataErrors } from './filterOnly/Predictions'
 import { PairedProportional, QuarterBias, QuarterMae, TestWeights } from './filterOnly/Quarters'
@@ -29,6 +29,7 @@ export function FilterOnly({ meta, rows }: SectionPageProps) {
   const props = { runs, s, meta }
   return <FoMarkedProvider value={data.marked}>
     <SettingsControls />
+    <Id11SiteOptions {...props} />
     <QuarterMae {...props} />
     <QuarterBias {...props} />
     <PairedProportional {...props} />

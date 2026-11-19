@@ -30,7 +30,7 @@ import { FONT, INK } from '@/lib/theme'
 import { useSearchParam } from '@/lib/url'
 import { FilterDecimals, SiteDecimals } from '@/pages/HipsDecimals'
 import { ImproveReach, LevelChoices } from '@/pages/HipsCaveats'
-import { DataTable, LINEAR, MEASURED, Readouts } from '@/pages/hipsLineariseParts'
+import { DataTable, LINEAR, MEASURED, Readouts, StatOptions } from '@/pages/hipsLineariseParts'
 import { correction, fitAgainstHips, linearBc, linearise, noiseGain, opticalDepth, predictedExponent, previousLoadingGroups, ratioMedians, saturate, SPARTAN_LOADING_MAX_GAP_DAYS, type LinFilter, type LoadingGroup } from '@/lib/hipsLinearise'
 
 export const COMMAND = 'uv run python gallery/data/export_hips_linearise.py'
@@ -120,6 +120,7 @@ export function HipsLinearisePage() {
   return (
     <>
       <CeilingOptions ceil={ceil} />
+      <StatOptions />
       <Bend data={data} ceil={ceil} />
       <Worked data={data} ceil={ceil} />
       <CorrectionCurve data={data} ceil={ceil} />

@@ -12,6 +12,7 @@ import { SweepPlot, type SweepSeries } from '@/components/SweepPlot'
 import { fmt, signed } from '@/lib/format'
 import { INK } from '@/lib/theme'
 import type { MetaFile } from '@/lib/types'
+import { SidebarControls } from '@/lib/pageSidebar'
 import { usePageSite } from '@/lib/siteFocus'
 import { id11Sensitivity, type Id11Row } from '../../common/filterOnly'
 import { Grid, SitePick } from '../../common/ui'
@@ -29,9 +30,15 @@ function useId11(runs: SiteRun[], s: Settings, meta: MetaFile): [string, (v: str
   return [site, setSite, rows]
 }
 
+/** the site the two ID-11 charts are drawn for, in Page options: one setting for both */
+export function Id11SiteOptions({ runs, s, meta }: { runs: SiteRun[]; s: Settings; meta: MetaFile }) {
+  const [site, setSite] = useId11(runs, s, meta)
+  return <SidebarControls title="ID-11 charts"><SitePick value={site} options={runs.map((r) => r.site)} onChange={setSite} /></SidebarControls>
+}
+
 /** proportionality 06: OLS MAE and signed error on the common later ID-11 filters under both training choices */
 export function Id11Errors({ runs, s, meta }: { runs: SiteRun[]; s: Settings; meta: MetaFile }) {
-  const [site, setSite, rows] = useId11(runs, s, meta)
+  const [site, , rows] = useId11(runs, s, meta)
   const color = siteColor(meta, site)
   const common = rows.filter((r) => r.common)
   // the pooled comparison over every common filter (filter-weighted), as the notebook's note quotes it
@@ -46,8 +53,7 @@ export function Id11Errors({ runs, s, meta }: { runs: SiteRun[]; s: Settings; me
     <ChartFrame id="fo-id11" title="Training on earlier ID-11 filters — the same later ID-11 filters under two training choices"
       subtitle={`${site} · ${popLabel(s.population)} population · later period · OLS with intercept · identifier and date stay confounded`}
       provenance={<>{NB_PROP} figure 06 (Addis)</>} source={`${SOURCE}/Id11.tsx › Id11Errors`}
-      tip={<>At the release's settings (with Filters → excluded: Include) the same 127 later Addis ID-11 filters are compared under both choices: OLS MAE falls from 4.009 to 3.884 Mm⁻¹ and mean error from +1.621 to +0.619 Mm⁻¹. It is a bounded predictive sensitivity; because ID 11 begins on a date, the change cannot be attributed to a model change. No residual means are subtracted.</>}
-      controls={<SitePick value={site} options={runs.map((r) => r.site)} onChange={setSite} />}>
+      tip={<>At the release's settings (with Filters → excluded: Include) the same 127 later Addis ID-11 filters are compared under both choices: OLS MAE falls from 4.009 to 3.884 Mm⁻¹ and mean error from +1.621 to +0.619 Mm⁻¹. It is a bounded predictive sensitivity; because ID 11 begins on a date, the change cannot be attributed to a model change. No residual means are subtracted.</>}>
       {common.length ? <>
         <Key items={[{ label: 'All earlier training', color: GREY, kind: 'dash' }, { label: 'Earlier ID 11 only', color, kind: 'line' }]} />
         <Grid min={320}>
@@ -63,7 +69,7 @@ export function Id11Errors({ runs, s, meta }: { runs: SiteRun[]; s: Settings; me
 
 /** proportionality 07: training filters under each choice, and which ID-11 test quarters both can fit */
 export function Id11Support({ runs, s, meta }: { runs: SiteRun[]; s: Settings; meta: MetaFile }) {
-  const [site, setSite, rows] = useId11(runs, s, meta)
+  const [site, , rows] = useId11(runs, s, meta)
   const color = siteColor(meta, site)
   const first = rows.find((r) => r.common)
   const train: SweepSeries[] = [
@@ -75,8 +81,7 @@ export function Id11Support({ runs, s, meta }: { runs: SiteRun[]; s: Settings; m
     <ChartFrame id="fo-id11-support" title="Which ID-11 folds are supported — restricted training changes which early folds can be compared"
       subtitle={`${site} · ${popLabel(s.population)} population · later period · a quarter is compared only when both training choices meet the same minimum (${s.minTrain})`}
       provenance={<>{NB_PROP} figure 07 (Addis)</>} source={`${SOURCE}/Id11.tsx › Id11Support`}
-      tip={<>At the release's settings (with Filters → excluded: Include) the first two Addis ID-11 test quarters cannot be compared; common support begins in 2023Q3 and covers five quarters. Compare those same filters, not the earlier 155-filter later-period aggregate.</>}
-      controls={<SitePick value={site} options={runs.map((r) => r.site)} onChange={setSite} />}>
+      tip={<>At the release's settings (with Filters → excluded: Include) the first two Addis ID-11 test quarters cannot be compared; common support begins in 2023Q3 and covers five quarters. Compare those same filters, not the earlier 155-filter later-period aggregate.</>}>
       {!runs.length ? <Empty>{NO_FILTERS}</Empty> : <>
       <Key items={[{ label: 'All earlier', color: GREY, kind: 'dash' }, { label: 'Earlier ID 11', color, kind: 'line' }, { label: 'Test quarter compared', color, kind: 'bar' }, { label: 'Not compared', color, kind: 'faded' }]} />
       <Grid min={320}>

@@ -93,6 +93,8 @@ export function Overview({ rows: allRows, meta }: SectionPageProps) {
         title="The days inside the span of the site's filters in view (±1 day; the date brush narrows it), or the instrument's whole daily file" />
       <Segmented label="Screen" value={screen} options={SCREENS} onChange={setScreen} optionLabel={(o) => SCREEN_LABEL[o]}
         title="Keep every daily value, drop negative BCc, or also drop values above the channel's mean + 3 SD as addis_02 did" />
+      <Segmented label="Wavelength" value={channel} options={CHANNELS} onChange={setChannel}
+        title="The channel every one-wavelength chart on this page draws: the timeline, the weekly and episode charts, and the month and season summaries by site" />
     </SidebarControls>
   )
   const status = <>
@@ -132,8 +134,8 @@ export function Overview({ rows: allRows, meta }: SectionPageProps) {
           <MonthlyPattern s={s} meta={meta} screen={screen} />
           <SeasonalSpread s={s} meta={meta} screen={screen} />
           <SpectralShape series={[s]} meta={meta} screen={screen} by="season" />
-          <WeeklyPattern s={s} meta={meta} screen={screen} channel={channel} setChannel={setChannel} />
-          <Episodes s={s} meta={meta} screen={screen} channel={channel} setChannel={setChannel} />
+          <WeeklyPattern s={s} meta={meta} screen={screen} channel={channel} />
+          <Episodes s={s} meta={meta} screen={screen} channel={channel} />
           <FilterMethods s={s} meta={meta} />
           <Completeness series={siteSeries} meta={meta} />
         </>}
@@ -153,12 +155,12 @@ export function Overview({ rows: allRows, meta }: SectionPageProps) {
       {controls}
       {status}
       <SiteTable series={series} meta={meta} screen={screen} onSite={mode.open} />
-      <SitesTimeline series={series} meta={meta} screen={screen} channel={channel} setChannel={setChannel} />
+      <SitesTimeline series={series} meta={meta} screen={screen} channel={channel} />
       <Completeness series={series} meta={meta} />
-      <MonthlyBySite series={primary} meta={meta} screen={screen} channel={channel} setChannel={setChannel} />
-      <SeasonalSpreadBySite series={primary} meta={meta} screen={screen} channel={channel} setChannel={setChannel} />
+      <MonthlyBySite series={primary} meta={meta} screen={screen} channel={channel} />
+      <SeasonalSpreadBySite series={primary} meta={meta} screen={screen} channel={channel} />
       <SpectralShape series={primary} meta={meta} screen={screen} by="site" />
-      <WeeklyBySite series={primary} meta={meta} screen={screen} channel={channel} setChannel={setChannel} />
+      <WeeklyBySite series={primary} meta={meta} screen={screen} channel={channel} />
       <Excluded series={primary} meta={meta} exclusions={exclusions} />
       {hourlyHead(hourly.series.length)}
       {hourly.series.length > 0 && <>

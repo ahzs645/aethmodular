@@ -6,7 +6,7 @@ import { Legend, useLegend } from '@/components/Legend'
 import { SweepPlot, type SweepPoint, type SweepSeries } from '@/components/SweepPlot'
 import { fmt } from '@/lib/format'
 import type { MetaFile } from '@/lib/types'
-import { CHANNELS, SCREEN_TEXT, channelName, instColor, logTick, type Channel, type Screen, type Series } from './data'
+import { SCREEN_TEXT, channelName, instColor, logTick, type Channel, type Screen, type Series } from './data'
 import { movingMean, splitRuns } from './stats'
 
 type Avg = 'daily' | '30d'
@@ -17,12 +17,11 @@ const DAY = 864e5
  * Every instrument's daily BCc on one time axis (Multi_Site_Analysis §1's combined plot, _Fixed §3),
  * one wavelength at a time; a log axis by default, since Delhi runs ten times JPL.
  */
-export function SitesTimeline({ series, meta, screen, channel, setChannel }: {
-  series: Series[]; meta: MetaFile; screen: Screen; channel: Channel; setChannel: (c: Channel) => void
+export function SitesTimeline({ series, meta, screen, channel }: {
+  series: Series[]; meta: MetaFile; screen: Screen; channel: Channel
 }) {
-  // the wavelength is the page's (bound); the rest in the link (old links' aeost still open the same average)
+  // the wavelength is the page's, in Page options; the rest in the link (old links' aeost still open the same average)
   const o = useChartOptions('aeth-overview-sites-timeline', [
-    { key: 'channel', label: 'Wavelength', choices: CHANNELS, default: 'IR', bind: [channel, setChannel as (v: never) => void] },
     { key: 'avg', label: 'Show', choices: [{ value: 'daily', label: 'Daily' }, { value: '30d', label: '30-day mean' }], default: '30d', legacy: ['aeost'] },
     { key: 'log', label: 'Log scale', toggle: true, default: true },
   ])

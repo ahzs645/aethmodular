@@ -1,7 +1,6 @@
 import { useId, useMemo } from 'react'
 import * as d3 from 'd3'
 import { ChartFrame, Note } from '@/components/ChartFrame'
-import { Segmented } from '@/components/Controls'
 import { IntervalStrip } from '@/components/IntervalStrip'
 import { Key } from '@/components/Key'
 import { Marker } from '@/components/RefLines'
@@ -11,9 +10,8 @@ import { fmt, pct } from '@/lib/format'
 import { linearLevel } from '@/lib/hipsLinearise'
 import { FixedSetNote } from '@/lib/markedRows'
 import { FONT, INK } from '@/lib/theme'
-import { useSearchParam } from '@/lib/url'
 import type { Ceil, Linearise } from '@/pages/HipsLinearisePage'
-import { LINEAR, MEASURED, Readouts, STAT_NAME, STATS, type Stat } from '@/pages/hipsLineariseParts'
+import { LINEAR, MEASURED, Readouts, STAT_NAME, useStat } from '@/pages/hipsLineariseParts'
 
 /**
  * Two things to keep in view when reading a linearised Addis number (the "Linearising HIPS at Addis" page):
@@ -77,7 +75,7 @@ export function ImproveReach({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   return (
     <ChartFrame id="hl-reach" title={`IMPROVE's darker filters read ${pct(loss)} lower per unit of EC, and ${pct(beyond / taus.length)} of Addis filters are darker than any of them — HIPS absorption per unit of thermal EC against optical depth, IMPROVE 2005–2025`}
       subtitle={`Each grey dot is the median of one IMPROVE group (${primary.samples.toLocaleString()} samples at ${primary.sites} sites); size ∝ samples. Height is HIPS absorption per unit of thermal (TOR) EC on the filter: a HIPS that kept up would stay level. The blue line is the fitted response at the chosen ceiling, solid where IMPROVE has filters and dashed where it does not. The bars along the bottom count the Addis filters at each optical depth (their height is a count, not a value on the left axis). Shaded: darker than IMPROVE's darkest group.`}
-      provenance={SOURCE} controls={ceil.control}>
+      provenance={SOURCE}>
       <ScatterPlot points={points} xLabel="HIPS optical depth τ" yLabel="Fabs ÷ TOR EC (m²/g)" xDomain={[0, TAU_MAX]} yDomain={[0, 15]} nice={false}
         height={340} outside="clip" note={false} under={under} />
       <Key items={[{ label: 'IMPROVE group medians (size ∝ samples)', color: INK.muted, kind: 'dot' }, { label: `fitted response, ceiling ${fmt(c, 2)}`, color: LINEAR, kind: 'line' },
@@ -97,7 +95,7 @@ export function ImproveReach({ data, ceil }: { data: Linearise; ceil: Ceil }) {
 
 // ------------------------------------------------------------------ the level under every defensible choice
 export function LevelChoices({ data }: { data: Linearise }) {
-  const [stat, setStat] = useSearchParam<Stat>('hl.stat', 'median_bc', STATS)
+  const [stat] = useStat()
   const kind = stat === 'median_bc' ? 'median' as const : 'mean' as const
   const name = STAT_NAME[stat]
   const reported = useMemo(() => linearLevel(data.filters, null, kind), [data, kind])
@@ -116,9 +114,7 @@ export function LevelChoices({ data }: { data: Linearise }) {
   return (
     <ChartFrame id="hl-level" title={`The Addis ${name.toLowerCase()} runs from ${writeAt(least.v, 0)} to ${writeAt(most.v, 0)} µg/m³ with the ceiling and the MAC chosen — HIPS BC linearised with each IMPROVE population's ceiling`}
       subtitle={`One row per set of IMPROVE samples the ceiling can be fitted on. Filled: the Addis ${name.toLowerCase()} linearised with that ceiling and kept at MAC ${data.mac} m²/g, as SPARTAN reports BC. Hollow: the same at that population's own light-filter MAC (Fabs ÷ thermal EC on its lightest filters), the figure to hold against an EC. Bars: that ceiling's own 90 % interval. The dashed line is the value as reported.`}
-      provenance={SOURCE}
-      controls={<Segmented label="Statistic" value={stat} options={STATS} onChange={setStat} optionLabel={(o) => `${STAT_NAME[o]} BC`}
-        title="A mean leans on the darkest filters, where the ceiling matters most, so it spreads further than a median." />}>
+      provenance={SOURCE}>
       <IntervalStrip blocks={[{ key: 'p', rows: rows.map((r) => ({
         key: r.p.population, label: `${title(r.p.population)} · τ∞ ${fmt(r.p.tau_inf, 2)}`, strong: r === central,
         marks: [[
