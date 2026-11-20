@@ -67,3 +67,14 @@ test('the scope reads the 11 Nov screen: Addis and Delhi are seen, Bishoftu expe
   assert.deepEqual(['ETAD', 'INDH', 'CHTS', 'ETBI', 'USPA'].map((c) => siteInScope(c, 'expected')), [true, true, true, true, false])
   assert.equal(siteInScope('XXXX', 'expected'), false); assert.equal(siteInScope(undefined, 'seen'), false)
 })
+
+test('past a τ: lighter evaluation filters keep their measured Fabs, darker ones are linearised', () => {
+  const cut = 0.45
+  const out = lineariseRun(run(), () => VOLUME, CENTRAL_CEILING, LAMBDA_10, cut)
+  out.eval.ref.forEach((ref, i) => {
+    const tau = tauOf(ec[i])
+    if (tau < cut) assert.equal(ref, fabs[i])
+    else near(ref, fabs[i] / (1 - tau / CENTRAL_CEILING), 1e-9, `filter ${i}`)
+  })
+  assert.equal(siteInScope('XXXX', 'past'), true)
+})

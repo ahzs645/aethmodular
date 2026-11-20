@@ -466,11 +466,22 @@ menu, the ⌘K search and the Investigations cards of a local build. A public bu
 ### HIPS linearised: which sites, and the story page
 
 The Plot side panel's HIPS row linearises HIPS on every chart tab (`hips=<ceiling>`), and **Apply to** chooses the
-sites it covers (`hipsat=expected|seen`; absent, all sites). Every network row with a sampled volume also carries
+sites it covers (`hipsat=expected|seen`; absent, all sites), or only the filters past an optical depth (`hipsat=past`,
+cut `?hipscut=`, default 0.45). Every network row with a sampled volume also carries
 `HIPS optical depth` and `HIPS expected under-read` as fields (group "HIPS loading"). The Meeting page "Linearising
 HIPS across SPARTAN" (`meeting=hips-story`, `pages/HipsStoryPage.tsx`, `lib/hipsRules.ts`) compares five ways of
 applying the correction on the same filters. The site readings it uses are bundled as `src/lib/hipsSites.json`,
 written by `gallery/data/export_hips_linearise.py`. Account: `docs/hips-linearise-rules-2026-11-19.md`.
+
+The Meeting page "HIPS bend checks" (`meeting=hips-checks`, `pages/HipsBendChecks.tsx`, `pages/hipsDensity.tsx`) has
+the 19 Nov follow-ups: every IMPROVE filter as a count grid under the bend (the bend chart's "IMPROVE: Every filter",
+`?hl.bend.improve=filters`) with the curve fitted to single filters, the curve in Fabs against EC, and the crossplot
+with only filters below a τ (`?hl.hips.cut=`) and the MAC for slope 1, for every site. Its part 2 regroups the IMPROVE
+filters in the browser (`lib/hipsGroupings.ts`; Page options, IMPROVE grouping, `?hc.g.*`) and refits the ceiling, with
+the fit's error at every ceiling, a sweep of 70 groupings and a leave-one-group-out check; a refitted ceiling can drive the
+page (`?hl.ceil=custom&hl.ceilv=`). Data: `hips_linearise/improve_density.json` and `improve_groupings.json` from
+`gallery/data/export_hips_improve_density.py` and `export_hips_improve_groupings.py` (need the FTIR local database's
+TOR and HIPS tables). Account: `docs/hips-bend-checks-2026-11-20.md`.
 
 ### Publishing
 

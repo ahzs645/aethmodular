@@ -140,3 +140,16 @@ test('statuses and scopes', () => {
   near(underRead(CENTRAL_CEILING * 2), 1, 1e-12, 'past the ceiling')
   assert.deepEqual(['expected', 'seen', 'all', null, 'nonsense'].map(parseHipsScope), ['expected', 'seen', 'all', 'all', 'all'])
 })
+
+test('the MAC for slope 1 is MAC / slope: with λ moved by MAC², the refitted slope is exactly 1', async () => {
+  const { macForSlopeOne, filterInScope, parseHipsCut, parseHipsScope, scopeMark } = await import('./hipsLinearise.ts')
+  const light = Array.from({ length: 30 }, (_, i) => ({ id: String(i), season: '', lot: null, tau: 0.01, volume_m3: 1, volume_known: true, hips_bc: 1 + i / 3, ftir: 1.6 * (1 + i / 3) + ((i % 3) - 1) * 0.4, pm25: null }))
+  const lambda = 3, m = macForSlopeOne(light, lambda, null, 10)
+  assert.ok(Math.abs(m - 10 / fitAgainstHips(light, lambda, null).slope) < 1e-12)
+  const g = 10 / m   // HIPS BC at MAC m is g × HIPS BC at MAC 10; its error variance is g² as large, so λ / g²
+  const refit = fitAgainstHips(light.map((f) => ({ ...f, hips_bc: f.hips_bc * g })), lambda / g ** 2, null)
+  assert.ok(Math.abs(refit.slope - 1) < 1e-9, `slope ${refit.slope}`)
+  assert.equal(filterInScope(0.3, 'past', 0.45), false); assert.equal(filterInScope(0.5, 'past', 0.45), true); assert.equal(filterInScope(0.1, 'all'), true)
+  assert.equal(parseHipsScope('past'), 'past'); assert.equal(parseHipsCut(''), 0.45); assert.equal(parseHipsCut('0.6'), 0.6); assert.equal(parseHipsCut('9'), 0.45)
+  assert.equal(scopeMark('past', 0.5), ' past τ 0.50'); assert.equal(scopeMark('seen'), ' where seen')
+})

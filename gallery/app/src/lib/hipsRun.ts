@@ -36,7 +36,7 @@ export function refitRow(e: RunEval, idx: readonly number[], row: MetricRow, lam
  * whose own filters show the bend. A site the screen does not list is covered only by 'all'.
  */
 export function siteInScope(code: string | undefined, scope: HipsScope): boolean {
-  if (scope === 'all') return true
+  if (scope === 'all' || scope === 'past') return true
   if (!code) return false
   if (scope === 'seen') return SEEN_SITES.has(code)
   const reading = siteReading(code)
@@ -47,15 +47,18 @@ export function siteInScope(code: string | undefined, scope: HipsScope): boolean
  * The run with every evaluation filter's Fabs linearised at a ceiling, each by its own factor 1 / (1 − τ/τ∞) with τ
  * from its Fabs and sampled volume, and every metrics row fitted again. A filter without a sampled volume, or at or
  * past the ceiling, drops out: it never keeps its measured value beside corrected filters (lib/viewFields has the
- * same rule). A run scored against a reference EC, not Fabs, is returned as it is.
+ * same rule). With `cut`, only filters at or past that optical depth are linearised and the lighter ones keep their
+ * measured Fabs. A run scored against a reference EC, not Fabs, is returned as it is.
  */
-export function lineariseRun(run: CalibRun, volumeOf: (id: string | null) => number | null | undefined, ceiling: number, lambda10: number): CalibRun {
+export function lineariseRun(run: CalibRun, volumeOf: (id: string | null) => number | null | undefined, ceiling: number, lambda10: number, cut: number | null = null): CalibRun {
   if (run.ref_kind !== 'fabs') return run
   const e = run.eval
   const idx: number[] = [], ref: number[] = []
   e.ref.forEach((fabs, i) => {
     const volume = volumeOf(e.id[i])
-    const k = typeof volume === 'number' && volume > 0 && Number.isFinite(fabs) ? correction(opticalDepth(fabs, volume), ceiling) : NaN
+    const tau = typeof volume === 'number' && volume > 0 && Number.isFinite(fabs) ? opticalDepth(fabs, volume) : NaN
+    // under "Filters past a τ" (cut set) a filter lighter than the cut keeps its measured Fabs
+    const k = cut != null && tau < cut ? 1 : correction(tau, ceiling)
     if (Number.isFinite(k)) { idx.push(i); ref.push(fabs * k) }
   })
   const pick = <T,>(a: T[]) => idx.map((i) => a[i])

@@ -24,7 +24,8 @@ import { SitePicker, type SiteItem } from '@/components/SitePicker'
 import { Combobox } from '@/components/Combobox'
 import { useRatios } from '@/components/RatioDialog'
 import { MAC_CHOICES, type Basis } from '@/lib/viewFields'
-import { CENTRAL_CEILING, EXPECTED_FROM, HIPS_SCOPES, IMPROVE_CEILINGS, type HipsScope } from '@/lib/hipsLinearise'
+import { CENTRAL_CEILING, DEFAULT_PAST_TAU, EXPECTED_FROM, HIPS_SCOPES, IMPROVE_CEILINGS, parseHipsCut, type HipsScope } from '@/lib/hipsLinearise'
+import { useSearchParam } from '@/lib/url'
 import { Select } from '@/components/Controls'
 import { SeasonEditor } from '@/components/SeasonEditor'
 import { DynamicSeasonEditor } from '@/components/DynamicSeasonEditor'
@@ -160,6 +161,8 @@ export interface SubsetState {
  */
 export interface HipsViewState {
   scope: HipsScope; linearised: number; asMeasured: number; dropped: number
+  /** under the `past` scope, the optical depth filters are linearised from */
+  cut?: number
   sites: { name: string; underRead: number; on: boolean; reading?: string }[]
 }
 
@@ -891,6 +894,9 @@ export function HipsControl({ ceiling, onHips, scope = 'all', onScope }: {
 }) {
   const on = ceiling != null
   const key = IMPROVE_CEILINGS.find((c) => c.tau_inf === ceiling)?.key ?? 'central'
+  // under "Filters past a τ" the cut is in the link (`hipscut`), read by App's view as well
+  const [cutText, setCut] = useSearchParam<string>('hipscut', '')
+  const cut = parseHipsCut(cutText)
   // two controls, so the sites choice wraps under the ceiling in the narrow side panel
   return (<>
     <span className="control">
@@ -905,7 +911,9 @@ export function HipsControl({ ceiling, onHips, scope = 'all', onScope }: {
     {on && onScope && <span className="control">
       <Select label="Apply to" value={scope} options={HIPS_SCOPES.map((x) => x.key)}
         onChange={(k) => onScope(k as HipsScope)} optionLabel={(k) => HIPS_SCOPES.find((x) => x.key === k)?.label ?? k}
-        title={`Which sites are linearised. All sites: every filter by its own factor, which is close to 1 on a light filter. Where expected: only the sites whose median filter is expected to under-read by more than ${EXPECTED_FROM * 100} %. Where seen: only the sites whose own filters also show the bend (expected and seen in the 11 Nov screen; SPARTAN only). The other sites keep HIPS as measured.`} />
+        title={`Which sites are linearised. All sites: every filter by its own factor, which is close to 1 on a light filter. Where expected: only the sites whose median filter is expected to under-read by more than ${EXPECTED_FROM * 100} %. Where seen: only the sites whose own filters also show the bend (expected and seen in the 11 Nov screen; SPARTAN only). The other sites keep HIPS as measured. Filters past a τ: every site, but only the filters at or past an optical depth; lighter filters keep HIPS as measured, which puts a step in the response at the cut.`} />
+      {scope === 'past' && <ScrubField label="Linearise from τ" value={cut} min={0.1} max={2} step={0.01} width={84}
+        format={(v) => v.toFixed(2)} onChange={(v) => setCut(Math.abs(v - DEFAULT_PAST_TAU) < 1e-9 ? '' : String(+v.toFixed(2)))} />}
     </span>}
   </>)
 }
@@ -923,9 +931,11 @@ function HipsViewNote({ view }: { view: HipsViewState }) {
   return (
     <span className="method-note" style={{ display: 'block' }}>
       {view.linearised.toLocaleString()} of {total.toLocaleString()} filters with HIPS in view are linearised
-      {view.asMeasured > 0 && `; ${view.asMeasured.toLocaleString()} at sites outside the choice stay as measured`}
+      {view.asMeasured > 0 && (view.scope === 'past'
+        ? `; ${view.asMeasured.toLocaleString()} lighter than τ ${(view.cut ?? DEFAULT_PAST_TAU).toFixed(2)} stay as measured`
+        : `; ${view.asMeasured.toLocaleString()} at sites outside the choice stay as measured`)}
       {view.dropped > 0 && `; ${view.dropped.toLocaleString()} have no sampled volume or sit past the ceiling and drop out of the HIPS fields`}.
-      {view.scope !== 'all' && <>
+      {view.scope !== 'all' && view.scope !== 'past' && <>
         {' '}Linearised, the sites {rule}: {on.length ? listSites(on) : 'none in view'}.
         {off.length > 0 && <> As measured: {listSites(off)}.</>}
         {' '}In brackets, the under-read expected of the site's median filter.

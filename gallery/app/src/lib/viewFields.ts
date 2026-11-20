@@ -15,13 +15,14 @@
  *   ÷ 353. A filter without a sampled volume, or at or past the ceiling, has no linearised value and drops out of
  *   the HIPS fields rather than keep its measured one beside corrected filters. Units carry ", linearised".
  *   The view can cover every site or only those the bend affects (lib/hipsLinearise HIPS_SCOPES): a site outside
- *   keeps HIPS as measured, and the units then say which sites, ", linearised where seen".
+ *   keeps HIPS as measured, and the units then say which sites, ", linearised where seen". Under `past`, only the
+ *   filters at or past an optical depth are linearised, at every site (", linearised past τ 0.45").
  * - HIPS loading: every filter with HIPS and a sampled volume carries its optical depth and the under-read the
  *   IMPROVE curve expects of it, as fields of their own (withHipsLoading), so any chart can show, colour by or
  *   band which filters the bend affects, whether or not the view corrects them.
  * - Ratios: numerator / denominator on the same filter, after the steps above.
  */
-import { correction, HIPS_SCOPES, opticalDepth, underRead, type HipsScope } from './hipsLinearise.ts'
+import { correction, filterInScope, opticalDepth, scopeMark, underRead, type HipsScope } from './hipsLinearise.ts'
 import { baseUnit, HIPS_LINEARISED_MARK, LINEARISED_MARK, linearisedScope, prettyUnit } from './theme.ts'
 
 export interface RatioDef { num: string; den: string }
@@ -104,6 +105,8 @@ export interface ViewOptions {
   hipsScope?: HipsScope
   /** the site codes it covers under that scope (hipsLinearise scopeSites); null or absent: every site */
   hipsSites?: ReadonlySet<string> | null
+  /** under the `past` scope, the optical depth a filter is linearised from (default 0.45) */
+  hipsCut?: number | null
 }
 
 /** field units after the view: concentrations become µg per filter, ratios get their own */
@@ -111,7 +114,7 @@ export function viewUnits(o: ViewOptions): Record<string, string> {
   const out: Record<string, string> = { ...o.units }
   if (o.basis === 'mass') for (const [f, u] of Object.entries(o.units)) if (isConcentration(u)) out[f] = 'µg/filter'
   if (o.hipsCeiling != null) {
-    const mark = LINEARISED_MARK + (HIPS_SCOPES.find((x) => x.key === (o.hipsScope ?? 'all'))?.mark ?? '')
+    const mark = LINEARISED_MARK + scopeMark(o.hipsScope ?? 'all', o.hipsCut ?? undefined)
     for (const f of HIPS_VIEW_FIELDS) if (out[f]) out[f] += mark
   }
   for (const d of o.ratios) out[ratioKey(d)] = ratioUnit(out[d.num], out[d.den])
@@ -152,12 +155,17 @@ export function withHipsLoading<R extends Row>(rows: R[], exportMac = 10): R[] {
   })
 }
 
+const isLighter = (tau: number, cut: number | null | undefined) => Number.isFinite(tau) && !filterInScope(tau, 'past', cut ?? undefined)
+
 /** one row under the view; the same object when nothing changes */
 export function viewRow<R extends Row>(r: R, o: ViewOptions, concFields: string[]): R {
   const macChanged = o.mac !== o.exportMac
   const ceiling = o.hipsCeiling ?? null
   // a site outside the view's scope keeps HIPS as measured
   const linear = ceiling !== null && (o.hipsSites == null || o.hipsSites.has(r.code as string))
+    // under `past` a filter known to be lighter than the cut keeps HIPS as measured; one without a τ (no sampled volume)
+    // is not known to be light, so it drops out of the HIPS fields as under every other scope
+    && (o.hipsScope !== 'past' || !isLighter(hipsTau(r, o.exportMac), o.hipsCut))
   if (!macChanged && o.basis === 'conc' && !o.ratios.length && !linear) return r
   const out: Row = { ...r }
   if (linear) {

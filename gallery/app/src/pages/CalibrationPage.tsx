@@ -76,7 +76,7 @@ export function CalibrationPage({ calib, runs: savedRuns, meta, knownIds, season
   calib: CalibFile | null
   runs: CalibRunsFile | null
   /** HIPS linearised (Plot → HIPS): the ceiling, null as measured, and the sites it covers */
-  hips?: { ceiling: number | null; scope: HipsScope }
+  hips?: { ceiling: number | null; scope: HipsScope; cut?: number }
   meta: MetaFile
   /** the gallery's rows and meta under the reader's view, for the crossplot's explorer panel */
   galleryRows?: FilterRow[]
@@ -103,8 +103,8 @@ export function CalibrationPage({ calib, runs: savedRuns, meta, knownIds, season
   const runs = useMemo(() => {
     if (!savedRuns || ceiling === null || !volumes) return savedRuns
     const volumeOf = (id: string | null) => { const v = id ? volumes.get(baseFilterId(id))?.[VOLUME] : null; return typeof v === 'number' ? v : null }
-    return { ...savedRuns, runs: savedRuns.runs.map((r) => (hipsCodes.includes(savedRuns.targets[r.target]?.code ?? '') ? lineariseRun(r, volumeOf, ceiling, lambda10) : r)) }
-  }, [savedRuns, ceiling, volumes, hipsCodes, lambda10])
+    return { ...savedRuns, runs: savedRuns.runs.map((r) => (hipsCodes.includes(savedRuns.targets[r.target]?.code ?? '') ? lineariseRun(r, volumeOf, ceiling, lambda10, scope === 'past' ? hips?.cut ?? null : null) : r)) }
+  }, [savedRuns, ceiling, volumes, hipsCodes, lambda10, scope, hips?.cut])
   const [cohortPick, setCohortPick] = useSearchParam<string>('calibration.cohort', '')
   const [protocolPick, setProtocol] = useSearchParam<string>('calibration.cv', '')
   const cohorts = useMemo(() => [...new Set([...Object.keys(calib?.cohorts ?? {}), ...(runs?.presets ?? []).map(p => p.cohort)])], [calib, runs])

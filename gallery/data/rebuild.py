@@ -243,6 +243,25 @@ STEPS: tuple[Step, ...] = (
     Step("hips-linearise-groups", "research", ("gallery/data/export_hips_linearise.py", "--improve-groups"),
          "IMPROVE sample members of the saved HIPS bend groups (local research data)", "research/hips_linearise_groups/",
          (repo("docs/addis-reference-closure-2026-11-10.json"), ftir_table("results_tor.csv"), ftir_table("results_hips.csv"))),
+    Step("hips-improve-density", "export", ("gallery/data/export_hips_improve_density.py",),
+         "Every IMPROVE filter on the HIPS bend, ungrouped: count grids (EC loading against optical depth, EC against Fabs) "
+         "and the saturating curve fitted to single filters with site-resampled intervals (local TOR and HIPS tables; "
+         "the committed json is kept otherwise)",
+         "hips_linearise/improve_density.json",
+         (ftir_table("results_tor.csv"), ftir_table("results_hips.csv"))),
+    Step("hips-improve-groupings", "export", ("gallery/data/export_hips_improve_groupings.py",),
+         "How the IMPROVE ceiling depends on the grouping: fine-binned loading and optical-depth histograms to regroup and "
+         "refit in the browser, and the ceiling under 70 groupings with site-resampled intervals (local TOR and HIPS "
+         "tables, ~6 min; the committed json is kept otherwise)",
+         "hips_linearise/improve_groupings.json",
+         (ftir_table("results_tor.csv"), ftir_table("results_hips.csv"))),
+    Step("hips-ceiling-checks", "export", ("gallery/data/export_hips_ceiling_checks.py",),
+         "Whether the IMPROVE HIPS ceiling is defensible: other instruments for the grouping, one ceiling within sites, "
+         "single-filter fits with errors in both axes (errors from the Phoenix collocated samplers), other curve shapes, "
+         "and what each does to the Addis fit (local TOR and HIPS tables and the cleaned IMPROVE FED cache, ~10 min)",
+         "hips_linearise/ceiling_checks.json",
+         (ftir_table("results_tor.csv"), ftir_table("results_hips.csv"),
+          repo("research/ftir_hips_chem/output/improve_high_fabs_comparison/improve_valid_cleaned.csv"), repo("gallery/app/public/data/hips_linearise/linearise.json"))),
     Step("research-spectral", "export", ("gallery/data/export_research_spectral.py",),
          "The spectral and calibration diagnostics (1617 band, MAC choice, applicability, network map, …)", "research/spectral/",
          note="recomputes spartan_ec 08 where $AETHMODULAR_DRIVE_ROOT holds University/Research/Grad/Data/Davis Data"),

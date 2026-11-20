@@ -173,6 +173,7 @@ the committed summary.
   | All sites (default) | every site, each filter by its own factor | 30 |
   | Where expected | sites whose median filter is expected to under-read by more than 10 % | 17, Addis Ababa down to Beijing |
   | Where seen | sites whose own filters also show the bend ("expected and seen" in step 1) | 8: Addis Ababa, Dhaka, Johannesburg, Delhi, Santiago, Pretoria, Kaohsiung, Beijing |
+  | Filters past a τ (20 Nov) | every site, only filters at or past an optical depth (`#hipsat=past`, `?hipscut=`, default 0.45) | lighter filters as measured; a step of × 1.25 at 0.45 |
 
   A site outside the choice keeps HIPS as measured, units read ", linearised where expected" or ", linearised
   where seen", and the side panel lists the sites on each side with the under-read expected of their median filter.

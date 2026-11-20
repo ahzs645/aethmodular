@@ -346,6 +346,21 @@
       ],
       "reason": "Recompute each SPARTAN site's exponent as measured and linearised, and what each rule of applying the linearisation does, from the public SPARTAN table."
     },
+    "src/lib/hipsCeilingChecks.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/hips_linearise/ceiling_checks.json",
+        "gallery/app/public/data/hips_linearise/linearise.json"
+      ],
+      "reason": "Hold the exporter's Addis outcome at every hyperbolic ceiling to the browser's refit of the same filters."
+    },
+    "src/lib/hipsGroupings.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/hips_linearise/improve_groupings.json"
+      ],
+      "reason": "Rebuild every grouping of the IMPROVE ceiling sweep in the browser and check the edges, groups and refitted ceiling against the exporter's exact-median fits."
+    },
     "src/lib/hipsLinearise.test.mjs": {
       "scope": "public",
       "inputs": [

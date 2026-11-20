@@ -394,10 +394,10 @@ export function withUnit(field: string, units: Record<string, string> | undefine
 }
 
 /** the mark the gallery's view puts on the unit of a HIPS field it has linearised (lib/viewFields), and of a ratio that uses one;
- *  a view that linearises only some sites adds which: ", linearised where expected" */
+ *  a view that linearises only some sites adds which: ", linearised where expected", or only some filters: ", linearised past τ 0.45" */
 export const LINEARISED_MARK = ', linearised'
 export const HIPS_LINEARISED_MARK = ', HIPS linearised'
-const LINEARISED_RE = /, (?:HIPS )?linearised( where (?:expected|seen))?$/
+const LINEARISED_RE = /, (?:HIPS )?linearised( where (?:expected|seen)| past τ [0-9.]+)?$/
 /** a unit without that mark: what two fields are compared by (lib/axes sameUnits), and what decides µg/filter */
 export const baseUnit = (u: string | null | undefined) => (u ?? '').replace(LINEARISED_RE, '')
 /** the sites part of a unit's mark (" where seen"), '' for every site or an unmarked unit */

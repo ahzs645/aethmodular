@@ -35,7 +35,7 @@ import { LINK_PROBLEM_EVENT, clearLinkProblem, currentView, isEmbed, isEmbedChar
 import { useExport } from '@/lib/data'
 import { customSeasonMeta, customSeasonsParam, parseCustomSeasons } from '@/components/SeasonEditor'
 import { HipsControl, MacControl, Row, SideDock, SubsetBar, type HipsViewState, type SubsetActions, type SubsetCaps, type SubsetState } from '@/components/SubsetBar'
-import { parseHipsScope, scopeSites, siteExposure, siteReading, type HipsScope } from '@/lib/hipsLinearise'
+import { parseHipsCut, parseHipsScope, scopeSites, siteExposure, siteReading, type HipsScope } from '@/lib/hipsLinearise'
 import { ExportSitesProvider } from '@/lib/exportSites'
 import { SampleDrawer } from '@/components/SampleDrawer'
 import { RecordDrawer } from '@/components/RecordDrawer'
@@ -95,6 +95,7 @@ const SatoshiFollowupPage = lazyView(() => import('@/pages/SatoshiFollowupPage')
 const HipsLinearisePage = lazyView(() => import('@/pages/HipsLinearisePage').then(m => m.HipsLinearisePage))
 const HipsPartsPage = lazyView(() => import('@/pages/HipsPartsPage').then(m => m.HipsPartsPage))
 const HipsStoryPage = lazyView(() => import('@/pages/HipsStoryPage').then(m => m.HipsStoryPage))
+const HipsChecksPage = lazyView(() => import('@/pages/HipsBendChecks').then(m => m.HipsChecksPage))
 const MeetingSpecPage = lazyView(() => import('@/pages/MeetingSpecPage').then(m => m.MeetingSpecPage))
 const BlanksPage = lazyView(() => import('@/pages/BlanksPage').then(m => m.BlanksPage))
 const ExperimentalPage = lazyView(() => import('@/pages/ExperimentalPage').then(m => m.ExperimentalPage))
@@ -190,6 +191,7 @@ const MEETINGS: { key: string; label: string; title?: string }[] = [
   { key: 'satoshi', date: '2026-10-02', title: 'Satoshi’s 2 Oct questions: analog overlap, the swap test, VIP, the fit ladder and the envelope' },
   { key: 'hips-linearise', date: '2026-11-10', title: 'Linearising HIPS at Addis: the IMPROVE bend, the inversion, the correction on every filter and the intercept it removes, at any ceiling' },
   { key: 'hips-parts', date: '2026-11-16', title: 'HIPS on dark filters, part by part: where IMPROVE shows it, what linearising does to a filter, Addis, and how it is made for every SPARTAN site' },
+  { key: 'hips-checks', date: '2026-11-24', title: 'HIPS bend checks from the 19 Nov meeting: every IMPROVE filter and the curve fitted to single filters, the curve in Fabs against EC, and Addis and Delhi below an optical-depth cut with the MAC for slope 1' },
   { key: 'hips-story', date: '2026-11-19', title: 'Linearising HIPS across SPARTAN: the effect, the fix, where it is expected and seen, and the same filters before and after when it is applied per filter or per site' },
   ...SPEC_MEETINGS.map((m) => ({ key: m.id, date: m.date, title: m.title })),
 ].sort((a, b) => b.date.localeCompare(a.date)).map(({ date, ...m }) => ({ ...m, label: meetingLabel(date) }))
@@ -539,6 +541,9 @@ export default function App() {
   const [basis, setBasis] = useState<Basis>(init.get('basis') === 'mass' ? 'mass' : 'conc')
   const [hipsCeiling, setHipsCeiling] = useState<number | null>(() => parseCeiling(init.get('hips')))
   const [hipsScope, setHipsScope] = useState<HipsScope>(() => parseHipsScope(init.get('hipsat')))
+  // under "Filters past a τ", the optical depth filters are linearised from (`hipscut`; the side panel's HipsControl sets it)
+  const [hipsCutText] = useSearchParam<string>('hipscut', '')
+  const hipsCut = parseHipsCut(hipsCutText)
   // meeting pages: as presented (default) or following the gallery (lib/presentation); ?mview=exploring
   const [presentation, setPresentation] = useSearchParam<Presentation>('mview', 'presented', ['presented', 'exploring'])
   // one chart at a time (lib/singleView); the Dashboard presents its own way
@@ -1003,9 +1008,9 @@ export default function App() {
   const hipsExposure = useMemo(() => siteExposure(netBase ? rawSourceRows.filter((r) => !r.excluded && r.code).map((r) => ({ code: r.code as string, tau: r[HIPS_TAU] as number })) : []), [netBase, rawSourceRows])
   const hipsSites = useMemo(() => (hipsOn ? scopeSites(hipsScope, hipsExposure) : null), [hipsOn, hipsScope, hipsExposure])
   const viewOpts = useMemo(() => ({
-    mac: mac ?? exportMac, exportMac, basis, ratios: ratioView.all, hipsCeiling: hipsOn ? hipsCeiling : null, hipsScope: hipsOn ? hipsScope : 'all' as const, hipsSites,
+    mac: mac ?? exportMac, exportMac, basis, ratios: ratioView.all, hipsCeiling: hipsOn ? hipsCeiling : null, hipsScope: hipsOn ? hipsScope : 'all' as const, hipsSites, hipsCut,
     units: { ...(netBase ? netBase.field_units : data?.meta.field_units ?? {}), ...(weather?.field_units ?? {}), ...(aeronet?.field_units ?? {}), ...(instrumentFields?.field_units ?? {}), [FTIR_VARIANT.spline]: 'ug/m3', [FTIR_VARIANT.vibes]: 'ug/m3', [FTIR_VARIANT.anchored]: 'ug/m3', [FTIR_VARIANT.epo]: 'ug/m3' },
-  }), [mac, exportMac, basis, hipsOn, hipsCeiling, hipsScope, hipsSites, ratioView, netBase, data, weather, aeronet, instrumentFields])
+  }), [mac, exportMac, basis, hipsOn, hipsCeiling, hipsScope, hipsSites, hipsCut, ratioView, netBase, data, weather, aeronet, instrumentFields])
   const plainSourceRows = useMemo(() => viewRows(rawSourceRows, viewOpts), [rawSourceRows, viewOpts])
   // the site colours go on last, so a site pick repaints the rows without rebuilding them; the
   // lookups, counts and drawers (colours from meta.sites) take the rows unpainted
@@ -1047,12 +1052,13 @@ export default function App() {
     const hasHips = (r: FilterRow) => typeof r['HIPS Fabs'] === 'number' || typeof r['BC (public HIPS)'] === 'number'
     const measured = new Set(rawSourceRows.filter(hasHips).map((r) => r.id))
     const own = inViewRows.filter((r) => measured.has(r.id))
-    const inScope = (r: FilterRow) => !hipsSites || hipsSites.has(r.code as string)
+    const lighter = (r: FilterRow) => hipsScope === 'past' && typeof r[HIPS_TAU] === 'number' && (r[HIPS_TAU] as number) < hipsCut
+    const inScope = (r: FilterRow) => (!hipsSites || hipsSites.has(r.code as string)) && !lighter(r)
     const linearised = own.filter((r) => inScope(r) && hasHips(r)).length, asMeasured = own.filter((r) => !inScope(r)).length
     const sites = (netView?.chosen ?? []).flatMap((x) => { const e = hipsExposure.get(x.code); return e ? [{ name: x.name, underRead: e.underRead, on: !hipsSites || hipsSites.has(x.code), reading: siteReading(x.code)?.reading }] : [] })
       .sort((a, b) => b.underRead - a.underRead)
-    return { scope: hipsScope, linearised, asMeasured, dropped: own.length - linearised - asMeasured, sites }
-  }, [hipsOn, hipsScope, hipsSites, hipsExposure, rawSourceRows, inViewRows, netView])
+    return { scope: hipsScope, cut: hipsCut, linearised, asMeasured, dropped: own.length - linearised - asMeasured, sites }
+  }, [hipsOn, hipsScope, hipsSites, hipsCut, hipsExposure, rawSourceRows, inViewRows, netView])
   const ratioCoverage = useMemo(() => Object.fromEntries(ratioFields.map((f) => [f, inViewRows.filter((r) => typeof r[f] === 'number').length])), [ratioFields, inViewRows])
   const countRatio = useCallback((d: RatioDef) =>
     inViewRows.filter((r) => typeof r[d.num] === 'number' && typeof r[d.den] === 'number' && r[d.den] !== 0).length, [inViewRows])
@@ -1660,7 +1666,7 @@ export default function App() {
         {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
         {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting' || tab === 'experimental' || tab === 'similarity' || tab === 'ml')
           && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'}
-            label={tab === 'similarity' ? 'Target' : tab === 'meeting' && ['hips-linearise', 'hips-parts', 'hips-story'].includes(meeting) ? 'Page' : 'Samples'}
+            label={tab === 'similarity' ? 'Target' : tab === 'meeting' && ['hips-linearise', 'hips-parts', 'hips-story', 'hips-checks'].includes(meeting) ? 'Page' : 'Samples'}
             // the tabs whose charts read HIPS BC get the MAC on a Plot tab, as the Samples-panel tabs do
             mac={tab === 'ml' || tab === 'experimental' || tab === 'meeting' ? {
               value: viewOpts.mac, exportMac, onMac: setMac,
@@ -1686,12 +1692,13 @@ export default function App() {
             : meeting === 'hips-linearise' ? <HipsLinearisePage />
             : meeting === 'hips-parts' ? <HipsPartsPage />
             : meeting === 'hips-story' ? <HipsStoryPage />
+            : meeting === 'hips-checks' ? <HipsChecksPage />
             : <MeetingSpecPage key={meeting} spec={SPEC_MEETINGS.find((m) => m.id === meeting) ?? SPEC_MEETINGS[0]} />}
         </PresentationProvider>}
         {tab === 'blanks' && <BlanksPage />}
         {tab === 'experimental' && <ExperimentalPage experiment={experiment} onPick={setExperiment} />}
         {tab === 'baseline' && (calibrationLoading ? <p>Loading calibration data…</p> : <BaselineComparisonPage mac={viewOpts.mac} demingLambda={demingLambda(viewOpts.mac, data.calibration?.deming_lambda_mac10 ?? LAMBDA_10)} />)}
-        {tab === 'calibration' && (calibrationLoading ? <p>Loading calibration data…</p> : <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} hips={{ ceiling: hipsCeiling, scope: hipsScope }} meta={drawerMeta} galleryRows={paintedSourceRows} sourceRows={rawSourceRows} galleryMeta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />)}
+        {tab === 'calibration' && (calibrationLoading ? <p>Loading calibration data…</p> : <CalibrationPage calib={data.calibration} runs={data.calibrationRuns} hips={{ ceiling: hipsCeiling, scope: hipsScope, cut: hipsCut }} meta={drawerMeta} galleryRows={paintedSourceRows} sourceRows={rawSourceRows} galleryMeta={meta} knownIds={knownIds} seasonSel={seasonSel} pmfSel={pmfKeep} pmfLabelOfDate={pmfLabelOfDate} />)}
         {tab === 'dashboard' && <DashboardPage dash={dash} setDash={setDash} filters={dashFilters} onScope={setDashScope} onPickSite={pickDashSite} display={<DisplayToggles />}
           data={{ rows, measured: measuredRows, referenceRows: dashboardReferenceRows, meta, axes,
             provenance: { generated: data.filters.generated, source: data.filters.source, mac: viewOpts.mac, basis, baseline: ftirBaseline, calendar: convention, estimators, sourceMode: spartanSource.source, network: net, publicSources: netData.data?.publicStatus ?? [] },

@@ -31,7 +31,8 @@ import { useSearchParam } from '@/lib/url'
 import { FilterDecimals, SiteDecimals } from '@/pages/HipsDecimals'
 import { ImproveReach, LevelChoices } from '@/pages/HipsCaveats'
 import { DataTable, LINEAR, MEASURED, Readouts, StatOptions } from '@/pages/hipsLineariseParts'
-import { correction, fitAgainstHips, linearBc, linearise, noiseGain, opticalDepth, predictedExponent, previousLoadingGroups, ratioMedians, saturate, SPARTAN_LOADING_MAX_GAP_DAYS, type LinFilter, type LoadingGroup } from '@/lib/hipsLinearise'
+import { correction, fitAgainstHips, linearBc, linearise, noiseGain, opticalDepth, predictedExponent, previousLoadingGroups, ratioMedians, saturate, SPARTAN_LOADING_MAX_GAP_DAYS, underRead, macForSlopeOne, type LinFilter, type LoadingGroup } from '@/lib/hipsLinearise'
+import { DENSITY_COLOR, DensityCells, fitKey, fitLabel, IMPROVE_DENSITY_COMMAND, PRIMARY_POPULATION, SINGLE_FIT_COLOR, useImproveDensity } from '@/pages/hipsDensity'
 
 export const COMMAND = 'uv run python gallery/data/export_hips_linearise.py'
 export const WORKFLOW = 'research/ftir_hips_chem/workflows/run_addis_reference_closure_20261110.py'
@@ -39,8 +40,8 @@ const NOTE_DOC = 'docs/addis-reference-closure-2026-11-10.md'
 export const PROVENANCE = <>{WORKFLOW}; summary <code>{NOTE_DOC}</code> and its JSON; per-filter optical depths from the workflow's <code>load()</code> (<code>hips_linearise/linearise.json</code>).</>
 
 
-type CeilingKey = 'central' | 'lo' | 'hi' | 'era'
-const CEILING_KEYS: readonly CeilingKey[] = ['central', 'lo', 'hi', 'era']
+type CeilingKey = 'central' | 'lo' | 'hi' | 'era' | 'custom'
+const CEILING_KEYS: readonly CeilingKey[] = ['central', 'lo', 'hi', 'era', 'custom']
 const HIPS_SERIES = ['measured', 'linearised'] as const
 const HIPS_VIEWS = ['both', ...HIPS_SERIES] as const
 const SITE_VIEWS = ['clear', 'all'] as const
@@ -60,6 +61,8 @@ const BEND_AXES: AxisOption[] = [
 ]
 const bendLabel = (k: string, network: NetworkView) => k === 'ec' && network !== 'Both' ? `${network === 'IMPROVE' ? 'TOR' : 'FTIR'} EC on the filter (µg)` : BEND_AXES.find((o) => o.key === k)?.label ?? k
 const SPARTAN_BEND_VIEWS = ['groups', 'filters'] as const
+/** IMPROVE on the bend: its group medians alone, or every filter as a count grid under them */
+export const IMPROVE_BEND_VIEWS = ['groups', 'filters'] as const
 const SPARTAN_BEND_COLOR = RESEARCH_SERIES[2]
 const SPARTAN_GROUP_PREFIX = 'spartan/'
 /** the IMPROVE groups' samples ship only with the research build (the public one has the medians alone) */
@@ -86,15 +89,23 @@ export interface Linearise {
   season_lot: { season: string; lot: string; n: number; median_optical_depth: number; published_over_hips: number; published_over_linearised_hips: number; published_over_pm25: number }[]
 }
 
-/** the page's shared state: the ceiling every chart linearises with (URL `hl.ceil`) */
+/**
+ * The page's shared state: the ceiling every chart linearises with (URL `hl.ceil`). Besides the IMPROVE fits, a ceiling
+ * refitted from a grouping the reader chose ("How the ceiling is decided") can drive the page: `hl.ceil=custom`, its
+ * value in `hl.ceilv`.
+ */
 export function useCeiling(data: Linearise | null) {
   const [key, setKey] = useSearchParam<CeilingKey>('hl.ceil', 'central', CEILING_KEYS)
-  const list = data?.ceilings ?? []
+  const [customText, setCustomText] = useSearchParam<string>('hl.ceilv', '')
+  const custom = Number(customText) >= 0.2 && Number(customText) <= 100 ? Number(customText) : null
+  const list = [...(data?.ceilings ?? []), ...(custom != null ? [{ key: 'custom' as CeilingKey, label: `${fmt(custom, 2)} (your grouping)`, tau_inf: custom }] : [])]
   const pick = list.find((c) => c.key === key) ?? list[0]
+  /** drive the page with a refitted ceiling */
+  const applyCustom = (v: number) => { setCustomText(String(+v.toFixed(4))); setKey('custom') }
   const control = <Segmented value={key} options={list.map((c) => c.key)} onChange={setKey}
     optionLabel={(o) => list.find((c) => c.key === o)?.label ?? o}
     title="Choose the central fit, either end of its 90 % interval, or the 2015–2025 fit. The ceiling applies across this page." />
-  return { ceiling: pick?.tau_inf ?? NaN, label: pick?.label ?? '', key, control, list }
+  return { ceiling: pick?.tau_inf ?? NaN, label: pick?.label ?? '', key: pick?.key ?? key, control, list, applyCustom }
 }
 
 /** a stroke path through (x, y) pairs in plot pixels, skipping non-finite points */
@@ -146,8 +157,11 @@ export function CeilingOptions({ ceil }: { ceil: Ceil }) {
 }
 
 // ------------------------------------------------------------------ 1. the bend
-export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
+export function Bend({ data, ceil, improveDefault = 'groups' }: { data: Linearise; ceil: Ceil; improveDefault?: (typeof IMPROVE_BEND_VIEWS)[number] }) {
   const [tauText, setTau] = useSearchParam<string>('hl.tau', '0.97')
+  // IMPROVE as its group medians, or every filter as a count grid under them (export_hips_improve_density.py)
+  const [improveView, setImproveView] = useSearchParam<(typeof IMPROVE_BEND_VIEWS)[number]>('hl.bend.improve', improveDefault, IMPROVE_BEND_VIEWS)
+  const [singleFit, setSingleFit] = useSearchParam<string>('hl.bend.fit', '10/log')
   const [group, setGroup] = useSearchParam<string>('hl.group', 'none')
   // the network is the gallery's (lib/gallerySamples; the HIPS pages open on IMPROVE); `hl.bend.network` is the old key
   const { network: galleryNetwork, setNetwork: setGalleryNetwork } = useGalleryNetwork()
@@ -171,6 +185,10 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   const showImprove = network !== 'SPARTAN'
   const showSpartan = network !== 'IMPROVE'
   const bothNetworks = network === 'Both'
+  const everyFilter = showImprove && canonical && improveView === 'filters'
+  const { data: density, error: densityError } = useImproveDensity(everyFilter)
+  const fitOptions = useMemo(() => (density?.fits ?? []).filter((f) => f.population === PRIMARY_POPULATION), [density])
+  const fit = everyFilter ? fitOptions.find((f) => fitKey(f) === singleFit) ?? null : null
   const { data: spartan, error: spartanError } = useExport<SpartanReference>(showSpartan ? 'spartan_reference.json' : null)
   const spartanRows = useMemo(() => (spartan?.rows ?? []).flatMap((row) => {
     const ec = row['EC (FTIR)'], fabs = row['HIPS Fabs'], volume = row['Sampled volume']
@@ -265,6 +283,8 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
     if (key.startsWith(SPARTAN_GROUP_PREFIX)) pickSpartanGroup(key.slice(SPARTAN_GROUP_PREFIX.length))
     else pickGroup(!HAS_IMPROVE_GROUPS && key === group ? 'none' : key)
   }
+  const ciLo = data.ceilings.find((x) => x.key === 'lo')?.tau_inf, ciHi = data.ceilings.find((x) => x.key === 'hi')?.tau_inf
+  const ciBand = ciLo != null && ciHi != null ? [ciLo, ciHi] as const : null
   const under = ({ x, y, iw, ih }: ScatterScales) => {
     if (!canonical) return null
     // SPARTAN alone gets the same reference as IMPROVE: its curves are IMPROVE's (thermal EC), drawn here to compare FTIR EC against
@@ -273,11 +293,19 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
     return <g>
       <defs><clipPath id={clip}><rect width={iw} height={ih} /></clipPath></defs>
       <g clipPath={`url(#${clip})`}>
+        {everyFilter && density && <DensityCells grid={density.loading} x={x} y={y} />}
         <rect x={0} y={y(hi)} width={iw} height={y(lo) - y(hi)} fill={MEASURED} opacity={0.1} />
         <text x={iw - 6} y={y(hi) - 6} textAnchor="end" fontSize={10.5} fontFamily={FONT.mono} fill={INK.muted}>Addis filters, τ {fmt(lo, 2)}–{fmt(hi, 2)}</text>
-        <Marker orient="h" at={y(c)} from={0} to={iw} color={MEASURED} label={`${showImprove ? '' : 'IMPROVE '}ceiling τ∞ = ${fmt(c, 2)}`} />
+        {ciBand && <g pointerEvents="none">
+          <rect x={0} y={y(ciBand[1])} width={iw} height={Math.max(0, y(ciBand[0]) - y(ciBand[1]))} fill={INK.muted} opacity={0.08} />
+          {ciBand.map((v) => <line key={v} x1={0} x2={iw} y1={y(v)} y2={y(v)} stroke={INK.muted} strokeWidth={1} strokeDasharray="1 3" />)}
+          <text x={6} y={y(ciBand[1]) - 4} fontSize={10} fontFamily={FONT.mono} fill={INK.muted}>90 % interval of the IMPROVE fit, {fmt(ciBand[0], 2)}–{fmt(ciBand[1], 2)}</text>
+        </g>}
+        <Marker orient="h" at={y(c)} from={0} to={iw} color={MEASURED} label={`${showImprove ? '' : 'IMPROVE '}ceiling τ∞ = ${fmt(c, 2)} (${ceil.key === 'custom' ? 'your grouping' : ceil.key === 'era' ? '2015–2025' : ceil.key === 'central' ? 'central' : '90 % ' + (ceil.key === 'lo' ? 'low' : 'high')})`} />
         <path d={pathOf([[x(0), y(0)], [x(maxLoading), y(a * maxLoading)]])} fill="none" stroke={LINEAR} strokeWidth={2} strokeDasharray="6 4" />
         <path d={pathOf(xs.map((v) => [x(v), y(saturate(a * v, c))]))} fill="none" stroke={MEASURED} strokeWidth={2} />
+        {fit && <path d={pathOf(xs.filter((v) => v >= fit.from_ug).map((v) => [x(v), y(saturate(fit.a_per_ug * v, fit.tau_inf))]))} fill="none"
+          stroke={SINGLE_FIT_COLOR} strokeWidth={2} strokeDasharray="8 3 2 3" />}
       </g>
     </g>
   }
@@ -313,7 +341,7 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
         : bothNetworks
         ? `The grey dots and reference curves come from IMPROVE thermal EC (TOR). SPARTAN is overlaid at its FTIR-derived EC loading for visual comparison. ${spartanDescription}`
         : showSpartan ? `${spartanDescription} Optical depth uses measured HIPS Fabs and sampled volume. The reference is IMPROVE's, as on the IMPROVE view: the dashed blue line is the proportional response (a = ${fmt(a, 4)} µg⁻¹), the orange curve the fitted saturating response, the dashed orange line its ceiling, and the shaded band the Addis filters' τ range. Move the measured τ to trace the conversion to linearised τ.`
-        : `Each grey dot is the median of one IMPROVE group, binned by the previous sample’s TOR EC loading at the same site (${primary.samples.toLocaleString()} samples at ${primary.sites} sites in the parent population). Dot size shows group sample count.${HAS_IMPROVE_GROUPS ? ' Click a dot to see its samples.' : ''} The dashed blue line shows a proportional response with a = ${fmt(a, 4)} µg⁻¹ (${fmt(primary.unsaturated_fabs_over_ec, 1)} m²/g on light filters). The orange curve shows the fitted saturating response. Move the measured τ to trace the conversion to linearised τ.`}
+        : `Each grey dot is the median of one IMPROVE group, binned by the previous sample’s TOR EC loading at the same site (${primary.samples.toLocaleString()} samples at ${primary.sites} sites in the parent population). Dot size shows group sample count.${HAS_IMPROVE_GROUPS ? ' Click a dot to see its samples.' : ''} The dashed blue line shows a proportional response with a = ${fmt(a, 4)} µg⁻¹ (${fmt(primary.unsaturated_fabs_over_ec, 1)} m²/g on light filters). The orange curve shows the fitted saturating response.${everyFilter && density ? ` The purple cells are every one of the ${density.samples.toLocaleString()} filters (${density.first.slice(0, 4)}–${density.last.slice(0, 4)}), ungrouped, darker where more filters fall (log scale); ${density.loading.outside.toLocaleString()} past 90 µg or τ 3.4 are not drawn. The dash-dot curve is the same equation fitted to single filters, not to the group medians.` : ''} Move the measured τ to trace the conversion to linearised τ.`}
       provenance={<>{showImprove && PROVENANCE}{showSpartan && <> <code>spartan_reference.json</code> · paired FTIR EC, HIPS Fabs and sampled volume by filter ID.</>}</>}
       controls={<>
         <Segmented label="Network" value={network} options={NETWORK_VIEWS} onChange={(value) => { setNetwork(value); closeSamples() }}
@@ -330,6 +358,12 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
         </>}
         {canonical && <span className="control" title="The measured HIPS optical depth the construction follows: drag sideways across the Addis range or click to type">Measured τ <ScrubField label="Measured τ" value={t} min={0.05} max={+hi.toFixed(2)} step={0.01} width={96} format={(v) => fmt(v, 2)} onChange={(v) => setTau(String(+v.toFixed(2)))} /></span>}
         {showImprove && canonical && <>
+          <Segmented label="IMPROVE" value={improveView} options={IMPROVE_BEND_VIEWS} onChange={setImproveView}
+            optionLabel={(v) => v === 'groups' ? 'Group medians' : 'Every filter'}
+            title="Group medians: the 17 medians the ceiling is fitted through. Every filter: all IMPROVE filters as a count grid under the medians, with the curve also fitted to single filters." />
+          {everyFilter && fitOptions.length > 0 && <Select label="Single-filter fit" value={fit ? fitKey(fit) : 'none'} options={['none', ...fitOptions.map(fitKey)]}
+            onChange={setSingleFit} optionLabel={(k) => { const f = fitOptions.find((o) => fitKey(o) === k); return f ? `${fitLabel(f)} (τ∞ ${fmt(f.tau_inf, 2)})` : 'None' }}
+            title="The same equation fitted to single IMPROVE filters (all sites), from a lowest EC loading, with residuals in τ or in log τ. The group-median curve stays the one the gallery linearises with." />}
           <Select label="IMPROVE group" value={selected?.key ?? 'none'} options={['none', ...points.map((p) => p.key)]} onChange={pickGroup}
             optionLabel={(key) => points.find((p) => p.key === key)?.details[0] ?? 'None'} />
         </>}
@@ -349,6 +383,8 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
         </AxisChoices>
         <Key items={[
           ...(showImprove && improveHasAxes ? [{ label: 'IMPROVE group medians (TOR EC)', color: INK.muted, kind: 'dot' as const }] : []),
+          ...(everyFilter && density ? [{ label: 'Every IMPROVE filter (count, log)', color: DENSITY_COLOR, kind: 'square' as const }] : []),
+          ...(fit ? [{ label: `Fit to single filters, ${fitLabel(fit)}`, color: SINGLE_FIT_COLOR, kind: 'dash' as const }] : []),
           ...(canonical ? [{ label: 'IMPROVE proportional response', color: LINEAR, kind: 'dash' as const },
             { label: 'IMPROVE saturating fit', color: MEASURED, kind: 'line' as const },
             { label: 'Addis τ range', color: MEASURED, kind: 'faded' as const }] : []),
@@ -385,10 +421,25 @@ export function Bend({ data, ceil }: { data: Linearise; ceil: Ceil }) {
         { label: 'Linearised τ', value: Number.isFinite(tl) ? fmt(tl, 2) : '—', color: LINEAR },
         { label: 'Correction ×', value: Number.isFinite(tl) ? fmt(tl / t, 2) : '—' },
         { label: 'Noise amplified ×', value: Number.isFinite(tl) ? fmt(noiseGain(t, c), 1) : '—', sub: '1 / (1 − τ/τ∞)²' },
+        ...(fit ? [{ label: 'τ∞, single filters', value: fmt(fit.tau_inf, 2), color: SINGLE_FIT_COLOR,
+          sub: `[${fmt(fit.tau_inf_lo, 2)}, ${fmt(fit.tau_inf_hi, 2)}] · ×${fmt(correction(t, fit.tau_inf), 2)} at τ ${fmt(t, 2)} · ${fit.samples.toLocaleString()} filters` }] : []),
       ]} />
+      {everyFilter && !density && <LoadState what="every IMPROVE filter" error={densityError} command={IMPROVE_DENSITY_COMMAND} />}
+      <CurveEquation a={a} ceiling={c} tau={t} unsaturated={primary.unsaturated_fabs_over_ec} />
       <Note>Set the ceiling under Page options. The noise factor is the slope of the inverse, 1 / (1 − τ/τ∞)². At 70 % of the ceiling it is about 11.{!showImprove && ' The curves and the construction are IMPROVE\'s, fitted on thermal (TOR) EC; SPARTAN is drawn against FTIR EC, so a gap between its filters and the curves is partly the difference between the two ECs.'}</Note></>}
     </ChartFrame>
   )
+}
+
+/** the curve the page linearises with, written out (Ann, 19 Nov 2026: put the equation beside the curve) */
+export function CurveEquation({ a, ceiling, tau, unsaturated }: { a: number; ceiling: number; tau: number; unsaturated: number }) {
+  const k = correction(tau, ceiling)
+  return <p className="chart-note">
+    <strong>The curve:</strong> τ = aL / (1 + aL/τ∞), with L the EC on the filter (µg), a = {fmt(a, 4)} µg⁻¹ (Fabs ÷ EC of {fmt(unsaturated, 1)} m²/g
+    on light filters) and τ∞ = {fmt(ceiling, 2)}. It is proportional on light filters and levels off at τ∞ (a saturating curve, not a quadratic).
+    Read back through it: expected under-read = τ/τ∞, linearised τ = τ / (1 − τ/τ∞), so the factor is 1 / (1 − τ/τ∞).
+    At τ = {fmt(tau, 2)}: {Math.round(100 * underRead(tau, ceiling))} % under-read, × {Number.isFinite(k) ? fmt(k, 2) : '—'}.
+  </p>
 }
 
 const GROUP_PAGE_SIZE = 50
@@ -590,13 +641,13 @@ const ADDIS_CODE = 'ETAD'
 const MIN_SITE_FILTERS = 20
 
 /** SPARTAN site names by code (the network index): spartan_reference.json names only the four focus sites */
-function useSpartanNames() {
+export function useSpartanNames() {
   const { data: index } = useLoaded('spartan-index', loadSpartanIndex)
   return useMemo(() => new Map((index?.sites ?? []).map((s) => [s.code, s.name])), [index])
 }
 
 /** the filters "Stretch the HIPS axis" draws at a site: Addis is the closure workflow's set; any other site is rebuilt from the public SPARTAN rows */
-function useHipsSiteFilters(data: Linearise) {
+export function useHipsSiteFilters(data: Linearise) {
   const { data: spartan } = useExport<SpartanReference>('spartan_reference.json')
   const bySite = useMemo(() => {
     const out = new Map<string, { name: string; filters: LinFilter[] }>()
@@ -621,8 +672,11 @@ function useHipsSiteFilters(data: Linearise) {
   return { bySite, refById, sites, loaded: !!spartan }
 }
 
-export function AgainstHips({ data, ceil }: { data: Linearise; ceil: Ceil }) {
+export function AgainstHips({ data, ceil, cutDefault = '' }: { data: Linearise; ceil: Ceil; cutDefault?: string }) {
   const [view, setView] = useSearchParam<(typeof HIPS_VIEWS)[number]>('hl.hips', 'both', HIPS_VIEWS)
+  // only the filters lighter than an optical depth (Ann, 19 Nov: the crossplot without the dark filters); '' keeps every filter
+  const [cutText, setCut] = useSearchParam<string>('hl.hips.cut', cutDefault)
+  const cut = Number(cutText) > 0 ? Number(cutText) : null
   const [yKey, setY] = useSearchParam<HipsY>('hl.hips.y', 'ftir', HIPS_Y)
   const c = ceil.ceiling
   // the site is the gallery's page site (psite), first the Samples' first site; Addis keeps the closure workflow's filters and λ
@@ -634,7 +688,9 @@ export function AgainstHips({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   const siteFilters = useMemo(() => (addis ? data.filters : bySite.get(code)?.filters ?? []), [addis, data.filters, bySite, code])
   // another site's filters follow Filters → excluded; the Addis set is the workflow's own
   const { counted, nOut } = useExclusionSplit(addis ? [] : siteFilters, (f) => f.id)
-  const filters = addis ? siteFilters : counted
+  const allFilters = addis ? siteFilters : counted
+  const filters = useMemo(() => (cut == null ? allFilters : allFilters.filter((f) => f.tau < cut)), [allFilters, cut])
+  const nAll = allFilters.filter((f) => f.ftir != null).length
   /** the Addis Deming λ is the closure workflow's (FTIR EC on HIPS); every other site and PM2.5 use λ = 1 */
   const lambda = addis && yKey === 'ftir' ? data.lambda : 1
   // the y the fit and the points read: FTIR EC or PM2.5 (fitAgainstHips reads `ftir`)
@@ -679,12 +735,17 @@ export function AgainstHips({ data, ceil }: { data: Linearise; ceil: Ceil }) {
   return (
     <ChartFrame id="hl-against-hips" title={story ? 'Stretch the HIPS axis back out and the negative intercept disappears — SPARTAN published FTIR EC against HIPS BC, Addis Ababa'
       : `Stretch the HIPS axis back out — ${yKey === 'ftir' ? 'SPARTAN published FTIR EC' : 'PM2.5 mass'} against HIPS BC, ${siteName}`}
-      subtitle={`The ${shown.length} ${siteName.split(',')[0]} filters keep the same ${yName} on the y-axis. In Both, each filter appears at its measured and linearised HIPS BC where available. The Deming fits use λ = ${lambda}${lambda === 1 && addis ? ' (the closure λ is for FTIR EC)' : lambda === 1 ? ' (the closure λ was set for Addis, so it is not reused here)' : ''}, with linearisation at the page’s selected ceiling.${addis ? '' : ` HIPS BC is the public Fabs ÷ MAC ${data.mac}, optical depth from Fabs × sampled volume.`}`}
+      subtitle={`${cut != null ? `Only filters with HIPS optical depth τ below ${fmt(cut, 2)}: ${shown.length} of ${nAll}. ` : ''}The ${shown.length} ${siteName.split(',')[0]} filters keep the same ${yName} on the y-axis. In Both, each filter appears at its measured and linearised HIPS BC where available. The Deming fits use λ = ${lambda}${lambda === 1 && addis ? ' (the closure λ is for FTIR EC)' : lambda === 1 ? ' (the closure λ was set for Addis, so it is not reused here)' : ''}, with linearisation at the page’s selected ceiling.${addis ? '' : ` HIPS BC is the public Fabs ÷ MAC ${data.mac}, optical depth from Fabs × sampled volume.`}`}
       provenance={<>{PROVENANCE}{!addis && <> Other sites: <code>spartan_reference.json</code> (public FTIR EC, HIPS Fabs, sampled volume, PM2.5).</>}</>}
       controls={<>
         <SitePicker as="select" {...sitePick.picker} optionLabel={(v) => { const s = sites.find((x) => x.code === v); return s ? `${s.name} (${s.n})` : v }}
           title="The gallery's page site (psite): the other one-site charts on this page follow it" />
         <Segmented label="HIPS" value={view} options={HIPS_VIEWS} onChange={setView} optionLabel={(o) => o === 'measured' ? 'As measured' : o === 'linearised' ? 'Linearised' : 'Both'} />
+        <Segmented label="Filters" value={cut == null ? 'all' : 'below'} options={['all', 'below'] as const}
+          onChange={(v) => setCut(v === 'all' ? '' : String(cut ?? 0.45))} optionLabel={(o) => o === 'all' ? 'All' : 'Below a τ'}
+          title="All filters, or only those whose HIPS optical depth is below a cut (0.45 is a 20 % expected under-read at the central ceiling)" />
+        {cut != null && <span className="control" title="Keep filters with HIPS optical depth below this">τ below <ScrubField label="τ below" value={cut} min={0.1} max={2} step={0.01} width={84}
+          format={(v) => fmt(v, 2)} onChange={(v) => setCut(String(+v.toFixed(2)))} /></span>}
         {groupingPicker}
       </>}>
       <AxisChoices options={HIPS_Y_AXES} y={[yKey, (v) => setY(v as HipsY)]} noun="measurements">
@@ -699,8 +760,9 @@ export function AgainstHips({ data, ceil }: { data: Linearise; ceil: Ceil }) {
       ]), ...(grp ? [...grp.labels.map((label) => ({ label, color: grp.colorOf(label), kind: 'dot' as const })), { label: 'No data', color: NO_BAND_COLOR, kind: 'dot' as const }] : []),
       ...(yKey === 'ftir' ? [{ label: '1:1', color: INK.identity, kind: 'dash' as const }] : [])]} />
       {missingNote('drawn in grey')}
-      <Readouts items={series.map(({ label, fit, color }) => ({ label, value: eq(fit), color,
-        sub: fit ? `Intercept ${signed(fit.intercept, 2)} µg/m³ · n = ${fit.n}` : undefined }))} />
+      {shown.length === 0 && <Empty>No {siteName.split(',')[0]} filter has an optical depth below {fmt(cut, 2)} (lightest {fmt(Math.min(...allFilters.map((f) => f.tau)), 2)}). Raise the cut or pick another site.</Empty>}
+      <Readouts items={series.map(({ key, label, fit, color }) => ({ label, value: eq(fit), color,
+        sub: fit ? `Intercept ${signed(fit.intercept, 2)} µg/m³ · n = ${fit.n}${yKey === 'ftir' ? ` · MAC for slope 1: ${fmt(macForSlopeOne(yFilters, lambda, key === 'linearised' ? c : null, data.mac), 1)} m²/g` : ''}` : undefined }))} />
       {story ? <Note explain>Why this happens: when the high end of the x axis is squashed, a straight line through the cloud has to be steep, and a steep line through the middle of the data crosses zero far below the origin. Straighten the axis and the line flattens and passes through the origin. Across the ceiling's 90 % interval the linearised intercept runs from {signed(band[0]?.intercept, 2)} to {signed(band[1]?.intercept, 2)}, which cannot be told apart from zero.</Note>
         : <Note>Across the ceiling's 90 % interval the linearised intercept here runs from {signed(band[0]?.intercept, 2)} to {signed(band[1]?.intercept, 2)} µg/m³.{addis ? '' : ' The ceiling is IMPROVE\'s; the 11 Nov network page checks it against each site\'s own filters.'}</Note>}
       {addis ? <FixedSetNote what="the closure workflow's counted Addis filters with a published FTIR EC" /> : <ExcludedNote count={nOut} />}

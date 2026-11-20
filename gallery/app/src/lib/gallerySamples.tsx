@@ -46,6 +46,7 @@ export const MEETING_PRESETS: Partial<Record<string, SamplePreset>> = {
   'hips-parts': HIPS_PAGE_SAMPLES,
   'hips-linearise': HIPS_PAGE_SAMPLES,
   'hips-story': HIPS_PAGE_SAMPLES,
+  'hips-checks': { label: 'IMPROVE curve, Delhi and Addis filters', samples: { net: 'improve', ssites: 'INDH,ETAD' } },
 }
 
 /** the bend's three views and the gallery network each one is (focus counts as SPARTAN) */

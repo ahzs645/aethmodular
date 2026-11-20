@@ -80,15 +80,26 @@ export function statusMeaning(s: HipsStatus): string {
  *   all        every filter, each by its own factor (a light filter's factor is close to 1)
  *   expected   the sites where the bend is expected: the median filter under-reads by more than 10 %
  *   seen       the sites whose own filters show it as well ("expected and seen" in the 11 Nov screen)
- * The other sites keep HIPS as measured.
+ *   past       every site, but only the filters at or past an optical depth (`hipscut`, default 0.45: a 20 % under-read)
+ * The other sites (or, under `past`, the lighter filters) keep HIPS as measured. A cut on filters puts a step in the
+ * response at the cut (× 1.25 at 0.45); it is offered because Ann asked for it (19 Nov 2026), not as the default.
  */
 export const HIPS_SCOPES = [
   { key: 'all', label: 'All sites', mark: '' },
   { key: 'expected', label: 'Where expected', mark: ' where expected' },
   { key: 'seen', label: 'Where seen', mark: ' where seen' },
+  { key: 'past', label: 'Filters past a τ', mark: ' past τ' },
 ] as const
 export type HipsScope = typeof HIPS_SCOPES[number]['key']
-export const parseHipsScope = (v: string | null | undefined): HipsScope => (v === 'expected' || v === 'seen' ? v : 'all')
+export const parseHipsScope = (v: string | null | undefined): HipsScope => (v === 'expected' || v === 'seen' || v === 'past' ? v : 'all')
+/** the optical depth the `past` scope linearises from (`hipscut` in a link) */
+export const DEFAULT_PAST_TAU = 0.45
+export const parseHipsCut = (v: string | null | undefined): number => { const n = Number(v); return v && Number.isFinite(n) && n > 0 && n < 3 ? n : DEFAULT_PAST_TAU }
+/** a scope's mark on a unit: " where seen", " past τ 0.45" */
+export const scopeMark = (scope: HipsScope, cut: number = DEFAULT_PAST_TAU): string =>
+  scope === 'past' ? ` past τ ${cut.toFixed(2)}` : HIPS_SCOPES.find((x) => x.key === scope)?.mark ?? ''
+/** whether a filter of optical depth τ is linearised under a scope's filter rule (every filter except under `past`) */
+export const filterInScope = (tau: number, scope: HipsScope, cut: number = DEFAULT_PAST_TAU): boolean => scope !== 'past' || tau >= cut
 
 /** a SPARTAN site as the 11 Nov screen read it (hips_loading.identify and check; hipsSites.json, written by gallery/data/export_hips_linearise.py) */
 export interface SiteReading {
@@ -127,7 +138,7 @@ export function siteExposure(filters: Iterable<{ code: string; tau: number }>): 
 
 /** the site codes a scope linearises, of the sites on file; null for every site */
 export function scopeSites(scope: HipsScope, exposure: ReadonlyMap<string, SiteExposure>): Set<string> | null {
-  if (scope === 'all') return null
+  if (scope === 'all' || scope === 'past') return null
   return new Set([...exposure.values()].filter((s) => (scope === 'seen' ? SEEN_SITES.has(s.code) : s.expected)).map((s) => s.code))
 }
 
@@ -194,6 +205,17 @@ export function fitAgainstHips(filters: readonly LinFilter[], lambda: number, ce
   }
   const d = deming(xs, ys, lambda)
   return d ? { ...d, n: xs.length } : null
+}
+
+/**
+ * The MAC at which the Deming fit of FTIR EC on HIPS BC has slope 1 (as measured, or linearised at a ceiling). HIPS BC
+ * is Fabs ÷ MAC, so another MAC rescales the x axis, and its errors with it: the error ratio λ moves with MAC², the
+ * convention under which a MAC pivot survives a Deming fit exactly (pls_transfer.deming_regression, ftir_31). The
+ * slope then scales with the MAC and the intercept is unchanged, so the MAC for slope 1 is MAC ÷ slope.
+ */
+export function macForSlopeOne(filters: readonly LinFilter[], lambda: number, ceiling: number | null, mac: number): number {
+  const slope = fitAgainstHips(filters, lambda, ceiling)?.slope ?? NaN
+  return slope > 0 ? mac / slope : NaN
 }
 
 /** median FTIR EC ÷ HIPS BC over a group of filters, as measured and linearised at a ceiling */

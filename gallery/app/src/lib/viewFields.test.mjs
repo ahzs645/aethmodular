@@ -141,3 +141,18 @@ test('HIPS loading: the optical depth and expected under-read of each filter wit
   assert.equal(lin[HIPS_TAU], r[HIPS_TAU])
   assert.equal(lin[HIPS_UNDER_READ], r[HIPS_UNDER_READ])
 })
+
+test('HIPS linearised past a τ: only filters at or past the cut, every site; a filter with no τ drops out', () => {
+  // row: 30 Mm-1 at 7.2 m3, τ 0.612; a light twin at 10 Mm-1, τ 0.204
+  const o = { ...base, hipsCeiling: 2.2596, hipsScope: 'past', hipsCut: 0.45 }
+  const [dark, light, noVolume] = viewRows([row, { ...row, id: 'L', 'HIPS Fabs': 10, 'HIPS BC': 1, 'BC (public HIPS)': 1 }, { ...row, id: 'N', 'Sampled volume': null }], o)
+  assert.ok(dark['HIPS Fabs'] > 30)
+  assert.equal(light['HIPS Fabs'], 10)
+  assert.equal(light['HIPS BC'], 1)
+  assert.equal(noVolume['HIPS Fabs'], null)
+  // a higher cut leaves the darker filter as measured too
+  assert.equal(viewRows([row], { ...o, hipsCut: 0.7 })[0]['HIPS Fabs'], 30)
+  const u = viewUnits(o)
+  assert.equal(u['HIPS Fabs'], 'Mm-1, linearised past τ 0.45')
+  assert.equal(baseUnit(u['HIPS Fabs']), 'Mm-1')
+})

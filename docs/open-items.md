@@ -77,6 +77,13 @@ On (4), 19 Nov: of five ways to apply the correction, only per filter removes th
 site moves the level and leaves each site's exponent unchanged, and a 20 % cut-off on filters puts a × 1.25 step in the
 response. "Sites where seen" (8 sites) is the conservative alternative. Account: [hips-linearise-rules-2026-11-19.md](hips-linearise-rules-2026-11-19.md);
 gallery Meeting tab, Nov 19, and side panel, Plot, HIPS, Apply to.
+20 Nov, for Ann: the bend holds on every IMPROVE filter (single-filter fits give τ∞ 1.7 to 2.9 against the group fit's 2.26), it
+survives in Fabs, Delhi's filters below τ 0.45 fit 0.90x + 0.14 with no correction, and Apply to can now linearise only filters
+past a τ. Account: [hips-bend-checks-2026-11-20.md](hips-bend-checks-2026-11-20.md); gallery Meeting tab, Nov 24.
+Same day, defensibility checks: the bend holds under every method (stronger within sites; the grouping's instrument does not
+matter), but the ceiling's size does not: within-site, 2015–2025 and errors-in-variables fits give 1.45–1.7, where Addis
+over-corrects. Across the published interval the Addis MAC is 13–35. Decision needed: which ceiling SPARTAN uses (the period
+question), and whether to wait for the Addis TOR filters before quoting an Addis level.
 
 ### Decide what the Addis offset finding changes (10 Nov 2026)
 

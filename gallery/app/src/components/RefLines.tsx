@@ -32,9 +32,10 @@ export function RefLine(props: Span) {
  */
 export function Marker({ label, color = INK.text, opacity = 0.75, labelSide = 'right', labelDy = 0, ...span }: Span & {
   label?: string; color?: string; opacity?: number
-  /** vertical markers: which side of the line the label sits (left near the right edge) */
+  /** vertical markers: which side of the line the label sits (left near the right edge); horizontal markers: which end
+   *  of the line it sits at (default the right end) */
   labelSide?: 'left' | 'right'
-  /** push the label down, so several markers' labels do not overlap */
+  /** push the label down, so several markers' labels do not overlap (on a horizontal marker, 14 puts it under the line) */
   labelDy?: number
 }) {
   const e = ends(span)
@@ -42,7 +43,8 @@ export function Marker({ label, color = INK.text, opacity = 0.75, labelSide = 'r
     <line {...e} {...marker} stroke={color} strokeOpacity={opacity} />
     {label && (span.orient === 'v'
       ? <text x={labelSide === 'left' ? e.x1 - 4 : e.x1 + 4} y={Math.min(e.y1, e.y2) + 10 + labelDy} textAnchor={labelSide === 'left' ? 'end' : 'start'} fontSize={10} fontFamily={FONT.mono} fill={color}>{label}</text>
-      : <text x={Math.max(e.x1, e.x2) - 4} y={e.y1 - 4} textAnchor="end" fontSize={10} fontFamily={FONT.mono} fill={color}>{label}</text>)}
+      : <text x={labelSide === 'left' ? Math.min(e.x1, e.x2) + 4 : Math.max(e.x1, e.x2) - 4} y={e.y1 - 4 + labelDy}
+        textAnchor={labelSide === 'left' ? 'start' : 'end'} fontSize={10} fontFamily={FONT.mono} fill={color}>{label}</text>)}
   </g>
 }
 
