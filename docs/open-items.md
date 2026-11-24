@@ -84,6 +84,12 @@ Same day, defensibility checks: the bend holds under every method (stronger with
 matter), but the ceiling's size does not: within-site, 2015–2025 and errors-in-variables fits give 1.45–1.7, where Addis
 over-corrects. Across the published interval the Addis MAC is 13–35. Decision needed: which ceiling SPARTAN uses (the period
 question), and whether to wait for the Addis TOR filters before quoting an Addis level.
+24 Nov, after the meeting: Ann accepts that HIPS, not FTIR, is the main problem; SPARTAN should report FTIR EC and use
+corrected HIPS only as QC; a paper parallel to White et al. (2025) is planned. Delhi's run lengths (24, 12, 6 h at the same
+flow) show a loading effect in SPARTAN's own data; White's CSN test, rerun, fits our curve's shape with a 10 % network offset;
+the Addis MAC is 10 to 18 depending on the ceiling; a paired light/dark experiment (20 pairs) would settle it. Status, open
+questions and corrections to the meeting: [hips-status-2026-11-24.md](hips-status-2026-11-24.md); gallery Experimental,
+SPARTAN's own HIPS curve and Aethalometer loading k.
 
 ### Decide what the Addis offset finding changes (10 Nov 2026)
 

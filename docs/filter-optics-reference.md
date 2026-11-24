@@ -35,7 +35,7 @@ section below where the citation is recorded.
 |---|---|---|
 | Support-screen **hole fraction `h`** | **OPEN** — not published; logged as an ask to Christopher Ockfort | **0.638** (63.8% open / 36.2% blocked) — McDade, Dillner & Indresand 2009; adopted in White 2025 |
 | Deposit-dot size | not applicable (FEP ring, not perforated screen) | ≈ **0.013 inch** ≈ **0.33 mm** per dot — McDade et al. 2009 |
-| Pixelation **relative amplitude** (continuous, 0 = uniform → 1 = fully pixelated) | **OPEN** — no published value | continuous family in White 2025; per-sample fits in the paper, **not transcribed** here |
+| Pixelation **amplitude α** (1 = uniform → ∞ = fully pixelated) | **OPEN** — not measured | about **10** (White 2025, network value; not measured per sample) |
 
 ### Optical-photometer readout
 
@@ -219,19 +219,12 @@ has not been published, it is flagged **OPEN** rather than guessed.
 | Network site count | **~150** rural sites | abstract |
 | Sampling cadence | **every third day**, 24-h integrated | abstract |
 | **Support-screen hole fraction `h`** | **0.638** (63.8%) | adopted from McDade, Dillner & Indresand (2009); used as the upper bound for a fully pixelated deposit ("the fraction of laser power absorbed by a fully pixelated deposit cannot exceed 0.638 of the illuminated filter area") |
-| Pixelation parameter (what we've been calling "α") | **a continuous "relative amplitude"** — not a single number | paper text snippet: "intermediate pixelations forming a one-dimensional family parameterized by a relative amplitude" |
+| Pixelation amplitude `α = τ_d / τ_i` | **1 (uniform) to infinity (fully pixelated)**; **about 10** suggested network-wide for IMPROVE, 1 for CSN | full text read 24 Nov 2026: §3.3 and §4.1 to 4.2 (p. 220 to 227) |
+| Pixelation limit | absorptance 0.638, τ 1.016, about 11 Mm⁻¹ at 32.8 m³ | p. 219 to 227 |
 
-**Important nuance.** The pixelation correction in White 2025 is not a single
-α value applied to every IMPROVE sample. The family of patterned-deposit
-solutions is parameterised by a continuous **relative amplitude** that runs
-from 0 (uniform Beer-Lambert deposit) to 1 (fully pixelated, all mass in the
-hole footprints). The paper presumably reports either (a) a typical
-relative-amplitude value for routine IMPROVE samples or (b) sample-by-sample
-fits — but we **have not transcribed those values from the paper text**;
-reading the full paper is the only reliable way to get them. The repo's
-existing claim that "the correction is not applied because SPARTAN-specific
-H and α are unknown" reflects this: we have IMPROVE `h` but no IMPROVE
-*sample-specific* amplitude, and we have **nothing** for SPARTAN.
+The model is τ = −ln[h e^(−αx/ω) + (1 − h) e^(−x/ω)], ω = 1 + (α − 1)h (Eq. 15 and 18). One α is suggested for the network, from agreement
+with collocated CSN at four urban sites; amplitudes of individual samples are not measured. SPARTAN's h and α are unknown. How the model
+compares with the gallery's curve and what it does at Addis: [hips-warren-model-2026-11-24.md](hips-warren-model-2026-11-24.md).
 
 ### 4c. Other Warren-adjacent references
 
@@ -297,10 +290,8 @@ new science.
    adopted from McDade 2009. For SPARTAN, no published number exists.
    `[RESEARCH_PROGRESS.md open-tasks table — "Contact SPARTAN / Christopher
    Ockfort"]`.
-2. **Pixelation relative-amplitude distribution for routine IMPROVE samples.**
-   White 2025 introduces it as a continuous parameter, but the actual values
-   the paper fits to its IMPROVE dataset are not in any public snippet I can
-   reach. **[needs the paper]**
+2. **Pixelation amplitude of routine IMPROVE samples.** Closed as far as the paper goes: α about 10 for the network; per-sample values
+   are not published (White et al. 2025).
 3. **Pixelation relative-amplitude for SPARTAN samples.** Even if we adopt
    IMPROVE's `h = 0.638` as a proxy (questionable: SPARTAN uses a 25 mm
    PTFE in an AirPhoton SS5i, not the IMPROVE holder), we still need a

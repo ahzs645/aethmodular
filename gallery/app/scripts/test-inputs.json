@@ -390,6 +390,14 @@
         "gallery/app/public/data/meetings/vibes-settings-20261116.json"
       ],
       "reason": "The page's rule rings and named tables must match its committed bundle."
+    },
+    "src/lib/hipsPattern.test.mjs": {
+      "scope": "public",
+      "inputs": [
+        "gallery/app/public/data/hips_linearise/linearise.json",
+        "gallery/app/public/data/hips_linearise/warren.json"
+      ],
+      "reason": "Hold the browser's patterned-deposit model to the exporter and the notebook's Addis fits."
     }
   }
 }

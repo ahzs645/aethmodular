@@ -18,6 +18,8 @@ import { VibesNewtonStudy } from '@/pages/experimental/VibesNewtonStudy'
 // the TOR study draws its network on a MapLibre map, so it (and MapLibre) loads when it is opened
 // the VIBES tool starts a worker and loads the solver module, so it loads when it is opened
 const VibesTool = lazy(() => import('@/pages/experimental/VibesTool').then((m) => ({ default: m.VibesTool })))
+const SpartanCurveStudy = lazy(() => import('@/pages/experimental/SpartanCurveStudy').then((m) => ({ default: m.SpartanCurveStudy })))
+const AethLoadingStudy = lazy(() => import('@/pages/experimental/AethLoadingStudy').then((m) => ({ default: m.AethLoadingStudy })))
 const TorStudy = lazy(() => import('@/pages/experimental/TorStudy').then((m) => ({ default: m.TorStudy })))
 
 /**
@@ -43,6 +45,8 @@ export function ExperimentalPage({ experiment, onPick }: { experiment: string; o
       {experiment === 'continuum' && <ContinuumStudy />}
       {experiment === 'vibes-newton' && <VibesNewtonStudy />}
       {experiment === 'vibes-tool' && <Suspense fallback={<Empty>Loading the VIBES solver…</Empty>}><VibesTool /></Suspense>}
+      {experiment === 'spartan-curve' && <Suspense fallback={<Empty>Loading the SPARTAN curve study…</Empty>}><SpartanCurveStudy /></Suspense>}
+      {experiment === 'aeth-k' && <Suspense fallback={<Empty>Loading the aethalometer loading study…</Empty>}><AethLoadingStudy /></Suspense>}
       {experiment === 'tor' && <Suspense fallback={<Empty>Loading the TOR study…</Empty>}><TorStudy /></Suspense>}
     </PageToc>
   )

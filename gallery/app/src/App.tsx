@@ -96,6 +96,7 @@ const HipsLinearisePage = lazyView(() => import('@/pages/HipsLinearisePage').the
 const HipsPartsPage = lazyView(() => import('@/pages/HipsPartsPage').then(m => m.HipsPartsPage))
 const HipsStoryPage = lazyView(() => import('@/pages/HipsStoryPage').then(m => m.HipsStoryPage))
 const HipsChecksPage = lazyView(() => import('@/pages/HipsBendChecks').then(m => m.HipsChecksPage))
+const HipsWarrenPage = lazyView(() => import('@/pages/HipsWarrenPage').then(m => m.HipsWarrenPage))
 const MeetingSpecPage = lazyView(() => import('@/pages/MeetingSpecPage').then(m => m.MeetingSpecPage))
 const BlanksPage = lazyView(() => import('@/pages/BlanksPage').then(m => m.BlanksPage))
 const ExperimentalPage = lazyView(() => import('@/pages/ExperimentalPage').then(m => m.ExperimentalPage))
@@ -192,6 +193,7 @@ const MEETINGS: { key: string; label: string; title?: string }[] = [
   { key: 'hips-linearise', date: '2026-11-10', title: 'Linearising HIPS at Addis: the IMPROVE bend, the inversion, the correction on every filter and the intercept it removes, at any ceiling' },
   { key: 'hips-parts', date: '2026-11-16', title: 'HIPS on dark filters, part by part: where IMPROVE shows it, what linearising does to a filter, Addis, and how it is made for every SPARTAN site' },
   { key: 'hips-checks', date: '2026-11-24', title: 'HIPS bend checks from the 19 Nov meeting: every IMPROVE filter and the curve fitted to single filters, the curve in Fabs against EC, and Addis and Delhi below an optical-depth cut with the MAC for slope 1' },
+  { key: 'hips-warren', date: '2026-11-24', title: 'Warren White’s deposit model and ours: whether ours is an extreme version of his, what each does to Addis and the network, how much SPARTAN’s unknown support screen matters, and the answers to what Ann asked on 19 Nov' },
   { key: 'hips-story', date: '2026-11-19', title: 'Linearising HIPS across SPARTAN: the effect, the fix, where it is expected and seen, and the same filters before and after when it is applied per filter or per site' },
   ...SPEC_MEETINGS.map((m) => ({ key: m.id, date: m.date, title: m.title })),
 ].sort((a, b) => b.date.localeCompare(a.date)).map(({ date, ...m }) => ({ ...m, label: meetingLabel(date) }))
@@ -1666,7 +1668,7 @@ export default function App() {
         {/* tabs without the Filters panel: a sidebar for the page's own controls, with the fits where the page fits */}
         {subset ?? ((tab === 'baseline' || tab === 'blanks' || tab === 'meeting' || tab === 'experimental' || tab === 'similarity' || tab === 'ml')
           && <PageSidebar fits={tab === 'baseline' || meeting === 'followup' && tab === 'meeting'}
-            label={tab === 'similarity' ? 'Target' : tab === 'meeting' && ['hips-linearise', 'hips-parts', 'hips-story', 'hips-checks'].includes(meeting) ? 'Page' : 'Samples'}
+            label={tab === 'similarity' ? 'Target' : tab === 'meeting' && ['hips-linearise', 'hips-parts', 'hips-story', 'hips-checks', 'hips-warren'].includes(meeting) ? 'Page' : 'Samples'}
             // the tabs whose charts read HIPS BC get the MAC on a Plot tab, as the Samples-panel tabs do
             mac={tab === 'ml' || tab === 'experimental' || tab === 'meeting' ? {
               value: viewOpts.mac, exportMac, onMac: setMac,
@@ -1693,6 +1695,7 @@ export default function App() {
             : meeting === 'hips-parts' ? <HipsPartsPage />
             : meeting === 'hips-story' ? <HipsStoryPage />
             : meeting === 'hips-checks' ? <HipsChecksPage />
+            : meeting === 'hips-warren' ? <HipsWarrenPage />
             : <MeetingSpecPage key={meeting} spec={SPEC_MEETINGS.find((m) => m.id === meeting) ?? SPEC_MEETINGS[0]} />}
         </PresentationProvider>}
         {tab === 'blanks' && <BlanksPage />}

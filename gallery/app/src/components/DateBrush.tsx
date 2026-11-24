@@ -115,9 +115,10 @@ export function DateBrush({
   if (!months.length) return null
   const [d0, d1] = x.domain() as [Date, Date]
   const years = d3.timeYear.range(d3.timeYear.ceil(d0), d1)
+  const outerW = innerW + margin.left + margin.right
 
   return (
-    <svg width={innerW + margin.left + margin.right} height={height} style={{ display: 'block' }}>
+    <svg width={outerW} height={height} viewBox={`0 0 ${outerW} ${height}`} style={{ display: 'block', maxWidth: '100%', height: 'auto' }}>
       <g transform={`translate(${margin.left},${margin.top})`}>
         {stacks.map((s) => {
           const x0 = x(s.d)

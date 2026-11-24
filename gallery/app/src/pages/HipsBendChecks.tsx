@@ -282,7 +282,7 @@ export function MeetingNotes({ data }: { data: Linearise }) {
         <li><strong>Delhi.</strong> About half its filters are past τ 0.45, not about ten percent; the table above has every site.</li>
         <li><strong>The six urban IMPROVE sites</strong> (the sixth that was missing is Birmingham): {(density?.urban_sites ?? Object.keys(URBAN_NAMES)).map((s) => `${URBAN_NAMES[s] ?? s} (${s})`).join(', ')}. They are collocated with CSN; a citation for the list is still to find.</li>
         <li><strong>Warren's trusted range.</strong> The curve uses IMPROVE {density ? `${density.first} to ${density.last}` : '2005–2025'}; White et al. (2016) treat HIPS as comparable from 2003, so no earlier filter is in it.
-          Whether White et al. (2016, 2025) already describe or exclude the heaviest filters is open: read both before writing that HIPS reads low.</li>
+          White et al. (2025) already describe the bend, and cut nothing at the dark end: see the page “Warren White’s model and ours” (Meetings, 24 Nov).</li>
         <li><strong>Words.</strong> Filters past the cut have compromised Fabs; they are not lost, and their FTIR EC, OC and mass stand. HIPS is the check on FTIR EC (MAIA reports FTIR EC only).</li>
         <li><strong>Per filter, not per site.</strong> What decides the correction is the filter's τ (or Fabs at its volume), not its site; the 19 Nov story page compares the rules, and "Apply to" can now linearise only filters past a τ.</li>
       </ul>

@@ -254,6 +254,8 @@ gallery/app/public/data/spartan_network/
 # including signed native spectra and reference-calibration predictions.
 gallery/app/public/data/research/baseline_lab/
 gallery/app/public/data/research/hips_linearise_groups/
+# Unpublished UC Davis experiment (gallery/data/export_hips_warren.py): never commit or publish
+gallery/app/public/data/research/hips_drain_disc/
 
 # Dashboard browser-test screenshots (gallery/app/tests/dashboard.spec.ts): regenerated on every run, never tracked
 deliverables/dashboard_superset/screenshots/
