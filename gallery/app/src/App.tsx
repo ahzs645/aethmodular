@@ -64,6 +64,7 @@ import { groupingsParam, mergeGroupings, parseGroupings, readSavedGroupings, wri
 import { GlossaryButton } from '@/components/Glossary'
 import { PresentationProvider, PresentationSwitch, type Presentation } from '@/lib/presentation'
 import { LAMBDA_10, MacProvider, demingLambda } from '@/lib/mac'
+import { PlotUseProvider, usePlotUsed } from '@/lib/plotUse'
 import { useSearchParam } from '@/lib/url'
 import { CommandPaletteButton } from '@/components/CommandPalette'
 import { UndoToast } from '@/components/UndoToast'
@@ -1620,6 +1621,8 @@ export default function App() {
     <GroupingsProvider meta={meta} rows={rows} list={groupings} onSave={saveGrouping} onRemove={removeGrouping}>
     {/* the MAC every chart reads (lib/mac useMac): the reader's, or the export's on a meeting page as presented */}
     <MacProvider mac={tab === 'meeting' && presentation === 'presented' ? exportMac : viewOpts.mac} exportMac={exportMac} lambda10={data?.calibration?.deming_lambda_mac10 ?? LAMBDA_10}>
+    {/* the HIPS view for pages that draw HIPS from their own exports, and which Plot settings the open page reads (lib/plotUse) */}
+    <PlotUseProvider hips={{ ceiling: tab === 'meeting' && presentation === 'presented' ? null : hipsCeiling, scope: hipsScope, cut: hipsCut }}>
     <FilterEditsProvider enabled dropped={dropIds} kept={keepIds}
       onDrop={dropFilters} onKeep={keepFilters} onRestore={restoreFilters} group={group} onGroup={setGroup}>
     {/* Filters → excluded: Mark — the excluded filters in view, drawn as × by the point charts, counted by none */}
@@ -1771,6 +1774,7 @@ export default function App() {
       </GallerySamplesProvider>
     </MarkedRowsProvider>
     </FilterEditsProvider>
+    </PlotUseProvider>
     </MacProvider>
     </GroupingsProvider>
     </RatiosProvider>
@@ -1870,9 +1874,10 @@ function TocToggle() {
  */
 function PageSidebar({ fits, label = 'Samples', mac }: {
   fits: boolean; label?: string
-  /** the gallery's MAC: given, the sidebar has a Plot tab (the fits and the MAC) beside the page's own controls */
+  /** the gallery's MAC and HIPS view: given, the sidebar has a Plot tab beside the page's own controls, with the fits and
+   * whichever of the two the open page reads (lib/plotUse); none of them, no Plot tab */
   mac?: { value: number; exportMac: number; onMac: (mac: number | null) => void; note?: string
-    /** HIPS as measured or linearised (lib/viewFields): set here too, though this tab's own figures stay as measured */
+    /** HIPS as measured or linearised (lib/viewFields); a page reads it with lib/plotUse useHipsView */
     hipsCeiling?: number | null; onHips?: (ceiling: number | null) => void; hipsScope?: HipsScope; onHipsScope?: (scope: HipsScope) => void }
 }) {
   const [open, setOpen] = useSidePanelOpen()
@@ -1880,37 +1885,45 @@ function PageSidebar({ fits, label = 'Samples', mac }: {
   const top = useHeaderHeight()
   const note = usePageSidebarNote()
   const { explain } = usePrefs()
+  // the MAC and HIPS rows only where the open page reads them (lib/plotUse), and a Plot tab only with something on it
+  const used = usePlotUsed()
+  const macRow = !!mac && used.mac
+  const hipsRow = !!mac?.onHips && used.hips
+  const plot = !!mac && (macRow || hipsRow || fits)
   // the page half only while the open page has controls for it; without a Plot tab it is the whole sidebar, as before
-  const hasPage = !mac || !!usePageTab()
-  const view: 'page' | 'plot' = !mac ? 'page' : !hasPage || chosenView === 'plot' ? 'plot' : 'page'
+  const pageTab = usePageTab()
+  const hasPage = !plot || !!pageTab
+  const view: 'page' | 'plot' = !plot ? 'page' : !hasPage || chosenView === 'plot' ? 'plot' : 'page'
   const toggle = (v: 'page' | 'plot') => { if (open && view === v) setOpen(false); else { setView(v === 'plot' ? 'plot' : 'page'); setOpen(true) } }
   const name = view === 'plot' ? 'Plot' : label === 'Page' ? 'Page options' : label
+  // a page with neither its own controls nor a Plot setting it reads gets no sidebar (the slot comes back when it registers some)
+  if (mac && !plot && !pageTab) return null
   const noun = name.toLowerCase()
   const edge = (v: 'page' | 'plot', text: string, tip: string, count?: string | null) =>
-    <button key={v} className={`subset-tab${mac && open && view === v ? ' active' : ''}`} type="button" role={mac ? 'tab' : undefined} aria-selected={mac ? view === v : undefined}
+    <button key={v} className={`subset-tab${plot && open && view === v ? ' active' : ''}`} type="button" role={plot ? 'tab' : undefined} aria-selected={plot ? view === v : undefined}
       aria-expanded={open && view === v} onClick={() => toggle(v)} title={`${open && view === v ? 'Hide' : 'Show'} the ${tip}`}>
       <span className="subset-tab-label">{text}</span>
       {count && <span className="subset-tab-count">{count}</span>}
     </button>
   return <>
-    <SideDock open={open} top={top} onClose={() => setOpen(false)} tab={!mac ? edge('page', label, `${label.toLowerCase()}${note ? ` (${note})` : ''}`, note)
+    <SideDock open={open} top={top} onClose={() => setOpen(false)} tab={!plot ? edge('page', label, `${label.toLowerCase()}${note ? ` (${note})` : ''}`, note)
       : <div className="side-dock-tabs" role="tablist" aria-label="Side panel" aria-orientation="vertical">
         {hasPage && edge('page', label, `${label.toLowerCase()}${note ? ` (${note})` : ''}`, note)}
-        {edge('plot', 'Plot', `plot options: ${fits ? 'fits and ' : ''}the MAC`, mac.hipsCeiling != null ? 'HIPS lin.' : null)}
+        {edge('plot', 'Plot', `plot options: ${[fits && 'fits', macRow && 'the MAC', hipsRow && 'the HIPS view'].filter(Boolean).join(', ')}`, hipsRow && mac!.hipsCeiling != null ? 'HIPS lin.' : null)}
       </div>}>
       <aside className="panel subset subset-panel" aria-label={name}>
         <header className="subset-head"><strong>{view === 'plot' ? 'Plot options' : name}</strong><span style={{ marginLeft: 'auto' }}><button type="button" className="btn quiet x-btn" onClick={() => setOpen(false)} aria-label={`Close ${noun}`} title="Close"><XIcon /></button></span></header>
         {/* kept mounted on either half so the page's controls keep their state */}
         <div hidden={view !== 'page'}><PageSidebarSlot /></div>
-        {fits && view === (mac ? 'plot' : 'page') && <RegressionControls />}
-        {mac && view === 'plot' && <Row label="MAC">
-          <MacControl mac={mac.value} exportMac={mac.exportMac} onMac={mac.onMac} />
-          {mac.note && <span className="method-note" style={{ display: 'block' }}>{mac.note}</span>}
+        {fits && view === (plot ? 'plot' : 'page') && <RegressionControls />}
+        {macRow && view === 'plot' && <Row label="MAC">
+          <MacControl mac={mac!.value} exportMac={mac!.exportMac} onMac={mac!.onMac} />
+          {mac!.note && <span className="method-note" style={{ display: 'block' }}>{mac!.note}</span>}
           {explain && <span className="row-note">MAC scales the slope of a fit against HIPS BC; the intercept barely moves (exactly unchanged for OLS)</span>}
         </Row>}
-        {mac?.onHips && view === 'plot' && <Row label="HIPS">
-          <HipsControl ceiling={mac.hipsCeiling} onHips={mac.onHips} scope={mac.hipsScope} onScope={mac.onHipsScope} />
-          {mac.hipsCeiling != null && <span className="method-note" style={{ display: 'block' }}>This tab's figures are precomputed, or its filters carry no sampled volume, so it shows HIPS as measured. The chart tabs follow the linearised view.</span>}
+        {hipsRow && view === 'plot' && <Row label="HIPS">
+          <HipsControl ceiling={mac!.hipsCeiling} onHips={mac!.onHips!} scope={mac!.hipsScope} onScope={mac!.onHipsScope} />
+          {mac!.hipsCeiling != null && <span className="method-note" style={{ display: 'block' }}>Only this page's charts that draw HIPS from filters with a sampled volume follow it; each says so in its subtitle.</span>}
         </Row>}
       </aside>
     </SideDock>

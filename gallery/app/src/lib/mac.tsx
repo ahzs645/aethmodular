@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { EXPORT_MAC, macView, type MacView } from './macMath'
+import { usePlotUse } from './plotUse'
 
 export * from './macMath'
 
@@ -26,5 +27,9 @@ export function MacProvider({ mac, exportMac, lambda10, children }: { mac: numbe
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
-/** The reader's MAC and what follows from it; MAC 10 outside a provider. */
-export const useMac = (): MacView => useContext(Ctx)
+/** The reader's MAC and what follows from it; MAC 10 outside a provider. Reading it puts the MAC on the Plot tab of a
+ * page without the Samples panel (lib/plotUse), while `on`: a chart that draws HIPS only under one of its options passes it. */
+export function useMac(on = true): MacView {
+  usePlotUse('mac', on)
+  return useContext(Ctx)
+}

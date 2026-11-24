@@ -7,6 +7,10 @@ import { ScrubField } from '@/components/ScrubField'
 import { SweepPlot, histogramSeries, type SweepMarker, type SweepSeries } from '@/components/SweepPlot'
 import { f2, f3, fmt } from '@/lib/format'
 import { twoZone } from '@/lib/hipsPattern'
+import { opticalDepth } from '@/lib/hipsLinearise'
+import { siteInScope } from '@/lib/hipsRun'
+import { useMac } from '@/lib/mac'
+import { linearised, useHipsView } from '@/lib/plotUse'
 import { SidebarControls } from '@/lib/pageSidebar'
 import { pearson } from '@/lib/stats'
 import { INK } from '@/lib/theme'
@@ -32,7 +36,7 @@ interface ChannelData {
 interface SiteData {
   label: string; filter_site: string; minutes: number; span: [string, string]; advances: number; flow_ratio: Hist | null
   channels: Record<string, ChannelData>
-  filters: { id: string[]; date: string[]; hours: number[]; ec: Num[]; hips: Num[] }
+  filters: { id: string[]; date: string[]; hours: number[]; ec: Num[]; hips: Num[]; volume?: Num[] }
 }
 interface LoadingData extends XpBase {
   settings: { k_grid: number[]; atn_min: number; floor: number; kyan: { median: number; bc_atn: number; residual: number }; channels: string[]; hips_mac: number }
@@ -278,9 +282,25 @@ function Denominator({ m }: { m: Loading }) {
 // ---------------------------------------------------------------------------------------------- crossplot
 function Cross({ m }: { m: Loading }) {
   const f = m.site.filters
-  const yName = m.yKey === 'ec' ? 'FTIR EC (µg/m³)' : `HIPS BC at MAC ${m.d.settings.hips_mac} (µg/m³)`
+  // HIPS BC follows the gallery's MAC and HIPS view (Plot tab), offered while this chart shows HIPS
+  const onHips = m.yKey === 'hips'
+  const mac = useMac(onHips)
+  const view = useHipsView(onHips)
+  const from = m.d.settings.hips_mac
+  const lin = onHips && view.ceiling != null && siteInScope(m.site.filter_site, view.scope)
+  const hipsOf = (i: number): number | null => {
+    const v = f.hips[i], V = f.volume?.[i]
+    if (!finite(v)) return null
+    if (!lin) return mac.bc(v, from)
+    // τ from Fabs (= BC × the export's MAC) and the sampled volume; a filter without a volume drops out under the view
+    const tau = finite(V) ? opticalDepth(v * from, V) : null
+    const l = tau == null ? null : linearised(v, tau, view)
+    return l == null ? null : mac.bc(l, from)
+  }
+  const dropped = lin ? m.counted.filter((i) => finite(f.hips[i]) && hipsOf(i) == null).length : 0
+  const yName = m.yKey === 'ec' ? 'FTIR EC (µg/m³)' : `HIPS BC${lin ? ', linearised' : ''} at MAC ${fmt(mac.mac, 1)} (µg/m³)`
   const points: CrossPoint[] = m.counted.flatMap((i) => {
-    const x = m.bcOf(i), y = m.yKey === 'ec' ? f.ec[i] : f.hips[i]
+    const x = m.bcOf(i), y = m.yKey === 'ec' ? f.ec[i] : hipsOf(i)
     if (!finite(x) || !finite(y)) return []
     return [{ x, y, color: m.yKey === 'ec' ? INK.accent : RESEARCH_SERIES[1], id: f.id[i], site: m.site.filter_site,
       tip: [`${f.id[i]} · ${f.date[i]}`, `aethalometer ${m.ch} BC: ${f2(x)} µg/m³ (${kLabel(m)})`, `${yName}: ${f2(y)}`, `mean ATN1 ${fmt(m.cd.filters.atn[i], 1)}`] }]
@@ -289,7 +309,7 @@ function Cross({ m }: { m: Loading }) {
   return (
     <ChartFrame id="xk-cross" source={source('Cross')} provenance={runLine(m)}
       title={m.yKey === 'ec' ? 'FTIR EC against aethalometer BC on each filter’s window' : 'HIPS BC against aethalometer BC on each filter’s window'}
-      subtitle={`Aethalometer ${m.ch} BC averaged over each filter’s own sampling window (half its minutes needed), with ${kLabel(m)}. ${fit ? `OLS, as in Kyan’s deck: ${f3(fit.slope)}x ${fit.intercept >= 0 ? '+' : '−'} ${f2(Math.abs(fit.intercept))}, r ${f3(fit.r)}, n ${fit.n}.` : ''} The fits drawn follow the gallery’s estimator settings. The aethalometer’s cross-section is not a filter MAC, so a slope off 1 is a scale, not an error.`}
+      subtitle={`Aethalometer ${m.ch} BC averaged over each filter’s own sampling window (half its minutes needed), with ${kLabel(m)}. ${fit ? `OLS, as in Kyan’s deck: ${f3(fit.slope)}x ${fit.intercept >= 0 ? '+' : '−'} ${f2(Math.abs(fit.intercept))}, r ${f3(fit.r)}, n ${fit.n}.` : ''} The fits drawn follow the gallery’s estimator settings. The aethalometer’s cross-section is not a filter MAC, so a slope off 1 is a scale, not an error.${onHips ? ` HIPS BC is Fabs ÷ MAC ${fmt(mac.mac, 1)} (Plot → MAC)${lin ? `, linearised at τ∞ ${fmt(view.ceiling, 2)}${view.scope === 'past' ? ` from τ ${fmt(view.cut, 2)}` : ''} with τ = Fabs × sampled volume ÷ 353 (Plot → HIPS)${dropped ? `; ${dropped} filter${dropped === 1 ? '' : 's'} without a volume or past the ceiling drop out` : ''}` : view.ceiling != null ? `; ${SITE_LABEL[m.siteKey] ?? m.siteKey} is outside the HIPS view’s sites, so as measured` : ', as measured (Plot → HIPS linearises it)'}.` : ''}`}
       controls={<Segmented label="y" value={m.yKey} options={['ec', 'hips'] as const} optionLabel={(o) => (o === 'ec' ? 'FTIR EC' : 'HIPS BC')} onChange={m.setY} />}>
       <Crossplot points={points} title={`${SITE_LABEL[m.siteKey] ?? m.siteKey} · ${m.ch}`} xLabel={`Aethalometer ${m.ch} BC (µg/m³)`} yLabel={yName} maxSide={440} />
     </ChartFrame>

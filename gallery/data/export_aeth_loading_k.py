@@ -110,7 +110,9 @@ def site(df: pd.DataFrame, windows: dict, ref: dict, filter_site: str, zone: str
            "channels": {}}
     filters = {"id": [f[0] for f in fil], "date": [f[1].strftime("%Y-%m-%d") for f in fil],
                "hours": [r((f[2] - f[1]) / pd.Timedelta(hours=1), 1) for f in fil],
-               "ec": [r(ref.get(f[0], {}).get("ec"), 3) for f in fil], "hips": [r(ref.get(f[0], {}).get("hips"), 3) for f in fil]}
+               "ec": [r(ref.get(f[0], {}).get("ec"), 3) for f in fil], "hips": [r(ref.get(f[0], {}).get("hips"), 3) for f in fil],
+               # sampled volume (m3): the page linearises HIPS with the gallery's HIPS view, tau = Fabs x V / 353
+               "volume": [r(ref.get(f[0], {}).get("volume"), 4) for f in fil]}
     for ch in CHANNELS:
         bc1 = df[f"{ch} BC1"].to_numpy(float)
         atn = df[f"{ch} ATN1"].to_numpy(float)
@@ -176,9 +178,10 @@ def reference() -> dict:
     rows = json.loads((ROOT / "gallery/app/public/data/spartan_reference.json").read_text())["rows"]
     ref = {}
     for row in rows:
-        ec, fabs = row.get("EC (FTIR)"), row.get("HIPS Fabs")
+        ec, fabs, vol = row.get("EC (FTIR)"), row.get("HIPS Fabs"), row.get("Sampled volume")
         ref[row["id"]] = {"ec": ec if isinstance(ec, (int, float)) else None,
-                          "hips": fabs / 10 if isinstance(fabs, (int, float)) else None}
+                          "hips": fabs / 10 if isinstance(fabs, (int, float)) else None,
+                          "volume": vol if isinstance(vol, (int, float)) and vol > 0 else None}
     return ref
 
 
